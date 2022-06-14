@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Check out the demo app
 
-Click the "Check out" button on the right, and the browser will open the demo app in a new tab. In this app, you can use your admin account credentials or create a new account to proceed.
+In the "Get Started" tab, click the "Check out" button on the right, and the browser will open the demo app in a new tab. In this app, you can use your admin account credentials or create a new account to proceed.
 
 Like how you created the admin account, Logto natively supports username and password Sign-in Experience without configuration.
 
