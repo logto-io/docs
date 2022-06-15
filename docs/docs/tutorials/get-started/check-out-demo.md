@@ -18,6 +18,6 @@ The app itself is pretty simple: a congrats page with your Username and User ID,
 Sign out the demo app before further explorations. After finishing the "Customize sign-in experience" section, open the demo app again to see the changes.
 :::
 
-## What's Next
+## What's next
 
 Now it's time to create and integrate your first application.

@@ -13,7 +13,7 @@ Logto handles environment variables in the following order:
 
 Thus the system environment variable will override the value in `.env`.
 
-## First-time Setup Questions {#questions}
+## First-time setup questions {#questions}
 
 For the first time you start Logto with no related environment variable, unless `--no-inquiry` is specified, it'll ask several questions for a smooth experience to fulfill the minimum requirements:
 
@@ -30,7 +30,7 @@ The generated private key for the OIDC provider will locate on `./oidc-private-k
 The `--no-inquiry` parameter is appended by default in the Docker image.
 :::
 
-## Variable List
+## Variable list
 
 ### General
 
@@ -59,7 +59,7 @@ In default values, `protocol` will be either `http` or `https` according to your
 | OIDC_PRIVATE_KEY_PATH | `'./oidc-private-key.pem'`          | <code>string &#124; undefined</code> | The path to the private key file for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> Note Logto will *ignore* this value if `OIDC_PRIVATE_KEY` is not empty.                                                          |
 | OIDC_ISSUER           | `'protocol://localhost:$PORT/oidc'` | `string`                             | The [issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) for OIDC. Usually it's the URL to your OIDC provider.                                                                                                          |
 
-#### Supported Private Key Types
+#### Supported private key types
 
 - RSA
 - OKP (Ed25519, Ed448, X25519, X448 sub types)
@@ -77,7 +77,7 @@ Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_
 
 `HTTPS_CERT_PATH` implies the path to your HTTPS certificate, while `HTTPS_KEY_PATH` implies the path to your HTTPS key.
 
-### Using a HTTPS Proxy
+### Using a HTTPS proxy
 
 Another common practice is to have a HTTPS proxy in front of Node. 
 
