@@ -9,7 +9,7 @@ In the "Get Started" tab, click the "Create" button on the right, and the browse
 ## Sign-in Preview
 
 :::tip Do you know...
-You can preview the result in real-time! No matter what config you update, the right-side UI will change accordingly in a moment.
+You can preview the result in real-time! No matter what you update on the left, the right-side UI will immediately update to synchronize the change.
 :::
 
 The customer may use the app under different conditions, including platform, language, and appearance. 
