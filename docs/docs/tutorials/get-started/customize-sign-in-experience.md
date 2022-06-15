@@ -12,7 +12,7 @@ In the "Get Started" tab, click the "Create" button on the right, and the browse
 You can preview the result in real-time! No matter what you update on the left, the right-side UI will immediately update to synchronize the change.
 :::
 
-The customer may use the app under different conditions, including platform, language, and appearance. 
+The customer may use the app under different conditions, including platform, language, and appearance.
 
 Feel free to change them to see the result of your combination.
 
@@ -47,4 +47,4 @@ Let's skip "Sign-in methods" for now and move to the "Others" tab. In most cases
 Yeah, yeah. Signing in without entering the password is the trend. Logto cannot miss it and has built-in support. Choose the one you like to continue:
 
 - [Enable SMS or email passcode sign-in](./enable-passcode-sign-in)
-- [Add a social connector and enable social sign-in](./add-a-social-connector)
+- [Add a social connector and enable social sign-in](./enable-social-sign-in)
