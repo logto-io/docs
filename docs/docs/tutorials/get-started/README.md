@@ -1,4 +1,4 @@
-# ⚡ Get Started
+# ⚡ Get started
 
 Before we start, it'll be good to know how Logto works. To simplify, we divide Logto into four parts: Admin Console, Sign-in Experience, Core Service, and SDKs.
 
@@ -17,7 +17,7 @@ Before we start, it'll be good to know how Logto works. To simplify, we divide L
 Admin Console is the easiest way to customize and manage Sign-in Experience and Core Service, and we'll use it across the tutorial. 
 :::
 
-## Create an Admin Account
+## Create an admin account
 
 After a successful installation, open the link in your terminal or access the Admin Console welcome page manually via `http://localhost:3001/welcome`.
 
@@ -29,7 +29,7 @@ For now, you cannot create multiple admin accounts via Admin Console, and only t
 
 On the create account page, enter your username and password to continue.
 
-## "Get Started" Tab
+## "Get Started" tab
 
 Once you create the admin account, the browser will redirect you to the "Get Started" tab in Admin Console, which shows a few things that Logto can do at a glance.
 

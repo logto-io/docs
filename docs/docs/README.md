@@ -31,9 +31,9 @@ We recommend using a new empty database which is dedicated for Logto, while it's
 It's okay that your PostgreSQL instance is not in the same machine as NodeJS (e.g. containers + remote database environment).
 :::
 
-### Run a Logto Instance
+### Run a Logto instance
 
-#### Download Script
+#### Download script
 
 In your terminal:
 

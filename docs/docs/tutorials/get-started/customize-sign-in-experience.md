@@ -6,7 +6,7 @@ sidebar_position: 3
 
 In the "Get Started" tab, click the "Create" button on the right, and the browser will redirect to the Sign-in Experience tab.
 
-## Sign-in Preview
+## Sign-in preview
 
 :::tip Do you know...
 You can preview the result in real-time! No matter what you update on the left, the right-side UI will immediately update to synchronize the change.
@@ -30,7 +30,7 @@ You may notice the auto-generated *Brand color (Dark)* is slightly different com
 Because Logto just took care of the visual difference between light and dark and computes a brand color exclusively for dark mode. If you are unsatisfied with the color, you are also free to customize it.
 :::
 
-## Terms of Use
+## Terms of use
 
 An app will likely have a Terms of Use in production, and it's mandatory to accept it before signing in or creating an account.
 
@@ -43,7 +43,7 @@ Let's skip "Sign-in methods" for now and move to the "Others" tab. In most cases
 - You want Logto to fall back to a different language when no language matches the user's system preference, or;
 - You want Logto to fix the language display.
 
-## What's Next
+## What's next
 
 Yeah, yeah. Signing in without entering the password is the trend. Logto cannot miss it and has built-in support. Choose the one you like to continue:
 
