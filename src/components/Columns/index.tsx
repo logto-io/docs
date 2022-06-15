@@ -9,11 +9,12 @@ export type Column = {
 
 type Props = {
   columns: Column[];
+  justifyContent?: string;
 };
 
-const Columns = ({ columns }: Props) => {
+const Columns = ({ columns, justifyContent = 'flex-start' }: Props) => {
   return (
-    <div className={styles.container}>
+    <div className={styles.container} style={{ justifyContent }}>
       {columns.map(({ title, items }) => (
         <div key={title}>
           <h4>{title}</h4>

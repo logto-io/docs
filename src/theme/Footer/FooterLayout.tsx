@@ -1,8 +1,10 @@
-import type { Props } from '@theme/Footer/Layout';
+import Layout from '@theme/Footer/Layout';
 import clsx from 'clsx';
 import React from 'react';
 
 import styles from './index.module.scss';
+
+type Props = Parameters<typeof Layout>[0];
 
 const FooterLayout = ({ style, links, logo, copyright }: Props) => {
   return (

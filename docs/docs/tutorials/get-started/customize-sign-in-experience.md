@@ -12,7 +12,7 @@ In the "Get Started" tab, click the "Create" button on the right, and the browse
 You can preview the result in real-time! No matter what you update on the left, the right-side UI will immediately update to synchronize the change.
 :::
 
-The customer may use the app under different conditions, including platform, language, and appearance. 
+The customer may use the app under different conditions, including platform, language, and appearance.
 
 Feel free to change them to see the result of your combination.
 
@@ -25,8 +25,7 @@ In this area, you can define several main elements of brand exposé: color, logo
 - Other options are pretty straightforward, so we skip them here.
 
 :::note
-You may notice the auto-generated *Brand color (Dark)* is slightly different compared to the original *Brand color*.
-
+You may notice the auto-generated *Brand color (Dark)* is slightly different compared to the original *Brand color*.<br/>
 Because Logto just took care of the visual difference between light and dark and computes a brand color exclusively for dark mode. If you are unsatisfied with the color, you are also free to customize it.
 :::
 
@@ -48,4 +47,4 @@ Let's skip "Sign-in methods" for now and move to the "Others" tab. In most cases
 Yeah, yeah. Signing in without entering the password is the trend. Logto cannot miss it and has built-in support. Choose the one you like to continue:
 
 - [Enable SMS or email passcode sign-in](./enable-passcode-sign-in)
-- [Add a social connector and enable social sign-in](./add-a-social-connector)
+- [Add a social connector and enable social sign-in](./enable-social-sign-in)
