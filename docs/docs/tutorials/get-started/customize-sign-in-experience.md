@@ -46,5 +46,5 @@ Let's skip "Sign-in methods" for now and move to the "Others" tab. In most cases
 
 Yeah, yeah. Signing in without entering the password is the trend. Logto cannot miss it and has built-in support. Choose the one you like to continue:
 
-- [Enable SMS or email passcode sign-in](./enable-passcode-sign-in)
-- [Add a social connector and enable social sign-in](./enable-social-sign-in)
+- [Enable SMS or email passcode sign-in](./enable-passcode-sign-in.mdx)
+- [Add a social connector and enable social sign-in](./enable-social-sign-in.md)

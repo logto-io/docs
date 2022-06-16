@@ -11,10 +11,10 @@ If the list doesn't cover your desired platform/framework, please file a feature
 ## Web
 
 - Vanilla JS
-- [React](./react)
-- [Vue](./vue)
+- [React](./react.mdx)
+- [Vue](./vue.mdx)
 
 ## Native
 
-- [iOS](./ios)
-- [Android](./android)
+- [iOS](./ios.mdx)
+- [Android](./android.mdx)
