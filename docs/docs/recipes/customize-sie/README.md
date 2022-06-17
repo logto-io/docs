@@ -14,7 +14,7 @@ Logto covers the tedious part, so you can have fun with customization to define 
 
 In Admin Console, click the "Sign-in Experience" tab on the left, and you'll see a two-column page.
 
-The left column is the customization section with three tabs: [Branding](./configure-branding.mdx), [Sign-in Methods](./configure-sign-in-methods.md), and [Others](./tou-and-language.md).
+The left column is the customization section with three tabs: [Branding](./configure-branding.mdx), [Sign-in Methods](./configure-sign-in-methods.mdx), and [Others](./tou-and-language.md).
 
 The right column is a live preview that will immediately update to synchronize the change when you update things on the left.
 
