@@ -1,1 +1,0 @@
-# Configure sign-in methods

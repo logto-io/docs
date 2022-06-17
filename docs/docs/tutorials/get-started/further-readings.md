@@ -9,7 +9,7 @@ sidebar_position: 6
 For native and single page apps, you'll need to call one or more API endpoints to retrieve and update data.<br/>
 Learn more about identifying who's who and keeping your API secure.
 
-### [🛵 Change primary sign-in method](../../recipes/customize-sie/configure-sign-in-methods.md)
+### [🛵 Change primary sign-in method](../../recipes/customize-sie/configure-sign-in-methods.mdx)
 
 By default, Logto uses username and password as the primary sign-in method.<br/>
 Depending on the business, you may want to promote passcode or social sign-in to the primary area.
