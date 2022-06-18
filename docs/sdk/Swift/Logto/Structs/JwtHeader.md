@@ -7,6 +7,7 @@ public struct JwtHeader: Codable
 ```
 
 ## Properties
+
 ### `alg`
 
 ```swift

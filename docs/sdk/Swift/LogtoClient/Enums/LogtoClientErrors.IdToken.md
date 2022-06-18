@@ -11,6 +11,7 @@ public enum IdToken: String, LocalizedError
 ```
 
 ## Cases
+
 ### `notAuthenticated`
 
 ```swift

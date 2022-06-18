@@ -11,12 +11,17 @@ public enum LogtoCore
 ```
 
 ## Structs
-###   [CodeTokenResponse](../Structs/LogtoCore.CodeTokenResponse.md)
-###   [OidcConfigResponse](../Structs/LogtoCore.OidcConfigResponse.md)
-###   [RefreshTokenTokenResponse](../Structs/LogtoCore.RefreshTokenTokenResponse.md)
-###   [UserInfoResponse](../Structs/LogtoCore.UserInfoResponse.md)
+
+### [CodeTokenResponse](../Structs/LogtoCore.CodeTokenResponse.md)
+
+### [OidcConfigResponse](../Structs/LogtoCore.OidcConfigResponse.md)
+
+### [RefreshTokenTokenResponse](../Structs/LogtoCore.RefreshTokenTokenResponse.md)
+
+### [UserInfoResponse](../Structs/LogtoCore.UserInfoResponse.md)
 
 ## Properties
+
 ### `postHeaders`
 
 ```swift
@@ -26,6 +31,7 @@ static let postHeaders: [String: String] = [
 ```
 
 ## Methods
+
 ### `fetchOidcConfig(useSession:uri:)`
 
 ```swift

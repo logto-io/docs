@@ -1,4 +1,4 @@
-`Const` **LogtoSignInSessionItemSchema**: `Struct`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string`  }, { `codeVerifier`: `Struct`<`string`, ``null``\> ; `redirectUri`: `Struct`<`string`, ``null``\> ; `state`: `Struct`<`string`, ``null``\>  }\>
+`Const` **LogtoSignInSessionItemSchema**: `Struct`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string` }, { `codeVerifier`: `Struct`<`string`, `null`\> ; `redirectUri`: `Struct`<`string`, `null`\> ; `state`: `Struct`<`string`, `null`\> }\>
 
 #### Defined in
 

@@ -2,8 +2,8 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                | Type                                                   |
+| :------------------ | :----------------------------------------------------- |
 | `__namedParameters` | [`LogtoProviderProps`](../types/LogtoProviderProps.md) |
 
 #### Returns

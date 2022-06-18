@@ -2,13 +2,13 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `clientId` | `string` |
-| `code` | `string` |
-| `codeVerifier` | `string` |
-| `redirectUri` | `string` |
-| `resource?` | `string` |
+| Name            | Type     |
+| :-------------- | :------- |
+| `clientId`      | `string` |
+| `code`          | `string` |
+| `codeVerifier`  | `string` |
+| `redirectUri`   | `string` |
+| `resource?`     | `string` |
 | `tokenEndpoint` | `string` |
 
 #### Defined in

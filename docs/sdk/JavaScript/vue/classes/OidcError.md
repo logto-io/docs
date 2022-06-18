@@ -17,9 +17,9 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `error` | `string` |
+| Name               | Type     |
+| :----------------- | :------- |
+| `error`            | `string` |
 | `errorDescription` | `string` |
 
 #### Defined in
@@ -30,17 +30,17 @@ packages/js/lib/utils/errors.d.ts:31
 
 ### error
 
- **error**: `string`
+**error**: `string`
 
 #### Defined in
 
 packages/js/lib/utils/errors.d.ts:29
 
-___
+---
 
 ### errorDescription
 
- **errorDescription**: `string`
+**errorDescription**: `string`
 
 #### Defined in
 

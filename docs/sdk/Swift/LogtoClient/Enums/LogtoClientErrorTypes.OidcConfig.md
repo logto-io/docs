@@ -11,6 +11,7 @@ public enum OidcConfig
 ```
 
 ## Cases
+
 ### `unableToFetchOidcConfig`
 
 ```swift

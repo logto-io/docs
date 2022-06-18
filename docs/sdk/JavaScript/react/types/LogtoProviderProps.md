@@ -2,10 +2,10 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `children?` | `ReactNode` |
-| `config` | [`LogtoConfig`](LogtoConfig.md) |
+| Name        | Type                            |
+| :---------- | :------------------------------ |
+| `children?` | `ReactNode`                     |
+| `config`    | [`LogtoConfig`](LogtoConfig.md) |
 
 #### Defined in
 

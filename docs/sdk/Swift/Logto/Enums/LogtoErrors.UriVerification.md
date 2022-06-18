@@ -11,6 +11,7 @@ public enum UriVerification: LocalizedError, Equatable
 ```
 
 ## Cases
+
 ### `redirectUriMismatched`
 
 ```swift

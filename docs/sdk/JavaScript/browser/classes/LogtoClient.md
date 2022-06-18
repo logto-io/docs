@@ -45,10 +45,10 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `logtoConfig` | [`LogtoConfig`](../types/LogtoConfig.md) |
-| `requester` | <T\>(`input`: `RequestInfo`, `init?`: `RequestInit`) => `Promise`<`T`\> |
+| Name          | Type                                                                    |
+| :------------ | :---------------------------------------------------------------------- |
+| `logtoConfig` | [`LogtoConfig`](../types/LogtoConfig.md)                                |
+| `requester`   | <T\>(`input`: `RequestInfo`, `init?`: `RequestInit`) => `Promise`<`T`\> |
 
 #### Defined in
 
@@ -58,37 +58,37 @@
 
 ### \_idToken
 
- `Private` **\_idToken**: `Nullable`<`string`\>
+`Private` **\_idToken**: `Nullable`<`string`\>
 
 #### Defined in
 
 [packages/browser/src/index.ts:73](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L73)
 
-___
+---
 
 ### accessTokenMap
 
- `Protected` `Readonly` **accessTokenMap**: `Map`<`string`, [`AccessToken`](../types/AccessToken.md)\>
+`Protected` `Readonly` **accessTokenMap**: `Map`<`string`, [`AccessToken`](../types/AccessToken.md)\>
 
 #### Defined in
 
 [packages/browser/src/index.ts:70](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L70)
 
-___
+---
 
 ### getAccessTokenPromiseMap
 
- `Private` `Readonly` **getAccessTokenPromiseMap**: `Map`<`string`, `Promise`<`string`\>\>
+`Private` `Readonly` **getAccessTokenPromiseMap**: `Map`<`string`, `Promise`<`string`\>\>
 
 #### Defined in
 
 [packages/browser/src/index.ts:72](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L72)
 
-___
+---
 
 ### getJwtVerifyGetKey
 
- `Protected` `Readonly` **getJwtVerifyGetKey**: () => `Promise`<`GetKeyFunction`<`JWSHeaderParameters`, `FlattenedJWSInput`\>\>
+`Protected` `Readonly` **getJwtVerifyGetKey**: () => `Promise`<`GetKeyFunction`<`JWSHeaderParameters`, `FlattenedJWSInput`\>\>
 
 #### Type declaration
 
@@ -102,11 +102,11 @@ ___
 
 [packages/browser/src/index.ts:65](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L65)
 
-___
+---
 
 ### getOidcConfig
 
- `Protected` `Readonly` **getOidcConfig**: () => `Promise`<`KeysToCamelCase`<`OidcConfigSnakeCaseResponse`\>\>
+`Protected` `Readonly` **getOidcConfig**: () => `Promise`<`KeysToCamelCase`<`OidcConfigSnakeCaseResponse`\>\>
 
 #### Type declaration
 
@@ -120,31 +120,31 @@ ___
 
 [packages/browser/src/index.ts:64](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L64)
 
-___
+---
 
 ### logtoConfig
 
- `Protected` `Readonly` **logtoConfig**: [`LogtoConfig`](../types/LogtoConfig.md)
+`Protected` `Readonly` **logtoConfig**: [`LogtoConfig`](../types/LogtoConfig.md)
 
 #### Defined in
 
 [packages/browser/src/index.ts:63](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L63)
 
-___
+---
 
 ### logtoStorageKey
 
- `Protected` `Readonly` **logtoStorageKey**: `string`
+`Protected` `Readonly` **logtoStorageKey**: `string`
 
 #### Defined in
 
 [packages/browser/src/index.ts:67](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L67)
 
-___
+---
 
 ### requester
 
- `Protected` `Readonly` **requester**: <T\>(`input`: `RequestInfo`, `init?`: `RequestInit`) => `Promise`<`T`\>
+`Protected` `Readonly` **requester**: <T\>(`input`: `RequestInfo`, `init?`: `RequestInit`) => `Promise`<`T`\>
 
 #### Type declaration
 
@@ -153,13 +153,13 @@ ___
 ##### Type parameters
 
 | Name |
-| :------ |
-| `T` |
+| :--- |
+| `T`  |
 
 ##### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name    | Type          |
+| :------ | :------------ |
 | `input` | `RequestInfo` |
 | `init?` | `RequestInit` |
 
@@ -189,8 +189,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name      | Type                  |
+| :-------- | :-------------------- |
 | `idToken` | `Nullable`<`string`\> |
 
 #### Returns
@@ -201,7 +201,7 @@ ___
 
 [packages/browser/src/index.ts:134](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L134)
 
-___
+---
 
 ### isAuthenticated
 
@@ -215,7 +215,7 @@ ___
 
 [packages/browser/src/index.ts:82](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L82)
 
-___
+---
 
 ### refreshToken
 
@@ -233,8 +233,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name           | Type                  |
+| :------------- | :-------------------- |
 | `refreshToken` | `Nullable`<`string`\> |
 
 #### Returns
@@ -245,15 +245,15 @@ ___
 
 [packages/browser/src/index.ts:118](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L118)
 
-___
+---
 
 ### signInSession
 
-`Protected` `get` **signInSession**(): `Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string`  }\>
+`Protected` `get` **signInSession**(): `Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string` }\>
 
 #### Returns
 
-`Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string`  }\>
+`Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string` }\>
 
 #### Defined in
 
@@ -263,9 +263,9 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `logtoSignInSessionItem` | `Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string`  }\> |
+| Name                     | Type                                                                                    |
+| :----------------------- | :-------------------------------------------------------------------------------------- |
+| `logtoSignInSessionItem` | `Nullable`<{ `codeVerifier`: `string` ; `redirectUri`: `string` ; `state`: `string` }\> |
 
 #### Returns
 
@@ -279,7 +279,7 @@ ___
 
 ### \_getJwtVerifyGetKey
 
-`Private` **_getJwtVerifyGetKey**(): `Promise`<`GetKeyFunction`<`JWSHeaderParameters`, `FlattenedJWSInput`\>\>
+`Private` **\_getJwtVerifyGetKey**(): `Promise`<`GetKeyFunction`<`JWSHeaderParameters`, `FlattenedJWSInput`\>\>
 
 #### Returns
 
@@ -289,11 +289,11 @@ ___
 
 [packages/browser/src/index.ts:346](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L346)
 
-___
+---
 
 ### \_getOidcConfig
 
-`Private` **_getOidcConfig**(): `Promise`<`KeysToCamelCase`<`OidcConfigSnakeCaseResponse`\>\>
+`Private` **\_getOidcConfig**(): `Promise`<`KeysToCamelCase`<`OidcConfigSnakeCaseResponse`\>\>
 
 #### Returns
 
@@ -303,7 +303,7 @@ ___
 
 [packages/browser/src/index.ts:339](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L339)
 
-___
+---
 
 ### fetchUserInfo
 
@@ -317,7 +317,7 @@ ___
 
 [packages/browser/src/index.ts:198](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L198)
 
-___
+---
 
 ### getAccessToken
 
@@ -325,8 +325,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name        | Type     |
+| :---------- | :------- |
 | `resource?` | `string` |
 
 #### Returns
@@ -337,7 +337,7 @@ ___
 
 [packages/browser/src/index.ts:149](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L149)
 
-___
+---
 
 ### getAccessTokenByRefreshToken
 
@@ -345,8 +345,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name        | Type     |
+| :---------- | :------- |
 | `resource?` | `string` |
 
 #### Returns
@@ -357,7 +357,7 @@ ___
 
 [packages/browser/src/index.ts:304](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L304)
 
-___
+---
 
 ### getIdTokenClaims
 
@@ -367,20 +367,20 @@ ___
 
 `Object`
 
-| Name | Type |
-| :------ | :------ |
+| Name       | Type     |
+| :--------- | :------- |
 | `at_hash?` | `string` |
-| `aud` | `string` |
-| `exp` | `number` |
-| `iat` | `number` |
-| `iss` | `string` |
-| `sub` | `string` |
+| `aud`      | `string` |
+| `exp`      | `number` |
+| `iat`      | `number` |
+| `iss`      | `string` |
+| `sub`      | `string` |
 
 #### Defined in
 
 [packages/browser/src/index.ts:190](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L190)
 
-___
+---
 
 ### handleSignInCallback
 
@@ -388,8 +388,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name          | Type     |
+| :------------ | :------- |
 | `callbackUri` | `string` |
 
 #### Returns
@@ -400,7 +400,7 @@ ___
 
 [packages/browser/src/index.ts:246](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L246)
 
-___
+---
 
 ### isSignInRedirected
 
@@ -408,8 +408,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name  | Type     |
+| :---- | :------- |
 | `url` | `string` |
 
 #### Returns
@@ -420,7 +420,7 @@ ___
 
 [packages/browser/src/index.ts:234](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L234)
 
-___
+---
 
 ### saveCodeToken
 
@@ -428,8 +428,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                | Type                                             |
+| :------------------ | :----------------------------------------------- |
 | `__namedParameters` | `KeysToCamelCase`<`SnakeCaseCodeTokenResponse`\> |
 
 #### Returns
@@ -440,7 +440,7 @@ ___
 
 [packages/browser/src/index.ts:364](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L364)
 
-___
+---
 
 ### signIn
 
@@ -448,8 +448,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name          | Type     |
+| :------------ | :------- |
 | `redirectUri` | `string` |
 
 #### Returns
@@ -460,7 +460,7 @@ ___
 
 [packages/browser/src/index.ts:209](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L209)
 
-___
+---
 
 ### signOut
 
@@ -468,8 +468,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                     | Type     |
+| :----------------------- | :------- |
 | `postLogoutRedirectUri?` | `string` |
 
 #### Returns
@@ -480,7 +480,7 @@ ___
 
 [packages/browser/src/index.ts:275](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L275)
 
-___
+---
 
 ### verifyIdToken
 
@@ -488,8 +488,8 @@ ___
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name      | Type     |
+| :-------- | :------- |
 | `idToken` | `string` |
 
 #### Returns

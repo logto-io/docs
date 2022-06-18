@@ -1,9 +1,9 @@
 # 🧱 Core
 
-*Core* implies the Logto core service, a monolith service with multiple critical duties. The source code is in [`/packages/core`](https://github.com/logto-io/logto/tree/master/packages/core).
+_Core_ implies the Logto core service, a monolith service with multiple critical duties. The source code is in [`/packages/core`](https://github.com/logto-io/logto/tree/master/packages/core).
 
 :::note
-*Core* and *SDK core* are two separate concepts. See [SDK core](#) for the differences.
+_Core_ and _SDK core_ are two separate concepts. See [SDK core](#) for the differences.
 :::
 
 To simplify, we divide Core into four major modules:

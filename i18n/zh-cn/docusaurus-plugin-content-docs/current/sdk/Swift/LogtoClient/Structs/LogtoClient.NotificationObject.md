@@ -7,6 +7,7 @@ public struct NotificationObject
 ```
 
 ## 属性
+
 ### `appId`
 
 ```swift

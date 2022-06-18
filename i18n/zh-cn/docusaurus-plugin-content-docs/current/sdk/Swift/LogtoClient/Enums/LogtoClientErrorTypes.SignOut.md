@@ -11,6 +11,7 @@ public enum SignOut: String
 ```
 
 ## 枚举情况
+
 ### `unableToRevokeToken`
 
 ```swift

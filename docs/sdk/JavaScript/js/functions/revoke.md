@@ -2,12 +2,12 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `revocationEndpoint` | `string` |
-| `clientId` | `string` |
-| `token` | `string` |
-| `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| Name                 | Type                                                                         |
+| :------------------- | :--------------------------------------------------------------------------- |
+| `revocationEndpoint` | `string`                                                                     |
+| `clientId`           | `string`                                                                     |
+| `token`              | `string`                                                                     |
+| `requester`          | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
 
 #### Returns
 

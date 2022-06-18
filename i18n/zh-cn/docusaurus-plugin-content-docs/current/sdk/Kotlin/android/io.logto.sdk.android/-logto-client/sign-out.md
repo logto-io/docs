@@ -1,6 +1,5 @@
 # signOut
 
-
 fun signOut(completion: [EmptyCompletion](../../io.logto.sdk.android.completion/-empty-completion/index.md)&lt;[LogtoException](../../io.logto.sdk.android.exception/-logto-exception/index.md)&gt;? = null)
 
 登出
@@ -9,7 +8,6 @@ fun signOut(completion: [EmptyCompletion](../../io.logto.sdk.android.completion/
 
 ## Parameters
 
-
-| 名称 | 概要 |
-|---|---|
+| 名称       | 概要               |
+| ---------- | ------------------ |
 | completion | 处理登出结果的回调 |

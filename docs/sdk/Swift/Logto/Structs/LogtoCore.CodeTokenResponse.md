@@ -7,6 +7,7 @@ struct CodeTokenResponse: Codable, Equatable
 ```
 
 ## Properties
+
 ### `accessToken`
 
 ```swift

@@ -2,15 +2,15 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `error?` | `Error` |
-| `isAuthenticated` | `boolean` |
-| `loadingCount` | `number` |
-| `logtoClient?` | `LogtoClient` |
-| `setError` | `React.Dispatch`<`React.SetStateAction`<`Error` \| `undefined`\>\> |
-| `setIsAuthenticated` | `React.Dispatch`<`React.SetStateAction`<`boolean`\>\> |
-| `setLoadingCount` | `React.Dispatch`<`React.SetStateAction`<`number`\>\> |
+| Name                 | Type                                                               |
+| :------------------- | :----------------------------------------------------------------- |
+| `error?`             | `Error`                                                            |
+| `isAuthenticated`    | `boolean`                                                          |
+| `loadingCount`       | `number`                                                           |
+| `logtoClient?`       | `LogtoClient`                                                      |
+| `setError`           | `React.Dispatch`<`React.SetStateAction`<`Error` \| `undefined`\>\> |
+| `setIsAuthenticated` | `React.Dispatch`<`React.SetStateAction`<`boolean`\>\>              |
+| `setLoadingCount`    | `React.Dispatch`<`React.SetStateAction`<`number`\>\>               |
 
 #### Defined in
 

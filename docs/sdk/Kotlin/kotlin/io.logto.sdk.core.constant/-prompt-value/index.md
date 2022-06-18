@@ -1,10 +1,9 @@
 # PromptValue
 
-
 object PromptValue
 
 ## Properties
 
-| Name | Value |
-|---|---|
+| Name    | Value   |
+| ------- | ------- |
 | CONSENT | consent |

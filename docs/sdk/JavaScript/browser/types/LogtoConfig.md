@@ -2,13 +2,13 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `appId` | `string` |
-| `endpoint` | `string` |
-| `resources?` | `string`[] |
-| `scopes?` | `string`[] |
-| `usingPersistStorage?` | `boolean` |
+| Name                   | Type       |
+| :--------------------- | :--------- |
+| `appId`                | `string`   |
+| `endpoint`             | `string`   |
+| `resources?`           | `string`[] |
+| `scopes?`              | `string`[] |
+| `usingPersistStorage?` | `boolean`  |
 
 #### Defined in
 

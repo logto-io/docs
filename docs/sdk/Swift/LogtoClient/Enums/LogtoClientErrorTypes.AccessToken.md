@@ -11,6 +11,7 @@ public enum AccessToken
 ```
 
 ## Cases
+
 ### `noRefreshTokenFound`
 
 ```swift

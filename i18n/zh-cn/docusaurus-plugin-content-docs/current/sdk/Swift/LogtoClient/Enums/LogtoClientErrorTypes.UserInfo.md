@@ -11,6 +11,7 @@ public enum UserInfo
 ```
 
 ## 枚举情况
+
 ### `unableToFetchUserInfo`
 
 ```swift

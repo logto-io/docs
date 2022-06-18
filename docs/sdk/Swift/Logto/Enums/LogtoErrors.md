@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 ---
+
 **ENUM**
 
 # `LogtoErrors`
@@ -11,6 +12,8 @@ public enum LogtoErrors
 
 ## Enums
 
-###   [Response](LogtoErrors.Response.md)
-###   [UriVerification](LogtoErrors.UriVerification.md)
-###   [UrlConstruction](LogtoErrors.UrlConstruction.md)
+### [Response](LogtoErrors.Response.md)
+
+### [UriVerification](LogtoErrors.UriVerification.md)
+
+### [UrlConstruction](LogtoErrors.UrlConstruction.md)

@@ -1,6 +1,7 @@
 ---
 sidebar_position: 3
 ---
+
 **枚举**
 
 # `LogtoErrors`
@@ -11,6 +12,8 @@ public enum LogtoErrors
 
 ## 枚举
 
-###   [Response](LogtoErrors.Response.md)
-###   [UriVerification](LogtoErrors.UriVerification.md)
-###   [UrlConstruction](LogtoErrors.UrlConstruction.md)
+### [Response](LogtoErrors.Response.md)
+
+### [UriVerification](LogtoErrors.UriVerification.md)
+
+### [UrlConstruction](LogtoErrors.UrlConstruction.md)

@@ -19,6 +19,7 @@ The left column is the customization section with three tabs: [Branding](./confi
 The right column is a live preview that will immediately update to synchronize the change when you update things on the left.
 
 :::tip Use preview to save your time
+
 - Click the tab "Mobile" or "Web" to see what the homepage looks like on different platforms.
 - Change the language or theme dropdown to see the appearance under different system preferences.
-:::
+  :::

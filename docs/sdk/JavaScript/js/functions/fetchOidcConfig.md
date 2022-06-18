@@ -2,9 +2,9 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `endpoint` | `string` |
+| Name        | Type                                                                         |
+| :---------- | :--------------------------------------------------------------------------- |
+| `endpoint`  | `string`                                                                     |
 | `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
 
 #### Returns

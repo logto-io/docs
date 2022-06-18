@@ -1,10 +1,9 @@
 # CodeChallengeMethod
 
-
 object CodeChallengeMethod
 
 ## Properties
 
-| 字段名 | 值 |
-|---|---|
-| S256 | S256 |
+| 字段名 | 值   |
+| ------ | ---- |
+| S256   | S256 |

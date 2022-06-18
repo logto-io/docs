@@ -7,6 +7,7 @@ public protocol NetworkSession
 ```
 
 ## Methods
+
 ### `loadData(with:)`
 
 ```swift
