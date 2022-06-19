@@ -20,20 +20,22 @@ Boringly, we call it "[customer identity access management](https://en.wikipedia
 
 ## Installation
 
-### Prerequisites
+### Docker Compose
 
-- NodeJS >= 16.0.0
-- PostgreSQL >= 14.0.0
+TBD
+
+### One-liner command
+
+#### Prerequisites
+
+- [Node.js](https://nodejs.org/) `^16.13.0`
+- [PostgreSQL](https://postgresql.org/) `^14.0`
+
+Higher versions usually work but are not guaranteed.
 
 We recommend using a new empty database which is dedicated for Logto, while it's not a hard requirement.
 
-:::tip
-It's okay that your PostgreSQL instance is not in the same machine as NodeJS (e.g. containers + remote database environment).
-:::
-
-### Run a Logto instance
-
-#### Download script
+#### Download and start
 
 In your terminal:
 
@@ -43,15 +45,13 @@ node -e "$(printf "%s" "$(curl -fsSL https://raw.githubusercontent.com/logto-io/
 
 The script will download Logto and create a directory `logto` in the location you ran it. After answering [several simple questions](./references/core/configuration.md#questions), you will see the message like:
 
-```bash
+```text
 App is running at http://localhost:3001
+
+Visit http://localhost:3001/welcome to continue your Logto journey.
 ```
 
-Heading to http://localhost:3001 to continue the Logto journey. Enjoy!
-
-#### Docker
-
-TBD
+Heading to <a target="_blank" href="http://localhost:3001/welcome">http://localhost:3001/welcome</a> to continue your Logto journey. Enjoy!
 
 ## Configuration
 
