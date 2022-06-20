@@ -50,7 +50,7 @@ const config = {
       navbar: {
         logo: {
           alt: 'Logto Logo',
-          src: 'img/logo.png',
+          src: 'img/logto.png',
           srcDark: 'img/logto_dark.png',
         },
         items: [
