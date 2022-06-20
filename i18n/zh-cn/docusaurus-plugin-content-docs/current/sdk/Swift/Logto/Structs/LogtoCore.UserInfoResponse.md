@@ -7,6 +7,7 @@ struct UserInfoResponse: Codable, Equatable
 ```
 
 ## 属性
+
 ### `sub`
 
 ```swift

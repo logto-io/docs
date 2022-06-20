@@ -1,10 +1,9 @@
 # ClaimName
 
-
 object ClaimName
 
 ## Properties
 
-| Name | Value |
-|---|---|
+| Name    | Value   |
+| ------- | ------- |
 | AT_HASH | at_hash |

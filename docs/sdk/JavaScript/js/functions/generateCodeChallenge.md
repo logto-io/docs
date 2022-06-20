@@ -6,8 +6,8 @@ Calculates the S256 PKCE code challenge for an arbitrary code verifier and encod
 
 #### Parameters
 
-| Name | Type | Description |
-| :------ | :------ | :------ |
+| Name           | Type     | Description                                            |
+| :------------- | :------- | :----------------------------------------------------- |
 | `codeVerifier` | `string` | Code verifier to calculate the S256 code challenge for |
 
 #### Returns

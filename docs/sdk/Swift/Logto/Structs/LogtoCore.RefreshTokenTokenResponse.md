@@ -7,6 +7,7 @@ struct RefreshTokenTokenResponse: Codable, Equatable
 ```
 
 ## Properties
+
 ### `accessToken`
 
 ```swift

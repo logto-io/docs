@@ -2,22 +2,22 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name    | Type     |
+| :------ | :------- |
 | `token` | `string` |
 
 #### Returns
 
 `Object`
 
-| Name | Type |
-| :------ | :------ |
+| Name      | Type                    |
+| :-------- | :---------------------- |
 | `at_hash` | `undefined` \| `string` |
-| `aud` | `string` |
-| `exp` | `number` |
-| `iat` | `number` |
-| `iss` | `string` |
-| `sub` | `string` |
+| `aud`     | `string`                |
+| `exp`     | `number`                |
+| `iat`     | `number`                |
+| `iss`     | `string`                |
+| `sub`     | `string`                |
 
 #### Defined in
 

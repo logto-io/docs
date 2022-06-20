@@ -1,4 +1,4 @@
-`Const` **discoveryPath**: ``"/oidc/.well-known/openid-configuration"``
+`Const` **discoveryPath**: `"/oidc/.well-known/openid-configuration"`
 
 #### Defined in
 

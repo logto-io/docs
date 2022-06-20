@@ -2,8 +2,8 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
+| Name  | Type     |
+| :---- | :------- |
 | `sub` | `string` |
 
 #### Defined in

@@ -2,8 +2,8 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name  | Type     |
+| :---- | :------- |
 | `uri` | `string` |
 
 #### Returns

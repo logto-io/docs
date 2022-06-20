@@ -7,6 +7,7 @@ public struct LogtoConfig
 ```
 
 ## 属性
+
 ### `endpoint`
 
 ```swift
@@ -38,6 +39,7 @@ public var scopes: [String]
 ```
 
 ## 方法
+
 ### `init(endpoint:appId:scopes:resources:usingPersistStorage:)`
 
 ```swift

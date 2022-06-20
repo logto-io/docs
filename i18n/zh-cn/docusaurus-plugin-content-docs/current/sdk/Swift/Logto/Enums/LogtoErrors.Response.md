@@ -11,6 +11,7 @@ public enum Response: LocalizedError, Equatable
 ```
 
 ## 枚举情况
+
 ### `notHttpResponse(response:)`
 
 ```swift

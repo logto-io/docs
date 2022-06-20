@@ -2,13 +2,13 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `avatar?` | `string` |
-| `name?` | `string` |
+| Name          | Type       |
+| :------------ | :--------- |
+| `avatar?`     | `string`   |
+| `name?`       | `string`   |
 | `role_names?` | `string`[] |
-| `sub` | `string` |
-| `username?` | `string` |
+| `sub`         | `string`   |
+| `username?`   | `string`   |
 
 #### Defined in
 

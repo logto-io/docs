@@ -8,9 +8,10 @@ public class LogtoClient
 
 ## 结构体
 
-###   [NotificationObject](../Structs/LogtoClient.NotificationObject.md)
+### [NotificationObject](../Structs/LogtoClient.NotificationObject.md)
 
 ## 属性
+
 ### `HandleNotification`
 
 ```swift
@@ -52,6 +53,7 @@ public var isAuthenticated: Bool
 用户是否已经登录。
 
 ## 方法
+
 ### `handle(forAppId:url:)`
 
 ```swift
@@ -62,10 +64,10 @@ public static func handle(forAppId appId: String? = nil, url: URL)
 
 #### 参数
 
-| 名称 | 描述 |
-| ---- | ----------- |
+| 名称     | 描述                                                                                  |
+| -------- | ------------------------------------------------------------------------------------- |
 | forAppId | 该通知是否仅供特定的客户端 ID。当值为 `nil` 时，所有的 Logto 客户端会尝试处理该通知。 |
-| url | 需要被处理的 URL。 |
+| url      | 需要被处理的 URL。                                                                    |
 
 ### `init(useConfig:socialPlugins:session:)`
 
@@ -91,8 +93,8 @@ public func signInWithBrowser(
 
 #### 参数
 
-| 名称 | 描述 |
-| ---- | ----------- |
+| 名称        | 描述                                 |
+| ----------- | ------------------------------------ |
 | redirectUri | 该应用的 Redirect URI 列表中的一项。 |
 
 ### `signOut()`
@@ -120,8 +122,8 @@ func signOut() async -> Errors.SignOut?
 
 #### 参数
 
-| 名称 | 描述 |
-| ---- | ----------- |
+| 名称     | 描述                               |
+| -------- | ---------------------------------- |
 | resource | 资源指示器（Resource indicator）。 |
 
 ### `fetchUserInfo()`
@@ -151,4 +153,3 @@ public func handle(url: URL) -> Bool
 如果有一个社会化登录插件处理了该 URL，则遍历会立即停止。
 
 - 返回：`true` 如果有一个社会化登录插件处理了该 URL。
-

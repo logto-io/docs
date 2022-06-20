@@ -56,7 +56,7 @@ In default values, `protocol` will be either `http` or `https` according to your
 | --------------------- | ----------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | OIDC_COOKIE_KEYS      | N/A                                 | <code>string[]</code>                | The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys).                                                                                                                               |
 | OIDC_PRIVATE_KEY      | N/A                                 | <code>string &#124; undefined</code> | The content of private key for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support. |
-| OIDC_PRIVATE_KEY_PATH | `'./oidc-private-key.pem'`          | <code>string &#124; undefined</code> | The path to the private key file for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> Note Logto will *ignore* this value if `OIDC_PRIVATE_KEY` is not empty.                                                          |
+| OIDC_PRIVATE_KEY_PATH | `'./oidc-private-key.pem'`          | <code>string &#124; undefined</code> | The path to the private key file for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> Note Logto will _ignore_ this value if `OIDC_PRIVATE_KEY` is not empty.                                                          |
 | OIDC_ISSUER           | `'protocol://localhost:$PORT/oidc'` | `string`                             | The [issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) for OIDC. Usually it's the URL to your OIDC provider.                                                                                                          |
 
 #### Supported private key types
@@ -79,7 +79,7 @@ Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_
 
 ### Using a HTTPS proxy
 
-Another common practice is to have a HTTPS proxy in front of Node. 
+Another common practice is to have a HTTPS proxy in front of Node.
 
 In this case, you're likely want to set `TRUST_PROXY_HEADER` to `true` which indicates if proxy header fields should be trusted. Logto will pass the value to [Koa app settings](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings).
 

@@ -2,11 +2,11 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
+| Name        | Type     |
+| :---------- | :------- |
 | `expiresAt` | `number` |
-| `scope` | `string` |
-| `token` | `string` |
+| `scope`     | `string` |
+| `token`     | `string` |
 
 #### Defined in
 

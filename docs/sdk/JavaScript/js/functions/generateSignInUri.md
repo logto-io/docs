@@ -2,8 +2,8 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                | Type                                                     |
+| :------------------ | :------------------------------------------------------- |
 | `__namedParameters` | [`SignInUriParameters`](../types/SignInUriParameters.md) |
 
 #### Returns

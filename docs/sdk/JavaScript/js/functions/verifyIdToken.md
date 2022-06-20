@@ -2,12 +2,12 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `idToken` | `string` |
-| `clientId` | `string` |
-| `issuer` | `string` |
-| `jwks` | `JWTVerifyGetKey` |
+| Name       | Type              |
+| :--------- | :---------------- |
+| `idToken`  | `string`          |
+| `clientId` | `string`          |
+| `issuer`   | `string`          |
+| `jwks`     | `JWTVerifyGetKey` |
 
 #### Returns
 

@@ -11,10 +11,10 @@ Before we start, it'll be good to know how Logto works. To simplify, we divide L
 **TBD** need a simple infra figure here
 :::
 
-*Check out [API Reference](/api) If you want more advanced controls or programmatic access to Logto.*
+_Check out [API Reference](/api) If you want more advanced controls or programmatic access to Logto._
 
 :::info
-Admin Console is the easiest way to customize and manage Sign-in Experience and Core Service, and we'll use it across the tutorial. 
+Admin Console is the easiest way to customize and manage Sign-in Experience and Core Service, and we'll use it across the tutorial.
 :::
 
 ## Create an admin account

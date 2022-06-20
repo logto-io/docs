@@ -11,6 +11,7 @@ public enum UrlConstruction: LocalizedError, Equatable
 ```
 
 ## 枚举情况
+
 ### `invalidEndpoint`
 
 ```swift

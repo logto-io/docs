@@ -7,6 +7,7 @@ public struct AccessToken: Codable
 ```
 
 ## Properties
+
 ### `token`
 
 ```swift

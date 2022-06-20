@@ -1,11 +1,10 @@
 # GrantType
 
-
 object GrantType
 
 ## Properties
 
-| Name | Value |
-|---|---|
+| Name               | Value              |
+| ------------------ | ------------------ |
 | AUTHORIZATION_CODE | authorization_code |
-| REFRESH_TOKEN | refresh_token |
+| REFRESH_TOKEN      | refresh_token      |

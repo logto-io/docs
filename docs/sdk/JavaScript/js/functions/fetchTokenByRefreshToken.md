@@ -2,10 +2,10 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                | Type                                                                                   |
+| :------------------ | :------------------------------------------------------------------------------------- |
 | `__namedParameters` | [`FetchTokenByRefreshTokenParameters`](../types/FetchTokenByRefreshTokenParameters.md) |
-| `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| `requester`         | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\>           |
 
 #### Returns
 

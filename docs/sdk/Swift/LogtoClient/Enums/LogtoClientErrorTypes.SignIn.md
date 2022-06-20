@@ -11,6 +11,7 @@ public enum SignIn: String
 ```
 
 ## Cases
+
 ### `unknownError`
 
 ```swift

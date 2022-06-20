@@ -11,9 +11,11 @@ public enum LogtoRequest
 ```
 
 ## 枚举
-###   [LogtoRequest.HttpMethod](LogtoRequest.HttpMethod.md)
+
+### [LogtoRequest.HttpMethod](LogtoRequest.HttpMethod.md)
 
 ## 方法
+
 ### `load(useSession:method:url:headers:body:)`
 
 ```swift

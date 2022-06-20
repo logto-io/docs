@@ -2,10 +2,10 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `formUrlEncoded` | { `Content-Type`: `string` = 'application/x-www-form-urlencoded' } |
-| `formUrlEncoded.Content-Type` | `string` |
+| Name                          | Type                                                               |
+| :---------------------------- | :----------------------------------------------------------------- |
+| `formUrlEncoded`              | { `Content-Type`: `string` = 'application/x-www-form-urlencoded' } |
+| `formUrlEncoded.Content-Type` | `string`                                                           |
 
 #### Defined in
 

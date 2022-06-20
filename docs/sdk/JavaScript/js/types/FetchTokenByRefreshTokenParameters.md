@@ -2,13 +2,13 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `clientId` | `string` |
-| `refreshToken` | `string` |
-| `resource?` | `string` |
-| `scopes?` | `string`[] |
-| `tokenEndpoint` | `string` |
+| Name            | Type       |
+| :-------------- | :--------- |
+| `clientId`      | `string`   |
+| `refreshToken`  | `string`   |
+| `resource?`     | `string`   |
+| `scopes?`       | `string`[] |
+| `tokenEndpoint` | `string`   |
 
 #### Defined in
 

@@ -6,17 +6,17 @@ A Vue composable method that provides the Logto reactive refs and auth methods.
 import { useLogto } from '@logto/vue';
 
 export default {
- setup() {
-   const { isAuthenticated, signIn } = useLogto();
+  setup() {
+    const { isAuthenticated, signIn } = useLogto();
 
-   return {
-     isAuthenticated,
-     onClickSignIn: () => {
-       signIn('<your-redirect-uri>');
-     },
-   }
- }
-}
+    return {
+      isAuthenticated,
+      onClickSignIn: () => {
+        signIn('<your-redirect-uri>');
+      },
+    };
+  },
+};
 ```
 
 Use this composable in the setup script of your Vue component to make sure the injection works

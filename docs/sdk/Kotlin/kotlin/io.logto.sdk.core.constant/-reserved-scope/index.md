@@ -1,11 +1,10 @@
 # ReservedScope
 
-
 object ReservedScope
 
 ## Properties
 
-| Name | Value |
-|---|---|
+| Name           | Value          |
+| -------------- | -------------- |
 | OFFLINE_ACCESS | offline_access |
-| OPENID | openid |
+| OPENID         | openid         |

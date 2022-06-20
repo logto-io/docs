@@ -11,6 +11,7 @@ public enum OidcConfig
 ```
 
 ## 枚举情况
+
 ### `unableToFetchOidcConfig`
 
 ```swift

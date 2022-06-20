@@ -7,6 +7,7 @@ public struct IdTokenClaims: Codable, Equatable
 ```
 
 ## Properties
+
 ### `sub`
 
 ```swift

@@ -7,6 +7,7 @@ struct OidcConfigResponse: Codable, Equatable
 ```
 
 ## 属性
+
 ### `authorizationEndpoint`
 
 ```swift

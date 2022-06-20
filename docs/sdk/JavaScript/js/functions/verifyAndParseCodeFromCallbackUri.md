@@ -2,11 +2,11 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name          | Type     |
+| :------------ | :------- |
 | `callbackUri` | `string` |
 | `redirectUri` | `string` |
-| `state` | `string` |
+| `state`       | `string` |
 
 #### Returns
 

@@ -2,19 +2,19 @@
 
 #### Parameters
 
-| Name | Type | Default value |
-| :------ | :------ | :------ |
+| Name              | Type     | Default value            |
+| :---------------- | :------- | :----------------------- |
 | `returnToPageUrl` | `string` | `window.location.origin` |
 
 #### Returns
 
 `Object`
 
-| Name | Type |
-| :------ | :------ |
-| `error` | `undefined` \| `Error` |
-| `isAuthenticated` | `boolean` |
-| `isLoading` | `boolean` |
+| Name              | Type                   |
+| :---------------- | :--------------------- |
+| `error`           | `undefined` \| `Error` |
+| `isAuthenticated` | `boolean`              |
+| `isLoading`       | `boolean`              |
 
 #### Defined in
 

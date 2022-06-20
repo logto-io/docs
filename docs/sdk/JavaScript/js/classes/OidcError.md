@@ -17,9 +17,9 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `error` | `string` |
+| Name                | Type     |
+| :------------------ | :------- |
+| `error`             | `string` |
 | `errorDescription?` | `string` |
 
 #### Defined in
@@ -30,17 +30,17 @@
 
 ### error
 
- **error**: `string`
+**error**: `string`
 
 #### Defined in
 
 [packages/js/src/utils/errors.ts:56](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L56)
 
-___
+---
 
 ### errorDescription
 
- `Optional` **errorDescription**: `string`
+`Optional` **errorDescription**: `string`
 
 #### Defined in
 

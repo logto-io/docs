@@ -11,6 +11,7 @@ public enum HttpMethod: String
 ```
 
 ## Cases
+
 ### `get`
 
 ```swift

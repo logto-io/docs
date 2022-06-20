@@ -2,15 +2,15 @@
 
 #### Type declaration
 
-| Name | Type |
-| :------ | :------ |
-| `authorizationEndpoint` | `string` |
-| `clientId` | `string` |
-| `codeChallenge` | `string` |
-| `redirectUri` | `string` |
-| `resources?` | `string`[] |
-| `scopes?` | `string`[] |
-| `state` | `string` |
+| Name                    | Type       |
+| :---------------------- | :--------- |
+| `authorizationEndpoint` | `string`   |
+| `clientId`              | `string`   |
+| `codeChallenge`         | `string`   |
+| `redirectUri`           | `string`   |
+| `resources?`            | `string`[] |
+| `scopes?`               | `string`[] |
+| `state`                 | `string`   |
 
 #### Defined in
 

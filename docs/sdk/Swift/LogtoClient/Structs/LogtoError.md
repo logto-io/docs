@@ -7,6 +7,7 @@ public struct LogtoError<T>: LocalizedError
 ```
 
 ## Properties
+
 ### `type`
 
 ```swift

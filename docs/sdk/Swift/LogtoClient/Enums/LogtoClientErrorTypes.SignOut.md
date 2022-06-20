@@ -11,6 +11,7 @@ public enum SignOut: String
 ```
 
 ## Cases
+
 ### `unableToRevokeToken`
 
 ```swift

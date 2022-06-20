@@ -2,11 +2,11 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `userInfoEndpoint` | `string` |
-| `accessToken` | `string` |
-| `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| Name               | Type                                                                         |
+| :----------------- | :--------------------------------------------------------------------------- |
+| `userInfoEndpoint` | `string`                                                                     |
+| `accessToken`      | `string`                                                                     |
+| `requester`        | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
 
 #### Returns
 

@@ -1,11 +1,13 @@
 **EXTENSION**
 
 # `URLSession`
+
 ```swift
 extension URLSession: NetworkSession
 ```
 
 ## Methods
+
 ### `loadData(with:)`
 
 ```swift

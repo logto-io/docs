@@ -2,10 +2,10 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name                | Type                                                                                             |
+| :------------------ | :----------------------------------------------------------------------------------------------- |
 | `__namedParameters` | [`FetchTokenByAuthorizationCodeParameters`](../types/FetchTokenByAuthorizationCodeParameters.md) |
-| `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| `requester`         | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\>                     |
 
 #### Returns
 

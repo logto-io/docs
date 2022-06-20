@@ -32,10 +32,10 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `code` | [`LogtoClientErrorCode`](../types/LogtoClientErrorCode.md) |
-| `data?` | `unknown` |
+| Name    | Type                                                       |
+| :------ | :--------------------------------------------------------- |
+| `code`  | [`LogtoClientErrorCode`](../types/LogtoClientErrorCode.md) |
+| `data?` | `unknown`                                                  |
 
 #### Overrides
 
@@ -49,27 +49,27 @@ Error.constructor
 
 ### code
 
- **code**: [`LogtoClientErrorCode`](../types/LogtoClientErrorCode.md)
+**code**: [`LogtoClientErrorCode`](../types/LogtoClientErrorCode.md)
 
 #### Defined in
 
 [packages/browser/src/errors.ts:30](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/errors.ts#L30)
 
-___
+---
 
 ### data
 
- **data**: `unknown`
+**data**: `unknown`
 
 #### Defined in
 
 [packages/browser/src/errors.ts:31](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/errors.ts#L31)
 
-___
+---
 
 ### message
 
- **message**: `string`
+**message**: `string`
 
 #### Inherited from
 
@@ -79,11 +79,11 @@ Error.message
 
 node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1023
 
-___
+---
 
 ### name
 
- **name**: `string`
+**name**: `string`
 
 #### Inherited from
 
@@ -93,11 +93,11 @@ Error.name
 
 node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1022
 
-___
+---
 
 ### stack
 
- `Optional` **stack**: `string`
+`Optional` **stack**: `string`
 
 #### Inherited from
 
@@ -107,11 +107,11 @@ Error.stack
 
 node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1024
 
-___
+---
 
 ### prepareStackTrace
 
- `Static` `Optional` **prepareStackTrace**: (`err`: `Error`, `stackTraces`: `CallSite`[]) => `any`
+`Static` `Optional` **prepareStackTrace**: (`err`: `Error`, `stackTraces`: `CallSite`[]) => `any`
 
 #### Type declaration
 
@@ -123,9 +123,9 @@ Optional override for formatting stack traces
 
 ##### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `err` | `Error` |
+| Name          | Type         |
+| :------------ | :----------- |
+| `err`         | `Error`      |
 | `stackTraces` | `CallSite`[] |
 
 ##### Returns
@@ -140,11 +140,11 @@ Error.prepareStackTrace
 
 node_modules/.pnpm/@types+node@17.0.19/node_modules/@types/node/globals.d.ts:11
 
-___
+---
 
 ### stackTraceLimit
 
- `Static` **stackTraceLimit**: `number`
+`Static` **stackTraceLimit**: `number`
 
 #### Inherited from
 
@@ -164,9 +164,9 @@ Create .stack property on a target object
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
-| `targetObject` | `object` |
+| Name              | Type       |
+| :---------------- | :--------- |
+| `targetObject`    | `object`   |
 | `constructorOpt?` | `Function` |
 
 #### Returns

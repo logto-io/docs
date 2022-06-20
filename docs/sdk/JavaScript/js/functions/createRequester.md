@@ -2,8 +2,8 @@
 
 #### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name             | Type                                                                       |
+| :--------------- | :------------------------------------------------------------------------- |
 | `fetchFunction?` | (`input`: `RequestInfo`, `init?`: `RequestInit`) => `Promise`<`Response`\> |
 
 #### Returns
@@ -15,13 +15,13 @@
 ##### Type parameters
 
 | Name |
-| :------ |
-| `T` |
+| :--- |
+| `T`  |
 
 ##### Parameters
 
-| Name | Type |
-| :------ | :------ |
+| Name      | Type                                     |
+| :-------- | :--------------------------------------- |
 | `...args` | [input: RequestInfo, init?: RequestInit] |
 
 ##### Returns
