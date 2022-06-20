@@ -22,4 +22,5 @@ The right column is a live preview that will immediately update to synchronize t
 
 - Click the tab "Mobile" or "Web" to see what the homepage looks like on different platforms.
 - Change the language or theme dropdown to see the appearance under different system preferences.
-  :::
+
+:::
