@@ -1,22 +1,32 @@
-import Layout from '@theme/Footer/Layout';
-import clsx from 'clsx';
+import { FooterLogo, FooterLinkItem } from '@docusaurus/theme-common';
 import React from 'react';
 
+import LinkItem from './LinkItem';
 import styles from './index.module.scss';
 
-type Props = Parameters<typeof Layout>[0];
+type Props = {
+  links: FooterLinkItem[];
+  logo?: FooterLogo;
+  copyright?: string;
+};
 
-const FooterLayout = ({ style, links, logo, copyright }: Props) => {
+const FooterLayout = ({ links, logo, copyright }: Props) => {
   return (
-    <footer
-      className={clsx('footer', {
-        'footer--dark': style === 'dark',
-      })}
-    >
-      <div className="container container-fluid">
-        {logo && <div className={clsx('margin-bottom--lg', styles.logoRow)}>{logo}</div>}
-        {links}
-        {copyright && <div className="footer__bottom text--center">{copyright}</div>}
+    <footer className={styles.footer}>
+      <div className={styles.container}>
+        {logo && (
+          <div className={styles.logoRow}>
+            <img src={logo.src} alt={logo.alt} />
+          </div>
+        )}
+        <div className={styles.footerRow}>
+          {copyright && <div className={styles.copyRight}>{copyright}</div>}
+          <div className={styles.links}>
+            {links.map((item) => (
+              <LinkItem key={item.label} item={item} />
+            ))}
+          </div>
+        </div>
       </div>
     </footer>
   );
