@@ -10,7 +10,7 @@ slug: /
 核心功能：
 
 - 一个基于 OIDC 的身份服务
-- 多平台用户登录/注册体验，支持暗黑模式并提供相关 SDK（Web，iOS 和 Android）
+- 多平台用户登录/注册体验，支持深色模式并提供相关 SDK（Web，iOS 和 Android）
 - 动态短信/邮件验证码登录/注册
 - 开箱即用的社交登录集成（GitHub，Google，微信，支付宝等）
 - 一个基于 web 的图形化管理应用（管理面板）
@@ -43,7 +43,7 @@ TBD
 node -e "$(printf "%s" "$(curl -fsSL https://raw.githubusercontent.com/logto-io/logto/master/install.js)")"
 ```
 
-这个脚本将会下载 Logto，并在你执行的位置创建一个名为 `logto` 的文件夹。在回答完一些[简单的问题](./references/core/configuration.md#questions)后，你将会看到类似如下的信息：
+这个脚本将会下载 Logto，并在你执行的位置创建一个名为 `logto` 的文件夹。在回答完一些 [简单的问题](./references/core/configuration.md#questions) 后，你将会看到类似如下的信息：
 
 ```text
 App is running at http://localhost:3001
@@ -55,4 +55,4 @@ Visit http://localhost:3001/welcome to continue your Logto journey.
 
 ## 配置
 
-Logto 使用环境变量进行配置，并支持 `.env` 文件。使用细节以及完整的变量列表见[配置](./references/core/configuration.md)页面。
+Logto 使用环境变量进行配置，并支持 `.env` 文件。使用细节以及完整的变量列表见 [配置](./references/core/configuration.md) 页面。

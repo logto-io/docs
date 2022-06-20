@@ -11,7 +11,7 @@ Before we start, it'll be good to know how Logto works. To simplify, we divide L
 **TBD** need a simple infra figure here
 :::
 
-_Check out [API Reference](/api) If you want more advanced controls or programmatic access to Logto._
+_Check out [API Reference](/api) if you want more advanced controls or programmatic access to Logto._
 
 :::info
 Admin Console is the easiest way to customize and manage Sign-in Experience and Core Service, and we'll use it across the tutorial.
@@ -24,7 +24,11 @@ After a successful installation, open the link in your terminal or access the Ad
 The welcome page briefly introduces Admin Console. Click "Create Account" to create an admin account.
 
 :::note
-For now, you cannot create multiple admin accounts via Admin Console, and only the first account will have admin access.
+For now, you cannot create multiple admin accounts via Admin Console, and only the first account will have admin access. If you want to create multiple admin accounts, use Management API instead.
+:::
+
+:::caution
+Once you create the first account, the welcome page will be unavailable.
 :::
 
 On the create account page, enter your username and password to continue.
