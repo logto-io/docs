@@ -48,10 +48,10 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       navbar: {
-        title: 'Logto',
         logo: {
           alt: 'Logto Logo',
-          src: 'img/logo.svg',
+          src: 'img/logo.png',
+          srcDark: 'img/logto_dark.png',
         },
         items: [
           {
@@ -86,7 +86,7 @@ const config = {
       footer: {
         logo: {
           alt: 'Logto Logo',
-          src: 'img/silverhand.svg',
+          src: 'img/silverhand.png',
         },
         style: 'dark',
         links: [
