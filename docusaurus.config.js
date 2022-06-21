@@ -32,9 +32,7 @@ const config = {
           routeBasePath: '/',
           breadcrumbs: false,
           sidebarPath: require.resolve('./sidebars.js'),
-          // Please change this to your repo.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/logto-io/docs/tree/master/docs',
         },
         blog: false,
         theme: {
@@ -100,14 +98,14 @@ const config = {
           },
           {
             label: 'About Us',
-            href: 'https://logto-io.github.io/website/about',
+            href: 'https://logto.io/about',
           },
           {
             label: 'Contact Us',
             href: 'mailto: contact@logto.io',
           },
         ],
-        copyright: `Designed by Silverhand Inc.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Silverhand Inc. Built with Docusaurus.`,
       },
       prism: {
         theme: lightCodeTheme,
