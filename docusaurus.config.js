@@ -32,7 +32,7 @@ const config = {
           routeBasePath: '/',
           breadcrumbs: false,
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/logto-io/docs/tree/master/docs',
+          editUrl: 'https://github.com/logto-io/docs/tree/master',
         },
         blog: false,
         theme: {
@@ -48,8 +48,8 @@ const config = {
       navbar: {
         logo: {
           alt: 'Logto Logo',
-          src: 'img/logto.png',
-          srcDark: 'img/logto_dark.png',
+          src: 'img/logto.svg',
+          srcDark: 'img/logto_dark.svg',
         },
         items: [
           {
@@ -84,7 +84,7 @@ const config = {
       footer: {
         logo: {
           alt: 'Logto Logo',
-          src: 'img/silverhand.png',
+          src: 'img/silverhand.svg',
         },
         style: 'dark',
         links: [
