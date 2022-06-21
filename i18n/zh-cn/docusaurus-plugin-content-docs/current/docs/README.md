@@ -13,7 +13,7 @@ slug: /
 - 多平台用户登录/注册体验，支持暗黑模式并提供相关 SDK（Web，iOS 和 Android）
 - 动态短信/邮件验证码登录/注册
 - 开箱即用的社交登录集成（GitHub，Google，微信，支付宝等）
-- 一个基于 web 的图形化管理应用（管理面板）
+- 基于 web 的图形化管理面板
 - 可扩展的多语言支持
 
 “专业”点说，我们叫它「客户身份访问管理（[CIAM](https://en.wikipedia.org/wiki/Customer_identity_access_management)）」或者「客户身份解决方案」。
