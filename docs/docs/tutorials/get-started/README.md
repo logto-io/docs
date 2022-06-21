@@ -24,7 +24,7 @@ After a successful installation, open the link in your terminal or access the Ad
 The welcome page briefly introduces Admin Console. Click "Create Account" to create an admin account.
 
 :::note
-For now, you cannot create multiple admin accounts via Admin Console, and only the first account will have admin access. If you want to create multiple admin accounts, use Management API instead.
+For now, you cannot create multiple admin accounts via Admin Console, and only the first account will have admin access. If you want to create multiple admin accounts, use the Management API instead.
 :::
 
 :::caution
