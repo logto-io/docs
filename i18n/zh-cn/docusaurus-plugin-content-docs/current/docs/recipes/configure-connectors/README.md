@@ -2,4 +2,4 @@
 sidebar_position: 5
 ---
 
-# 🪛 Configure connectors
+# 🪛 配置连接器
