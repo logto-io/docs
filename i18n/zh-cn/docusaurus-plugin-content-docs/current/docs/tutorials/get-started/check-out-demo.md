@@ -9,7 +9,7 @@ sidebar_position: 1
 就像创建管理员账户一样，无需配置 Logto 即可支持用户名与密码的「登录体验」。
 
 :::note
-Logto 只有一套用户身份系统作为 [SSOT](https://en.wikipedia.org/wiki/Single_source_of_truth)，所以你可以使用同一个身份在不同的应用之间登录。
+Logto 使用唯一的用户身份系统作为 [SSOT](https://en.wikipedia.org/wiki/Single_source_of_truth)，所以你可以使用同一个身份在不同的应用之间登录。
 :::
 
 这个应用本身很简单：一个展示你账户名和 ID 的恭喜页，随后是一个登出按钮。
