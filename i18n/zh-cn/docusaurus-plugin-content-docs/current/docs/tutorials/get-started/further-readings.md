@@ -2,7 +2,7 @@
 sidebar_position: 6
 ---
 
-# 探索更多
+# 延展阅读
 
 ### [⚔️ 保护你的 API](../../recipes/protect-your-api/README.md)
 
@@ -31,5 +31,5 @@ Logto 有一些内置的、开箱即用的连接器。<br/>
 
 ### [🚀 部署 Logto](../../recipes/deploy-logto/README.md)
 
-当是上线的时刻来临，让我们慢慢来。<br/>
+上线的时刻来临时，放轻松，你可以慢一点。<br/>
 我们将帮助你完成这个令人激动的旅程。
