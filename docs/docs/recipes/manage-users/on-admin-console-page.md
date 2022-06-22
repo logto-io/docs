@@ -5,6 +5,29 @@ sidebar_position: 1
 
 # Manage users on the Admin Console page
 
+## List users
+
+In Admin Console, click the **User Management** tab on the left, and you'll see a user table view on the right.
+
+There are three columns in the table:
+
+- **User**: The user info includes avatar, name (for display), and username (for sign-in).
+- **From application**: The name of the application from which the user is.
+- **Latest sign in**: The timestamp when the user signed in last time.
+
+To navigate users, click the "<" next page button, the ">" previous page button, or the specific page number at the bottom right corner.
+
+## Search users
+
+Input a keyword in the search box above the user table, click the **Search** button, and you'll see the matching users in the table.
+
+The keyword can be:
+
+- name,
+- username,
+- email,
+- or phone number.
+
 ## Add user
 
 TODO: admin manually add
