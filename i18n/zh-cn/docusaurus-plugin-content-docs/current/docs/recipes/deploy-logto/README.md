@@ -2,4 +2,4 @@
 sidebar_position: 8
 ---
 
-# 🚀 Deployment
+# 🚀 部署 Logto

@@ -11,7 +11,7 @@ Learn more about identifying who's who and keeping your API secure.
 
 ### [🛵 Change primary sign-in method](../../recipes/customize-sie/configure-sign-in-methods.mdx)
 
-By default, Logto uses username and password as the primary sign-in method.<br/>
+By default, Logto uses username-with-password as the primary sign-in method.<br/>
 Depending on the business, you may want to promote passcode or social sign-in to the primary area.
 
 ### [🧑‍🔬 Create your connector](../../recipes/create-your-connector/README.md)
@@ -29,7 +29,7 @@ Learn more about how to know your users and see the figures like DAU and MAU gra
 From one regional business to a global corporate, the willingness to offer the best user experience won't change.<br/>
 You can change current language phrases or add a new language without friction.
 
-### [🚀 Deployment](../../recipes/deployment/README.md)
+### [🚀 Deploy Logto](../../recipes/deploy-logto/README.md)
 
-When it's time to go live, let's go gentle. <br/>
+When it's time to go live, let's go gentle.<br/>
 We'll help to go through this exciting journey.
