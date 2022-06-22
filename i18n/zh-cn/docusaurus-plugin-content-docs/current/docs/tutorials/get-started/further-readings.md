@@ -7,7 +7,7 @@ sidebar_position: 6
 ### [⚔️ 保护你的 API](../../recipes/protect-your-api/README.md)
 
 对于原生和单页应用来说，你需要访问一个或多个 API 端点以获取和更新数据。<br/>
-了解更多关于如何辨认用户是谁以及让你的 API 保持安全。
+了解更多关于如何辨认用户是谁以及保障你的 API 安全。
 
 ### [🛵 变更主要登录方式](../../recipes/customize-sie/configure-sign-in-methods.mdx)
 
@@ -22,7 +22,7 @@ Logto 有一些内置的、开箱即用的连接器。<br/>
 ### [🧑‍🚀 管理用户](../../recipes/manage-users/README.md)
 
 我们知道你关心用户管理和活动，我们也是。<br/>
-了解更多关于如何洞察你的用户并以图形化的方式观察 DAU、MAU 等数字。
+了解更多关于如何洞察你的用户并以图形化的方式观察 DAU、MAU 等数据。
 
 ### [🌐 本地化](../../recipes/localization/README.md)
 
