@@ -22,7 +22,7 @@ For the first time you start Logto with no related environment variable, unless 
 - If you'd like to set up a new Logto database
 - Enter the [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)
 
-Most of them are simple yes / no questions, or you can just go with the default value, except the [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6).
+Most of them are simple yes/no questions, or you can just go with the default value, except the [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6).
 
 The generated private key for the OIDC provider will locate on `./oidc-private-key.pem`, while other values will append to `./.env`.
 
