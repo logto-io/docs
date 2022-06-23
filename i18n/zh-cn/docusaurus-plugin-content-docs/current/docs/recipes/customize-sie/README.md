@@ -14,9 +14,9 @@ Logto 已经搞定了冗长的部分，所以你可以尽情享受为你的用�
 
 在「管理面板」中，点按左侧的「登录体验」标签页，你将会看见一个两栏布局的页面。
 
-左栏是有三个标签的自定义区域：[品牌](./configure-branding.mdx)，[登录方式](./configure-sign-in-methods.mdx) 和 [其他](./tou-and-language.mdx)。
+左栏是有三个标签的自定义区域：[品牌](./configure-branding.mdx)、[登录方式](./configure-sign-in-methods.mdx) 和 [其他](./tou-and-language.mdx)。
 
-右栏是一个实时预览组件。它将及时同步你在左侧的变更。
+右栏是一个实时预览组件，它将及时同步你在左侧的变更。
 
 :::tip 使用预览组件来节省你的时间
 
