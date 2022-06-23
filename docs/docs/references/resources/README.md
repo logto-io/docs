@@ -29,8 +29,6 @@ Check out [Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc
 
 ## How does it work
 
-Logto follows the standard [token-based OAuth 2.0 authorization protocol](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) to protect your API resources.
-
 ### 1. Authorization request
 
 When the resource parameter is used in an authorization request to the authorization endpoint, it indicates the identity of the protected resource(s) to which access is being requested.
@@ -75,3 +73,5 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 :::note
 Please follow our [Protect Your API](../../recipes/protect-your-api/README.md) guide to validate the token on your server-side and protect your resources.
 :::
+
+Logto follows the standard token-based authorization protocol to protect your API resources. To learn more about OAuth 2.0, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1).
