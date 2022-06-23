@@ -15,7 +15,7 @@ There are three columns in the table:
 - **From application**: The name of the application from which the user is.
 - **Latest sign in**: The timestamp when the user signed in last time.
 
-To navigate users, click the "<" next page button, the ">" previous page button, or the specific page number at the bottom right corner.
+To navigate users, click the "<" previous page button, the ">" next page button, or the specific page number at the bottom right corner.
 
 ## Search users
 
