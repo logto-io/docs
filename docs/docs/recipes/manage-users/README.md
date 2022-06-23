@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # 🧑‍🚀 Manage users
 
-User management is the core feature for admin users.
+User management is the core feature.
 
 For example, you want to:
 
