@@ -19,7 +19,7 @@ To navigate users, click the "<" previous page button, the ">" next page button,
 
 ## Search users
 
-Input a keyword in the search box above the user table, click the **Search** button, and you'll see the matching users in the table.
+Input a keyword in the search box above the user table, click the "Search" button, and you'll see the matching users in the table.
 
 The keyword can be:
 
