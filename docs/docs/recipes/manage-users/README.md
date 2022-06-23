@@ -4,8 +4,6 @@ sidebar_position: 6
 
 # 🧑‍🚀 Manage users
 
-User management is the core feature.
-
 For example, you want to:
 
 - View the activities of a user whose phone number is "12345678901" to find out when their account has been stolen.
