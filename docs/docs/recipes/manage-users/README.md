@@ -4,12 +4,12 @@ sidebar_position: 6
 
 # 🧑‍🚀 Manage users
 
-For example, you want to:
+For example:
 
-- View the activities of a user whose phone number is "12345678901".
-- Update the profile of a user whose username is "peter_pan".
+- An end-user fails to sign in since they forget their username. According to a screenshot containing the user's avatar and full name, search by the full name, filter by the avatar, and finally, find their username.
+- Find the newly registered users yesterday, view their profile, custom data, and social connections, analyze their behavior and make necessary return visits.
+- An employee leaves your company. To protect the company's data security, clear the employee's social sign-in information, reset their password, or even delete their account directly.
 - Help a user reset the password that they forget.
-- Delete a user named "John Doe".
 - ……
 
 You can do it all:
