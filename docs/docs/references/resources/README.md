@@ -57,11 +57,11 @@ POST https://logto.dev/oidc/token HTTP/1.1
     resource=https%3A%2F%2Flogto.test.dev%2Fusers
 ```
 
-An access token with the audience restricted to the requested resource will be Granted by Logto.
+An access token with the audience restricted to the requested resource will be granted by Logto.
 
 ### 3. API resource request
 
-Client request for the API resource with `access_token` provided as Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`
+Client request for the API resource with `access_token` provided as Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`.
 
 ```
 GET https://logto.dev/api/users
