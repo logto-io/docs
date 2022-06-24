@@ -12,7 +12,7 @@ sidebar_position: 3
 
 Logto 已经搞定了冗长的部分，所以你可以尽情享受为你的用户定制独一无二的体验的快乐。
 
-在「管理面板」中，点按左侧的「登录体验」标签页，你将会看见一个两栏布局的页面。
+在「管理控制台」中，点按左侧的「登录体验」标签页，你将会看见一个两栏布局的页面。
 
 左栏是有三个标签的自定义区域：[品牌](./configure-branding.mdx)、[登录方式](./configure-sign-in-methods.mdx) 和 [其他](./tou-and-language.mdx)。
 

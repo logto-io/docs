@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ### [⚔️ 保护你的 API](../../recipes/protect-your-api/README.md)
 
-对于原生和单页应用来说，你需要访问一个或多个 API 端点以获取和更新数据。<br/>
+对于原生和单页应用来说，你需要访问一个或多个 API endpoint 以获取和更新数据。<br/>
 了解更多关于如何辨认用户是谁以及保障你的 API 安全。
 
 ### [🛵 变更主要登录方式](../../recipes/customize-sie/configure-sign-in-methods.mdx)
