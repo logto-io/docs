@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # 🧑‍🚀 Manage users
 
-You can access Logto user data using [Admin Console](./on-admin-console-page.md) or [Management API](./by-management-api.md).
+You can access Logto user data using [Admin Console](./using-admin-console.md) or [Management API](./using-management-api.md).
 
 With the help of them can do something like these:
 
