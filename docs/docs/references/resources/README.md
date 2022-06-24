@@ -19,11 +19,11 @@ Check out [Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc
 
 ## Definitions
 
-### Value
+### Resource Indicator
 
 <ResourceRule />
 
-### Logto Schema
+### Logto API Resource Schema
 
 <APIResourceSchema />
 
