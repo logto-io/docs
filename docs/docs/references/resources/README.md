@@ -63,15 +63,15 @@ An access token with the audience restricted to the requested resource will be g
 
 Client request for the API resource with `access_token` provided as Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`.
 
-```
+```bash
 GET https://logto.dev/api/users
 
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiYXVkIjoiaHR0cHM6Ly9sb2d0by5kZXYvYXBpL3VzZXJzIiwiaXNzIjoiaHR0cHM6Ly9sb2d0by5kZXYvb2lkYyIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MzI1NDIyfQ.PjIJl00YNC84EPNYLEdpEEAdAxqhekCYhFEckvRokek
 
 ```
 
-:::note
-Please follow our [Protect Your API](../../recipes/protect-your-api/README.md) guide to validate the token on your server-side and protect your resources.
+:::tip
+Please follow our [**Protect Your API**](../../recipes/protect-your-api/README.md) guide to implement the token validation on your server-side APIs and make your resources well protected.
 :::
 
 Logto follows the standard token-based authorization protocol to protect your API resources. To learn more about OAuth 2.0, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1).
