@@ -14,4 +14,6 @@ In Admin Console, click the "Connectors" tab on the left, and you'll see a page 
 
 In the first tab, you can create an Email connector or SMS connector by clicking the corresponding "Set Up" button, which will bring you to a two-column page with a detailed step-by-step guide on the left and a text input box to configure connector settings. After finishing the configuration, you can use the tester to check whether the settings function well.
 
-In the second tab, you can start to add a social connector by clicking the "Add Social Connector" button. Select the connector you want to add and move on by clicking "Next". For Alipay and WeChat connector, you may find a secondary _platform_ option for choosing Web or Native. In contrast, other connectors' default platform is Universal by default. [Explore more on social connector platform types](./platform-types.mdx). You will be on a two-column page with a step-by-step guide left and a text input box on your right for settings.
+In the second tab, you can start to add a social connector by clicking the "Add Social Connector" button. Select the connector you want to add and move on by clicking "Next". For Alipay and WeChat connector, you may find a secondary _platform_ option for choosing Web or Native. In contrast, other connectors' default platform is Universal by default. You will be on a two-column page with a step-by-step guide left and a text input box on your right for settings.
+
+TODO: Add a link to reference for the explanation of different platform types.
