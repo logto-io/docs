@@ -1,7 +1,3 @@
----
-sidebar_position: 999
----
-
 # Configuration
 
 ## Usage
@@ -15,7 +11,7 @@ Thus the system environment variable will override the value in `.env`.
 
 ## First-time setup questions {#questions}
 
-For the first time you start Logto with no related environment variable, unless `--no-inquiry` is specified, it'll ask several questions for a smooth experience to fulfill the minimum requirements:
+For the first time you start Logto with no related environment variable, unless `--no-inquiry` is specified in arguments, it'll ask several questions for a smooth experience to fulfill the minimum requirements:
 
 - If you'd like to generate a cookie keys array for the OIDC provider
 - If you'd like to generate a private key for the OIDC provider
@@ -27,7 +23,7 @@ Most of them are simple yes/no questions, or you can just go with the default va
 The generated private key for the OIDC provider will locate on `./oidc-private-key.pem`, while other values will append to `./.env`.
 
 :::note
-The `--no-inquiry` parameter is appended by default in the Docker image.
+The `--no-inquiry` argument is appended by default in the Docker image.
 :::
 
 ## Variable list
@@ -35,7 +31,7 @@ The `--no-inquiry` parameter is appended by default in the Docker image.
 ### General
 
 :::caution
-If you run Logto via `npm start`, `NODE_ENV` will always be `production`.
+If you run Logto via `npm start` in the project root, `NODE_ENV` will always be `production`.
 :::
 
 In default values, `protocol` will be either `http` or `https` according to your HTTPS config.
@@ -79,7 +75,7 @@ Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_
 
 ### Using a HTTPS proxy
 
-Another common practice is to have a HTTPS proxy in front of Node.
+Another common practice is to have a HTTPS proxy in front of Node (E.g. Nginx).
 
 In this case, you're likely want to set `TRUST_PROXY_HEADER` to `true` which indicates if proxy header fields should be trusted. Logto will pass the value to [Koa app settings](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings).
 
