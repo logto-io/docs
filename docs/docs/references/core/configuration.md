@@ -75,7 +75,7 @@ Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_
 
 ### Using a HTTPS proxy
 
-Another common practice is to have a HTTPS proxy in front of Node (E.g. Nginx).
+Another common practice is to have an HTTPS proxy in front of Node (E.g. Nginx).
 
 In this case, you're likely want to set `TRUST_PROXY_HEADER` to `true` which indicates if proxy header fields should be trusted. Logto will pass the value to [Koa app settings](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings).
 

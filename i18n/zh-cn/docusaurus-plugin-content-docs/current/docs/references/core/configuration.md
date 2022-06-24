@@ -23,7 +23,7 @@ Logto 按如下顺序处理环境变量 (environment variables)：
 为 OIDC provider 生成的 private key 将会位于 `./oidc-private-key.pem`，其他的值将会追加在 `./.env` 里。
 
 :::note
-在 Docker 镜像中 `--no-inquiry` 参数是默认开启的。
+在 Docker 镜像中 `--no-inquiry` argement 是默认指定的。
 :::
 
 ## 变量列表
