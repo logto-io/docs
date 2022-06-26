@@ -8,8 +8,8 @@ type Props = {
 const SignInNote = ({ calling }: Props) => {
   return (
     <Admonition type="note">
-      Before calling <code>{calling}</code>, make sure you have correctly{' '}
-      <a href="https://logto.io">configured Redirect URI</a> in Admin Console.
+      Before calling <code>{calling}</code>, make sure you have correctly configured Redirect URI in
+      Admin Console.
     </Admonition>
   );
 };
