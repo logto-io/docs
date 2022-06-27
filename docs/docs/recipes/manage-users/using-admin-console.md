@@ -21,7 +21,17 @@ Support the partial search on the user properties: name, username, email, or pho
 
 ## Add user
 
-TODO: admin manually add
+Admin users could create a new account through Admin Console in the name of an end-user.
+
+1. On the "User Management" panel, click the "+ Add User" button.
+2. In the dialog, fill out the username and full name, and click the "Add User" button to confirm.
+3. After successfully adding, click the eye icon to show or hide the actual password.
+4. Copy the **username** and **initial password** to send to the end-user.
+
+:::caution
+After closing the "Add User" dialog, you can no longer view the password.
+If you forget to keep it, you have to [reset the password](#reset-user-password).
+:::
 
 ## View user profile
 
@@ -44,3 +54,5 @@ TODO:
 - Avatar
 - Custom data
 - Remove a social connection/connector
+
+## Reset user password
