@@ -17,12 +17,7 @@ There are three columns in the table:
 
 Input a keyword in the search box above the user table, click the "Search" button, and you'll see the matching users in the table.
 
-Support the exact partial search on the following user properties:
-
-- name,
-- username,
-- email,
-- or phone number.
+Support the partial search on the user properties: name, username, email, or phone number.
 
 ## Add user
 
