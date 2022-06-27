@@ -1,5 +1,5 @@
 ---
-sidebar_label: Manage on Admin Console page
+sidebar_label: Using Admin Console
 sidebar_position: 1
 ---
 

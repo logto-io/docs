@@ -1,5 +1,5 @@
 ---
-sidebar_label: Manage by Core management API
+sidebar_label: Using Management API
 sidebar_position: 2
 ---
 
