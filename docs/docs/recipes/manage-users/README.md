@@ -4,8 +4,11 @@ sidebar_position: 6
 
 # 🧑‍🚀 Manage users
 
-TODO: briefly summary
+You can access Logto user data using [Admin Console](./on-admin-console-page.md) or [Management API](./by-management-api.md).
 
-- Manage users on the Admin Console page
-- Manage users by Logto Core management API
-- Manage user data on the storage
+With the help of them can do something like these:
+
+- Search users by full name, phone, or email, and view their profile, including username, avatar, social connections, etc.
+- Unbind a user's social identity from Facebook, or even delete their account directly in extreme cases.
+- Help a user reset the password.
+- [Integrate your data with Logto user data](./on-storage.md). TODO: @sijie
