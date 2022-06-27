@@ -52,7 +52,7 @@ Before removing the social connection, you SHOULD confirm the user has another s
 :::
 
 :::info
-Don't forget to click "Save changes".
+Don't forget to click "Save changes" after updating.
 :::
 
 ## View user activities
