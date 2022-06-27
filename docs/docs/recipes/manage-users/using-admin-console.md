@@ -25,10 +25,10 @@ Support the partial search on the user properties: name, username, email, or pho
 
 Admin users could create a new account through Admin Console in the name of an end-user.
 
-1. On the "User Management" panel, click the "+ Add User" button.
-2. In the dialog, fill out the username and full name, and click the "Add User" button to confirm.
-3. After successfully adding, click the eye icon to show or hide the actual password.
-4. Copy the **username** and **initial password** to send to the end-user.
+On the "User Management" panel, click the "+ Add User" button.
+In the dialog, fill out the username and full name, and click the "Add User" button to confirm.
+
+After successfully adding, copy the **username** and **initial password** to send to the end-user.
 
 :::caution
 After closing the "Add User" dialog, you can no longer view the password.
@@ -37,7 +37,7 @@ If you forget to keep it, you have to [reset the password](#reset-user-password)
 
 ## View and update user profile
 
-Click the user table row on the "User Management" panel to jump to the "**User details**" panel.
+On the "User Management" panel, click the user table row to jump to the "**User details**" panel.
 You'll see the user profile, including the avatar, full name, user ID, email, phone, username, social connections, etc.
 
 :::note
@@ -57,8 +57,10 @@ Don't forget to click "Save changes".
 
 ## View user activities
 
-On the "User details" panel, switch the "**User logs**" sub-tab to view the user's recent activities in the table, including the action, result, related application, and the time when the user acted.
-Click the table row to see more details, e.g., the IP address, user agent, and raw data.
+On the "User details" panel, switch to the "**User logs**" sub-tab.
+You'll see the user's recent activities in the table, including the action, result, related application, and the time when the user acted.
+
+Click the table row to see more details in the user log, e.g., the IP address, user agent, and raw data.
 
 ## Delete user
 
@@ -70,7 +72,9 @@ Be careful! The user data deletion CANNOT be undone.
 
 ## Reset user password
 
-On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button. After successfully resetting, copy the username and new password to send to the end-user.
+On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button.
+
+After successfully resetting, copy the username and new password to send to the end-user.
 
 :::caution
 After closing the "Reset password" dialog, you can no longer view the password.
