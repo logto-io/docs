@@ -40,10 +40,8 @@ If you forget to keep it, you have to [reset the password](#reset-user-password)
 On the "User Management" panel, click the user table row to jump to the "**User details**" panel.
 You'll see the user profile, including the avatar, full name, user ID, email, phone, username, social connections, etc.
 
-:::note
 "Social connections" is a list of social connectors the user has connected to. Suppose the user has signed in with Facebook using the social connector; a "Facebook" item will be on the list.
 See [identities](../../references/users/#identities) for details.
-:::
 
 The full name, avatar image URL, and custom data are editable, the social connections are removable, and the other properties are read-only.
 
