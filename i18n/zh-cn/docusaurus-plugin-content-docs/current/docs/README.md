@@ -18,41 +18,19 @@ slug: /
 
 “专业”点说，我们叫它「客户身份访问管理（[CIAM](https://en.wikipedia.org/wiki/Customer_identity_access_management)）」或者「客户身份解决方案」。
 
-## 安装
+## 基本概念
 
-### Docker Compose
+在开始之前，让我们先了解一些 Logto 的基本概念。简化起见，我们把 Logto 分为四部分：管理面板，登录体验，核心服务，SDK。
 
-TBD
+- 「管理面板」是一个 web 应用，也是你自定义登录和管理用户的得力助手。
+- 「登录体验」是直接面向你的终端用户的图形化界面，包括登录，注册等。
+- 「核心服务」是 Logto 的基础，提供了必要的 API 以支持其他模块。
+- 「SDK」是你的应用与 Logto 的桥梁。
 
-### 一行命令
+:::note
+**TBD** need a simple infra figure here
+:::
 
-#### 前置条件
-
-- [Node.js](https://nodejs.org/) `^16.13.0`
-- [PostgreSQL](https://postgresql.org/) `^14.0`
-
-更高的版本通常可以工作，但不打包票。
-
-虽然不是强制要求，但我们推荐给 Logto 提供一个专属的空数据库。
-
-#### 下载并开始
-
-在你的终端中输入如下命令：
-
-```bash
-node -e "$(printf "%s" "$(curl -fsSL https://raw.githubusercontent.com/logto-io/logto/master/install.js)")"
-```
-
-这个脚本将会下载 Logto，并在你执行的位置创建一个名为 `logto` 的文件夹。在回答完一些 [简单的问题](./references/core/configuration.md#questions) 后，你将会看到类似如下的信息：
-
-```text
-App is running at http://localhost:3001
-
-Visit http://localhost:3001/welcome to continue your Logto journey.
-```
-
-前往 <a target="_blank" href="http://localhost:3001/welcome">http://localhost:3001/welcome</a> 以继续你的 Logto 之旅。玩得开心！
-
-## 配置
-
-Logto 使用环境变量进行配置，并支持 `.env` 文件。使用细节以及完整的变量列表见 [配置](./references/core/configuration.md) 页面。
+:::info
+「管理面板」是自定义与管理「登录体验」、「核心服务」最简单的方式，我们将在教程中全程使用它。
+:::
