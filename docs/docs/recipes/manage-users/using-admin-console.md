@@ -31,7 +31,7 @@ In the opening modal, fill out the username and full name, and click the "Add Us
 After successfully adding, copy the **username** and **initial password** to send to the end-user.
 
 :::caution
-After closing the "Add User" dialog, you can no longer view the password.
+Once the "Add User" modal is closed, you can no longer view the password.
 If you forgot to keep it, you can [reset the password](#reset-user-password).
 :::
 
