@@ -1,4 +1,3 @@
-import ResourceRule from './fragments/\_resource_rule.md';
 import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
 # 📁 API Resource
@@ -7,21 +6,31 @@ import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
 ### What is an API resource?
 
-API resource, a.k.a. [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), indicates the target service or resource to be requested. A URI format variable represents the resource's identity, which MAY be a locator corresponding to an addressable network location where the target resource is hosted.
+API resources, a.k.a. [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), indicate the target services or resources to be requested. Usually in a URI format variable, representing the resource's identity.
 
 ### Why is API resource needed?
 
-Logto, as an authorization server, is designed to serve a large number of diverse resources and APIs. By indicating which API resource an end-user intends to request, Logto will be able to determine the type and content of authorization tokens to be issued, how tokens are encrypted and apply audience restrictions accordingly.
+Logto, as an authorization server, is designed to serve a large number of diverse resources and APIs. By indicating which API resource an end-user intends to request, Logto will be able to determine the type and content of authorization tokens to be issued, how tokens are encrypted, and apply audience restrictions accordingly.
 
 A guarded request with an authorization token provided will help you protect your private resources from being accessed and attacked by anonymous identities.
-
-Check out [Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707.html) for more details.
 
 ## Definitions
 
 ### Resource Indicator
 
-<ResourceRule />
+- A resource value indicates the target service or resource to which access is being requested.
+- Its value **MUST** be an absolute URI.
+- The URI **MUST NOT** include a fragment component.
+- It **SHOULD NOT** include a query component.
+- You **SHOULD** provide the most specific URI it can for the complete API or set of resources it intends to access. (In practice, a client will know a base URI for the application or resource that it interacts with, which is appropriate to use as the value of the resource parameter.)
+
+i.e., Logto management API base URI
+
+```
+https://api.logto.io
+```
+
+By default, this API resource is pre-registered. All the management APIs under this URI are protected by Logto server.
 
 ### Logto API Resource Schema
 
