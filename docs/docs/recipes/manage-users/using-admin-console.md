@@ -32,7 +32,7 @@ After successfully adding, copy the **username** and **initial password** to sen
 
 :::caution
 After closing the "Add User" dialog, you can no longer view the password.
-If you forget to keep it, you have to [reset the password](#reset-user-password).
+If you forgot to keep it, you can [reset the password](#reset-user-password).
 :::
 
 ## View and update user profile
