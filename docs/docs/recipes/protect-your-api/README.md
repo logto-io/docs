@@ -13,7 +13,7 @@ Along with a fluent user sign-in experience, by default, Logto comes with the [A
 
 Logto will identify the registered [API resources](../../references/resources/README.md) from an authorization request and issue an audience-restricted `access_token` accordingly.
 
-Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Console.
+Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
@@ -44,7 +44,7 @@ The new API will show up on the list once created. You may manage or delete it o
 <br />
 <br />
 
-For detailed API setting definitions, please refer to [API Resource Logto Schema](../../references/resources/README.md#logto-api-resource-schema)
+See [API Resource Logto Schema](../../references/resources/README.md#logto-api-resource-schema) for detailed API setting definitions.
 
 :::info
 All the API Resources record registered in Logto **Admin Console** will be shared across all your applications.
