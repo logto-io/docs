@@ -28,7 +28,7 @@ Admin users could create a new account through Admin Console in the name of an e
 On the "User Management" panel, click the "+ Add User" button in the upper right corner.
 In the opening modal, fill out the username and full name, and click the "Add User" button to confirm.
 
-After successfully adding, copy the **username** and **initial password** to send to the end-user.
+After you add the user, copy the **username** and **initial password** to send to the end-user.
 
 :::caution
 Once the "Add User" modal is closed, you can no longer view the password.
