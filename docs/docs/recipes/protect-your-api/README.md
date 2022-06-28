@@ -9,26 +9,22 @@ import TabItem from '@theme/TabItem';
 
 Along with a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect the private APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
 
-:::info
-For more details, please check out our [API Resources doc](../../references/resources/README.md)
-:::
-
-## 1. Register the API resource through Logto **Admin Console**
+## Register the API resource through Logto **Admin Console**
 
 Logto will identify the registered [API resources](../../references/resources/README.md) from an authorization request and issue an audience-restricted `access_token` accordingly.
 
-First, go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users.
+Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Console.
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
-<img src="/img/docs/api_resource_landing.png" width="100%" />
+![](/img/docs/api_resource_landing.png)
 <br />
 <br />
 
 Next, click on the **Create API Resource** button to register your own API resource by providing:
 
-- A human-readable **API Name** that may better helps you to identify this entity later
-- A unique **API Identifier** (a.k.a [Resource Indicator](../../references/resources/README.md#resource-indicator)). URI format variable that can represent the resource's identity you'd like to be guarded.
+- A human-readable **API Name** that may better helps you to identify this entity.
+- A unique **API Identifier** (a.k.a. [Resource Indicator](../../references/resources/README.md#resource-indicator)) variable in URI format. It represents the resource's identity you'd like to guard.
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
@@ -37,7 +33,7 @@ Next, click on the **Create API Resource** button to register your own API resou
 <br />
 
 :::caution
-The API Identifier is unique and used as the SSO of resource indicator for Logto. **NOT** editable once created. Be careful when you create it.
+The API Identifier is unique and used as the single source of truth of resource indicator for Logto. **NOT** editable once created. Be careful when you create it.
 :::
 
 The new API will show up on the list once created. You may manage or delete it on the API details page by clicking on the entity row.
@@ -54,7 +50,7 @@ For detailed API setting definitions, please refer to [API Resource Logto Schema
 All the API Resources record registered in Logto **Admin Console** will be shared across all your applications.
 :::
 
-## 2. Register the API resources to the Logto SDK
+## Register the API resources to the Logto SDK
 
 Once we have your API resource well registered at the Logto server, we may step forward to your application and let Logto SDK do its works.
 
@@ -248,7 +244,7 @@ const token = await logtoClient.getAccessToken('<your-target-api-resource>');
 
 </Tabs>
 
-If the client is well-authorized, a JWT format `access_token` will be granted and issued by Logto, specifically for the requested entity. Encrypted, audience_restricted, and with lift-time. Carrying all the necessary info that can represent the authority of this request.
+If the client is well-authorized, a JWT format `access_token` will be granted and issued by Logto, specifically for the requested entity, Encrypted, audience-restricted, and with a lifetime. Carry all the necessary info that can represent the authority of this request.
 
 Append the token to your request's Authorization header as the Bearer code:
 
@@ -263,7 +259,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 
 Now you have your application well equipped and ready to launch 🚀 .
 
-## 3. Validate the Authorization header on your API side
+## Validate the Authorization header on your API side
 
 //TODO:
 
