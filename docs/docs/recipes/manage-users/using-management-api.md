@@ -6,7 +6,9 @@ sidebar_position: 2
 # Manage users using Management API
 
 [Management API](../../../docs/references/core/#management-api) is a set of APIs to access Logto data, including users.
-REQUIRE [**authentication**](../../../docs/references/core/#authentication) to call Management API.
+:::info
+[**Authentication**](../../../docs/references/core/#authentication) is REQUIRED when you're calling Management API.
+:::
 
 The user-related RESTful APIs are mounted at `/api/users` except the user activities, a.k.a. user logs `/api/logs?userId=:userId`.
 
