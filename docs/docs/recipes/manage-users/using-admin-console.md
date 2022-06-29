@@ -25,7 +25,7 @@ Support the partial search on the user properties: name, username, email, or pho
 
 Admin users could create a new account through Admin Console in the name of an end-user.
 
-On the "User Management" panel, click the "+ Add User" button in the upper right corner.
+Click the "+ Add User" button in the upper right corner.
 In the opening modal, fill out the username and full name, and click the "Add User" button to confirm.
 
 After you add the user, copy the **username** and **initial password** to send to the end-user.
