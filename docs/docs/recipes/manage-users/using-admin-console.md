@@ -72,7 +72,7 @@ Be careful! The user data deletion CANNOT be undone.
 
 On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button.
 
-After successfully resetting, copy the username and new password to send to the end-user.
+After you reset the password, copy and send it to the end-user.
 
 :::caution
 After closing the "Reset password" dialog, you can no longer view the password.
