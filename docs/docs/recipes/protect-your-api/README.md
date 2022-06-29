@@ -7,13 +7,13 @@ import TabItem from '@theme/TabItem';
 
 # ⚔️ Protect your API
 
-Along with a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect the private APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
+With a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect the your APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
 
 ## Register the API resource through Logto **Admin Console**
 
 Logto will identify the registered [API resources](../../references/resources/README.md) from an authorization request and issue an audience-restricted `access_token` accordingly.
 
-Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
+Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io.` This resource indicates all the management APIs you may use to maintain the Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
@@ -21,7 +21,7 @@ Go to the **API Resources** section in **Admin Console**. You will notice a buil
 <br />
 <br />
 
-Next, click on the **Create API Resource** button to register your own API resource by entering:
+Next, click on the **Create API Resource** button to register your API resource by entering:
 
 - A human-readable **API Name** that may better helps you to identify this entity.
 - A unique **API Identifier** (a.k.a. [Resource Indicator](../../references/resources/README.md#resource-indicator)) variable in URI format. It represents the resource's identity you'd like to guard.
@@ -33,7 +33,7 @@ Next, click on the **Create API Resource** button to register your own API resou
 <br />
 
 :::caution
-The API Identifier is unique and used as the single source of truth of resource indicator for Logto. **NOT** editable once created. Be careful when you create it.
+The API Identifier is unique and used as the single source of truth of resource indicator for Logto. **NOT** editable once created. Be careful when you make it.
 :::
 
 The new API will show up on the list once created. You may manage or delete it on the API details page by clicking on the entity row.
@@ -50,15 +50,15 @@ See [API Resource Logto Schema](../../references/resources/README.md#logto-api-r
 All the API Resources record registered in Logto **Admin Console** will be shared across all your applications.
 :::
 
-## Register the API resources to your client application
+## Integrate the resources into your client application authorization flow
 
-Once we have your API resource well registered at the Logto server, we may move forward to your applications and see how Logto SDK do its work.
+Once we have your API resource well registered at the Logto server, we may move forward to your applications and see how Logto SDK works.
 
 :::note
-If you haven't integrate Logto SDK with your application yet, we highly recommend you to go through our SDK's [**Integration Guide**](../integrate-logto/README.md). Logto has various SDKs developed for you. Stick with your business, and let us do the "heavy-duty."
+If you haven't integrated Logto SDK with your application yet, we highly recommend you to go through our SDK's [**Integration Guide**](../integrate-logto/README.md). Logto has various SDKs developed for you. Stick with your business, and let us do the "heavy-duty."
 :::
 
-With Logto SDK, all you need is to pass-in those resource indicators to the SDK configs when it is initiated.
+With Logto SDK, all you need is to pass those resource indicators to the SDK configs when it is initiated.
 
 <Tabs>
 
@@ -173,9 +173,9 @@ app.mount('#app');
 </TabItem>
 </Tabs>
 
-Take a breath here. Your application is almost ready 😊. Logto SDK is well configured at this point. Users could sign in / sign up through the Logto UI flow now.
+Take a breath here. Your application is almost ready 😊. We have Logto SDK well configured at this point. Users could sign in / sign up through the Logto UI flow now.
 
-After end-users successfully log in, they may try to get access to some of your backend API resources through the client application upon their request. We'll need to loop Logto in again at this point. Call Logto server through our SDK to request an `access_token` before making your actual API request.
+After end-users successfully log in, they may try to get access to some of your backend API resources through the client application upon their request. We'll need to loop Logto in again at this point. Call the Logto server through our SDK to request an `access_token` before making your API request.
 
 :::note
 
@@ -257,30 +257,30 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 
 ```
 
-Now you have your application well equipped. All the requests that come from a log-in user through your application will be well-authorized. Let's go back to your server-side, and block out those anonymous attempts.
+Now you have your application well equipped. All the requests from a log-in user through your application will be well-authorized. Let's go back to your server-side and block out those anonymous attempts.
 
-## Validate the API request's authorization
+## Parse and Validate the API request's authorization
 
-The most important step, protect your API resources with the trustworthy token validation.
+The most crucial step, protect your API resources with trustworthy token validation.
 
 As mentioned above, all the authorized requests should carry an [JWT](https://datatracker.ietf.org/doc/html/rfc7519) format `assess_token` issued by Logto in its Authorization header.
 
 ### Get the JWK Public Key
 
-All tokens issued by logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). ( See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for details)
-You will need a public key to verify the signature of the Bearer Token(_access_token_) before moving on.
+All tokens issued by logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). ( See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for more details)
+Before moving on, you will need a public key to verify the signature of the Bearer Token(_access_token_).
 
 The key set can be inquired through Logto's **jwks_uri**: `https://<your-logto-domain>/oidc/jwks`.
 
 :::note
-All the latest Logto Authorization Server Configurations can be found by `https://<your-logto-domain>/oidc/.well-known/openid-configuration`. Including the **jwks_uri** and other authorization configs.
+All the latest Logto Authorization Server Configurations can be found by `https://<your-logto-domain>/oidc/.well-known/openid-configuration`, including the **jwks_uri** and other authorization configs.
 :::
 
 As a response, you will get a JWKS ( JSON Web Key Sets). **Keep it** on your server. You will need it to verify all the requests' token signatures.
 
 ### Validate the existence and extract the Bearer Token from Headers
 
-The request should contains a `Authorization` header with a `Bearer <access_token>` format. Extract the Bearer Token from request header:
+The request should contain an `Authorization` header with a `Bearer <access_token>` format. Extract the Bearer Token from the request header:
 
 <Tabs>
 
@@ -308,20 +308,20 @@ const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) =
 
 </Tabs>
 
-### Token Validation
+### Token Parse and Validation
 
-A encoded [JWS](https://datatracker.ietf.org/doc/html/rfc7515) token is constructed with three parts:
+An encoded [JWS](https://datatracker.ietf.org/doc/html/rfc7515) token is constructed with three parts:
 
-- JOSE Header: Declares the code type and encode algorithm
+- JOSE Header: Declares the code type and encoding algorithm
 - JWS Payload: Includes all the token's claims
 - JWS Signature: Signature signed with JWK
 
-A standard schema of Logto JWS Payload: (claims may very, based on your OIDC config)
+A standard schema of Logto JWS Payload: (claims may vary, based on your OIDC config)
 
 | key       | description                |
 | --------- | -------------------------- |
 | jti       | unique JWT ID              |
-| sub       | subject, usually user id   |
+| sub       | subject, usually user-id   |
 | iat       | timestamp token issues at  |
 | exp       | timestamp token expires at |
 | client_id | application id             |
@@ -329,26 +329,22 @@ A standard schema of Logto JWS Payload: (claims may very, based on your OIDC con
 | aud       | audience of the token      |
 
 :::note
-For development, you could use a handy site, [jwt.io](https://jwt.io/), to decode and check the tokens you received. Be careful with the tokens come from production env, as the service is provided by a third party, and your token may be toasted.
+For development, to visually inspect a JWT you could visit [jwt.io](https://jwt.io/) to decode and check the tokens you received. Be careful with the tokens from production env, as a third party provides the service, and your token may be toasted.
 :::
 
 The Bearer Token should be accepted only if:
 
-- the token's signature is verified
+- the token's JWS format is verified ( See [JWT](https://datatracker.ietf.org/doc/html/rfc7519#section-7.2) for more details)
 - the token's issuer is `https://<your-logto-domain>/oidc` (issued by the Logto server)
 - the token's audience is the current API indicator (audience-restricted)
-- the token is with n its valid lifetime
+- the token is with in its valid lifetime
 
-There are various open source tools that can help you tovalid the tokens easily:
+There are various open-source libraries and middleware can help you validate the tokens easily. Most of them are implemented with just one method with various customizable configurations to verify and parse a JWT token.
 
 <Tabs>
 <TabItem value="js" label="Express">
 
-Use [jose](https://github.com/panva/jose) to validate the token's signature, expiration status, and the required claims easily.
-
-```bash
-  npm install jose --save
-```
+Use [jose](https://github.com/panva/jose) to validate the token's signature, expiration status, and the required claims.
 
 ```js
 import { jwtVerify } from 'jose';
@@ -370,4 +366,4 @@ const { payload } = await jwtVerify(
 
 ## Reference
 
-Logto uses the Code Based OAuth 2.0 Authorization Protocol to make your API request flow more secure. If you are interested in the strategy behind , please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
+Logto uses the code-based OAuth 2.0 Authorization Protocol to make your API request flow more secure. If you are interested in the strategy behind, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
