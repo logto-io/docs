@@ -13,8 +13,6 @@ A user profile consists of 3 sections:
 - **Custom data**: contains additional info in customizable attributes, such as user-preferred color and language.
 - **Identities**: contains the user info retrieved from social sign-in, such as Facebook, GitHub, and WeChat.
 
-See [`packages/schemas/tables/users.sql`](https://github.com/logto-io/logto/blob/master/packages/schemas/tables/users.sql) for the latest version of the user table definition in the relational database.
-
 ### All attributes
 
 The following attributes (except password-related) are visible on the user profile.
