@@ -37,7 +37,7 @@ If you forget to keep it, you can [reset the password](#reset-user-password).
 
 ## View and update user profile
 
-On the "User Management" panel, click the user table row to jump to the "**User details**" panel.
+Click the user table row to jump to the "**User details**" panel.
 You'll see the user profile, including the avatar, full name, user ID, email, phone, username, social connections, etc.
 
 "Social connections" is a list of social connectors the user has connected to. Suppose the user has signed in with Facebook using the social connector; a "Facebook" item will be on the list.
