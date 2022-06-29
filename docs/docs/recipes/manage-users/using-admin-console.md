@@ -32,7 +32,7 @@ After you add the user, copy the **username** and **initial password** to send t
 
 :::caution
 Once the "Add User" modal is closed, you can no longer view the password.
-If you forgot to keep it, you can [reset the password](#reset-user-password).
+If you forget to keep it, you can [reset the password](#reset-user-password).
 :::
 
 ## View and update user profile
