@@ -58,7 +58,7 @@ Don't forget to click "Save changes" after updating.
 On the "User details" panel, switch to the "**User logs**" sub-tab.
 You'll see the user's recent activities in the table, including the action, result, related application, and the time when the user acted.
 
-Click the table row to see more details in the user log, e.g., the IP address, user agent, and raw data.
+Click the table row to see more details in the user log, e.g., IP address, user agent, raw data, etc.
 
 ## Delete user
 
