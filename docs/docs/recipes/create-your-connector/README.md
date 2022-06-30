@@ -4,16 +4,139 @@ sidebar_position: 4
 
 # 🧑‍🔬 Create your connector
 
-Connectors play a critical role in Logto. With their help, Logto enables end-users to use SMS-based and email-based passwordless registration and sign-in capabilities using social accounts. With the increasing popularity of websites and applications, passwordless and social sign-ins allow users to avoid managing numerous accounts and passwords every day.
+Currently, Logto has provided many widely used social sign-in connectors such as WeChat, Alipay, Google, Facebook, etc., and SMS/Email connectors such as AliCloud, SendGrid, and Twilio.
+
+They should be able to satisfy most users' needs at this stage, but _Logto will keep making progress_ :fire:
+
+We will provide more connectors in the future, and you can also develop your connectors, and we encourage you to share your connectors with the whole community.
+
+Let's see how to become an honorable contributor to Logto Project by starting with building a connector :coffee:
+
+## Connector file structure
+
+Attached is a file tree to demonstrate the composition of each connector.
+
+Files whose name ends up with "^" refer to **optional** files, otherwise are required.
+
+```
+ConnectorRootDir/
+├── logo.svg
+├── logo-dark.svg^
+├── README.md
+├── docs/
+│   └── configTemplate.json
+├── src/
+│   ├── index.ts
+│   ├── index.test.ts
+│   ├── types.ts
+│   ├── constant.ts
+│   ├── mock.ts^
+│   ├── utils.ts^
+│   ├── utils.test.ts^
+│   └── ...
+├── package.json
+└── tsconfig.*.json
+```
+
+Based on this connector file structure, let's go through each file and figure out how they work as a whole part.
+
+### logo.svg
+
+_logo.svg_ stores connector's logo.
+
+### logo-dark.svg
+
+_logo-dark.svg_ contains connector's dark mode logo.
 
 :::note
-Currently, Logto has provided many widely used social sign-in connectors such as WeChat, Alipay, Google, Facebook, etc., and SMS or email connectors such as AliCloud, SendGrid, and Twilio. They should be able to satisfy most users' needs at this stage, but Logto will not stop making progress. We will provide more connectors for use in the future, and if you have urgent needs, you can also develop your connectors, and we welcome you to share your developed connectors with the whole community.
+See (TODO: link to connector reference logo part) to know more about the relationship between _logo.svg_ and _logo-dark.svg_.
 :::
 
-In Admin Console, click the "Connectors" tab on the left, and you'll see a page with two tabs on the top of the panel.
+### README.md
 
-In the first tab, you can create an Email connector or SMS connector by clicking the corresponding "Set Up" button, which will bring you to a two-column page with a detailed step-by-step guide on the left and a text input box to configure connector settings. After finishing the configuration, you can use the tester to check whether the settings function well.
+_README.md_ is an elaborated guide for setting up the connector's config.
 
-In the second tab, you can start to add a social connector by clicking the "Add Social Connector" button. Select the connector you want to add and move on by clicking "Next". For Alipay and WeChat connector, you may find a secondary _platform_ option for choosing Web or Native. In contrast, other connectors' default platform is Universal by default. You will be on a two-column page with a step-by-step guide left and a text input box on your right for settings.
+### configTemplate.json
 
-TODO: Add a link to reference for the explanation of different platform types.
+_configTemplate.json_ gives an example of connector config.
+
+### index.ts
+
+_index.ts_ is the file for connector class implementation.
+
+### index.test.ts
+
+_index.test.ts_ is a file containing corresponding unit tests (UTs) for implementations in index.ts.
+
+### types.ts
+
+_types.ts_ is where you should define all variables' types.
+
+### constant.ts
+
+_constant.ts_ is where you should put all constants related to the connector, including _endpoints_, _metadata_, and so on.
+
+### mock.ts
+
+_mock.ts_ is the file you may put mocked values used for testing.
+
+### utils.ts
+
+_utils.ts_ is the file where developers sometimes put utility functions and utils.test.ts should contain relating UTs.
+
+### package.json
+
+_package.json_ contains configurations of this connector repo.
+
+### tsconfig.\*.json
+
+_tsconfig.\*.json_ refers to a bundle of files with Typescript (TS) compiler configs.
+
+:::tip
+To correctly complete _package.json_ and _tsconfig.\*.json_, you can check these files of other connectors.
+:::
+
+## Guidelines to implement connector
+
+After taking a look at connector's file structure, let's talk about the implementation and main idea of developing a connector.
+
+### Create a new account on the connector's website
+
+Looking at the website and its console is always the first step in building a connector. You can find out some basic information about the connector provider.
+
+### Search for the document which illustrates the functionality and workflow
+
+We should search for documents with different topics as connectors vary by type: _Social Connector_ is used to guide end-users through OAuth 2.0 authorization sign-in flow, and _SMS/Email Connector_ is designed to call message sender APIs.
+
+:::tip
+_Social Connector_ keyword(s): "authorization flow", "OAuth 2.0" and "obtaining user profile".<br/>
+_SMS/EMail Connector_ keyword: "integrate SMS/Email sender API".
+:::
+
+### Organize key information from documents (Implementation)
+
+#### constant.ts
+
+import ContentsInConstant from './fragments/\_constant_contents.md';
+
+<ContentsInConstant />
+
+#### types.ts
+
+import ContentsInTypes from './fragments/\_types_contents.md';
+
+<ContentsInTypes />
+
+#### utils.ts^
+
+import ContentsInUtils from './fragments/\_utils_contents.md';
+
+<ContentsInUtils />
+
+#### index.ts
+
+import ContentsInIndex from './fragments/\_index_contents.md';
+
+<ContentsInIndex />
+
+_**Congratulations! Your connector should be ready for work after going through this guide, try it out!**_ :rocket::rocket::rocket:
