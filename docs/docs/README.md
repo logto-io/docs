@@ -5,7 +5,7 @@ slug: /
 
 # 💁 Introduction
 
-🤘 Logto helps you quickly focus on everything after signing in.
+Logto helps you build the sign-in experience and user identity within minutes.
 
 Main features:
 
