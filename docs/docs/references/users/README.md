@@ -7,7 +7,7 @@ We will describe the user-related concepts and details in the following.
 
 Each user has a profile containing the user information.
 
-A user profile consists of a few sections:
+A user profile consists of the following types of data:
 
 - [**Basic data**](#basic-data): contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
 - [**Custom data**](#custom-data): contains additional info in customizable attributes, such as user-preferred color and language.
@@ -16,16 +16,7 @@ A user profile consists of a few sections:
 ### All attributes
 
 The following attributes (except `password_encrypted` and `password_encryption_method`) are visible on the user profile,
-which means you can view them using Management API.
-
-:::note The meanings of some following table columns
-
-- **Unique**: Ensures the _uniqueness_ of the values entered into an attribute of a DB table.
-- **Required**: Ensures that the values entered an attribute of a DB table can NOT be NULL.
-
-:::
-
-<br/>
+which means you can query them using Management API.
 
 | Name                        | Type         | Description                                   | Unique | Required |
 | --------------------------- | ------------ | --------------------------------------------- | ------ | -------- |
@@ -42,6 +33,13 @@ which means you can view them using Management API.
 | last_sign_in_at             | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
 | password_encrypted          | string       | Encrypted password                            | ❌     | ❌       |
 | password_encryption_method  | string       | Password encryption method                    | ❌     | ❌       |
+
+:::note
+
+- **Unique**: Ensures the _uniqueness_ of the values entered into an attribute of a DB table.
+- **Required**: Ensures that the values entered an attribute of a DB table can NOT be NULL.
+
+:::
 
 ---
 
@@ -80,7 +78,7 @@ A user that signed in with Facebook:
 }
 ```
 
-You can view the user profile using
+You can query the user profile using
 [Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) or
 [Management API](/docs/recipes/manage-users/using-management-api), such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>.
 
