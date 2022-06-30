@@ -1,16 +1,16 @@
 import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
-# 📁 API Resource
+# 📁 API 资源
 
 ## 简介
 
-### 什么是 API Resource?
+### 什么是 API 资源?
 
-API resources, 或被称之为 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), 被用来声明用户所请求的目标服务接口或者资源。通常是一个指向到接口或资源地址的 URI 变量。
+API 资源, 即 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), 被用来声明用户所请求的目标服务接口或者资源。通常是一个指向到接口或资源地址的 URI 变量。
 
-### 为什么需要 API Resource
+### 为什么需要 API 资源
 
-Logto, 作为一个授权服务器，旨在为大量不同的资源和接口提供权限服务。我们将会根据用户所声明的 API Resource 标识来生成和颁发带有特定内容、类型，和受众目标的加密令牌。
+Logto, 作为一个授权服务器，旨在为大量不同的资源和接口提供权限服务。我们将会根据用户所声明的 API 资源标识来生成和颁发带有特定内容、类型，和受众目标的加密令牌。
 
 将授权令牌及对应的权限校验应用到你的请求当中，可以更好的保护你的私有资源不被匿名身份者访问或者攻击。
 
@@ -32,13 +32,13 @@ Logto, 作为一个授权服务器，旨在为大量不同的资源和接口提�
 https://api.logto.io
 ```
 
-默认初始状态下，该 URI 就会被作为一个 API Resource 注册在 Logto 侧。 所有该地址下的管理接口都会受到 Logto 服务器的保护。
+默认初始状态下，该 URI 就会被作为一个 API 资源注册在 Logto 侧。 所有该地址下的管理接口都会受到 Logto 服务器的保护。
 
-### Logto API Resource 的数据格式
+### Logto API 资源的数据格式
 
 <APIResourceSchema />
 
-## API Resource 是如何运作的
+## API 资源是如何运作的
 
 ### 1. 授权请求
 
@@ -70,9 +70,9 @@ POST https://logto.dev/oidc/token HTTP/1.1
 
 请求成功后，Logto 将颁发一个 `access_token` 访问令牌，其受众目标仅限于该被请求的接口或资源。
 
-### 3. API Resource 请求
+### 3. API 请求
 
-每一个由客户端发起面向一个 API resource 访问的请求头中将携带一个由 Logto 颁发，带有受众，授权，时效等信息的 `access_token` 加密令牌。
+每一个由客户端发起面向一个 API 资源访问的请求头中将携带一个由 Logto 颁发，带有受众，授权，时效等信息的 `access_token` 加密令牌。
 
 ```bash
 GET https://logto.dev/api/users
