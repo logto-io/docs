@@ -214,3 +214,69 @@ Updating a user's _custom data_ will overwrite (not merge) its original content 
 :::
 
 ### Identities
+
+_Identities_ contain the user info retrieved from social sign-in
+(a.k.a. sign-in with a social connector).
+
+The user info from individual social identity providers varies by provider,
+but it will typically include the following:
+
+- Name of this provider, such as lowercase "facebook", "google", or "wechat"
+- User's unique identifier for this provider
+- User's name
+- User's verified email
+- User's avatar
+
+The user may link their account to multiple social identity providers via social sign-in, such as Facebook, Google, and Wechat;
+the related user info retrieved from these providers will be stored in the _identities_ object.
+
+Sample _identities_ from a user:
+
+```json
+{
+  "facebook": {
+    "userId": "5110888888888888",
+    "details": {
+      "id": "5110888888888888",
+      "name": "John Joe",
+      "email": "johnjoe@logto.io",
+      "avatar": "https://logto.dev/console/avatar-006.89b02841.png"
+    }
+  },
+  "github": {
+    "userId": "10599999",
+    "details": {
+      "id": "10599999",
+      "name": "John Joe",
+      "email": "johnjoe@logto.io",
+      "avatar": "https://logto.dev/console/avatar-004.bbfb95ff.png"
+    }
+  },
+  "google": {
+    "userId": "100001553333333333333",
+    "details": {
+      "id": "100001553333333333333",
+      "name": "John Joe",
+      "email": "johnjoe@logto.io",
+      "avatar": "https://logto.dev/console/avatar-007.e3c47716.png"
+    }
+  },
+  "wechat": {
+    "userId": "O8sU-6JWMMNZzuXo6-xaEjouyQZ8",
+    "details": {
+      "id": "O8sU-6JWMMNZzuXo6-xaEjouyQZ8",
+      "name": "John Joe",
+      "avatar": "https://logto.dev/console/avatar-005.52916e5f.png"
+    }
+  }
+}
+```
+
+:::info
+
+The _identities_ can NOT be updated using Admin Console or Management API.
+
+Every time the user signs in with a social connector,
+their _identities_ will be automatically imported or updated from the identity provider.
+
+:::
