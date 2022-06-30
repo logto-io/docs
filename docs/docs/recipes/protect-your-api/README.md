@@ -268,7 +268,7 @@ As mentioned above, all the authorized requests should carry an [JWT](https://da
 ### Get the JWK Public Key
 
 All tokens issued by logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). (See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for more details)
-Before moving on, you will need a public key to verify the signature of the Bearer Token(`access_token`).
+Before moving on, you will need a public key to verify the signature of the Bearer Toke (`access_token`).
 
 The key set can be inquired through Logto's **jwks_uri**: `https://<your-logto-domain>/oidc/jwks`.
 
@@ -366,4 +366,4 @@ const { payload } = await jwtVerify(
 
 ## Reference
 
-Logto uses the code-based OAuth 2.0 Authorization Protocol to make your API request flow more secure. If you are interested in the strategy behind, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
+Logto uses the code-based OAuth 2.0 Authorization Protocol to make your API request flow more secure. If you are interested in the strategy behind it, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
