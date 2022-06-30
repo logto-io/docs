@@ -29,19 +29,19 @@ which means you can view them using Management API.
 
 | Name                        | Type         | Description                                   | Unique | Required |
 | --------------------------- | ------------ | --------------------------------------------- | ------ | -------- |
-| id                          | text         | Unique identifier                             | ✅     | ✅       |
-| username                    | text         | Username for sign-in                          | ✅     | ❌       |
-| primary_email               | text         | Primary email                                 | ✅     | ❌       |
-| primary_phone               | text         | Primary phone number                          | ✅     | ❌       |
-| name                        | text         | Full name                                     | ❌     | ❌       |
-| avatar                      | text         | URL pointing to user's avatar image           | ❌     | ❌       |
+| id                          | string       | Unique identifier                             | ✅     | ✅       |
+| username                    | string       | Username for sign-in                          | ✅     | ❌       |
+| primary_email               | string       | Primary email                                 | ✅     | ❌       |
+| primary_phone               | string       | Primary phone number                          | ✅     | ❌       |
+| name                        | string       | Full name                                     | ❌     | ❌       |
+| avatar                      | string       | URL pointing to user's avatar image           | ❌     | ❌       |
 | role_names                  | string array | List of roles                                 | ❌     | ✅       |
 | [identities](#identities)   | object       | User info retrieved from social sign-in       | ❌     | ✅       |
 | [custom_data](#custom-data) | object       | Additional info in customizable attributes    | ❌     | ✅       |
-| application_id              | text         | Application ID that the user first registered | ❌     | ✅       |
+| application_id              | string       | Application ID that the user first registered | ❌     | ✅       |
 | last_sign_in_at             | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
-| password_encrypted          | text         | Encrypted password                            | ❌     | ❌       |
-| password_encryption_method  | text         | Password encryption method                    | ❌     | ❌       |
+| password_encrypted          | string       | Encrypted password                            | ❌     | ❌       |
+| password_encryption_method  | string       | Password encryption method                    | ❌     | ❌       |
 
 ---
 
