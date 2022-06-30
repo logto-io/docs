@@ -9,8 +9,7 @@ const lightCodeTheme = require('prism-react-renderer/themes/github');
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Logto Docs',
-  tagline: 'Dinosaurs are cool',
-  url: 'https://your-docusaurus-test-site.com',
+  url: 'https://docs.logto.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -33,6 +32,7 @@ const config = {
           breadcrumbs: false,
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl: 'https://github.com/logto-io/docs/tree/master',
+          editLocalizedFiles: true,
         },
         blog: false,
         theme: {
@@ -50,6 +50,7 @@ const config = {
           alt: 'Logto Logo',
           src: 'img/logto.svg',
           srcDark: 'img/logto_dark.svg',
+          href: 'https://logto.io',
         },
         items: [
           {
