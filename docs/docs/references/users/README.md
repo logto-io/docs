@@ -5,7 +5,7 @@ We will describe the user-related concepts and details in the following.
 
 ## Profile
 
-Each user has a profile containing the user information, more than the name and contact details.
+Each user has a profile containing the user information.
 
 A user profile consists of 3 sections:
 
