@@ -15,7 +15,8 @@ A user profile consists of a few sections:
 
 ### All attributes
 
-The following attributes (except password-related) are visible on the user profile.
+The following attributes (except `password_encrypted` and `password_encryption_method`) are visible on the user profile,
+which means you can view them using Management API.
 
 :::note The meanings of some following table columns
 
@@ -39,13 +40,8 @@ The following attributes (except password-related) are visible on the user profi
 | [custom_data](#custom-data) | object       | Additional info in customizable attributes    | ❌     | ✅       |
 | application_id              | text         | Application ID that the user first registered | ❌     | ✅       |
 | last_sign_in_at             | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
-
-Two other password-related attributes are invisible on the user profile.
-
-| Name                       | Type | Description                | Unique | Required |
-| -------------------------- | ---- | -------------------------- | ------ | -------- |
-| password_encrypted         | text | Encrypted password         | ❌     | ❌       |
-| password_encryption_method | text | Password encryption method | ❌     | ❌       |
+| password_encrypted          | text         | Encrypted password                            | ❌     | ❌       |
+| password_encryption_method  | text         | Password encryption method                    | ❌     | ❌       |
 
 ---
 
