@@ -22,9 +22,11 @@ A guarded request with an authorization token provided will help you protect you
 - Its value **MUST** be an absolute URI.
 - The URI **MUST NOT** include a fragment component.
 - It **SHOULD NOT** include a query component.
-- You **SHOULD** provide the most specific URI it can for the complete API or set of resources it intends to access. (In practice, a client will know a base URI for the application or resource that it interacts with, which is appropriate to use as the value of the resource parameter.)
+- You **SHOULD** provide the most specific URI it can for the complete API or set of resources it intends to access.
 
-i.e., Logto management API base URI
+In practice, a client may know a base URI for the application or resource to interact with. It would be appropriate to use it as the value of the resource parameter.
+
+I.e., Logto management API base URI
 
 ```
 https://api.logto.io
@@ -70,7 +72,7 @@ An access token with the audience restricted to the requested resource will be g
 
 ### 3. API resource request
 
-Client request for the API resource with `access_token` provided as Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`.
+Client sent a request to the API resource with `access_token` provided in the Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`.
 
 ```bash
 GET https://logto.dev/api/users
