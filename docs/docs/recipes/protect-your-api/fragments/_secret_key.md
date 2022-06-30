@@ -1,6 +1,6 @@
 ### Get the JWK Public Key
 
-All tokens issued by logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). (See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for more details)
+All tokens issued by Logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). (See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for more details)
 Before moving on, you will need a public key to verify the signature of the Bearer Token (`access_token`).
 
 The key set can be inquired through Logto's **jwks_uri**: `https://<your-logto-domain>/oidc/jwks`.

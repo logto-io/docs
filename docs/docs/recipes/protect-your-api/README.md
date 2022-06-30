@@ -12,7 +12,7 @@ import SecretKey from './fragments/\_secret_key.md';
 
 With a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect your APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
 
-## Register the API resource through Logto **Admin Console**
+## Register the API resources through Logto **Admin Console**
 
 Logto will identify the registered [API resources](../../references/resources/README.md) from an authorization request and issue an audience-restricted `access_token` accordingly.
 
@@ -53,7 +53,7 @@ See [API Resource Logto Schema](../../references/resources/README.md#logto-api-r
 All the API Resources record registered in Logto **Admin Console** will be shared across all your applications.
 :::
 
-## Integrate the resources into your client application authorization flow
+## Integrate the resources authorization flow into your client application
 
 Once we have your API resource well registered at the Logto server, we may move forward to your applications and see how Logto SDK works.
 
@@ -170,7 +170,12 @@ app.mount('#app');
 <TabItem value="js" label="VanillaJs">
 
 ```js
-// TODO:
+import LogtoClient from '@logto/browser';
+
+const logtoClient = new LogtoClient({
+  endpoint: '<your-logto-endpoint>', // E.g. http://localhost:3001
+  appId: '<your-application-id>',
+});
 ```
 
 </TabItem>
@@ -247,9 +252,9 @@ const token = await logtoClient.getAccessToken('<your-target-api-resource>');
 
 </Tabs>
 
-If the client is well-authorized, a [JWT](https://datatracker.ietf.org/doc/html/rfc7519) format `access_token` will be granted and issued by Logto, specifically for the requested resource entity, encrypted, audience-restricted, and with a lifetime. Carry all the necessary info that can represent the authority of this request.
+If the client is well-authorized, a [JWT](https://datatracker.ietf.org/doc/html/rfc7519) format `access_token` will be granted and issued by Logto, specifically for the requested resource entity, encrypted, audience-restricted, and with an expiration time. Carry all the necessary info that can represent the authority of this request.
 
-Append the token to your request's Authorization header as the Bearer code:
+Append the token to your request's Authorization header as the Bearer token:
 
 i.e.
 
@@ -262,7 +267,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 
 Now you have your application well equipped. All the requests from a sign-in user through your application will be well-authorized. Let's go back to your server-side and block out those anonymous attempts.
 
-## Parse and Validate the API request's authorization
+## Parse and Validate the API request's authorization token
 
 The most crucial step, protect your API resources with trustworthy token validation.
 
