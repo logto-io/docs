@@ -1,4 +1,4 @@
-Connector's class is an implementation among _SMSConnector_, _EmailConnector_ and _SocialConnector_. See (TODO: add link to _@logto/connector-types_) to have a whole picture of connector types.
+Connector's class is an implementation among _SMSConnector_, _EmailConnector_, and _SocialConnector_. See (TODO: add a link to _@logto/connector-types_) to have a whole picture of connector types.
 
 :::tip
 The function requirements vary by different connector types.
@@ -13,8 +13,8 @@ Find more on (TODO: link to intro page of OAuth 2.0)
 - "Get access token with authorization code" method is also expected for most _Social Connectors_.
 
 :::note
-For most of the _Social Connectors_, getting user profile with end-user's authorization is a two-step method (assume that user authorization succeed):
+For most of the _Social Connectors_, getting a user profile with end-users authorization is a two-step method (assume that user authorization succeeds):
 
-1. Exchange `accessToken` with `authCode` which is granted by connector vendor.
+1. Exchange `accessToken` with `authCode`, granted by connector vendor.
 2. Request for open user profile using `accessToken`.
    :::
