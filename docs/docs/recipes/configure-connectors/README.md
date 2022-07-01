@@ -18,7 +18,7 @@ Let's start from Admin Console, signing in with your Logto account ("admin" acce
 
 Click the **Connectors** button on the sidebar :neutral_face:
 
-:ghost:**Welcome to the world of _connectors_**:ghost:
+:ghost: **Welcome to the world of _connectors_** :ghost:
 
 _Connectors_ can be classified into three types: _SMS Connector_, _Email Connector_ and _Social Connector_. See [connector reference](../../references/connectors/README.md) for more details about **connector type**.
 
