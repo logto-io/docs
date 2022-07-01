@@ -243,34 +243,15 @@ Sample _identities_ from a user:
       "avatar": "https://logto.dev/console/avatar-006.89b02841.png"
     }
   },
-  "github": {
-    "userId": "10599999",
-    "details": {
-      "id": "10599999",
-      "name": "John Joe",
-      "email": "johnjoe@logto.io",
-      "avatar": "https://logto.dev/console/avatar-004.bbfb95ff.png"
-    }
-  },
-  "google": {
-    "userId": "100001553333333333333",
-    "details": {
-      "id": "100001553333333333333",
-      "name": "John Joe",
-      "email": "johnjoe@logto.io",
-      "avatar": "https://logto.dev/console/avatar-007.e3c47716.png"
-    }
-  },
   "wechat": {
     "userId": "O8sU-6JWMMNZzuXo6-xaEjouyQZ8",
     "details": {
       "id": "O8sU-6JWMMNZzuXo6-xaEjouyQZ8",
       "name": "John Joe",
-      "avatar": "https://logto.dev/console/avatar-005.52916e5f.png"
+      "avatar": "https://logto.dev/console/avatar-004.bbfb95ff.png"
     }
   }
 }
-```
 
 :::info
 
