@@ -18,4 +18,4 @@ If you change the living SMS or Email connector and save changes, the previous S
 You may keep the old connectors' config properly if you want to switch back to those connectors in the future.
 :::
 
-You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in.mdx) as soon as you finish the setup.
+You can check out [how to enable SMS or email passcode sign-in](/docs/docs/tutorials/get-started/enable-passcode-sign-in.mdx) as soon as you finish the setup.
