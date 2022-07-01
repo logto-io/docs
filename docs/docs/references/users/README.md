@@ -113,12 +113,12 @@ When the user has not registered with their phone number, their _primary phone_ 
 When the _primary phone_ is non-empty, it should contain numbers prefixed with the
 [country calling code](https://en.wikipedia.org/wiki/List_of_country_calling_codes) (excluding the plus sign `+`).
 
-#### Name
+#### name
 
 _name_ is the user's full name.
 Its max length is 128.
 
-#### Avatar
+#### avatar
 
 _avatar_ is the URL pointing to the user's avatar image.
 
