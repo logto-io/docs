@@ -116,7 +116,7 @@ When the _primary phone_ is non-empty, it should contain numbers prefixed with t
 #### Name
 
 _Name_ is the user's full name.
-It should be at most 128 characters.
+Its max length is 128.
 
 #### Avatar
 
