@@ -221,7 +221,7 @@ _Identities_ contain the user info retrieved from social sign-in
 The user info varies by provider,
 but it will typically include the following:
 
-- Name of this provider, such as lowercase "facebook", "google", or "wechat"
+- [Target](#TODO-link-to-connector-reference) of this provider, such as lowercase "facebook", "google", or "wechat"
 - User's unique identifier for this provider
 - User's name
 - User's verified email
