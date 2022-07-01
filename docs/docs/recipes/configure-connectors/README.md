@@ -14,7 +14,7 @@ Don't worry, this doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
 
-Let's start from [Admin Console](https://logto.dev/console), signing in with your Logto account ("admin" access needed). You may [create an admin account](../../tutorials/get-started/#create-an-admin-account) if you don't have one.
+Let's start from Admin Console, signing in with your Logto account ("admin" access needed). You may [create an admin account](../../tutorials/get-started.mdx#create-an-admin-account) if you don't have one.
 
 Click the **Connectors** button on the sidebar :neutral_face:
 
