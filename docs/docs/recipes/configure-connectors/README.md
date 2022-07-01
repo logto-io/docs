@@ -8,7 +8,8 @@ _Connectors_ are the bridge between Logto and other third-party vendors who prov
 
 Logto provides you with many connectors to give end-users access to third-party providers. Such as Google, GitHub, Facebook, SendGrid mail, etc.
 
-You may feel annoyed when using such robust connectors:sob:?<br/>
+You may feel annoyed when using such robust connectors? :sob:
+
 Don't worry, this doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
