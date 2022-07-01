@@ -17,3 +17,5 @@ You can bring ONLY ONE _SMS Connector_ (or _Email Connector_) "alive".
 If you change the "living" SMS or Email connector and save changes, the previous SMS or Email connector will be disabled automatically. Also, the config of past connectors will lose track.<br/>
 You may keep the old connectors' config properly if you want to switch back to those connectors in the future.
 :::
+
+You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in.mdx) as soon as you finish the setup.

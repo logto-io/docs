@@ -15,3 +15,5 @@ You can set up a single **_Native_** connector w/o adding a **_Web_** connector 
 :::
 
 Follow the README to compose the connector config JSON with little effort.
+
+See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in.mdx) to bring your social connector into use.
