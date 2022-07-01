@@ -8,13 +8,13 @@ _Connectors_ are the bridge between Logto and other third-party vendors who prov
 
 Logto provides you with many connectors to give end-users access to third-party providers. Such as Google, GitHub, Facebook, SendGrid mail, etc.
 
-You may feel lost when using connectors as this is a brand new concept :sob:
+You may feel lost when using connectors as this is a brand new concept. :sob:
 
-Don't worry; this doc will show you an easy way to have things done!
+Don't worry. This doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
 
-Let's start from Admin Console, signing in with your Logto account ("admin" access needed). You may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
+Let's start from Admin Console, signing in with your Logto account ("admin" role needed). You may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
 
 Click the **Connectors** button on the sidebar :neutral_face:
 
