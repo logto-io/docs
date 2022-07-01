@@ -218,8 +218,7 @@ Updating a user's _custom data_ will overwrite (not merge) its original content 
 _Identities_ contains the user info retrieved from social sign-in
 (i.e., sign-in with a social connector).
 
-The user info varies by provider,
-but it will typically include the following:
+The user info varies by provider, and it typically includes the following:
 
 - [Target](#TODO-link-to-connector-reference) of this provider, such as lowercase "facebook", "google", or "wechat"
 - User's unique identifier for this provider
