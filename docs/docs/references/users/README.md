@@ -216,7 +216,7 @@ Updating a user's _custom data_ will overwrite (not merge) its original content 
 ### Identities
 
 _Identities_ contain the user info retrieved from social sign-in
-(a.k.a. sign-in with a social connector).
+(i.e., sign-in with a social connector).
 
 The user info varies by provider,
 but it will typically include the following:
