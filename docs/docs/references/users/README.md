@@ -252,6 +252,7 @@ Sample _identities_ from a user:
     }
   }
 }
+```
 
 :::info
 
