@@ -227,7 +227,7 @@ but it will typically include the following:
 - User's verified email
 - User's avatar
 
-The user may link their account to multiple social identity providers via social sign-in, such as Facebook, Google, and Wechat;
+The user's account may be linked to multiple social identity providers via social sign-in, such as Facebook, Google, and WeChat;
 the related user info retrieved from these providers will be stored in the _identities_ object.
 
 Sample _identities_ from a user:
