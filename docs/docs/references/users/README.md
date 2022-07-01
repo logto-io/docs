@@ -83,31 +83,31 @@ You can query the user profile using
 [Management API](../../../docs/recipes/manage-users/using-management-api),
 such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>.
 
-### Basic data
+### basic data
 
-_Basic data_ contains the basic user info in pre-defined attributes.
+_basic data_ contains the basic user info in pre-defined attributes.
 
-#### User ID
+#### user id
 
-_User ID_ is a unique auto-generated key to identify the user in Logto.
+_user id_ is a unique auto-generated key to identify the user in Logto.
 
-#### Username
+#### username
 
-_Username_ is used for sign-in with _username_ and password.
+_username_ is used for sign-in with _username_ and password.
 
 When the user has not registered with their username, their _username_ may be empty.
 When the _username_ is non-empty, it should be at most 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
 
-#### Primary email
+#### primary email
 
-_Primary email_ is the user's email address, used for sign-in with the email and passcode.
+_primary email_ is the user's email address, used for sign-in with the email and passcode.
 
 When the user has not registered with their email, their _primary email_ may be empty.
 When the _primary email_ is non-empty, it should be at most 128 characters.
 
-#### Primary phone
+#### primary phone
 
-_Primary phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
+_primary phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
 When the user has not registered with their phone number, their _primary phone_ may be empty.
 When the _primary phone_ is non-empty, it should contain numbers prefixed with the
@@ -115,19 +115,19 @@ When the _primary phone_ is non-empty, it should contain numbers prefixed with t
 
 #### Name
 
-_Name_ is the user's full name.
+_name_ is the user's full name.
 Its max length is 128.
 
 #### Avatar
 
-_Avatar_ is the URL pointing to the user's avatar image.
+_avatar_ is the URL pointing to the user's avatar image.
 
 If the user registers with a social connector like Facebook and WeChat, their _avatar_ may be retrieved from the social user info.
 Its max length is 2048.
 
-#### Role names
+#### role names
 
-_Roles names_ represent the roles granted to the user in Logto.
+_roles names_ represent the roles granted to the user in Logto.
 
 A _role_ is a group of permissions that you can grant to users.
 Using roles makes it easier to grant, revoke, and adjust permissions than assigning permissions to users individually.
@@ -138,24 +138,24 @@ For example, only the users whose roles names contain `admin`, i.e., the admin u
 
 :::
 
-#### Application ID
+#### application id
 
-_Application ID_ is the [application ID](../applications/#application-id) that the user first registered.
+_application id_ is the [application ID](../applications/#application-id) that the user first registered.
 
-#### Last signed in at
+#### last signed in at
 
-_Last signed in at_ is the timestamp with the timezone when the user signed in last time.
+_last signed in at_ is the timestamp with the timezone when the user signed in last time.
 
-#### Password encrypted
+#### password encrypted
 
-_Password encrypted_ is used to store the user's encrypted password.
+_password encrypted_ is used to store the user's encrypted password.
 
 When the user has not registered with their username and password, their _password encrypted_ may be empty.
 The password before encryption should be at least six characters.
 
-#### Password encryption method
+#### password encryption method
 
-_Password encryption method_ is used to encrypt the user's password.
+_password encryption method_ is used to encrypt the user's password.
 When the user has not registered with their username and password, their _password encryption method_ may be empty.
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
@@ -169,9 +169,9 @@ Sample a `password_encrypted` and `password_encryption_method` from a user whose
 }
 ```
 
-### Custom data
+### custom data
 
-_Custom data_ contains additional info in customizable attributes.
+_custom data_ contains additional info in customizable attributes.
 For example, you can use _custom data_ to do the following things:
 
 - Record whether or not specific actions have been done by the user, such as having seen the welcome page.
@@ -213,9 +213,9 @@ Updating a user's _custom data_ will overwrite (not merge) its original content 
 
 :::
 
-### Identities
+### identities
 
-_Identities_ contains the user info retrieved from social sign-in
+_identities_ contains the user info retrieved from social sign-in
 (i.e., sign-in with a social connector).
 
 The user info varies by provider, and it typically includes the following:
