@@ -47,7 +47,7 @@ const config = {
     ({
       navbar: {
         logo: {
-          alt: 'Logto Logo',
+          alt: 'silverhand.io',
           src: 'img/logto.svg',
           srcDark: 'img/logto_dark.svg',
           href: 'https://logto.io',
