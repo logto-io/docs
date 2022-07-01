@@ -311,4 +311,4 @@ See the oidc-provider's [documentation](https://github.com/panva/node-oidc-provi
 
 ## Manage users
 
-You can check out [Manage users](../../recipes/manage-users/README) for details.
+You can check out [Manage users](../../recipes/manage-users/) for details.
