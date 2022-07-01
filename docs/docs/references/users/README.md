@@ -218,7 +218,7 @@ Updating a user's _custom data_ will overwrite (not merge) its original content 
 _Identities_ contain the user info retrieved from social sign-in
 (a.k.a. sign-in with a social connector).
 
-The user info from individual social identity providers varies by provider,
+The user info varies by provider,
 but it will typically include the following:
 
 - Name of this provider, such as lowercase "facebook", "google", or "wechat"
