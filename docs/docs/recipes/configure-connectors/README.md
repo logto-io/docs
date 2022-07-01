@@ -8,9 +8,9 @@ _Connectors_ are the bridge between Logto and other third-party vendors who prov
 
 Logto provides you with many connectors to give end-users access to third-party providers. Such as Google, GitHub, Facebook, SendGrid mail, etc.
 
-You may feel annoyed when using such robust connectors? :sob:
+You may feel lost when using connectors as this is a brand new concept :sob:
 
-Don't worry, this doc will show you an easy way to have things done!
+Don't worry; this doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
 
@@ -22,7 +22,7 @@ Click the **Connectors** button on the sidebar :neutral_face:
 
 _Connectors_ can be classified into three types: _SMS Connector_, _Email Connector_ and _Social Connector_. See [connector reference](../../references/connectors/README.md) for more details about **connector type**.
 
-You can continue setting up _Email connector_ or _SMS connector_, and need to go to "Social connectors" tab before adding _Social connector_.
+You can continue setting up _Email connector_ or _SMS connector_, and you need to go to "Social connectors" tab before adding _Social connector_.
 
 :::note
 Move on to detailed guides for different connector types' configuration: [**_SMS or Email connector_**](./sms-or-email-connector.md) or [**_Social connector_**](./social-connector.md).
