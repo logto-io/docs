@@ -123,7 +123,7 @@ It should be at most 128 characters.
 _Avatar_ is the URL pointing to the user's avatar image.
 
 If the user registers with a social connector like Facebook and WeChat, their _avatar_ may be retrieved from the social user info.
-It should be at most 2048 characters.
+Its max length is 2048.
 
 #### Role names
 
