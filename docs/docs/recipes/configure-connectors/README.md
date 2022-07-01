@@ -6,7 +6,7 @@ sidebar_position: 5
 
 _Connectors_ are the bridge between Logto and other third-party vendors who provide short message service (SMS), email service, or user information on wildly accepted social media.
 
-Logto Team provides you with many connectors to give end-users access to third-party providers' services. Such as Google, GitHub, Facebook, SendGrid mail, etc.
+Logto provides you with many connectors to give end-users access to third-party providers. Such as Google, GitHub, Facebook, SendGrid mail, etc.
 
 You may feel annoyed when using such robust connectors:sob:?<br/>
 Don't worry, this doc will show you an easy way to have things done!
