@@ -12,7 +12,7 @@ Follow the README on the left and compose the connector config JSON in the text 
 You can change the current SMS or Email connector in the top-right corner on the connector details page, where a review of the connector README is also available.
 
 :::note
-You can bring **only one _SMS Connector_ (or _Email Connector_)** "alive".
+You can bring ONLY ONE _SMS Connector_ (or _Email Connector_) "alive".
 
 If you change the "living" SMS or Email connector and save changes, the previous SMS or Email connector will be disabled automatically. Also, the config of past connectors will lose track.<br/>
 You may keep the old connectors' config properly if you want to switch back to those connectors in the future.
