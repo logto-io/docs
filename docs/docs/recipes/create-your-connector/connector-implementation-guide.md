@@ -16,11 +16,11 @@ Looking at the website and its console is always the first step in building a co
 We should search for documents with different topics as connectors vary by type: _Social Connector_ is used to guide end-users through OAuth 2.0 authorization sign-in flow, and _SMS/Email Connector_ is designed to call message sender APIs.
 
 :::tip
-_Social Connector_ keyword(s): "authorization flow", "OAuth 2.0" and "obtaining user profile".<br/>
-_SMS/EMail Connector_ keyword: "integrate SMS/Email sender API".
+_Social Connector_ doc keyword(s): authorization flow, OAuth 2.0 and obtaining user profile.<br/>
+_SMS/Email Connector_ doc keyword: integrate SMS/Email sender API.
 :::
 
-## Organize critical information from documents (Implementation)
+## Implementation and critical information composition
 
 ### constant.ts
 
