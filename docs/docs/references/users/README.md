@@ -264,21 +264,16 @@ their _identities_ will be automatically imported or updated from the identity p
 
 ## Session and cookie
 
-A session is a group of interactions between a user and an application that takes place (maybe on different pages) within a period of time.
-A single session temporarily stores multiple interactions (such as sign-in, linking to a social network, consent authorization, and sign-out) before it ends.
-If the user leaves a website or closes the browser, the session will end by default.
-
 It's inconvenient to sign in every time the user re-visits the application.
-The application can extend the session by putting its information in a cookie for reuse to avoid this inconvenience.
-And the extended session will end when it expires or the user signs out.
+The application using Logto can extend the session by putting its information in
+[cookies](https://en.wikipedia.org/wiki/HTTP_cookie) for reuse to avoid this inconvenience.
+The extended session will end when it expires, the user signs out on purpose, or the password has been changed.
 
 ### Session lifetime
 
 The Logto session's _lifetime_ is 14 days by default, following the
 [oidc-provider TTL](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#ttl)
 ([Time To Live](https://en.wikipedia.org/wiki/Time_to_live)).
-
-After the user signs in, the session will live for its _lifetime_, e.g., 14 days.
 After the session expires (i.e., its _lifetime_ finishes), the user must sign in again.
 
 ### Session layers
@@ -295,10 +290,10 @@ Using Logto as an identity provider, three layers of sessions may be created:
 
 #### Sign Out
 
-All session layers should be cleared when a user tries to sign out fully.
+The session layers should be cleared when a user tries to sign out.
 
-- **Application Layer**: Clear the session, including the authentication info, in the browser's cookies, the local storage, or something else.
-  You may only need to call `signOut()` provided Logto's SDK since most of Logto's SDKs can manage session storage automatically by themselves.
+- **Application Layer**: Clear the session, including the authentication info, in the browser's cookies, local storage, etc.
+  You may only need to call `signOut()` provided by Logto's SDK since most of Logto's SDKs can manage session storage automatically by themselves.
   You can check out their source code for more details.
 - **Logto Layer**: The session will be cleared by redirecting to Logto's sign-out endpoint.
 - **Social Login Layer**: Usually, you don't need to manually sign out for a social identity provider to clear its session, which the provider should manage by itself.
