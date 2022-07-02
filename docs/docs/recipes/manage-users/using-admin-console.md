@@ -75,6 +75,6 @@ On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button.
 After you reset the password, copy and send it to the end-user.
 
 :::caution
-After closing the "Reset password" dialog, you can no longer view the password.
-If you forget to keep it, you have to reset it again.
+Once the "Reset password" modal is closed, you can no longer view the password.
+If you forget to keep it, you can reset it again.
 :::
