@@ -38,11 +38,11 @@ Based on the connector file structure, let's go through each file and figure out
 
 ## tsconfig.\*.json
 
-`tsconfig.\*.json` refers to compiler configuration files including `tsconfig.build.json` and `tsconfig.test.json`.<br/>
+`tsconfig.*.json` refers to compiler configuration files including `tsconfig.build.json` and `tsconfig.test.json`.<br/>
 The former `tsconfig.build.json` is usually needed to configure building process while the later `tsconfig.test.json` is required only when testing exists.
 
 :::tip
-To correctly complete `package.json` and `tsconfig.\*.json`, you may check other connectors for reference.
+To correctly complete `package.json` and `tsconfig.*.json`, you may check other connectors for reference.
 :::
 
 ## README.md
