@@ -40,7 +40,7 @@ Go and check out [_OAuth 2.0_ protocol](https://oauth.net/2/).
 :::note
 For most of the _Social Connectors_, obtaining a user profile with end-users authorization follows a two-step scheme (assume that user authorization succeeds):
 
-1. Swap `accessToken` with a connector vendor granted `authCode`.
+1. Fetch `accessToken` by a connector vendor granted `authCode`.
 2. Request for a publicly accessible user profile using `accessToken`.
 
 :::
