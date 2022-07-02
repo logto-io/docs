@@ -52,7 +52,7 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
   "primaryEmail": null,
   "primaryPhone": null,
   "name": "John Joe",
-  "avatar": "https://logto.dev/console/avatar-003.8dde785f.png",
+  "avatar": "https://example.com/avatar.png",
   "roleNames": ["admin"],
   "customData": {
     "preferences": {
@@ -67,7 +67,7 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
         "id": "106077000000000",
         "name": "John Joe",
         "email": "johnjoe@logto.io",
-        "avatar": "https://logto.dev/console/avatar-003.8dde785f.png"
+        "avatar": "https://example.com/avatar.png"
       }
     }
   },
