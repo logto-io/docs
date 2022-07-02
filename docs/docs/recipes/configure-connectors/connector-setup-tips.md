@@ -5,9 +5,9 @@ sidebar_position: 1
 
 # Connector setup tips
 
-A connector can be classified into two categories by its use cases: _SMS or Email connector_ and _Social connector_.
+A connector can be classified into two categories by its use cases: [_SMS or Email connector_](./connector-setup-tips.md/#sms-or-email-connector) and [_Social connector_](./connector-setup-tips.md/#social-connector).
 
-Let's go over some tips worthy of notice vary by previously mentioned cases.
+Let's go over some worthy of notice tips for previously mentioned cases.
 
 ## SMS or Email Connector
 
