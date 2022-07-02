@@ -34,57 +34,57 @@ Based on the connector file structure, let's go through each file and figure out
 
 ## package.json
 
-_package.json_ contains configurations of this connector repo.
+`package.json` contains configurations of this connector repo.
 
 ## tsconfig.\*.json
 
 `tsconfig.\*.json` refers to compiler configuration files including `tsconfig.build.json` and `tsconfig.test.json`.<br/>
-The former _tsconfig.build.json_ is usually needed to configure building process while the later _tsconfig.test.json_ is required only when testing exists.
+The former `tsconfig.build.json` is usually needed to configure building process while the later `tsconfig.test.json` is required only when testing exists.
 
 :::tip
-To correctly complete _package.json_ and _tsconfig.\*.json_, you may check other connectors for reference.
+To correctly complete `package.json` and `tsconfig.\*.json`, you may check other connectors for reference.
 :::
 
 ## README.md
 
-_README.md_ is an elaborated guide for setting up the connector's config.
+`README.md` is an elaborated guide for setting up the connector's config.
 
 ## logo.svg
 
-_logo.svg_ is a file that stores the connector's logo in vector image format.
+`logo.svg` is a file that stores the connector's logo in vector image format.
 
 ## logo-dark.svg
 
-_logo-dark.svg_ file contains vector graphic of connector's dark mode logo.
+`logo-dark.svg` file contains vector graphic of connector's dark mode logo.
 
 :::note
-See (TODO: link to connector reference logo part) to know more about the relationship between _logo.svg_ and _logo-dark.svg_.
+See (TODO: link to connector reference logo part) to know more about the relationship between `logo.svg` and `logo-dark.svg`.
 :::
 
 ## configTemplate.json
 
-_configTemplate.json_ gives an example of connector config.
+`configTemplate.json` gives an example of connector config.
 
 ## index.ts
 
-_index.ts_ is the file for connector class implementation.
+`index.ts` is the file for connector class implementation.
 
 ## index.test.ts
 
-_index.test.ts_ is a file containing corresponding unit tests (UTs) for implementations in _index.ts_.
+`index.test.ts` is a file containing corresponding unit tests (UTs) for implementations in `index.ts`.
 
 ## types.ts
 
-_types.ts_ is where you should define variables' types.
+`types.ts` is where you should define variables' types.
 
 ## constant.ts
 
-_constant.ts_ is where you should put constants related to the connector, including endpoints, connector metadata, etc.
+`constant.ts` is where you should put constants related to the connector, including endpoints, connector metadata, etc.
 
 ## mock.ts
 
-_mock.ts_ is the file you may put mocked values for testing purposes.
+`mock.ts` is the file you may put mocked values for testing purposes.
 
 ## utils.ts
 
-_utils.ts_ is the file where developers put utility functions, and _utils.test.ts_ should contain relating UTs.
+`utils.ts` is the file where developers put utility functions, and `utils.test.ts` should contain relating UTs.

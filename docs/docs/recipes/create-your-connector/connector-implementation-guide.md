@@ -11,7 +11,7 @@ After looking at the connector's file structure, let's discuss the implementatio
 
 Looking at the website and its console is always the first step in building a connector. You can find out some basic information about the connector provider.
 
-## Search for the document which illustrates the functionality and workflow
+## Search for the documentation which illustrates the functionality and workflow
 
 We should search for documents with different topics as connectors vary by type: _Social Connector_ is used to guide end-users through OAuth 2.0 authorization sign-in flow, and _SMS/Email Connector_ is designed to call message sender APIs.
 
