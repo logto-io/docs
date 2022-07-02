@@ -10,7 +10,8 @@ sidebar_position: 2
 [**Authentication**](../../../docs/references/core/#authentication) is REQUIRED when you're calling Management API.
 :::
 
-The user-related [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) APIs are mounted at `/api/users` except the user activities, a.k.a. user logs `/api/logs?userId=:userId`.
+The user-related [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer)
+APIs are mounted at `/api/users` except the user activities, i.e., user logs `/api/logs?userId=:userId`.
 
 What Admin Console can do, so do Management API.
 
