@@ -5,14 +5,15 @@ sidebar_position: 1
 
 # Connector file structure
 
-Attached is a file tree to demonstrate how are connectors' files organized.
+Attached is a file tree to demonstrate how are connectors' files organized as a TypeScript project.
 
 Files whose name ends up with `^` refer to an optional file, otherwise are required.
 
 ```
 ConnectorRootDir/
 ├── package.json
-├── tsconfig.*.json
+├── tsconfig.build.json
+├── tsconfig.test.json^
 ├── README.md
 ├── logo.svg
 ├── logo-dark.svg^
@@ -37,7 +38,8 @@ _package.json_ contains configurations of this connector repo.
 
 ## tsconfig.\*.json
 
-_tsconfig.\*.json_ refers to a bundle of compiler config files.
+_tsconfig.\*.json_ refers to compiler configuration files including _tsconfig.build.json_ and _tsconfig.test.json_.<br/>
+The former _tsconfig.build.json_ is usually needed to configure building process while the later _tsconfig.test.json_ is required only when testing exists.
 
 :::tip
 To correctly complete _package.json_ and _tsconfig.\*.json_, you may check other connectors for reference.
