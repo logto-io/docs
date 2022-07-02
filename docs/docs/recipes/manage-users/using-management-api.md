@@ -25,4 +25,4 @@ What Admin Console can do, so do Management API.
 | [Delete a user](../../../docs/recipes/manage-users/using-admin-console#delete-user)                             | <a href="/api/#tag/Users/paths/~1api~1users~1:userId/delete" target="_blank">`DELETE /api/users/:userId`</a>                                         |
 | [Remove social connection](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1identities~1:target/delete" target="_blank">`DELETE /api/users/:userId/identities/:target`</a> |
 
-See [API Reference](/api/#tag/Users) for details.
+See <a href="/api/#tag/Users" target="_blank">API Reference</a> for details.
