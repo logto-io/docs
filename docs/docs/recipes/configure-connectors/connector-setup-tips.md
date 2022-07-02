@@ -7,7 +7,7 @@ sidebar_position: 1
 
 A connector can be classified into two categories by its use cases: _SMS or Email connector_ and _Social connector_.
 
-Let's go over some tips worthy of notice by previously mentioned cases.
+Let's go over some tips worthy of notice vary by previously mentioned cases.
 
 ## SMS or Email Connector
 
