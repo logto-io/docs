@@ -20,10 +20,10 @@ Click the "Connectors" button on the sidebar :neutral_face:
 
 :ghost: **Welcome to the world of _connectors_** :ghost:
 
-_Connectors_ can be classified into three types: _SMS Connector_, _Email Connector_ and _Social Connector_. See [connector reference](../../references/connectors/README.md) for more details about connector type.
+_Connectors_ can be classified into three types: _SMS Connector_, _Email Connector_ and _Social Connector_. See [connector reference](../../references/connectors) for more details about connector type.
 
 You can continue setting up _Email connector_ or _SMS connector_, and you need to go to "Social connectors" tab before adding _Social connector_.
 
 :::note
-Move on to detailed guides for different connector types' configuration: [_SMS or Email connector_](./sms-or-email-connector.md) or [_Social connector_](./social-connector.md).
+Move on to detailed [connector setup tips](./connector-setup-tips) for different connector types' configuration.
 :::
