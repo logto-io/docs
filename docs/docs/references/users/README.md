@@ -36,8 +36,8 @@ which means you can query them using Management API.
 
 :::note
 
-- **Unique**: Ensures the [uniqueness](https://en.wikipedia.org/wiki/Unique_key#:~:text=uniqueness%20constraint) of the values entered into an attribute of a DB table.
-- **Required**: Ensures that the values entered an attribute of a DB table can NOT be NULL.
+- **Unique**: Ensures the [uniqueness](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS) of the values entered into an attribute of a database table.
+- **Required**: Ensures that the values entered an attribute of a database table can NOT be `NULL`.
 
 :::
 
