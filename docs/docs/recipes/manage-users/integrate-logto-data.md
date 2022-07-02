@@ -1,9 +1,9 @@
 ---
-sidebar_label: Manage on the storage
+sidebar_label: Integrate Logto data
 sidebar_position: 3
 ---
 
-# Manage user data on the storage
+# Integrate your data with Logto user data
 
 ## Identify user
 
