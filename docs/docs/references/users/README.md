@@ -36,7 +36,7 @@ which means you can query them using Management API.
 
 :::note
 
-- **Unique**: Ensures the _uniqueness_ of the values entered into an attribute of a DB table.
+- **Unique**: Ensures the [_uniqueness_](https://en.wikipedia.org/wiki/Unique_key#:~:text=uniqueness%20constraint) of the values entered into an attribute of a DB table.
 - **Required**: Ensures that the values entered an attribute of a DB table can NOT be NULL.
 
 :::
