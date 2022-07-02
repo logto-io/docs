@@ -10,4 +10,4 @@ They should be able to satisfy most users' needs at this stage, but _we will kee
 
 While we're working on more connectors, you can also develop your connectors. You are encouraged to share your connectors with the whole community.
 
-Let's see how to contribute to the Logto project by starting with building a connector :coffee:
+Let's see how to contribute to the Logto project by starting with building a connector. :coffee:

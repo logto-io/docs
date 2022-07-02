@@ -38,7 +38,7 @@ _package.json_ contains configurations of this connector repo.
 
 ## tsconfig.\*.json
 
-_tsconfig.\*.json_ refers to compiler configuration files including _tsconfig.build.json_ and _tsconfig.test.json_.<br/>
+`tsconfig.\*.json` refers to compiler configuration files including `tsconfig.build.json` and `tsconfig.test.json`.<br/>
 The former _tsconfig.build.json_ is usually needed to configure building process while the later _tsconfig.test.json_ is required only when testing exists.
 
 :::tip

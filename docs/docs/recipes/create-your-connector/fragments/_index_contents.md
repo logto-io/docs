@@ -23,7 +23,7 @@ interface SocialConnector extends BaseConnector {
 }
 ```
 
-To see connector methods' definition and build a picture of connector interface design, see [_connector-types_](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts). You can also find _ConnectorMetadata_ reference at "[Connectors](../../references/connectors)".
+To see connector methods' definition and build a picture of connector interface design, see [`@logto/connector-types`](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts). You can also find _ConnectorMetadata_ reference at "[Connectors](../../references/connectors)".
 
 - A connector `validateConfig` is obligatory for all connectors.
 - All _SMS Connectors_ and _Email Connectors_ require a `sendMessage` method to call providers message sending APIs.
@@ -42,4 +42,4 @@ For most of the _Social Connectors_, obtaining a user profile with end-users aut
 
 1. Swap `accessToken` with a connector vendor granted `authCode`.
 2. Request for a publicly accessible user profile using `accessToken`.
-   :::
+:::
