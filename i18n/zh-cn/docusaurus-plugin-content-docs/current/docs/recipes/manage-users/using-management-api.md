@@ -11,7 +11,8 @@ sidebar_position: 2
 调用管理 API 时必须进行 [认证（Authentication）](../../../docs/references/core/#认证authentication)。
 :::
 
-与用户相关的 [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer) API 都挂载在 `/api/users`，除了用户活动，也就是用户日志 `/api/logs?userId=:userId`。
+与用户相关的 [RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer)
+API 都挂载在 `/api/users`，除了用户活动，即用户日志 `/api/logs?userId=:userId`。
 
 「管理控制台」可以做什么，「管理 API」也可以。
 
