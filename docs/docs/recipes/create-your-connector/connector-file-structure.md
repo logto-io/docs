@@ -1,6 +1,6 @@
 ---
 sidebar_label: Connector file structure
-sidebar_position: 2
+sidebar_position: 1
 ---
 
 # Connector file structure
@@ -15,6 +15,7 @@ ConnectorRootDir/
 ├── tsconfig.*.json
 ├── README.md
 ├── logo.svg
+├── logo-dark.svg^
 ├── docs/
 │   └── configTemplate.json
 └── src/
@@ -22,9 +23,9 @@ ConnectorRootDir/
     ├── index.test.ts
     ├── types.ts
     ├── constant.ts
-    ├── mock.ts*
-    ├── utils.ts*
-    ├── utils.test.ts*
+    ├── mock.ts^
+    ├── utils.ts^
+    ├── utils.test.ts^
     └── ...
 ```
 

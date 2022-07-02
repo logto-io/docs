@@ -17,4 +17,4 @@ For most of the _Social Connectors_, obtaining a user profile with end-users aut
 
 1. Swap `accessToken` with a connector vendor granted `authCode`.
 2. Request for a publicly accessible user profile using `accessToken`.
-   :::
+:::

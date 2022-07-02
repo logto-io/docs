@@ -46,4 +46,4 @@ import ContentsInIndex from './fragments/\_index_contents.md';
 
 <ContentsInIndex />
 
-_**Congratulations! Your connector should be ready for work after going through this guide. Try it out!**_ :rocket: :rocket: :rocket:
+Congratulations! Your connector should be ready for work after going through this guide. Try it out! :rocket: :rocket: :rocket:
