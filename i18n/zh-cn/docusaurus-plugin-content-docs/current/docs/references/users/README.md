@@ -34,8 +34,8 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 
 :::note
 
-- **唯一的**: 确保输入到数据库表属性的值的 [唯一性](https://en.wikipedia.org/wiki/Unique_key#:~:text=uniqueness%20constraint)。
-- **必须的**: 确保输入到数据库表属性的值不能为 NULL。
+- **唯一的**: 确保输入到数据库表属性的值的 [唯一性](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS)。
+- **必须的**: 确保输入到数据库表属性的值不能为 `NULL`。
 
 :::
 
