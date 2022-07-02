@@ -8,9 +8,9 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 
 一份 _用户资料_ 由以下几个类型的数据组成：
 
-- [**基础数据**](#basic-data)：在预定义的属性中保存基础信息，例如用户 ID、用户名、邮箱、手机号以及用户上次登录的时间。
-- [**自定义数据**](#custom-data)：在可自定义的属性中保存附加信息，例如用户偏好的颜色和语言。
-- [**身份**](#identities)：包括从社交登录（即使用社交连接器登录）获取的用户信息，例如 Facebook、GitHub 和微信。
+- [**基础数据**](#基础数据basic-data)：在预定义的属性中保存基础信息，例如用户 ID、用户名、邮箱、手机号以及用户上次登录的时间。
+- [**自定义数据**](#自定义数据custom-data)：在可自定义的属性中保存附加信息，例如用户偏好的颜色和语言。
+- [**身份**](#身份identities)：包括从社交登录（即使用社交连接器登录）获取的用户信息，例如 Facebook、GitHub 和微信。
 
 ### 所有属性
 
@@ -52,7 +52,7 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
   "primaryEmail": null,
   "primaryPhone": null,
   "name": "John Joe",
-  "avatar": "https://scontent-hkg4-1.xx.fbcdn.net/v/t1.30497-1/84628273_176159830277856_972693363922829312_n.jpg?stp=c15.0.50.50a_cp0_dst-jpg_p50x50&_nc_cat=1&ccb=1-7&_nc_sid=12b3be&_nc_ohc=znOHiwVT5CwAX8wkzRF&_nc_ht=scontent-hkg4-1.xx&edm=AP4hL3IEAAAA&oh=00_AT_qaCclh_9rMWCfRcpyQzpP1Ep7oKHE7wKwkGfbWjYdeg&oe=62D83899",
+  "avatar": "https://logto.dev/console/avatar-003.8dde785f.png",
   "roleNames": ["admin"],
   "customData": {
     "preferences": {
@@ -67,7 +67,7 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
         "id": "106077000000000",
         "name": "John Joe",
         "email": "johnjoe@logto.io",
-        "avatar": "https://scontent-hkg4-1.xx.fbcdn.net/v/t1.30497-1/84628273_176159830277856_972693363922829312_n.jpg?stp=c15.0.50.50a_cp0_dst-jpg_p50x50&_nc_cat=1&ccb=1-7&_nc_sid=12b3be&_nc_ohc=znOHiwVT5CwAX8wkzRF&_nc_ht=scontent-hkg4-1.xx&edm=AP4hL3IEAAAA&oh=00_AT_qaCclh_9rMWCfRcpyQzpP1Ep7oKHE7wKwkGfbWjYdeg&oe=62D83899"
+        "avatar": "https://logto.dev/console/avatar-003.8dde785f.png"
       }
     }
   },
@@ -79,31 +79,3 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 你可以使用「[管理控制台](../../../docs/recipes/manage-users/using-admin-console#查看和更新用户资料)」或
 「[管理 API](../../../docs/recipes/manage-users/using-management-api)」来查询用户资料，
 例如 <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>。
-
-### basic data
-
-#### user id
-
-#### username
-
-#### primary email
-
-#### primary phone
-
-#### name
-
-#### avatar
-
-#### role names
-
-#### application id
-
-#### last signed in at
-
-#### password encrypted
-
-#### password encryption method
-
-### custom data
-
-### identities
