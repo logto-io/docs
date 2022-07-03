@@ -102,6 +102,8 @@ _roles_names_ represent the roles granted to the user in Logto.
 
 You cannot update the user's _role names_ using Admin Console for now. Stay tuned.
 
+You cannot update the user's _role names_ using Admin Console for now. Stay tuned.
+
 :::info
 
 For example, only the users whose _roles_names_ contain `admin`, i.e., the admin users, have permission to use "Admin Console" and "Management API" in Logto.
