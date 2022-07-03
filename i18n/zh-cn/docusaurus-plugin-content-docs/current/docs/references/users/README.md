@@ -155,7 +155,7 @@ _password encryption method_ 即用户密码的加密方式。
 
 Logto 默认使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 的实现 [node-argon2](https://github.com/ranisalt/node-argon2) 作为加密方式；如果你有兴趣，可以参阅链接的资料以了解细节。
 
-`password_encrypted` 和 `password_encryption_method` 的示例，明文密码为“123456”：
+`password_encrypted` 和 `password_encryption_method` 的示例，明文密码为 `123456`：
 
 ```json
 {
