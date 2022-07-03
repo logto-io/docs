@@ -135,7 +135,7 @@ _role_ 即角色，代表你授予给用户的一组权限。
 
 #### application id
 
-_application id_ 即用户首次注册时对应的 [应用 ID](../applications/#应用-id)（_client_id_）。
+_application id_ 即用户首次注册时对应的 [应用 ID](../applications/#应用-id)（_client id_）。
 
 #### last signed in at
 
