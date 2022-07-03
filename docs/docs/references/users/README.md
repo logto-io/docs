@@ -221,6 +221,7 @@ Updating a user's _custom_data_ will overwrite (not merge) its original content 
 
 _identities_ contains the user info retrieved from social sign-in
 (i.e., sign-in with a social connector).
+Each user's _identities_ is stored in an individual JSON object.
 
 The user info varies by provider, and it typically includes the following:
 
