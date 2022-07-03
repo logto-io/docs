@@ -197,10 +197,10 @@ _custom data_ 即自定义数据，可以在这个可自定义的属性中保存
 
 :::
 
-You can update the user's _custom data_ using
-[Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) or
-[Management API](../../../docs/recipes/manage-users/using-management-api),
-such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_blank">`PATCH /api/users/:userId`</a>.
+你可以使用「[管理控制台](../../../docs/recipes/manage-users/using-admin-console#查看和更新用户资料)」或
+「[管理 API](../../../docs/recipes/manage-users/using-management-api)」
+来更新用户的自定义数据，
+例如 <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_blank">`PATCH /api/users/:userId`</a>。
 
 :::caution 小心谨慎地更新
 
