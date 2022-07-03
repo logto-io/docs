@@ -100,7 +100,7 @@ username 即用户名，用于用户名加密码的登录方式。
 _primary email_ 即主要邮箱，是用户的电子邮件地址，用于邮箱加验证码的登录方式。
 
 如果用户没用过邮箱注册，他们的主邮箱的值可能是空的。
-主邮箱的值非空时，最多包含 128 个字符。
+主邮箱的值非空时，最多 128 个字符。
 
 #### primary phone
 
@@ -111,14 +111,14 @@ _primary phone_ 即主要手机号，用于手机号加短信验证码的登录�
 
 #### name
 
-_name_ 即用户的全名，允许的最大长度为 128。
+_name_ 即用户的全名，最多 128 个字符。
 
 #### avatar
 
 _avatar_ 即用户的头像，是指向用户头像图片的 URL。
 
 如果用户使用 Facebook 和微信等社交连接器注册，则可能会直接采用社交用户信息中获取到的头像。
-允许的图片 URL 最大长度为 2048。
+允许的图片 URL 最多 2048 个字符。
 
 #### role names
 
@@ -146,7 +146,7 @@ _last signed in at_ 即用户上次登录时的带时区的时间戳。
 _password encrypted_ 即加密后的用户密码。
 
 当用户没用过用户名加密码的方式注册时，其加密密码可能是空的。
-如果有密码，则加密前的密码至少包含六个字符。
+如果有密码，则加密前的密码至少 6 个字符。
 
 #### password encryption method
 
@@ -155,7 +155,7 @@ _password encryption method_ 即用户密码的加密方式。
 
 Logto 默认使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 的实现 [node-argon2](https://github.com/ranisalt/node-argon2) 作为加密方式；如果你有兴趣，可以参阅链接的资料以了解细节。
 
-`password_encrypted` 和 `password_encryption_method` 的示例，来自一个密码为“123456”的用户：
+`password_encrypted` 和 `password_encryption_method` 的示例，明文密码为“123456”：
 
 ```json
 {
