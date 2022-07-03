@@ -90,24 +90,24 @@ _user id_ 即用户 ID，是自动生成的唯一键，用于标识 Logto 用户
 
 #### username
 
-username 即用户名，用于用户名加密码的登录方式。
+_username_ 即用户名，用于用户名加密码的登录方式。
 
-如果用户没用过用户名加密码的方式注册，他们的用户名可能是空的。
-用户名非空时，最多 128 个字符，只能包含字母、数字和下划线（`_`），不能以数字开头。
+如果用户没用过用户名加密码的方式注册，他们的 _username_ 可能是空的。
+_username_ 非空时，最多 128 个字符，只能包含字母、数字和下划线（`_`），不能以数字开头。
 
 #### primary email
 
 _primary email_ 即主要邮箱，是用户的电子邮件地址，用于邮箱加验证码的登录方式。
 
-如果用户没用过邮箱注册，他们的主邮箱的值可能是空的。
-主邮箱的值非空时，最多 128 个字符。
+如果用户没用过邮箱注册，他们的 _primary email_ 的值可能是空的。
+_primary email_ 的值非空时，最多 128 个字符。
 
 #### primary phone
 
 _primary phone_ 即主要手机号，用于手机号加短信验证码的登录方式。
 
-如果用户没用过电话号注册时，他们的主手机号的值可能是空的。
-主要手机号的值非空时，只能包含数字，且以 [国家呼叫代码](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
+如果用户没用过手机号注册时，他们的 _primary phone_ 的值可能是空的。
+_primary phone_ 的值非空时，只能包含数字，且以 [国家呼叫代码](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
 
 #### name
 
@@ -122,14 +122,14 @@ _avatar_ 即用户的头像，是指向用户头像图片的 URL。
 
 #### role names
 
-_roles names_ 即角色名称集合，表示在 Logto 中授予给该用户的角色集合。
+_roles names_ 即用户的角色名称集合，表示在 Logto 中授予给该用户的角色集合。
 
 _role_ 即角色，代表你授予给用户的一组权限。
 与单独为用户分配一个个权限相比，使用角色更便于授予、撤销和调整用户的权限。
 
 :::info
 
-例如，只有角色名称中包含 _admin_ 的用户，即管理员用户，才有权限使用 Logto 中的「管理控制台」和「管理 API」。
+例如，只有 _roles names_ 中包含 _admin_ 的用户，即管理员用户，才有权限使用 Logto 中的「管理控制台」和「管理 API」。
 
 :::
 
@@ -145,13 +145,13 @@ _last signed in at_ 即用户上次登录时的带时区的时间戳。
 
 _password encrypted_ 即加密后的用户密码。
 
-当用户没用过用户名加密码的方式注册时，其加密密码可能是空的。
-如果有密码，则加密前的密码至少 6 个字符。
+当用户没用过用户名加密码的方式注册时，其 _password encrypted_ 可能是空的。
+如果 _password encrypted_ 的值非空，则对应加密前的明文密码包含至少 6 个字符。
 
 #### password encryption method
 
 _password encryption method_ 即用户密码的加密方式。
-当用户没用过用户名加密码的方式注册时，其密码加密方式可能是空的。
+当用户没用过用户名加密码的方式注册时，其 _password encryption method_ 可能是空的。
 
 Logto 默认使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 的实现 [node-argon2](https://github.com/ranisalt/node-argon2) 作为加密方式；如果你有兴趣，可以参阅链接的资料以了解细节。
 
