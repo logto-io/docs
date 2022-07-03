@@ -186,7 +186,7 @@ _custom data_ 即自定义数据，可以在这个可自定义的属性中保存
 
 每个用户的 _custom data_ 都保存在一个单独的 JSON 对象中。
 
-:::caution 将敏感数据放到 _custom data_ 中
+:::caution 不要将敏感数据放到 _custom data_ 中
 
 你可以通过「管理 API」获取包含 _custom data_ 在内的完整用户资料，并将其发送到前端应用程序或外部后端服务。
 因此，将敏感数据放在 _custom data_ 中可能会导致敏感数据泄露。
@@ -204,7 +204,7 @@ such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_bla
 
 :::caution 小心谨慎地更新
 
-更新用户的 _custom data_ 将覆盖（而不是合并）其在存储中作为一个整体（JSON 对象）的原始内容。
+更新用户的 _custom data_ 将覆盖（而不是合并）其在存储中的原始内容。
 
 :::
 
