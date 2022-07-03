@@ -33,7 +33,6 @@ interface SocialConnector extends BaseConnector {
 - 所有的 _社交连接器_ 都应该有用用户授权拿到的 authorization code（授权码）交换得到 access token（访问令牌）的 `getUserInfo` 方法。
 
 :::tip
-The methods required by connectors vary by connector type.
 连接器的类型实现具体应该包含哪些方法，因其类型而异。
 
 想知道为什么 _社交连接器_ 一定要包含某些特定的方法？<br/>
