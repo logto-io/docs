@@ -140,7 +140,7 @@ For example, only the users whose roles names contain `admin`, i.e., the admin u
 
 #### application id
 
-_application id_ is the [application ID](../applications/#application-id) that the user first registered.
+_application id_ is the [application ID](../applications/#application-id) (i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)) that the user first registered.
 
 #### last signed in at
 
