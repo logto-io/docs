@@ -54,7 +54,7 @@ A user that signed in with Facebook:
   "primaryEmail": null,
   "primaryPhone": null,
   "name": "John Joe",
-  "avatar": "https://logto.dev/console/avatar-003.8dde785f.png",
+  "avatar": "https://example.com/avatar.png",
   "roleNames": ["admin"],
   "customData": {
     "preferences": {

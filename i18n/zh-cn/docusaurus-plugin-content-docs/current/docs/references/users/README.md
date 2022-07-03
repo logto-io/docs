@@ -16,21 +16,21 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 
 以下属性（`password_encrypted` 和 `password_encryption_method` 除外）在用户资料中可见，这意味着你可以使用「管理 API」查询它们。
 
-| 名称                                                      | 类型       | 描述                       | 唯一的 | 必须的 |
-| --------------------------------------------------------- | ---------- | -------------------------- | ------ | ------ |
-| [id](#user-id)                                            | 字符串     | 唯一标识符                 | ✅     | ✅     |
-| [username](#username)                                     | 字符串     | 用于登录的用户名           | ✅     | ❌     |
-| [primary_email](#primary-email)                           | 字符串     | 主要邮箱                   | ✅     | ❌     |
-| [primary_phone](#primary-phone)                           | 字符串     | 主要手机号                 | ✅     | ❌     |
-| [name](#name)                                             | 字符串     | 全名                       | ❌     | ❌     |
-| [avatar](#avatar)                                         | 字符串     | 用户头像图片的 URL         | ❌     | ❌     |
-| [role_names](#role-names)                                 | 字符串数组 | Role 的列表                | ❌     | ✅     |
-| [identities](#identities)                                 | 对象       | 从社交登录中获取的用户信息 | ❌     | ✅     |
-| [custom_data](#custom-data)                               | 对象       | 自定义的附加信息           | ❌     | ✅     |
-| [application_id](#application-id)                         | 字符串     | 用户首次注册的应用 ID      | ❌     | ✅     |
-| [last_sign_in_at](#last-signed-in-at)                     | 日期时间   | 用户上次登录的时间戳       | ❌     | ✅     |
-| [password_encrypted](#password-encrypted)                 | 字符串     | 加密的密码                 | ❌     | ❌     |
-| [password_encryption_method](#password-encryption-method) | 字符串     | 密码的加密方式             | ❌     | ❌     |
+| 名称                                                      | 类型         | 描述                       | 唯一的 | 必须的 |
+| --------------------------------------------------------- | ------------ | -------------------------- | ------ | ------ |
+| [id](#user-id)                                            | string       | 唯一标识符                 | ✅     | ✅     |
+| [username](#username)                                     | string       | 用于登录的用户名           | ✅     | ❌     |
+| [primary_email](#primary-email)                           | string       | 主要邮箱                   | ✅     | ❌     |
+| [primary_phone](#primary-phone)                           | string       | 主要手机号                 | ✅     | ❌     |
+| [name](#name)                                             | string       | 全名                       | ❌     | ❌     |
+| [avatar](#avatar)                                         | string       | 用户头像图片的 URL         | ❌     | ❌     |
+| [role_names](#role-names)                                 | string array | Role 的列表                | ❌     | ✅     |
+| [identities](#identities)                                 | object       | 从社交登录中获取的用户信息 | ❌     | ✅     |
+| [custom_data](#custom-data)                               | object       | 自定义的附加信息           | ❌     | ✅     |
+| [application_id](#application-id)                         | string       | 用户首次注册的应用 ID      | ❌     | ✅     |
+| [last_sign_in_at](#last-signed-in-at)                     | date time    | 用户上次登录的时间戳       | ❌     | ✅     |
+| [password_encrypted](#password-encrypted)                 | string       | 加密的密码                 | ❌     | ❌     |
+| [password_encryption_method](#password-encryption-method) | string       | 密码的加密方式             | ❌     | ❌     |
 
 :::note
 
