@@ -106,7 +106,7 @@ _primary_email_ 即主要邮箱，是用户的电子邮件地址，用于邮箱�
 _primary_phone_ 即主要手机号，用于手机号加短信验证码的登录方式。
 
 如该值通常来自于用户首次注册时使用的手机号。该值可能是 `null`。
-该值非空时，只能包含数字，且以 [国家地区编号](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
+该值非空时，只能包含数字，且以 [国家地区代码](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
 
 #### name
 
