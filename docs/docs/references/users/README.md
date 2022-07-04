@@ -103,14 +103,14 @@ When the _username_ is non-empty, it should be at most 128 characters, only cont
 primary_email is the user's email address, used for sign-in with the email and passcode.
 
 When the user has not registered with their email, their primary_email may be empty.
-When the primary_email is non-empty, it should be at most 128 characters.
+It should be no longer than 128 characters.
 
 #### primary_phone
 
 primary_phone is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
 When the user has not registered with their phone number, their primary_phone may be empty.
-When the primary_phone is non-empty, it should contain numbers prefixed with the
+When it's non-empty, it should contain numbers prefixed with the
 [country calling code](https://en.wikipedia.org/wiki/List_of_country_calling_codes) (excluding the plus sign `+`).
 
 #### name
@@ -129,7 +129,7 @@ Its max length is 2048.
 
 roles_names represent the roles granted to the user in Logto.
 
-You cannot update the user's role_names using Admin Console for now. Stay tuned.
+You cannot update the user's role_names using Admin Console for now.
 
 :::info
 
