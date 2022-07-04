@@ -93,22 +93,25 @@ _user_id_ is a unique auto-generated key to identify the user in Logto.
 
 _username_ is used for sign-in with _username_ and password.
 
-When the user has not registered with their _username_, its value may be empty.
-Its non-empty value should be no longer than 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
+Its value is from the username that the user first registered with.
+Its value may be `null`.
+Its non-null value should be no longer than 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
 
 #### primary_email
 
 _primary_email_ is the user's email address, used for sign-in with the email and passcode.
 
-When the user has not registered with their email, its value may be empty.
+Its value is usually from the email address that the user first registered with.
+Its value may be `null`.
 Its max length is 128.
 
 #### primary_phone
 
 _primary_phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
-When the user has not registered with their phone number, its value may be empty.
-Its non-empty value should contain numbers prefixed with the
+Its value is usually from the phone number that the user first registered with.
+Its value may be `null`.
+Its non-null value should contain numbers prefixed with the
 [country calling code](https://en.wikipedia.org/wiki/List_of_country_calling_codes) (excluding the plus sign `+`).
 
 #### name
@@ -147,8 +150,9 @@ _last_signed_in_at_ is the timestamp with the timezone when the user signed in l
 
 _password_encrypted_ is used to store the user's encrypted password.
 
-When the user has not registered with their _username_ and password, its value may be empty.
-If its value is non-empty, its original content before encryption should be at least six characters.
+Its value is from the password that the user first registered with.
+Its value may be `null`.
+If its value is non-null, its original content before encryption should be at least six characters.
 
 #### password_encryption_method
 
