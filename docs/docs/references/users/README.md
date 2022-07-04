@@ -9,9 +9,9 @@ Each user has a profile containing the user information.
 
 A user profile consists of the following types of data:
 
-- [**Basic Data**](#basic_data): contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
-- [**Custom Data**](#custom_data): contains additional info in customizable attributes, such as user-preferred color and language.
-- [**Identities**](#identities): contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
+- [_basic_data_](#basic_data): contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
+- [_custom_data_](#custom_data): contains additional info in customizable attributes, such as user-preferred color and language.
+- [_identities_](#identities): contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
 
 ### All attributes
 
@@ -128,9 +128,6 @@ Its max length is 2048.
 #### role_names
 
 roles_names represent the roles granted to the user in Logto.
-
-A _role_ is a group of permissions that you can grant to users.
-Using roles makes it easier to grant, revoke, and adjust permissions than assigning permissions to users individually.
 
 You cannot update the user's role_names using Admin Console for now. Stay tuned.
 
