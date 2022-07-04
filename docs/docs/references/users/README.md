@@ -176,7 +176,7 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 
 ### custom_data
 
-For example, you can use _custom_data_ to do the following things:
+You can use _custom_data_ to do the following things:
 
 - Record whether or not specific actions have been done by the user, such as having seen the welcome page.
 - Store application-specific data in the user profile, such as the user's preferred language and appearance per application.
