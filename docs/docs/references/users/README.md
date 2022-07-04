@@ -9,9 +9,9 @@ Each user has a profile containing the user information.
 
 A user profile consists of the following types of data:
 
-- [_basic_data_](#basic_data): contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
-- [_custom_data_](#custom_data): contains additional info in customizable attributes, such as user-preferred color and language.
-- [_identities_](#identities): contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
+- [basic_data](#basic_data) contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
+- [custom_data](#custom_data) contains additional info in customizable attributes, such as user-preferred color and language.
+- [identities](#identities) contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
 
 ### All attributes
 
