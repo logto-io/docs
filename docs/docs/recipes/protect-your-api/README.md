@@ -21,7 +21,7 @@ Go to the **API Resources** section in **Admin Console**. You will notice a buil
 <br />
 <br />
 
-Next, click on the **Create API Resource** button to register your API resource by entering:
+Next, click on the **Create API Resource** button and fill out the form to register your API resource:
 
 - A human-readable **API Name** that may better helps you to identify this entity.
 - A unique **API Identifier** (a.k.a. [Resource Indicator](../../references/resources/README.md#resource-indicator)) variable in URI format. It represents the resource's identity you'd like to guard.
