@@ -92,37 +92,36 @@ user_id 即用户 ID，是自动生成的唯一键，用于标识 Logto 用户�
 
 username 即用户名，用于用户名加密码的登录方式。
 
-如果用户没用过用户名加密码的方式注册，他们的 username 可能是空的。
-username 的值非空时，最多 128 个字符，只能包含字母、数字和下划线（`_`），不能以数字开头。
+如果用户没用过用户名加密码的方式注册，该值可能是空的。
+该值非空时，最多 128 个字符，只能包含字母、数字和下划线（`_`），不能以数字开头。
 
 #### primary_email
 
 primary_email 即主要邮箱，是用户的电子邮件地址，用于邮箱加验证码的登录方式。
 
-如果用户没用过邮箱注册，他们的 primary_email 的值可能是空的。
-primary_email 的值非空时，最多 128 个字符。
+如果用户没用过邮箱注册，该值可能是空的。最多 128 个字符。
 
 #### primary_phone
 
 primary_phone 即主要手机号，用于手机号加短信验证码的登录方式。
 
-如果用户没用过手机号注册时，他们的 primary_phone 的值可能是空的。
-primary_phone 的值非空时，只能包含数字，且以 [国家呼叫代码](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
+如果用户没用过手机号注册时，该值可能是空的。
+该值非空时，只能包含数字，且以 [国家呼叫代码](https://en.wikipedia.org/wiki/List_of_country_calling_codes) 为前缀（加号 `+` 除外）。
 
 #### name
 
-name 即用户的全名，最多 128 个字符。
+name 即用户的全名。最多 128 个字符。
 
 #### avatar
 
 avatar 即用户的头像，是指向用户头像图片的 URL。
+最多 2048 个字符。
 
 如果用户使用 Facebook 和微信等社交连接器注册，则可能会直接采用社交用户信息中获取到的头像。
-允许的图片 URL 最多 2048 个字符。
 
 #### role_names
 
-roles_names 即用户的角色集合。
+roles_names 即用户的角色名称集合，表示在 Logto 中授予给该用户的角色集合。
 
 :::info
 
@@ -144,17 +143,17 @@ last_signed_in_at 即用户上次登录时的带时区的时间戳。
 
 password_encrypted 即加密后的用户密码。
 
-当用户没用过用户名加密码的方式注册时，其 password_encrypted 可能是空的。
-如果 password_encrypted 的值非空，则对应加密前的明文密码包含至少 6 个字符。
+当用户没用过用户名加密码的方式注册时，该值可能是空的。
+如果该值非空，加密前的原始值必须包含至少 6 个字符。
 
 #### password_encryption_method
 
 password_encryption_method 即用户密码的加密方式。
-当用户没用过用户名加密码的方式注册时，其 password_encryption_method 可能是空的。
+当用户没用过用户名加密码的方式注册时，该值可能是空的。
 
 Logto 默认使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 的实现 [node-argon2](https://github.com/ranisalt/node-argon2) 作为加密方式；如果你有兴趣，可以参阅链接的资料以了解细节。
 
-`password_encrypted` 和 `password_encryption_method` 的示例，明文密码为 `123456`：
+password_encrypted 和 password_encryption_method 的示例，明文密码为 `123456`：
 
 ```json
 {

@@ -85,32 +85,30 @@ such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank
 
 ### basic_data
 
-basic_data contains the basic user info in pre-defined attributes.
-
 #### user id
 
 user_id is a unique auto-generated key to identify the user in Logto.
 
 #### username
 
-_username_ is used for sign-in with _username_ and password.
+username is used for sign-in with username and password.
 
-When the user has not registered with their username, their _username_ may be empty.
-When the _username_ is non-empty, it should be at most 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
+When the user has not registered with their username, its value may be empty.
+Its non-empty value should be no longer than 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
 
 #### primary_email
 
 primary_email is the user's email address, used for sign-in with the email and passcode.
 
-When the user has not registered with their email, their primary_email may be empty.
-It should be no longer than 128 characters.
+When the user has not registered with their email, its value may be empty.
+Its max length is 128.
 
 #### primary_phone
 
 primary_phone is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
-When the user has not registered with their phone number, their primary_phone may be empty.
-When it's non-empty, it should contain numbers prefixed with the
+When the user has not registered with their phone number, its value may be empty.
+Its non-empty value should contain numbers prefixed with the
 [country calling code](https://en.wikipedia.org/wiki/List_of_country_calling_codes) (excluding the plus sign `+`).
 
 #### name
@@ -121,15 +119,13 @@ Its max length is 128.
 #### avatar
 
 _avatar_ is the URL pointing to the user's avatar image.
-
-If the user registers with a social connector like Facebook and WeChat, their _avatar_ may be retrieved from the social user info.
 Its max length is 2048.
+
+If the user registers with a social connector like Facebook and WeChat, its value may be retrieved from the social user info.
 
 #### role_names
 
 roles_names represent the roles granted to the user in Logto.
-
-You cannot update the user's role_names using Admin Console for now.
 
 :::info
 
@@ -137,25 +133,27 @@ For example, only the users whose roles names contain `admin`, i.e., the admin u
 
 :::
 
+You cannot update the user's role_names using Admin Console for now.
+
 #### application_id
 
 application_id is the [application ID](../applications/#application-id) (i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)) that the user first registered.
 
 #### last_signed_in_at
 
-_last signed in at_ is the timestamp with the timezone when the user signed in last time.
+last_signed_in_at is the timestamp with the timezone when the user signed in last time.
 
 #### password_encrypted
 
 password_encrypted is used to store the user's encrypted password.
 
-When the user has not registered with their username and password, their password_encrypted may be empty.
-The password before encryption should be at least six characters.
+When the user has not registered with their username and password, its value may be empty.
+If its value is non-empty, its original content before encryption should be at least six characters.
 
 #### password_encryption_method
 
 password_encryption_method is used to encrypt the user's password.
-When the user has not registered with their username and password, their password_encryption_method may be empty.
+When the user has not registered with their username and password, its value may be empty.
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
 
@@ -170,7 +168,6 @@ Sample a `password_encrypted` and `password_encryption_method` from a user whose
 
 ### custom_data
 
-custom_data contains additional info in customizable attributes.
 For example, you can use custom_data to do the following things:
 
 - Record whether or not specific actions have been done by the user, such as having seen the welcome page.
