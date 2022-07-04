@@ -124,13 +124,13 @@ avatar 即用户的头像，是指向用户头像图片的 URL。
 
 roles_names 即用户的角色集合。
 
-你目前还不能通过「管理控制台」更新用户的 role_names。
-
 :::info
 
 例如，只有 roles_names 中包含 admin 的用户，即管理员用户，才有权限使用 Logto 中的「管理控制台」和「管理 API」。
 
 :::
+
+你目前还不能通过「管理控制台」更新用户的 role_names。
 
 #### application_id
 
