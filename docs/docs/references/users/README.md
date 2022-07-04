@@ -9,13 +9,13 @@ Each user has a profile containing the user information.
 
 A user profile consists of the following types of data:
 
-- [basic_data](#basic_data) contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
-- [custom_data](#custom_data) contains additional info in customizable attributes, such as user-preferred color and language.
-- [identities](#identities) contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
+- [_basic_data_](#basic_data) contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
+- [_custom_data_](#custom_data) contains additional info in customizable attributes, such as user-preferred color and language.
+- [_identities_](#identities) contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
 
 ### All attributes
 
-The following attributes (except `password_encrypted` and `password_encryption_method`) are visible on the user profile,
+The following attributes (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
 which means you can query them using Management API.
 
 | Name                                                      | Type         | Description                                   | Unique | Required |
@@ -85,27 +85,27 @@ such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank
 
 ### basic_data
 
-#### user id
+#### user_id
 
-user_id is a unique auto-generated key to identify the user in Logto.
+_user_id_ is a unique auto-generated key to identify the user in Logto.
 
 #### username
 
-username is used for sign-in with username and password.
+_username_ is used for sign-in with _username_ and password.
 
-When the user has not registered with their username, its value may be empty.
+When the user has not registered with their _username_, its value may be empty.
 Its non-empty value should be no longer than 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
 
 #### primary_email
 
-primary_email is the user's email address, used for sign-in with the email and passcode.
+_primary_email_ is the user's email address, used for sign-in with the email and passcode.
 
 When the user has not registered with their email, its value may be empty.
 Its max length is 128.
 
 #### primary_phone
 
-primary_phone is the user's phone number, used for sign-in with the phone number and passcode from SMS.
+_primary_phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
 When the user has not registered with their phone number, its value may be empty.
 Its non-empty value should contain numbers prefixed with the
@@ -125,39 +125,39 @@ If the user registers with a social connector like Facebook and WeChat, its valu
 
 #### role_names
 
-roles_names represent the roles granted to the user in Logto.
+_roles_names_ represent the roles granted to the user in Logto.
 
 :::info
 
-For example, only the users whose roles names contain `admin`, i.e., the admin users, have permission to use Admin Console and Management API in Logto.
+For example, only the users whose _roles_names_ contain `admin`, i.e., the admin users, have permission to use Admin Console and Management API in Logto.
 
 :::
 
-You cannot update the user's role_names using Admin Console for now.
+You cannot update the user's _role_names_ using Admin Console for now.
 
 #### application_id
 
-application_id is the [application ID](../applications/#application-id) (i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)) that the user first registered.
+_application_id_ is the [application ID](../applications/#application-id) (i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)) that the user first registered.
 
 #### last_signed_in_at
 
-last_signed_in_at is the timestamp with the timezone when the user signed in last time.
+_last_signed_in_at_ is the timestamp with the timezone when the user signed in last time.
 
 #### password_encrypted
 
-password_encrypted is used to store the user's encrypted password.
+_password_encrypted_ is used to store the user's encrypted password.
 
-When the user has not registered with their username and password, its value may be empty.
+When the user has not registered with their _username_ and password, its value may be empty.
 If its value is non-empty, its original content before encryption should be at least six characters.
 
 #### password_encryption_method
 
-password_encryption_method is used to encrypt the user's password.
-When the user has not registered with their username and password, its value may be empty.
+_password_encryption_method_ is used to encrypt the user's password.
+When the user has not registered with their _username_ and password, its value may be empty.
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
 
-Sample a `password_encrypted` and `password_encryption_method` from a user whose password is "123456":
+Sample a _password_encrypted_ and _password_encryption_method_ from a user whose password is "123456":
 
 ```json
 {
@@ -168,12 +168,12 @@ Sample a `password_encrypted` and `password_encryption_method` from a user whose
 
 ### custom_data
 
-For example, you can use custom_data to do the following things:
+For example, you can use _custom_data_ to do the following things:
 
 - Record whether or not specific actions have been done by the user, such as having seen the welcome page.
 - Store application-specific data in the user profile, such as the user's preferred language and appearance per application.
 
-Sample custom_data from an admin user in Logto:
+Sample _custom_data_ from an admin user in Logto:
 
 ```json
 {
@@ -185,27 +185,27 @@ Sample custom_data from an admin user in Logto:
 }
 ```
 
-Each user's custom_data is stored in an individual JSON object.
+Each user's _custom_data_ is stored in an individual JSON object.
 
-:::caution Put sensitive data in custom_data
+:::caution DO NOT Put sensitive data in _custom_data_
 
-You may fetch a user profile as a whole containing custom_data using Management API and send it to the frontend apps or external backend services.
-Therefore, putting the sensitive information in custom_data may cause data leaks.
+You may fetch a user profile as a whole containing _custom_data_ using Management API and send it to the frontend apps or external backend services.
+Therefore, putting the sensitive information in _custom_data_ may cause data leaks.
 
-If you still want to put the sensitive information in custom_data, we recommend encrypting it first.
+If you still want to put the sensitive information in _custom_data_, we recommend encrypting it first.
 Only encrypt/decrypt it in a trusted party like your backend services, and avoid doing it in the frontend apps.
-These will minimize the damage if your users' custom_data is leaked by mistake.
+These will minimize the damage if your users' _custom_data_ is leaked by mistake.
 
 :::
 
-You can update the user's custom_data using
+You can update the user's _custom_data_ using
 [Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) or
 [Management API](../../../docs/recipes/manage-users/using-management-api),
 such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_blank">`PATCH /api/users/:userId`</a>.
 
 :::caution Update carefully
 
-Updating a user's custom_data will overwrite (not merge) its original content as a whole in the storage.
+Updating a user's _custom_data_ will overwrite (not merge) its original content as a whole in the storage.
 
 :::
 
