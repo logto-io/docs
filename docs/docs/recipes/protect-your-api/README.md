@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 # ⚔️ Protect your API
 
-With a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect the your APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
+With a fluent user sign-in experience, by default, Logto comes with the [API resources](../../references/resources/README.md) authorization service. It will help you protect your APIs resources from anonymous identities. Let's walk through the following steps and implement the API resource authorization guard of your own using Logto.
 
 ## Register the API resource through Logto **Admin Console**
 
@@ -367,4 +367,4 @@ const { payload } = await jwtVerify(
 
 ## Reference
 
-Logto uses the code-based OAuth 2.0 Authorization Protocol to make your API request flow more secure. If you are interested in the strategy behind it, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
+Logto uses the code-based OAuth 2.0 Authorization Protocol to make your API request safer. If you are interested in the strategy behind it, refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1) for more details.
