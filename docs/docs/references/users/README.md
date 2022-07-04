@@ -9,9 +9,9 @@ Each user has a profile containing the user information.
 
 A user profile consists of the following types of data:
 
-- [_basic_data_](#basic_data) contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
-- [_custom_data_](#custom_data) contains additional info in customizable attributes, such as user-preferred color and language.
-- [_identities_](#identities) contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
+- [basic_data](#basic_data) contains basic info in pre-defined attributes, such as user id, username, email, phone number, and when the user last signed in.
+- [custom_data](#custom_data) contains additional info in customizable attributes, such as user-preferred color and language.
+- [identities](#identities) contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
 
 ### All attributes
 
@@ -157,7 +157,7 @@ When the user has not registered with their _username_ and password, its value m
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
 
-Sample a _password_encrypted_ and _password_encryption_method_ from a user whose password is "123456":
+Sample a _password_encrypted_ and _password_encryption_method_ from a user whose password is `123456`:
 
 ```json
 {
@@ -216,7 +216,7 @@ _identities_ contains the user info retrieved from social sign-in
 
 The user info varies by provider, and it typically includes the following:
 
-- [Target](#TODO-link-to-connector-reference) of this provider, such as lowercase "facebook", "google", or "wechat"
+- [Target](../../../docs/references/connectors/#target) of this provider, such as lowercase "facebook", "google", or "wechat"
 - User's unique identifier for this provider
 - User's name
 - User's verified email
