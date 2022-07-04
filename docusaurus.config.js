@@ -113,6 +113,9 @@ const config = {
         darkTheme: darkCodeTheme,
         additionalLanguages: ['swift', 'kotlin', 'groovy', 'java'],
       },
+      colorMode: {
+        respectPrefersColorScheme: true,
+      },
     }),
   plugins: [
     async function addAliasPlugin() {
