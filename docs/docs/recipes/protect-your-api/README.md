@@ -290,12 +290,13 @@ The request should contain an `Authorization` header with a `Bearer <access_toke
 import { IncomingHttpHeaders } from 'http';
 
 const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
-  assertThat(authorization, new Error({ code: 'auth.authorization_header_missing', status: 401 }));
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
 
-  assertThat(
-    authorization.startsWith('Bearer'),
-    new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 })
-  );
+  if (!authorization.startsWith('Bearer')) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
 
   return authorization.slice(bearerTokenIdentifier.length + 1);
 };
