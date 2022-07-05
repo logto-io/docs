@@ -11,7 +11,6 @@ enum Type : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-enum/ind
 - INVALID_ID_TOKEN
 - UNABLE_TO_PARSE_JWKS
 - UNABLE_TO_FETCH_JWKS_JSON
-- UNABLE_TO_FETCH_USER_INFO
 - UNABLE_TO_PARSE_ID_TOKEN_CLAIMS
 - UNABLE_TO_REVOKE_TOKEN
 - UNABLE_TO_FETCH_TOKEN_BY_REFRESH_TOKEN
@@ -21,5 +20,4 @@ enum Type : [Enum](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-enum/ind
 - INVALID_REDIRECT_URI
 - USER_CANCELED
 - UNGRANTED_RESOURCE_FOUND
-- NO_REFRESH_TOKEN_FOUND
 - NOT_AUTHENTICATED

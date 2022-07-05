@@ -7,3 +7,4 @@ object PromptValue
 | Name    | Value   |
 | ------- | ------- |
 | CONSENT | consent |
+| LOGIN   | login   |
