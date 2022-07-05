@@ -85,6 +85,9 @@ such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank
 
 ### basic_data
 
+Unlike _custom_data_, the additional user info stored in the **customizable** attributes,
+_basic_data_ is the basic user info stored in the **pre-defined** attributes.
+
 #### user_id
 
 _user_id_ is a unique auto-generated key to identify the user in Logto.
@@ -175,6 +178,9 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 ```
 
 ### custom_data
+
+Unlike _basic_data_, the basic user info stored in the **pre-defined** attributes,
+_custom_data_ is the additional user info stored in the **customizable** attributes.
 
 You can use _custom_data_ to do the following things:
 

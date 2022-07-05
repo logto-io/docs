@@ -82,7 +82,8 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 
 ### basic_data
 
-用户的基础数据，即在预定义的属性中保存的用户基础信息。
+与存储额外的用户信息在 **可自定义的属性** 中的 _custom_data_ 不同，
+_basic_data_ 存储基础的用户信息在 **预定义的属性** 中。
 
 #### user_id
 
@@ -165,6 +166,9 @@ _password_encrypted_ 和 _password_encryption_method_ 的示例，明文密码�
 ```
 
 ### custom_data
+
+与存储基础的用户信息在 **预定义的属性** 中的 _basic_data_ 不同，
+_custom_data_ 存储额外的用户信息在 **可自定义的属性** 中的。
 
 你可以使用 _custom_data_ 来做以下这些事情：
 
