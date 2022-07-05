@@ -133,7 +133,10 @@ _roles_names_ 即用户的角色名称集合，表示在 Logto 中授予给该�
 
 #### application_id
 
-_application_id_ 即用户首次注册时对应的 [应用 ID](../applications/#应用-id)（即 [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)）。
+_application_id_ 即 [应用 ID](../applications/#应用-id)
+（同 [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)）。
+
+它的值来自用户首次登录的应用程序。可能为 `null`。
 
 #### last_signed_in_at
 
@@ -143,13 +146,13 @@ _last_signed_in_at_ 即用户上次登录时的带时区的时间戳。
 
 _password_encrypted_ 即加密后的用户密码。
 
-该值通常来自于用户首次注册时使用的密码。该值可能是 `null`。
+该值通常来自于用户首次注册时使用的密码。可能为 `null`。
 如果该值非空，加密前的原始值必须包含至少 6 个字符。
 
 #### password_encryption_method
 
 _password_encryption_method_ 即用户密码的加密方式。
-该值在用户首次使用用户名和密码注册时初始化。该值可能是 `null`。
+该值在用户首次使用用户名和密码注册时初始化。可能为 `null`。
 
 Logto 默认使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 的实现 [node-argon2](https://github.com/ranisalt/node-argon2) 作为加密方式；如果你有兴趣，可以参阅链接的资料以了解细节。
 
