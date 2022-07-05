@@ -23,7 +23,7 @@ Logto 按如下顺序处理环境变量 (environment variables)：
 为 OIDC provider 生成的 private key 将会位于 `./oidc-private-key.pem`，其他的值将会追加在 `./.env` 里。
 
 :::note
-在 Docker 镜像中 `--no-inquiry` argement 是默认指定的。
+在 Docker 镜像中 `--no-inquiry` argument 是默认指定的。
 :::
 
 ## 变量列表
@@ -36,34 +36,29 @@ Logto 按如下顺序处理环境变量 (environment variables)：
 
 在默认值中，`protocol` 将会根据你的 HTTPS 配置取值 `http` 或 `https`。
 
-| Key                | 默认值                                 | 类型                                                     | 描述                                                                                                  |
-| ------------------ | -------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| NODE_ENV           | `undefined`                            | <code>'production' &#124; 'test' &#124; undefined</code> | Logto 运行在什么样的环境里。                                                                          |
-| PORT               | `3001`                                 | `number`                                                 | Logto 监听的本地端口。                                                                                |
-| DB_URL             | N/A                                    | `string`                                                 | Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。 |
-| HTTPS_CERT_PATH    | `undefined`                            | <code>string &#124; undefined</code>                     | 详见 [启用 HTTPS](#enabling-https)。                                                                  |
-| HTTPS_KEY_PATH     | `undefined`                            | <code>string &#124; undefined</code>                     | 同上。                                                                                                |
-| TRUST_PROXY_HEADER | `false`                                | `boolean`                                                | 同上。                                                                                                |
-| ADMIN_CONSOLE_URL  | `'protocol://localhost:$PORT/console'` | `string`                                                 | 「管理控制台」的 URL。这也将影响 client metadata 里的 Redirect URIs。                                 |
+| Key                | 默认值                         | 类型                                                     | 描述                                                                                                                                                                                                                         |
+| ------------------ | ------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NODE_ENV           | `undefined`                    | <code>'production' &#124; 'test' &#124; undefined</code> | Logto 运行在什么样的环境里。                                                                                                                                                                                                 |
+| PORT               | `3001`                         | `number`                                                 | Logto 监听的本地端口。                                                                                                                                                                                                       |
+| DB_URL             | N/A                            | `string`                                                 | Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                                                                                        |
+| HTTPS_CERT_PATH    | `undefined`                    | <code>string &#124; undefined</code>                     | 详见 [启用 HTTPS](#enabling-https)。                                                                                                                                                                                         |
+| HTTPS_KEY_PATH     | `undefined`                    | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                                                                                       |
+| TRUST_PROXY_HEADER | `false`                        | `boolean`                                                | 同上。                                                                                                                                                                                                                       |
+| ENDPOINT           | `'protocol://localhost:$PORT'` | `string`                                                 | 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」 Redirect URIs 的值。 |
 
 ### OIDC
 
-| Key                   | 默认值                              | 类型                                 | 描述                                                                                                                                                                                                                  |
-| --------------------- | ----------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC_COOKIE_KEYS      | N/A                                 | <code>string[]</code>                | [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。                                                                                                |
-| OIDC_PRIVATE_KEY      | N/A                                 | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容。<br/> 如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。 |
-| OIDC_PRIVATE_KEY_PATH | `'./oidc-private-key.pem'`          | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 文件路径。 <br/> 注意：如果 `OIDC_PRIVATE_KEY` 非空，Logto 将 _忽略_ 该值。                                             |
-| OIDC_ISSUER           | `'protocol://localhost:$PORT/oidc'` | `string`                             | OIDC 的 [issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier)。通常是你的 OIDC provider 的 URL。                                                                                |
+| Key                   | 默认值                     | 类型                                 | 描述                                                                                                                                                                                                                  |
+| --------------------- | -------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC_COOKIE_KEYS      | N/A                        | <code>string[]</code>                | [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。                                                                                                |
+| OIDC_PRIVATE_KEY      | N/A                        | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容。<br/> 如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。 |
+| OIDC_PRIVATE_KEY_PATH | `'./oidc-private-key.pem'` | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 文件路径。 <br/> 注意：如果 `OIDC_PRIVATE_KEY` 非空，Logto 将 _忽略_ 该值。                                             |
 
 #### 支持的 private key 类型
 
 - RSA
 - OKP (Ed25519, Ed448, X25519, X448 sub types)
 - EC (P-256, secp256k1, P-384, and P-521 curves)
-
-:::note
-Logto 在路径 `/oidc` 下加载 OIDC provider。这意味着如果你在 `https://your.domain.com/logto` 下加载 Logto，`OIDC_ISSUER` 的值应该是 `https://your.domain.com/logto/oidc`。
-:::
 
 ## 启用 HTTPS
 
