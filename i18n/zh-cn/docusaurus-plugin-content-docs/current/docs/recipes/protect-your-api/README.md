@@ -31,7 +31,7 @@ Logto 服务可以从每一个授权请求中识别出所申请的目标 [API �
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
-<img src="/img/docs/api_resource_create.png" width="100%" />
+![](/img/docs/api_resource_create.png)
 <br />
 <br />
 
@@ -43,7 +43,7 @@ API Identifier 将被 Logto 用作全局唯一的 API 资源标识符。 一经�
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
-<img src="/img/docs/api_resource_manage.png" width="100%" />
+![](/img/docs/api_resource_manage.png)
 <br />
 <br />
 

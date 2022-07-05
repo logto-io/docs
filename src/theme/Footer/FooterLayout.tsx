@@ -11,6 +11,8 @@ type Props = {
 };
 
 const FooterLayout = ({ links, logo, copyright }: Props) => {
+  console.log(logo);
+
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
