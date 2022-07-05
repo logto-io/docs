@@ -10,7 +10,7 @@ import SecretKey from './fragments/\_secret_key.md';
 
 # ⚔️ 保护你的 API
 
-除了提供一个流畅的用户登录系统，Logto 默认还集成了 [API 资源](../../references/resources/README.md) 的授权服务，从而更好的保护你的 API 资源免受匿名身份的访问和侵害。 让我们通过以下步骤，使用 Logto 来实现一个你自己的服务端资源权限保护系统。
+除了提供一个流畅的用户登录系统，Logto 默认还集成了 [API 资源](../../references/resources/README.md) 的授权服务，从而更好的保护你的 API 资源免受匿名身份的访问和侵害。让我们通过以下步骤，使用 Logto 来实现一个你自己的服务端资源权限保护系统。
 
 ## 在 Logto 管控制台内注册 API 资源
 
