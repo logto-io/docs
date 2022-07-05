@@ -133,10 +133,7 @@ _roles_names_ 即用户的角色名称集合，表示在 Logto 中授予给该�
 
 #### application_id
 
-_application_id_ 即 [应用 ID](../applications/#应用-id)
-（同 [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)）。
-
-它的值来自用户首次登录的应用程序。可能为 `null`。
+[_application_id_](../applications/#应用-id) 的值来自用户首次登录的应用程序。可能为 `null`。
 
 #### last_signed_in_at
 

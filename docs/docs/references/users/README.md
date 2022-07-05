@@ -140,10 +140,7 @@ You cannot update the user's _role_names_ using [Admin Console](../../../docs/re
 
 #### application_id
 
-_application_id_ is [Application ID](../applications/#application-id)
-(i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)).
-
-Its value is from the application the user first signed in to.
+The value of [_application_id_](../applications/#application-id) is from the application the user first signed in to.
 It may be `null`.
 
 #### last_signed_in_at
