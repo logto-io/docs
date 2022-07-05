@@ -198,7 +198,7 @@ Therefore, putting the sensitive information in _custom_data_ may cause data lea
 
 If you still want to put the sensitive information in _custom_data_, we recommend encrypting it first.
 Only encrypt/decrypt it in a trusted party like your backend services, and avoid doing it in the frontend apps.
-These will minimize the damage if your users' _custom_data_ is leaked by mistake.
+These will minimize the loss if your users' _custom_data_ is leaked by mistake.
 
 :::
 
