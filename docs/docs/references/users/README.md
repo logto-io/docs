@@ -94,7 +94,7 @@ _user_id_ is a unique auto-generated key to identify the user in Logto.
 _username_ is used for sign-in with _username_ and password.
 
 Its value is from the username that the user first registered with.
-Its value may be `null`.
+It may be `null`.
 Its non-null value should be no longer than 128 characters, only contain letters, numbers, and underscores (`_`), and NOT start with a number.
 
 #### primary_email
@@ -102,7 +102,7 @@ Its non-null value should be no longer than 128 characters, only contain letters
 _primary_email_ is the user's email address, used for sign-in with the email and passcode.
 
 Its value is usually from the email address that the user first registered with.
-Its value may be `null`.
+It may be `null`.
 Its max length is 128.
 
 #### primary_phone
@@ -110,7 +110,7 @@ Its max length is 128.
 _primary_phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
 
 Its value is usually from the phone number that the user first registered with.
-Its value may be `null`.
+It may be `null`.
 Its non-null value should contain numbers prefixed with the
 [country calling code](https://en.wikipedia.org/wiki/List_of_country_calling_codes) (excluding the plus sign `+`).
 
@@ -140,7 +140,8 @@ You cannot update the user's _role_names_ using [Admin Console](../../../docs/re
 
 #### application_id
 
-_application_id_ is the [application ID](../applications/#application-id) (i.e., [client id](https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/)) that the user first registered.
+The value of [_application_id_](../applications/#application-id) is from the application the user first signed in to.
+It may be `null`.
 
 #### last_signed_in_at
 
@@ -151,14 +152,14 @@ _last_signed_in_at_ is the timestamp with the timezone when the user signed in l
 _password_encrypted_ is used to store the user's encrypted password.
 
 Its value is from the password that the user first registered with.
-Its value may be `null`.
+It may be `null`.
 If its value is non-null, its original content before encryption should be at least six characters.
 
 #### password_encryption_method
 
 _password_encryption_method_ is used to encrypt the user's password.
 Its value is initialized when the user registers with the username and password.
-Its value may be empty.
+It may be `null`.
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
 
