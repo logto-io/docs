@@ -157,7 +157,8 @@ If its value is non-null, its original content before encryption should be at le
 #### password_encryption_method
 
 _password_encryption_method_ is used to encrypt the user's password.
-When the user has not registered with their _username_ and password, its value may be empty.
+Its value is initialized when the user registers with the username and password.
+Its value may be empty.
 
 Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2)'s implementation [node-argon2](https://github.com/ranisalt/node-argon2) as the encryption method by default; see the reference for details if you're interested.
 
