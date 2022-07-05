@@ -193,7 +193,7 @@ Each user's _custom_data_ is stored in an individual JSON object.
 
 :::caution DO NOT put sensitive data in _custom_data_
 
-You may fetch a user profile as a whole containing _custom_data_ using Management API and send it to the frontend apps or external backend services.
+You may fetch a user profile containing _custom_data_ using Management API and send it to the frontend apps or external backend services.
 Therefore, putting the sensitive information in _custom_data_ may cause data leaks.
 
 If you still want to put the sensitive information in _custom_data_, we recommend encrypting it first.
