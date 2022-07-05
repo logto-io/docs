@@ -7,3 +7,4 @@ object PromptValue
 | 字段名  | 值      |
 | ------- | ------- |
 | CONSENT | consent |
+| LOGIN   | login   |
