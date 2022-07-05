@@ -4,6 +4,9 @@ sidebar_position: 2
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import TokenValidation from './fragments/\_token_validation.mdx';
+import TokenExtract from './fragments/\_token_extract.mdx';
+import SecretKey from './fragments/\_secret_key.md';
 
 # ⚔️ Protect your API
 
@@ -265,105 +268,11 @@ The most crucial step, protect your API resources with trustworthy token validat
 
 As mentioned above, all the authorized requests should carry an [JWT](https://datatracker.ietf.org/doc/html/rfc7519) format `assess_token` issued by Logto in its Authorization header.
 
-### Get the JWK Public Key
+<SecretKey />
 
-All tokens issued by logto are signed with [JWK](https://datatracker.ietf.org/doc/html/rfc7517). (See [JWS](https://datatracker.ietf.org/doc/html/rfc7515) for more details)
-Before moving on, you will need a public key to verify the signature of the Bearer Toke (`access_token`).
+<TokenExtract />
 
-The key set can be inquired through Logto's **jwks_uri**: `https://<your-logto-domain>/oidc/jwks`.
-
-:::note
-All the latest Logto Authorization Server Configurations can be found by `https://<your-logto-domain>/oidc/.well-known/openid-configuration`, including the **jwks_uri** and other authorization configs.
-:::
-
-As a response, you will get a JWKS (JSON Web Key Sets). **Keep it** on your server. You will need it to verify all the requests' token signatures.
-
-### Validate the existence and extract the Bearer Token from Headers
-
-The request should contain an `Authorization` header with a `Bearer <access_token>` format. Extract the Bearer Token from the request header:
-
-<Tabs>
-
-<TabItem value="js" label="NodeJs">
-
-```js
-import { IncomingHttpHeaders } from 'http';
-
-const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
-  if (!authorization) {
-    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
-  }
-
-  if (!authorization.startsWith('Bearer')) {
-    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
-  }
-
-  return authorization.slice(bearerTokenIdentifier.length + 1);
-};
-```
-
-</TabItem>
-<TabItem value="java" label="java">
-// TODO:
-</TabItem>
-
-</Tabs>
-
-### Token Parse and Validation
-
-An encoded [JWS](https://datatracker.ietf.org/doc/html/rfc7515) token is constructed with three parts:
-
-- JOSE Header: Declares the code type and encoding algorithm
-- JWS Payload: Includes all the token's claims
-- JWS Signature: Signature signed with JWK
-
-A standard schema of Logto JWS Payload: (claims may vary, based on your OIDC config)
-
-| key       | description                |
-| --------- | -------------------------- |
-| jti       | unique JWT ID              |
-| sub       | subject, usually user-id   |
-| iat       | timestamp token issues at  |
-| exp       | timestamp token expires at |
-| client_id | application id             |
-| iss       | token issuer identity      |
-| aud       | audience of the token      |
-
-:::note
-For development, to visually inspect a JWT you could visit [jwt.io](https://jwt.io/) to decode and check the tokens you received. Be careful with the tokens from production env, as a third party provides the service, and your token may be toasted.
-:::
-
-The Bearer Token should be accepted only if:
-
-- the token's JWS format is verified ( See [JWT](https://datatracker.ietf.org/doc/html/rfc7519#section-7.2) for more details)
-- the token's issuer is `https://<your-logto-domain>/oidc` (issued by the Logto server)
-- the token's audience is the current API indicator (audience-restricted)
-- the token is with in its valid lifetime
-
-There are various open-source libraries and middleware can help you validate the tokens easily. Most of them are implemented with just one method with various customizable configurations to verify and parse a JWT token.
-
-<Tabs>
-<TabItem value="js" label="Express">
-
-Use [jose](https://github.com/panva/jose) to validate the token's signature, expiration status, and the required claims.
-
-```js
-import { jwtVerify } from 'jose';
-
-const { payload } = await jwtVerify(
-  token,  // The raw Bearer Token extracted from the request header
-  publicKey, // jwks inquired from Logto server
-  {
-    issuer, // expected issuer of the token, should be https://<your-logto-domain>/oidc (issued by the Logto server)
-    audience: // expected audience token, should be the resource indicator of the current API
-  });
-```
-
-</TabItem>
-  <TabItem value="java" label="Spring">
-  // TODO:
-  </TabItem>
-</Tabs>
+<TokenValidation />
 
 ## Reference
 
