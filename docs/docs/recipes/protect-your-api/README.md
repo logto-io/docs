@@ -31,7 +31,7 @@ Next, click on the **Create API Resource** button and fill out the form to regis
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
-<img src="/img/docs/api_resource_create.png" width="100%" />
+![](/img/docs/api_resource_create.png)
 <br />
 <br />
 
@@ -43,7 +43,7 @@ The new API will show up on the list once created. You may manage or delete it o
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
-<img src="/img/docs/api_resource_manage.png" width="100%" />
+![](/img/docs/api_resource_manage.png)
 <br />
 <br />
 
