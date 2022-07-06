@@ -21,6 +21,12 @@ Sample _custom_data_ from an admin user in Logto:
     "language": "en",
     "appearanceMode": "system",
     "experienceNoticeConfirmed": true
+  },
+  "customDataFoo": {
+    "foo": "foo"
+  },
+  "customDataBar": {
+    "bar": "bar"
   }
 }
 ```
@@ -46,5 +52,27 @@ such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_bla
 :::caution Update carefully
 
 Updating a user's _custom_data_ will completely overwrite its original content in the storage.
+
+For example, if your input of calling update _custom_data_ API looks like this (suppose that the original _custom_data_ is previous shown sample data):
+
+```json
+{
+  "customDataBaz": {
+    "baz": "baz"
+  }
+}
+```
+
+then new _custom_data_ value after updating should be:
+
+```json
+{
+  "customDataBaz": {
+    "baz": "baz"
+  }
+}
+```
+
+That is, the updated field value has nothing to do with the previous value.
 
 :::
