@@ -44,7 +44,7 @@ Logto 按如下顺序处理环境变量 (environment variables)：
 | HTTPS_CERT_PATH    | `undefined`                    | <code>string &#124; undefined</code>                     | 详见 [启用 HTTPS](#enabling-https)。                                                                                                                                                                                         |
 | HTTPS_KEY_PATH     | `undefined`                    | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                                                                                       |
 | TRUST_PROXY_HEADER | `false`                        | `boolean`                                                | 同上。                                                                                                                                                                                                                       |
-| ENDPOINT           | `'protocol://localhost:$PORT'` | `string`                                                 | 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」 Redirect URIs 的值。 |
+| ENDPOINT           | `'protocol://localhost:$PORT'` | `string`                                                 | 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。 |
 
 ### OIDC
 
