@@ -4,7 +4,7 @@ import styles from './index.module.scss';
 
 export type Column = {
   title: string;
-  items: Array<{ key: string; node?: ReactNode[] }>;
+  items: Array<{ key: string; link?: string; node?: ReactNode[] }>;
 };
 
 type Props = {
@@ -19,8 +19,16 @@ const Columns = ({ columns, justifyContent = 'flex-start' }: Props) => {
         <div key={title}>
           <h4>{title}</h4>
           <ul>
-            {items.map(({ key, node }) => (
-              <li key={key}>{node ?? key}</li>
+            {items.map(({ key, node, link }) => (
+              <li key={key}>
+                {node ??
+                  (link && (
+                    <a href={link} target="_blank" rel="noreferrer">
+                      {key}
+                    </a>
+                  )) ??
+                  key}
+              </li>
             ))}
           </ul>
         </div>
