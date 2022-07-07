@@ -33,7 +33,7 @@ Sample _custom_data_ from an admin user in Logto:
 
 Each user's _custom_data_ is stored in an individual JSON object.
 
-:::caution _DO NOT_ put sensitive data in _custom_data_
+:::caution DO NOT put sensitive data in _custom_data_
 
 You may fetch a user profile containing _custom_data_ using Management API and send it to the frontend apps or external backend services.
 Therefore, putting the sensitive information in _custom_data_ may cause data leaks.
