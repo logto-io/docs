@@ -7,8 +7,8 @@ import TabItem from '@theme/TabItem';
 import TokenValidation from './fragments/\_token_validation.mdx';
 import TokenExtract from './fragments/\_token_extract.mdx';
 import SecretKey from './fragments/\_secret_key.md';
-import KotlinSetupCode from '../integrate-logto/fragments/_android_sdk_setup_code_kotlin.md';
-import JavaSetupCode from '../integrate-logto/fragments/_android_sdk_setup_code_java.md';
+import KotlinSetupCode from '../integrate-logto/fragments/\_android_sdk_setup_code_kotlin.md';
+import JavaSetupCode from '../integrate-logto/fragments/\_android_sdk_setup_code_java.md';
 
 # ⚔️ 保护你的 API
 
