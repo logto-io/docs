@@ -10,8 +10,8 @@ Each user has a profile containing [all user information](#attribute-reference).
 It consists of the following types of data:
 
 - [Social identities](./social-identities): contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
-- [Custom data](./custom-data): contains additional user info in customizable attributes, such as user-preferred color and language.
-- [Basic data](#basic-data): is some basic info from the user profile. It contains all other _user_'s attributes except for _identities_ and _custom_data_, such as user id, username, email, phone number, and when the user last signed in.
+- [Custom data](./custom-data): contains additional user info outside the pre-defined user attributes, such as user-preferred color and language.
+- [Basic data](#basic-data): is the basic info from the user profile. It contains all other _user_'s attributes except for _identities_ and _custom_data_, such as user id, username, email, phone number, and when the user last signed in.
 
 Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
 
