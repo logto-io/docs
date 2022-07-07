@@ -7,6 +7,8 @@ import TabItem from '@theme/TabItem';
 import TokenValidation from './fragments/\_token_validation.mdx';
 import TokenExtract from './fragments/\_token_extract.mdx';
 import SecretKey from './fragments/\_secret_key.md';
+import KotlinSetupCode from '../integrate-logto/fragments/\_android_sdk_setup_code_kotlin.md';
+import JavaSetupCode from '../integrate-logto/fragments/\_android_sdk_setup_code_java.md';
 
 # ⚔️ Protect your API
 
@@ -67,70 +69,13 @@ With Logto SDK, all you need is to pass those resource indicators to the SDK con
 
 <TabItem value="kotlin" label="Kotlin">
 
-```kotlin
-import io.logto.sdk.android.LogtoClient
-import io.logto.sdk.android.type.LogtoConfig
-
-class MainActivity : AppCompatActivity() {
-  var resources = listOf("<your-api-resource>");
-
-  val logtoConfig = LogtoConfig(
-    endpoint = "<your-logto-endpoint>",
-    appId = "<your-app-id>",
-    scopes = null,
-    resources = resources,
-    usingPersistStorage = true,
-  )
-
-  val logtoClient = LogtoClient(logtoConfig, application)
-}
-```
+<KotlinSetupCode />
 
 </TabItem>
 
 <TabItem value="java" label="Java">
 
-```java
-import io.logto.sdk.android.LogtoClient;
-import io.logto.sdk.android.type.LogtoConfig;
-
-public class MainActivity extends AppCompatActivity {
-    private LogtoClient logtoClient;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
-
-        List<String> resources = Arrays.asList("<your-api-resource>");
-
-        LogtoConfig logtoConfig = new LogtoConfig(
-            "<your-logto-endpoint>",
-            "<your-app-id>",
-            null,
-            resources,
-            true
-        );
-
-        logtoClient = new LogtoClient(logtoConfig, getApplication());
-    }
-}
-```
-
-</TabItem>
-
-<TabItem value="swift" label="Swift">
-
-```swift
-import Logto
-
-let config = try? LogtoConfig(
-  endpoint: "<your-logto-endpoint>",
-  appId: "<your-application-id>"
-  resources: ["<your-api-resource>"]
-)
-let logtoClient = LogtoClient(useConfig: config)
-```
+<JavaSetupCode />
 
 </TabItem>
 
