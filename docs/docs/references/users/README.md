@@ -144,7 +144,7 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 }
 ```
 
-## Property Reference
+## Property reference
 
 The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
 which means you can query them using [Management API](../../../docs/recipes/manage-users/using-management-api).
