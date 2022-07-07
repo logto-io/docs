@@ -14,7 +14,7 @@ In Admin Console, click the **User Management** tab on the left, and you'll see 
 There are three columns in the table:
 
 - **User**: The user info may include the avatar, full name, username, phone number, email, etc.
-- **From application**: The name of the application that the user initially registered.
+- **From application**: The name of the application that the user initially registered with.
 - **Latest sign in**: The timestamp when the user signed in last time.
 
 Input a keyword in the search box above the user table, click the "Search" button, and you'll see the matching users in the table.
