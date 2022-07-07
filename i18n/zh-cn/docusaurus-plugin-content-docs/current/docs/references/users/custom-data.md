@@ -1,9 +1,9 @@
 ---
-sidebar_label: 可自定义的用户数据
+sidebar_label: 自定义数据
 sidebar_position: 2
 ---
 
-# 可自定义的用户数据
+# 自定义数据
 
 _custom_data_ 存储没包含在 _基本数据_ 中的额外用户信息。
 

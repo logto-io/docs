@@ -1,9 +1,9 @@
 ---
-sidebar_label: Customizable user data
+sidebar_label: Custom data
 sidebar_position: 2
 ---
 
-# Customizable user data
+# Custom data
 
 _custom_data_ stores the additional user info that is not included in _basic data_.
 
