@@ -8,9 +8,9 @@ sidebar_position: 1
 _identities_ 即用户的社交身份，保存通过社交登录（即使用社交连接器登录）获取到的用户信息。
 每个用户的 _identities_ 都存储在一个单独的 JSON 对象中。
 
-这些用户信息因身份提供商而异，通常包括以下内容：
+这些用户信息因社交身份提供商（即社交网络平台）而异，通常包括以下内容：
 
-- 身份提供商对应的 [target](#TODO-link-to-connector-reference)，例如小写的“facebook”、“google”或“wechat”
+- 身份提供商对应的 [target](../../../docs/references/connectors/#target)，例如小写的“facebook”、“google”或“wechat”
 - 用户在该身份提供商上的唯一标识符
 - 用户名
 - 通过验证的用户邮箱

@@ -9,9 +9,9 @@ _identities_ contains the user info retrieved from social sign-in
 (i.e., sign-in with a social connector).
 Each user's _identities_ is stored in an individual JSON object.
 
-The user info varies by social network platform (i.e., social identity provider), and it typically includes the following:
+The user info varies by social identity provider (i.e., social network platform), and it typically includes the following:
 
-- [_target_](../../../docs/references/connectors/#target) of the platform, such as "facebook", "google", or "wechat"
+- [_target_](../../../docs/references/connectors/#target) of the identity provider, such as "facebook", "google", or "wechat"
 - User's unique identifier for this provider
 - User's name
 - User's verified email
