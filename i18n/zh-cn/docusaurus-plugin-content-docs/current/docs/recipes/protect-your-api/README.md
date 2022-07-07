@@ -83,13 +83,14 @@ API Identifier 将被 Logto 用作全局唯一的 API 资源标识符。 一经�
 
 ```swift
 import Logto
+import LogtoClient
 
 let config = try? LogtoConfig(
   endpoint: "<your-logto-endpoint>",
-  appId: "<your-application-id>"
+  appId: "<your-application-id>",
   resources: ["<your-api-resource>"]
 )
-let logtoClient = LogtoClient(useConfig: config)
+let client = LogtoClient(useConfig: config)
 ```
 
 </TabItem>
