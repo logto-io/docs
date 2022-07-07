@@ -9,9 +9,9 @@ _identities_ contains the user info retrieved from social sign-in
 (i.e., sign-in with a social connector).
 Each user's _identities_ is stored in an individual JSON object.
 
-The user info varies by social media platform (i.e., social identity provider), and it typically includes the following:
+The user info varies by social identity provider (i.e., social network platform), and it typically includes the following:
 
-- [_target_](../../../docs/references/connectors/#target) of the platform, such as "facebook", "google", or "wechat"
+- [_target_](../../../docs/references/connectors/#target) of the identity provider, such as "facebook", "google", or "wechat"
 - User's unique identifier for this provider
 - User's name
 - User's verified email
@@ -20,7 +20,7 @@ The user info varies by social media platform (i.e., social identity provider), 
 The user's account may be linked to multiple social identity providers via social sign-in;
 the corresponding user info retrieved from these providers will be stored in the _identities_ object.
 
-Sample _identities_ from a user who has signed in with both WeChat and Facebook:
+Sample _identities_ from a user who signed in with both WeChat and Facebook:
 
 ```json
 {
@@ -49,6 +49,6 @@ Sample _identities_ from a user who has signed in with both WeChat and Facebook:
 The _identities_ can NOT be updated using "Admin Console" or "Management API".
 
 Every time the user signs in with a social connector,
-their _identities_ will be automatically updated with user info retrieved from the identity provider.
+their _identities_ will be automatically imported or updated from the identity provider.
 
 :::
