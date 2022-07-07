@@ -19,7 +19,7 @@ _identities_ 即用户的社交身份，保存通过社交登录（即使用社�
 用户的帐号可能通过社交登录连接到多个社交身份提供商，例如 Facebook、Google 和微信；
 从这些身份提供商获取到的相关的用户信息将保存在 _identities_ 对象中。
 
-用户 _identities_ 示例：
+通过 Facebook 和微信登录的用户的 _identities_ 示例：
 
 ```json
 {
