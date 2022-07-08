@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Custom data
 
-_custom_data_ stores additional user info outside the pre-defined user properties.
+_custom_data_ stores additional user info not listed in the pre-defined user properties.
 
 You can use _custom_data_ to do the following things:
 

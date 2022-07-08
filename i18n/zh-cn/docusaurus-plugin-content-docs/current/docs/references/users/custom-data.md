@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # 自定义数据
 
-_custom_data_ 存储不包含在 _基本数据_ 中的可自定义的用户数据。
+_custom_data_ 保存预定义属性之外的用户信息。
 
 你可以使用 _custom_data_ 来做（但不限于）以下这些事情：
 
