@@ -5,13 +5,13 @@ We will describe the user-related concepts and details in the following.
 
 ## Profile
 
-Each user has a profile containing [all user information](#attribute-reference).
+Each user has a profile containing [all user information](#property-reference).
 
 It consists of the following types of data:
 
 - [Social identities](./social-identities): contains the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
-- [Custom data](./custom-data): contains additional user info outside the pre-defined user attributes, such as user-preferred color and language.
-- [Basic data](#basic-data): is the basic info from the user profile. It contains all other _user_'s attributes except for _identities_ and _custom_data_, such as user id, username, email, phone number, and when the user last signed in.
+- [Custom data](./custom-data): contains additional user info outside the pre-defined user properties, such as user-preferred color and language.
+- [Basic data](#basic-data): is the basic info from the user profile. It contains all other _user_'s properties except for _identities_ and _custom_data_, such as user id, username, email, phone number, and when the user last signed in.
 
 Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
 
@@ -142,9 +142,9 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 }
 ```
 
-## Attribute Reference
+## Property reference
 
-The following attributes (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
+The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
 which means you can query them using [Management API](../../../docs/recipes/manage-users/using-management-api).
 
 | Name                                                      | Type         | Description                                   | Unique | Required |
@@ -157,7 +157,7 @@ which means you can query them using [Management API](../../../docs/recipes/mana
 | [avatar](#avatar)                                         | string       | URL pointing to user's avatar image           | ❌     | ❌       |
 | [role_names](#role_names)                                 | string array | List of roles                                 | ❌     | ✅       |
 | [identities](./social-identities)                         | object       | User info retrieved from social sign-in       | ❌     | ✅       |
-| [custom_data](./custom-data)                              | object       | Additional info in customizable attributes    | ❌     | ✅       |
+| [custom_data](./custom-data)                              | object       | Additional info in customizable properties    | ❌     | ✅       |
 | [application_id](#application_id)                         | string       | Application ID that the user first registered | ❌     | ✅       |
 | [last_sign_in_at](#last_signed_in_at)                     | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
 | [password_encrypted](#password_encrypted)                 | string       | Encrypted password                            | ❌     | ❌       |
@@ -165,7 +165,7 @@ which means you can query them using [Management API](../../../docs/recipes/mana
 
 :::note
 
-- **Unique**: Ensures the [uniqueness](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS) of the values entered into an attribute of a database table.
-- **Required**: Ensures that the values entered an attribute of a database table can NOT be `NULL`.
+- **Unique**: Ensures the [uniqueness](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-UNIQUE-CONSTRAINTS) of the values entered into a property of a database table.
+- **Required**: Ensures that the values entered a property of a database table can NOT be `NULL`.
 
 :::
