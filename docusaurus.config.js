@@ -84,8 +84,8 @@ const config = {
       },
       footer: {
         logo: {
-          alt: 'Logto Logo',
-          src: 'img/silverhand.svg',
+          alt: 'Logo',
+          src: '/img/silverhand.svg',
         },
         style: 'dark',
         links: [
