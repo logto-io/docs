@@ -44,8 +44,8 @@ _custom_data_ 保存预定义属性之外的用户信息。
 
 :::
 
-你可以使用「[管理控制台](../../../docs/recipes/manage-users/using-admin-console#查看和更新用户资料)」或
-「[管理 API](../../../docs/recipes/manage-users/using-management-api)」
+你可以使用「[管理控制台](../../../docs/recipes/manage-users/admin-console#查看和更新用户资料)」或
+「[管理 API](../../../docs/recipes/manage-users/management-api)」
 来更新用户的自定义数据，
 例如 <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_blank">`PATCH /api/users/:userId`</a>。
 

@@ -47,8 +47,8 @@ Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
 ```
 
 You can query the user profile using
-[Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) or
-[Management API](../../../docs/recipes/manage-users/using-management-api),
+[Admin Console](../../../docs/recipes/manage-users/admin-console#view-and-update-user-profile) or
+[Management API](../../../docs/recipes/manage-users/management-api),
 such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>.
 
 ## Basic data
@@ -106,7 +106,7 @@ For example, only the users whose _roles_names_ contain `admin`, i.e., the admin
 
 :::
 
-You cannot update the user's _role_names_ using [Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) for now.
+You cannot update the user's _role_names_ using [Admin Console](../../../docs/recipes/manage-users/admin-console#view-and-update-user-profile) for now.
 
 ### application_id
 
@@ -145,7 +145,7 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 ## Property reference
 
 The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
-which means you can query them using [Management API](../../../docs/recipes/manage-users/using-management-api).
+which means you can query them using [Management API](../../../docs/recipes/manage-users/management-api).
 
 | Name                                                      | Type         | Description                                   | Unique | Required |
 | --------------------------------------------------------- | ------------ | --------------------------------------------- | ------ | -------- |

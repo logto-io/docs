@@ -45,8 +45,8 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
 }
 ```
 
-你可以使用「[管理控制台](../../../docs/recipes/manage-users/using-admin-console#查看和更新用户资料)」或
-「[管理 API](../../../docs/recipes/manage-users/using-management-api)」来查询用户资料，
+你可以使用「[管理控制台](../../../docs/recipes/manage-users/admin-console#查看和更新用户资料)」或
+「[管理 API](../../../docs/recipes/manage-users/management-api)」来查询用户资料，
 例如 <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>。
 
 ## 基本数据

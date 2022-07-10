@@ -45,8 +45,8 @@ These will minimize the loss if your users' _custom_data_ is leaked by mistake.
 :::
 
 You can update the user's _custom_data_ using
-[Admin Console](../../../docs/recipes/manage-users/using-admin-console#view-and-update-user-profile) or
-[Management API](../../../docs/recipes/manage-users/using-management-api),
+[Admin Console](../../../docs/recipes/manage-users/admin-console#view-and-update-user-profile) or
+[Management API](../../../docs/recipes/manage-users/management-api),
 such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/patch" target="_blank">`PATCH /api/users/:userId`</a>.
 
 :::caution Update carefully
