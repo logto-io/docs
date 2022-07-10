@@ -3,7 +3,7 @@ sidebar_label: 使用管理 API
 sidebar_position: 2
 ---
 
-# 使用管理 API 来管理用户
+# 使用管理 API 管理用户
 
 「[管理 API](../../../docs/references/core/#管理-api)」是一个 API 集合，用于管理 Logto 数据，包括用户。
 

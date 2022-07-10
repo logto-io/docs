@@ -3,7 +3,7 @@ sidebar_label: 使用管理控制台
 sidebar_position: 1
 ---
 
-# 使用管理控制台来管理用户
+# 使用管理控制台管理用户
 
 TODO: 添加截图
 

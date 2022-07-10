@@ -1,5 +1,5 @@
 ---
-sidebar_label: Using Management API
+sidebar_label: Management API
 sidebar_position: 2
 ---
 
