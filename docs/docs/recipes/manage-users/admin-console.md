@@ -5,8 +5,6 @@ sidebar_position: 1
 
 # Manage users using Admin Console
 
-TODO: screenshots
-
 ## List and search users
 
 In Admin Console, click the **User Management** tab on the left, and you'll see a user table view on the right.
@@ -21,6 +19,8 @@ Input a keyword in the search box above the user table, click the "Search" butto
 
 Support the partial search on the user properties: name, username, email, or phone number.
 
+![List and search users](./assets/list-and-search-users.png)
+
 ## Add user
 
 Admin users could create a new account through Admin Console in the name of an end-user.
@@ -34,6 +34,8 @@ After you add the user, copy the **username** and **initial password** to send t
 Once the "Add User" modal is closed, you can no longer view the password.
 If you forget to keep it, you can [reset the password](#reset-user-password).
 :::
+
+![Add user](./assets/add-user.png)
 
 ## View and update user profile
 
@@ -53,12 +55,18 @@ Before removing the social connection, you SHOULD confirm the user has another s
 Don't forget to click "Save changes" after updating.
 :::
 
+![User profile](./assets/user-profile.png)
+
 ## View user activities
 
 On the "User details" panel, switch to the "**User logs**" sub-tab.
 You'll see the user's recent activities in the table, including the action, result, related application, and the time when the user acted.
 
+![User logs](./assets/user-logs.png)
+
 Click the table row to see more details in the user log, e.g., IP address, user agent, raw data, etc.
+
+![User log details](./assets/user-log-details.png)
 
 ## Delete user
 
@@ -67,6 +75,8 @@ On the "User details" panel, click "MORE OPTIONS" -> "Delete" button.
 :::danger
 Be careful! The user data deletion CANNOT be undone.
 :::
+
+![Delete user](./assets/delete-user.png)
 
 ## Reset user password
 
@@ -78,3 +88,5 @@ After you reset the password, copy and send it to the end-user.
 Once the "Reset password" modal is closed, you can no longer view the password.
 If you forget to keep it, you can reset it again.
 :::
+
+![Reset user password](./assets/reset-user-password.png)
