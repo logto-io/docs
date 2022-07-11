@@ -1,9 +1,8 @@
 ---
-sidebar_label: Integrate Logto data
 sidebar_position: 3
 ---
 
-# Integrate your data with Logto user data
+# You don't need a user table
 
 ## Identify user
 
@@ -11,7 +10,7 @@ We recommend using `user.id` to identify a user since we guarantee every user ha
 
 Also, `username` `primary_email` and `primary_phone` are unique properties. But they may be empty. Remember to handle' null' properly if you want to use these properties to identify a user.
 
-## You don't need a user table
+## Why no user table
 
 When preparing to take Logto as an identity solution, you may think about approaches to organizing user information and user-related stuffs.
 
@@ -24,7 +23,7 @@ Here is a common practice (with Logto):
 Forget the user table, store user info in Logto:
 
 1. Create `user_id` column in other tables, save Logto's `user.id`, refer to the previous chapter [Identify User](#identify-user).
-2. Call [Logto's Management API](./using-management-api.md) for CRUD: create and update a user, get user detail, list users...
+2. Call [Logto's Management API](./management-api.md) for CRUD: create and update a user, get user detail, list users...
 3. Save any additional user information to custom data. Check this link for more info: [User Custom Data](../../references/users/README.md).
 
 By doing this, Logto is now playing the "user table" role.
