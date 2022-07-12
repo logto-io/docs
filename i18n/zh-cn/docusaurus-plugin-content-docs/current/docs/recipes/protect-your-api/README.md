@@ -26,7 +26,7 @@ Logto 服务可以从每一个授权请求中识别出所申请的目标 [API �
 <br />
 <br />
 
-接下来，点击 **创建 API 资源** 按钮，并输入一下信息，来注册一个你自己的 API 资源：
+接下来，点按 **创建 API 资源** 按钮，并输入一下信息，来注册一个你自己的 API 资源：
 
 - 一个可读性高的 **API 名称**，以更好的帮助你在未来能够快速识别此 API 资源
 - 一个全局唯一的， **URI** 格式的，**API Identifier** (又可称之为 [Resource Indicator](../../references/resources/README.md#resource-indicator))。用来识别受保护的 API 资源。
@@ -41,7 +41,7 @@ Logto 服务可以从每一个授权请求中识别出所申请的目标 [API �
 API Identifier 将被 Logto 用作全局唯一的 API 资源标识符。 一经创建**不可**编辑。请小心填写。
 :::
 
-创建后，新的 API 资源将显示在列表中。你可以过点击该 API 资源， 在 API 详情页面内对其进行管理或删除操作。
+创建后，新的 API 资源将显示在列表中。你可以过点按该 API 资源， 在 API 详情页面内对其进行管理或删除操作。
 
 <!-- TODO: Replace the API resource AC screenshot -->
 
