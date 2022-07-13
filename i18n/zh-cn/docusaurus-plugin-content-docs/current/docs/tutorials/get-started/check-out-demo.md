@@ -14,6 +14,8 @@ Logto 使用唯一的用户身份系统作为 [SSOT](https://en.wikipedia.org/wi
 
 这个应用本身很简单：一个展示你账户名和 ID 的恭喜页，随后是一个登出按钮。
 
+![Check out the demo app](./assets/check-out-demo-app.png)
+
 :::tip
 在进一步探索前，登出演示应用。在完成「定制登录体验」的部分后，重新打开演示应用看看有什么不同。
 :::
