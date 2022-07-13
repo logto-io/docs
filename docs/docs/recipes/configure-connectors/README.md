@@ -18,6 +18,8 @@ Let's start from Admin Console, signing in with your Logto account ("admin" role
 
 Click the "Connectors" button on the sidebar :neutral_face:
 
+![Configure connectors - kick-off](./assets/configure-connectors-kick-off.png)
+
 :ghost: **Welcome to the world of _connectors_** :ghost:
 
 This is where you can add, delete or update connectors' configurations as you wish!

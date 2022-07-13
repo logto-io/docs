@@ -26,6 +26,10 @@ You may keep the old connectors' _config_ properly if you want to switch back to
 
 You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in) as soon as you finish the setup.
 
+![Add SMS or email connector modal](./assets/add-sms-or-email-connector-modal.png)
+
+![Configure SMS or email connector guide](./assets/configure-sms-or-email-connector-guide.png)
+
 ## Social Connector
 
 Suppose you are now on the "Connectors" page in Admin Console. Go to the "Social connectors" tab and add a new connector to enter the configuration process.
@@ -40,3 +44,7 @@ You can set up a single _Native_ connector w/o adding a _Web_ connector if you o
 Follow the README to compose the connector config JSON with little effort.
 
 See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in) to bring your social connector into use.
+
+![Add social connector modal](./assets/add-social-connector-modal.png)
+
+![Configure social connector guide](./assets/configure-social-connector-guide.png)
