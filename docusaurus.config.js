@@ -50,12 +50,6 @@ const config = {
         theme: {
           customCss: require.resolve('./src/scss/custom.scss'),
         },
-        pages: {
-          path: 'src/pages',
-          routeBasePath: '/',
-          include: ['**/*.{ts,tsx,md,mdx}'],
-          mdxPageComponent: '@theme/MDXPage',
-        },
       }),
     ],
   ],
