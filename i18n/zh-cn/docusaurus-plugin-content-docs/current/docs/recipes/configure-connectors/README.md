@@ -20,6 +20,8 @@ Logto 提供了很多能让用户可以访问三方服务提供商的连接器�
 
 点按左侧侧边栏中的「连接器」按钮 :neutral_face:
 
+![配置连接器 - 开始上手](./assets/configure-connectors-kick-off.png)
+
 :ghost: **欢迎来到 _连接器_ 的世界** :ghost:
 
 在这里，你可以随心所欲地添加、删除、改变连接器的配置！

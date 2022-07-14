@@ -26,6 +26,10 @@ sidebar_position: 1
 
 当你完成了连接器的设置之后，看看如何「[启用短信或邮件验证码登录](../../tutorials/get-started/enable-passcode-sign-in)」。
 
+![添加短信和邮件连接器的对话框](./assets/add-sms-or-email-connector-modal.png)
+
+![配置短信和邮件连接器的指南](./assets/configure-sms-or-email-connector-guide.png)
+
 ## 社交连接器
 
 同样从「管理控制台」的「连接器」页面开始，去到「社交连接器」标签，点按右上角的「添加社交连接器」进入配置。
@@ -40,3 +44,7 @@ sidebar_position: 1
 根据配置文档，很快就可以完成连接器配置的 JSON 了。
 
 然后参考「[启用社交登录](../../tutorials/get-started/enable-social-sign-in)」，让你刚配置的 _社交连接器_ 开始工作。
+
+![添加社交连接器的对话框](./assets/add-social-connector-modal.png)
+
+![配置社交连接器的指南](./assets/configure-social-connector-guide.png)
