@@ -116,6 +116,9 @@ const config = {
       colorMode: {
         respectPrefersColorScheme: true,
       },
+      tableOfContents: {
+        maxHeadingLevel: 4,
+      },
     }),
   plugins: [
     async function addAliasPlugin() {
