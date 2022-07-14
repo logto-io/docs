@@ -50,6 +50,12 @@ const config = {
         theme: {
           customCss: require.resolve('./src/scss/custom.scss'),
         },
+        pages: {
+          path: 'src/pages',
+          routeBasePath: '/',
+          include: ['**/*.{ts,tsx,md,mdx}'],
+          mdxPageComponent: '@theme/MDXPage',
+        },
       }),
     ],
   ],
@@ -78,7 +84,7 @@ const config = {
             label: 'SDK',
           },
           {
-            href: '/api',
+            to: 'api',
             position: 'left',
             label: 'API',
           },
