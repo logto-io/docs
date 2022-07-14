@@ -45,7 +45,6 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
-          docLayoutComponent: '@theme/RoutedDocumentPage',
         },
         blog: false,
         theme: {
