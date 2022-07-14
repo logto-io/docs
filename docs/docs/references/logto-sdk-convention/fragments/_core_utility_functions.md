@@ -1,8 +1,8 @@
 <details>
   <summary>generateCodeVerifier</summary>
 
-Generate a code verifier.
-The length of the code verifier is hardcoded as 64.
+Generate a code verifier.  
+The length of the code verifier is hardcoded as 64.  
 The return value MUST be encrypted to an URL-safe base64 format string.
 
 **Reference**
@@ -22,8 +22,8 @@ None.
 <details>
   <summary>generateCodeChallenge</summary>
 
-Generate a code challenge based on a code verifier.
-This method encrypts the code verifier and returns the result in a URL-safe Base64 format.
+Generate a code challenge based on a code verifier.  
+This method encrypts the code verifier and returns the result in a URL-safe Base64 format.  
 We hardcode the encryption algorithm as `SHA-256` in Logto V1.
 
 **Reference**
@@ -45,8 +45,8 @@ We hardcode the encryption algorithm as `SHA-256` in Logto V1.
 <details>
   <summary>generateState</summary>
 
-"State" is used to prevent the CSRF attack.
-The length of the "state" is hardcoded as 64.
+"State" is used to prevent the CSRF attack.  
+The length of the "state" is hardcoded as 64.  
 The result string to be returned MUST be encrypted to an URL-safe base64 format string.
 
 **Reference**
@@ -66,7 +66,7 @@ None.
 <details>
   <summary>decodeIdToken</summary>
 
-Decode an ID Token without secret verification.
+Decode an ID Token without secret verification.  
 Return an `IdTokenClaims` which carries all the token claims in the payload section.
 
 **Parameters**
