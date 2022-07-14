@@ -6,6 +6,18 @@ const path = require('path');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 
+const addAliasPlugin = async () => ({
+  name: 'add-alias-plugin',
+  configureWebpack: () => ({
+    resolve: {
+      alias: {
+        '@components': path.resolve(__dirname, './src/components'),
+        '@scss': path.resolve(__dirname, './src/scss'),
+      },
+    },
+  }),
+});
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Logto Docs',
@@ -33,6 +45,7 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
+          docLayoutComponent: '@theme/RoutedDocumentPage',
         },
         blog: false,
         theme: {
@@ -67,7 +80,6 @@ const config = {
           },
           {
             href: '/api',
-            target: '_blank',
             position: 'left',
             label: 'API',
           },
@@ -111,28 +123,20 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java'],
+        /**
+         * When the page uses 'docusaurus-theme-redoc' theme, it requires 'scala' language in prism, or it will crash.
+         *
+         * Since 'additionalLanguages' here will override `"additionalLanguages": ["scala"]` from 'docusaurus-theme-redoc'
+         * in `.docusaurus/globalData.json`, we should append 'scala' here instead.
+         */
+        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java', 'scala'],
       },
       colorMode: {
         respectPrefersColorScheme: true,
       },
     }),
-  plugins: [
-    async function addAliasPlugin() {
-      return {
-        name: 'add-alias-plugin',
-        configureWebpack: () => ({
-          resolve: {
-            alias: {
-              '@components': path.resolve(__dirname, './src/components'),
-              '@scss': path.resolve(__dirname, './src/scss'),
-            },
-          },
-        }),
-      };
-    },
-    'docusaurus-plugin-sass',
-  ],
+  plugins: [addAliasPlugin, 'docusaurus-plugin-sass'],
+  themes: ['docusaurus-theme-redoc'],
 };
 
 module.exports = config;
