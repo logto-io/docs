@@ -95,7 +95,7 @@ Verify if an ID Token is legal.
 OIDC supported the JSON Web Key Set.
 This function accepts a `JsonWebKeySet` object from a 3rd-party library (jose) for verification.
 
-```json
+```jsonc
 // JsonWebKeySet example
 {
   "keys": [
