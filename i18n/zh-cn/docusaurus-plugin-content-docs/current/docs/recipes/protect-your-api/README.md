@@ -20,22 +20,14 @@ Logto 服务可以从每一个授权请求中识别出所申请的目标 [API �
 
 访问 Logto 管理控制台的 **API 资源** 页面。在列表中你会看到一个拥有 `https://api.logto.io.` 作为 `API identifier ` 的内置 API 资源。该资源代表了所有注册在此路由地址下，Logto 服务所提供的管理 API。它将保证我们所有的 API 都设置了权限保护，仅具有管理员角色的 Logto 授权用户才可以访问。
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_landing.png)
-<br />
-<br />
+![API 资源](./assets/api-resources.png)
 
 接下来，点按 **创建 API 资源** 按钮，并输入一下信息，来注册一个你自己的 API 资源：
 
 - 一个可读性高的 **API 名称**，以更好的帮助你在未来能够快速识别此 API 资源
 - 一个全局唯一的， **URI** 格式的，**API Identifier** (又可称之为 [Resource Indicator](../../references/resources/README.md#resource-indicator))。用来识别受保护的 API 资源。
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_create.png)
-<br />
-<br />
+<img src={require('./assets/create-api-resource.png').default} alt="创建 API 资源" width="700px" /><br/><br/>
 
 :::caution
 API Identifier 将被 Logto 用作全局唯一的 API 资源标识符。 一经创建**不可**编辑。请小心填写。
@@ -43,11 +35,7 @@ API Identifier 将被 Logto 用作全局唯一的 API 资源标识符。 一经�
 
 创建后，新的 API 资源将显示在列表中。你可以过点按该 API 资源， 在 API 详情页面内对其进行管理或删除操作。
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_manage.png)
-<br />
-<br />
+![API 资源详情](./assets/api-resource-details.png)
 
 有关详细的 API 设置定义，请参阅 [API 资源数据格式](../../references/resources/README.md#logto-api-resource-schema)。
 

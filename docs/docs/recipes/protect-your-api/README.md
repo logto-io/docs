@@ -20,22 +20,14 @@ Logto will identify the registered [API resources](../../references/resources/RE
 
 Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io.` This resource indicates all the management APIs you may use to maintain the Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_landing.png)
-<br />
-<br />
+![API resources](./assets/api-resources.png)
 
 Next, click on the **Create API Resource** button and fill out the form to register your API resource:
 
 - A human-readable **API Name** that may better helps you to identify this entity.
 - A unique **API Identifier** (a.k.a. [Resource Indicator](../../references/resources/README.md#resource-indicator)) variable in URI format. It represents the resource's identity you'd like to guard.
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_create.png)
-<br />
-<br />
+<img src={require('./assets/create-api-resource.png').default} alt="Create API resource" width="700px" /><br/><br/>
 
 :::caution
 The API Identifier is unique and used as the single source of truth of resource indicator for Logto. **NOT** editable once created. Be careful when you make it.
@@ -43,11 +35,7 @@ The API Identifier is unique and used as the single source of truth of resource 
 
 The new API will show up on the list once created. You may manage or delete it on the API details page by clicking on the entity row.
 
-<!-- TODO: Replace the API resource AC screenshot -->
-
-![](/img/docs/api_resource_manage.png)
-<br />
-<br />
+![API resource details](./assets/api-resource-details.png)
 
 See [API Resource Logto Schema](../../references/resources/README.md#logto-api-resource-schema) for detailed API setting definitions.
 
