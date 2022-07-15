@@ -23,7 +23,7 @@ const Columns = ({ columns, justifyContent = 'flex-start' }: Props) => {
               <li key={key}>
                 {node ??
                   (link && (
-                    <a href={link} target="_blank" rel="noreferrer">
+                    <a href={link} target="_blank" rel="noopener">
                       {key}
                     </a>
                   )) ??
