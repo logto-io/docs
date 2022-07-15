@@ -3,6 +3,7 @@ import Redoc from '@theme/Redoc';
 import React from 'react';
 
 import spec from './swagger.json';
+import './index.scss';
 
 const Api = () => (
   <Layout>
