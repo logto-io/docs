@@ -60,7 +60,8 @@ Notes:
 - Because generateSignInUri includes the resources we need, we don’t need to pass resource to fetchTokenByAuthorizationCode function.
 
 **Parameters**
-| Parameter | Type |
+
+| Parameter   | Type     |
 | ----------- | -------- |
 | redirectUri | `string` |
 
@@ -145,6 +146,7 @@ We set the `scope` to `null` when building the key of the `accessTokenMap` for w
 `getIdTokenClaims` return an object that carries the claims of the `idToken` property.
 
 **Parameters**
+
 None.
 
 **Return Type**
