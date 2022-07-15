@@ -15,7 +15,7 @@ Return `OidcConfigResponse` by requesting to `/oidc/.well-known/openid-configura
 
 **Throws**
 
-- fetch failed
+- Fetch failed
 
 </details>
 
@@ -121,7 +121,7 @@ Fetch a token (`CodeTokenResponse`) by requesting to `/oidc/token` (by authoriza
 
 **Throws**
 
-- fetch failed
+- Fetch failed
 
 </details>
 
@@ -161,7 +161,7 @@ Fetch a token (`RefreshTokenTokenResponse`) via `/oidc/token` (by refresh token)
 
 **Throws**
 
-- fetch failed
+- Fetch failed
 
 </details>
 
@@ -196,6 +196,6 @@ Request to `/oidc/token/revocation` API to notify the authorization server that 
 
 **Throws**
 
-- revoke failed
+- Revoke failed
 
 </details>

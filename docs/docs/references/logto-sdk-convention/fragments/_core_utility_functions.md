@@ -81,7 +81,7 @@ Return an `IdTokenClaims` which carries all the token claims in the payload sect
 
 **Throws**
 
-- the `token` is not a valid JWT.
+- The `token` is not a valid JWT.
 
 </details>
 
@@ -136,8 +136,8 @@ This function accepts a `JsonWebKeySet` object from a 3rd-party library (jose) f
 
 **Throws**
 
-- verify signing key failed
-- verify claims failed
+- Verify signing key failed
+- Verify claims failed
 
 </details>
 
@@ -167,6 +167,6 @@ Verify the sign-in callbackUri is legal and return the `code` extracted from cal
 
 **Throws**
 
-- verifications failed
+- Verifications failed
 
 </details>
