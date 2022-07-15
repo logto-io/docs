@@ -10,7 +10,7 @@ import PlatformLogtoClientProperties from './fragments/\_platform_logto_client_p
 
 Platform SDK provides a standard way to integrate the client with Logto service in the specific platform and accelerates the integration process.
 
-- Platform SDK encapsulates [the core](./core-sdk-convention.md) with platform-specific implementation.
+- Platform SDK encapsulates [the core](./core-sdk-convention) with platform-specific implementation.
 - Platform SDK should provide basic types that make SDK easier to use.
 - Platform SDK should be exported as a class named `LogtoClient`.
 
