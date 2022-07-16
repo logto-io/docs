@@ -6,13 +6,29 @@ const path = require('path');
 const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 const lightCodeTheme = require('prism-react-renderer/themes/github');
 
-const addAliasPlugin = async () => ({
+/** @type {import('@docusaurus/types').PluginConfig} */
+const addAliasPlugin = () => ({
   name: 'add-alias-plugin',
   configureWebpack: () => ({
     resolve: {
       alias: {
         '@components': path.resolve(__dirname, './src/components'),
         '@scss': path.resolve(__dirname, './src/scss'),
+      },
+    },
+  }),
+});
+
+/** @type {import('@docusaurus/types').PluginConfig} */
+const injectPlausiblePlugin = () => ({
+  name: 'inject-plausible-plugin',
+  injectHtmlTags: () => ({
+    headTags: {
+      tagName: 'script',
+      attributes: {
+        src: 'https://plausible.io/js/plausible.js',
+        defer: true,
+        'data-domain': 'docs.logto.io',
       },
     },
   }),
@@ -134,7 +150,7 @@ const config = {
         respectPrefersColorScheme: true,
       },
     }),
-  plugins: [addAliasPlugin, 'docusaurus-plugin-sass'],
+  plugins: [addAliasPlugin, injectPlausiblePlugin, 'docusaurus-plugin-sass'],
   themes: ['docusaurus-theme-redoc'],
 };
 
