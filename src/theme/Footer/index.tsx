@@ -1,5 +1,5 @@
 import { useThemeConfig } from '@docusaurus/theme-common';
-import React from 'react';
+import { memo } from 'react';
 
 import FooterLayout from './FooterLayout';
 
@@ -13,4 +13,5 @@ const Footer = () => {
 
   return <FooterLayout logo={logo} copyright={copyright} links={links} />;
 };
-export default React.memo(Footer);
+
+export default memo(Footer);

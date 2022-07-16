@@ -1,5 +1,4 @@
 import { FooterLogo, FooterLinkItem } from '@docusaurus/theme-common';
-import React from 'react';
 
 import LinkItem from './LinkItem';
 import styles from './index.module.scss';
