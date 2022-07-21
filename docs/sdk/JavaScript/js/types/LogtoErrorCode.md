@@ -2,4 +2,4 @@
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:21](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L21)
+[packages/js/src/utils/errors.ts:22](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L22)

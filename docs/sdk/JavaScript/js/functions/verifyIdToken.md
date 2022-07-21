@@ -15,4 +15,4 @@
 
 #### Defined in
 
-[packages/js/src/utils/id-token.ts:23](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/id-token.ts#L23)
+[packages/js/src/utils/id-token.ts:27](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/id-token.ts#L27)

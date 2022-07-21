@@ -2,10 +2,10 @@
 
 #### Parameters
 
-| Name        | Type                                                                         |
-| :---------- | :--------------------------------------------------------------------------- |
-| `endpoint`  | `string`                                                                     |
-| `requester` | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| Name        | Type                                 |
+| :---------- | :----------------------------------- |
+| `endpoint`  | `string`                             |
+| `requester` | [`Requester`](../types/Requester.md) |
 
 #### Returns
 
@@ -13,4 +13,4 @@
 
 #### Defined in
 
-[packages/js/src/core/oidc-config.ts:20](https://github.com/logto-io/js/blob/5254dee/packages/js/src/core/oidc-config.ts#L20)
+[packages/js/src/core/oidc-config.ts:19](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/core/oidc-config.ts#L19)

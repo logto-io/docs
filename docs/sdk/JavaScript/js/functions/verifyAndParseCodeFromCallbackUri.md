@@ -14,4 +14,4 @@
 
 #### Defined in
 
-[packages/js/src/utils/callback-uri.ts:13](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/callback-uri.ts#L13)
+[packages/js/src/utils/callback-uri.ts:13](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/callback-uri.ts#L13)

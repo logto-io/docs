@@ -1,5 +1,25 @@
-**Requester**: `ReturnType`<typeof [`createRequester`](../functions/createRequester.md)\>
+**Requester**: <T\>(...`args`: `Parameters`<typeof `fetch`\>) => `Promise`<`T`\>
+
+#### Type declaration
+
+<`T`\>(...`args`): `Promise`<`T`\>
+
+##### Type parameters
+
+| Name |
+| :--- |
+| `T`  |
+
+##### Parameters
+
+| Name      | Type                          |
+| :-------- | :---------------------------- |
+| `...args` | `Parameters`<typeof `fetch`\> |
+
+##### Returns
+
+`Promise`<`T`\>
 
 #### Defined in
 
-[packages/js/src/utils/requester.ts:28](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/requester.ts#L28)
+[packages/js/src/types/index.ts:6](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/types/index.ts#L6)

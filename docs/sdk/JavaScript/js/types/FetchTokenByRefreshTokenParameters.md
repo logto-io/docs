@@ -12,4 +12,4 @@
 
 #### Defined in
 
-[packages/js/src/core/fetch-token.ts:16](https://github.com/logto-io/js/blob/5254dee/packages/js/src/core/fetch-token.ts#L16)
+[packages/js/src/core/fetch-token.ts:16](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/core/fetch-token.ts#L16)

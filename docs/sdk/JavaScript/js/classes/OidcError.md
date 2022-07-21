@@ -24,7 +24,7 @@
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:59](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L59)
+[packages/js/src/utils/errors.ts:59](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L59)
 
 ## Properties
 
@@ -34,7 +34,7 @@
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:56](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L56)
+[packages/js/src/utils/errors.ts:56](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L56)
 
 ---
 
@@ -44,4 +44,4 @@
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:57](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L57)
+[packages/js/src/utils/errors.ts:57](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L57)

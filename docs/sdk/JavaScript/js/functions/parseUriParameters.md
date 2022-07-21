@@ -12,4 +12,4 @@
 
 #### Defined in
 
-[packages/js/src/utils/callback-uri.ts:6](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/callback-uri.ts#L6)
+[packages/js/src/utils/callback-uri.ts:6](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/callback-uri.ts#L6)

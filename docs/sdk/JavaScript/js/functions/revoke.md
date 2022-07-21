@@ -2,12 +2,12 @@
 
 #### Parameters
 
-| Name                 | Type                                                                         |
-| :------------------- | :--------------------------------------------------------------------------- |
-| `revocationEndpoint` | `string`                                                                     |
-| `clientId`           | `string`                                                                     |
-| `token`              | `string`                                                                     |
-| `requester`          | <T\>(...`args`: [input: RequestInfo, init?: RequestInit]) => `Promise`<`T`\> |
+| Name                 | Type                                 |
+| :------------------- | :----------------------------------- |
+| `revocationEndpoint` | `string`                             |
+| `clientId`           | `string`                             |
+| `token`              | `string`                             |
+| `requester`          | [`Requester`](../types/Requester.md) |
 
 #### Returns
 
@@ -15,4 +15,4 @@
 
 #### Defined in
 
-[packages/js/src/core/revoke.ts:4](https://github.com/logto-io/js/blob/5254dee/packages/js/src/core/revoke.ts#L4)
+[packages/js/src/core/revoke.ts:4](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/core/revoke.ts#L4)

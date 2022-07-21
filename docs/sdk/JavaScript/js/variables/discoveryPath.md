@@ -2,4 +2,4 @@
 
 #### Defined in
 
-[packages/js/src/core/oidc-config.ts:16](https://github.com/logto-io/js/blob/5254dee/packages/js/src/core/oidc-config.ts#L16)
+[packages/js/src/core/oidc-config.ts:15](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/core/oidc-config.ts#L15)

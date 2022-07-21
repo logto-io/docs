@@ -9,4 +9,4 @@
 
 #### Defined in
 
-[packages/js/src/consts/index.ts:1](https://github.com/logto-io/js/blob/5254dee/packages/js/src/consts/index.ts#L1)
+[packages/js/src/consts/index.ts:1](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/consts/index.ts#L1)

@@ -13,7 +13,7 @@
 
 #### Defined in
 
-[packages/js/src/consts/index.ts:6](https://github.com/logto-io/js/blob/5254dee/packages/js/src/consts/index.ts#L6)
+[packages/js/src/consts/index.ts:6](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/consts/index.ts#L6)
 
 ---
 
@@ -23,4 +23,4 @@
 
 #### Defined in
 
-[packages/js/src/consts/index.ts:7](https://github.com/logto-io/js/blob/5254dee/packages/js/src/consts/index.ts#L7)
+[packages/js/src/consts/index.ts:7](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/consts/index.ts#L7)
