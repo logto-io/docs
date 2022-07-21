@@ -9,8 +9,8 @@ Each user has a profile containing [all user information](#property-reference).
 
 It consists of the following types of data:
 
-- [Social identities](./social-identities): stores the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
-- [Custom data](./custom-data): stores additional user info not listed in the pre-defined user properties, such as user-preferred color and language.
+- [Social identities](./social-identities.md): stores the user info retrieved from social sign-in (i.e., sign-in with a social connector), such as Facebook, GitHub, and WeChat.
+- [Custom data](./custom-data.md): stores additional user info not listed in the pre-defined user properties, such as user-preferred color and language.
 - [Basic data](#basic-data): is the basic info from the user profile. It stores all other _user_'s properties except for _identities_ and _custom_data_, such as user id, username, email, phone number, and when the user last signed in.
 
 Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
@@ -47,8 +47,8 @@ Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
 ```
 
 You can query the user profile using
-[Admin Console](../../../docs/recipes/manage-users/admin-console#view-and-update-user-profile) or
-[Management API](../../../docs/recipes/manage-users/management-api),
+[Admin Console](../../../docs/recipes/manage-users/admin-console.md#view-and-update-user-profile) or
+[Management API](../../../docs/recipes/manage-users/management-api.md),
 such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>.
 
 ## Basic data
@@ -106,11 +106,11 @@ For example, only the users whose _roles_names_ contain `admin`, i.e., the admin
 
 :::
 
-You cannot update the user's _role_names_ using [Admin Console](../../../docs/recipes/manage-users/admin-console#view-and-update-user-profile) for now.
+You cannot update the user's _role_names_ using [Admin Console](../../../docs/recipes/manage-users/admin-console.md#view-and-update-user-profile) for now.
 
 ### application_id
 
-The value of [_application_id_](../applications/#application-id) is from the application the user first signed in to.
+The value of [_application_id_](../applications/README.mdx#application-id) is from the application the user first signed in to.
 It may be `null`.
 
 ### last_signed_in_at
@@ -145,7 +145,7 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 ## Property reference
 
 The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
-which means you can query them using [Management API](../../../docs/recipes/manage-users/management-api).
+which means you can query them using [Management API](../../../docs/recipes/manage-users/management-api.md).
 
 | Name                                                      | Type         | Description                                   | Unique | Required |
 | --------------------------------------------------------- | ------------ | --------------------------------------------- | ------ | -------- |
@@ -156,8 +156,8 @@ which means you can query them using [Management API](../../../docs/recipes/mana
 | [name](#name)                                             | string       | Full name                                     | ❌     | ❌       |
 | [avatar](#avatar)                                         | string       | URL pointing to user's avatar image           | ❌     | ❌       |
 | [role_names](#role_names)                                 | string array | List of roles                                 | ❌     | ✅       |
-| [identities](./social-identities)                         | object       | User info retrieved from social sign-in       | ❌     | ✅       |
-| [custom_data](./custom-data)                              | object       | Additional info in customizable properties    | ❌     | ✅       |
+| [identities](./social-identities.md)                      | object       | User info retrieved from social sign-in       | ❌     | ✅       |
+| [custom_data](./custom-data.md)                           | object       | Additional info in customizable properties    | ❌     | ✅       |
 | [application_id](#application_id)                         | string       | Application ID that the user first registered | ❌     | ✅       |
 | [last_sign_in_at](#last_signed_in_at)                     | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
 | [password_encrypted](#password_encrypted)                 | string       | Encrypted password                            | ❌     | ❌       |

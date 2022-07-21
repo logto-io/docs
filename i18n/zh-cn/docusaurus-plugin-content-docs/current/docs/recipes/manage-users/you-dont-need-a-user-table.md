@@ -24,7 +24,7 @@ sidebar_position: 3
 
 1. 在其他表中创建 `user_id` 列，用于保存来自 Logto 的 `user.id`，参考前一章 [标识用户](#identify-user)。
 2. 使用 Logto 的「[管理 API](./management-api.md)」完成增删改查操作：创建和更新用户，获取用户详情，获取用户列表等等。
-3. 保存用户的额外信息到自定义数据（`customData`）中。查看这个链接以获取更多信息：[用户自定义数据](../../references/users/README.md)。
+3. 保存用户的额外信息到自定义数据（`customData`）中。查看这个链接以获取更多信息：[用户自定义数据](../../references/users/custom-data.md)。
 
 至此，Logto 取代了「用户表」的作用。
 
