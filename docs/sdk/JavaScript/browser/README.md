@@ -1,28 +1,26 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 ---
 
 # @logto/browser
 
 ## Table of contents
 
+### Enumerations
+
+- [Prompt](enums/Prompt.md)
+
 ### Classes
 
-- [LogtoClient](classes/LogtoClient.md)
 - [LogtoClientError](classes/LogtoClientError.md)
 - [LogtoError](classes/LogtoError.md)
+- [LogtoRequestError](classes/LogtoRequestError.md)
 - [OidcError](classes/OidcError.md)
+- [default](classes/default.md)
 
 ### Type Aliases
 
-- [AccessToken](types/AccessToken.md)
 - [IdTokenClaims](types/IdTokenClaims.md)
 - [LogtoClientErrorCode](types/LogtoClientErrorCode.md)
 - [LogtoConfig](types/LogtoConfig.md)
 - [LogtoErrorCode](types/LogtoErrorCode.md)
-- [LogtoSignInSessionItem](types/LogtoSignInSessionItem.md)
-- [UserInfoResponse](types/UserInfoResponse.md)
-
-### Variables
-
-- [LogtoSignInSessionItemSchema](variables/LogtoSignInSessionItemSchema.md)

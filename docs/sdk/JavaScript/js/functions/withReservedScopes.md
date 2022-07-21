@@ -14,4 +14,4 @@ scopes should contain all reserved scopes ( Logto requires `openid` and `offline
 
 #### Defined in
 
-[packages/js/src/utils/scopes.ts:5](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/scopes.ts#L5)
+[packages/js/src/utils/scopes.ts:5](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/scopes.ts#L5)

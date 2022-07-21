@@ -42,7 +42,7 @@ Error.constructor
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:49](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L49)
+[packages/js/src/utils/errors.ts:49](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L49)
 
 ## Properties
 
@@ -52,7 +52,7 @@ Error.constructor
 
 #### Defined in
 
-[packages/js/src/utils/errors.ts:47](https://github.com/logto-io/js/blob/5254dee/packages/js/src/utils/errors.ts#L47)
+[packages/js/src/utils/errors.ts:47](https://github.com/logto-io/js/blob/f0f78e6/packages/js/src/utils/errors.ts#L47)
 
 ---
 
@@ -66,7 +66,7 @@ Error.message
 
 #### Defined in
 
-node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1023
+node_modules/.pnpm/typescript@4.7.2/node_modules/typescript/lib/lib.es5.d.ts:1029
 
 ---
 
@@ -80,7 +80,7 @@ Error.name
 
 #### Defined in
 
-node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1022
+node_modules/.pnpm/typescript@4.7.2/node_modules/typescript/lib/lib.es5.d.ts:1028
 
 ---
 
@@ -94,7 +94,7 @@ Error.stack
 
 #### Defined in
 
-node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:1024
+node_modules/.pnpm/typescript@4.7.2/node_modules/typescript/lib/lib.es5.d.ts:1030
 
 ---
 
@@ -108,7 +108,9 @@ node_modules/.pnpm/typescript@4.5.5/node_modules/typescript/lib/lib.es5.d.ts:102
 
 Optional override for formatting stack traces
 
-**`see`** https://v8.dev/docs/stack-trace-api#customizing-stack-traces
+**`See`**
+
+https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 
 ##### Parameters
 

@@ -2,4 +2,4 @@
 
 #### Defined in
 
-[packages/browser/src/index.ts:60](https://github.com/logto-io/js/blob/5254dee/packages/browser/src/index.ts#L60)
+[packages/client/src/types/index.ts:29](https://github.com/logto-io/js/blob/f0f78e6/packages/client/src/types/index.ts#L29)
