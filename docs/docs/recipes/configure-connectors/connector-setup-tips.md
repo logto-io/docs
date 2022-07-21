@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # Connector setup tips
 
-A connector can be classified into two categories by its use cases: [_SMS or Email connector_](./connector-setup-tips.md/#sms-or-email-connector) and [_Social connector_](./connector-setup-tips.md/#social-connector).
+A connector can be classified into two categories by its use cases: [_SMS or Email connector_](./connector-setup-tips.md#sms-or-email-connector) and [_Social connector_](./connector-setup-tips.md#social-connector).
 
 Let's go over some worthy of notice tips for previously mentioned cases.
 
@@ -24,7 +24,7 @@ If you change the living SMS or Email connector and save changes, the previous S
 You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
 :::
 
-You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in) as soon as you finish the setup.
+You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in.mdx) as soon as you finish the setup.
 
 ![Add SMS or email connector modal](./assets/add-sms-or-email-connector-modal.png)
 
@@ -35,7 +35,7 @@ You can check out [how to enable SMS or email passcode sign-in](../../tutorials/
 Suppose you are now on the "Connectors" page in Admin Console. Go to the "Social connectors" tab and add a new connector to enter the configuration process.
 
 :::tip
-You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_ description](../../references/connectors/#platform) to know more.
+You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_ description](../../references/connectors/README.mdx#platform) to know more.
 
 Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit your use case.<br/>
 You can set up a single _Native_ connector w/o adding a _Web_ connector if you only provide native mobile apps and vice versa.
@@ -43,7 +43,7 @@ You can set up a single _Native_ connector w/o adding a _Web_ connector if you o
 
 Follow the README to compose the connector config JSON with little effort.
 
-See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in) to bring your social connector into use.
+See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in.mdx) to bring your social connector into use.
 
 ![Add social connector modal](./assets/add-social-connector-modal.png)
 

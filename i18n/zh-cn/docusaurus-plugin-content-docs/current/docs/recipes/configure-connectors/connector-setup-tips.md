@@ -5,7 +5,7 @@ sidebar_position: 1
 
 # 设置连接器小贴士
 
-我们可以把连接器按照不同的使用场景分成两个类别：[_短信和邮件连接器_](./connector-setup-tips.md/#短信和邮件连接器) 和 [_社交连接器_](./connector-setup-tips.md/#社交连接器)。
+我们可以把连接器按照不同的使用场景分成两个类别：[_短信和邮件连接器_](./connector-setup-tips.md#短信和邮件连接器) 和 [_社交连接器_](./connector-setup-tips.md#社交连接器)。
 
 让我们分别就这两种使用场景谈一些值得注意的地方。
 
@@ -24,7 +24,7 @@ sidebar_position: 1
 你可以自己妥善保存以前使用的连接器的 _config_ 以便后续还需要切换回这些连接器。
 :::
 
-当你完成了连接器的设置之后，看看如何「[启用短信或邮件验证码登录](../../tutorials/get-started/enable-passcode-sign-in)」。
+当你完成了连接器的设置之后，看看如何「[启用短信或邮件验证码登录](../../tutorials/get-started/enable-passcode-sign-in.mdx)」。
 
 ![添加短信和邮件连接器的对话框](./assets/add-sms-or-email-connector-modal.png)
 
@@ -35,7 +35,7 @@ sidebar_position: 1
 同样从「管理控制台」的「连接器」页面开始，去到「社交连接器」标签，点按右上角的「添加社交连接器」进入配置。
 
 :::tip
-你也许注意到了诸如 Google，Facebook，GitHub 这样的连接器没有关于平台的二级选项。这些连接器他们的 _platform_ 都是 _Universal_。查看 [_platform_](../../references/connectors/#platform) 了解更多。
+你也许注意到了诸如 Google，Facebook，GitHub 这样的连接器没有关于平台的二级选项。这些连接器他们的 _platform_ 都是 _Universal_。查看 [_platform_](../../references/connectors/README.mdx#platform) 了解更多。
 
 对于有关于平台的二级选项的连接器，从 _Web_ 和 _Native_ 中根据你的使用场景选择一个合适的作为 _platform_ 的值。<br/>
 当你只准备为移动端的原生应用提供服务时，尽可以只配置一个 _Native_ 连接器而不需要添加适用 _Web_ 的连接器，反之亦然。
@@ -43,7 +43,7 @@ sidebar_position: 1
 
 根据配置文档，很快就可以完成连接器配置的 JSON 了。
 
-然后参考「[启用社交登录](../../tutorials/get-started/enable-social-sign-in)」，让你刚配置的 _社交连接器_ 开始工作。
+然后参考「[启用社交登录](../../tutorials/get-started/enable-social-sign-in.mdx)」，让你刚配置的 _社交连接器_ 开始工作。
 
 ![添加社交连接器的对话框](./assets/add-social-connector-modal.png)
 
