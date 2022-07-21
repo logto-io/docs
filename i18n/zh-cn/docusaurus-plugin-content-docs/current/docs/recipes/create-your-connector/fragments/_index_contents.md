@@ -30,7 +30,7 @@ export interface SocialConnector<T = unknown> extends BaseConnector<T> {
 关于 _ConnectorMetadata_ 的参考，见「[连接器](../../references/connectors)」。
 
 - 连接器的 `validateConfig` 方法对于所有类型的连接器都是必须的。
-- 所有 _邮件连接器_ 和 _短信连接器_ 都需要 `sendMessage` 方法来调用发送信息的 API（使用的是数据库中的连接器配置）。开发者可以选择性地实现 `sendTestMessage` 方法来使用在设置连接器时尚未保存的配置发送测试信息。
+- 所有 _邮件连接器_ 和 _短信连接器_ 都需要 `sendMessage` 方法来调用发送信息的 API（使用的是数据库中的连接器配置）。开发者可以选择性地实现 `sendTestMessage` 方法，来在设置连接器时使用尚未保存的配置发送测试信息。
 - 授权 URL 生成器 `getAuthorizationUri` 方法以及获取用户档案的 `getUserInfo` 方法对大多数 _社交连接器_ 都是必要的。
 - 所有的 _社交连接器_ 都应该有用用户授权拿到的 authorization code（授权码）交换得到 access token（访问令牌）的 `getUserInfo` 方法。
 
