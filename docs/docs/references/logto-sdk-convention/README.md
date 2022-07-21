@@ -5,5 +5,5 @@ This section demonstrates functionalities provided by Logto SDK and the conventi
 This convention contains three main parts:
 
 - [Design Strategy](./design-strategy.md)
-- [Core SDK Convention](./core-sdk-convention.md)
-- [Platform SDK Convention](./platform-sdk-convention.md)
+- [Core SDK Convention](./core-sdk-convention.mdx)
+- [Platform SDK Convention](./platform-sdk-convention.mdx)
