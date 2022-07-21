@@ -44,7 +44,7 @@ sidebar_position: 1
 
 「社交连接」是用户已连接的社交连接器列表。
 假设用户使用过 Facebook 社交连接器来登录，Facebook 的条目就会出现在该列表中。
-请参阅 [身份](../../references/users/#identities) 以了解详情。
+请参阅 [身份](../../references/users/social-identities.md) 以了解详情。
 
 _全名_、_头像_ 的图片 URL 和 _自定义数据_ 是可编辑的，_社交连接_ 是可删除的，其他属性是只读的。
 

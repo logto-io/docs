@@ -24,7 +24,7 @@ Forget the user table, store user info in Logto:
 
 1. Create `user_id` column in other tables, save Logto's `user.id`, refer to the previous chapter [Identify User](#identify-user).
 2. Call [Logto's Management API](./management-api.md) for CRUD: create and update a user, get user detail, list users...
-3. Save any additional user information to custom data. Check this link for more info: [User Custom Data](../../references/users/README.md).
+3. Save any additional user information to custom data. Check this link for more info: [User Custom Data](../../references/users/custom-data.md).
 
 By doing this, Logto is now playing the "user table" role.
 
