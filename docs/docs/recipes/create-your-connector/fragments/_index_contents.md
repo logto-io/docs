@@ -3,23 +3,23 @@ Connector's class is an implementation among _SMSConnector_, _EmailConnector_, a
 Here is an interface definition of different types of connectors.
 
 ```typescript
-interface BaseConnector<T = unknown> {
+interface BaseConnector<T> {
   metadata: ConnectorMetadata;
   getConfig: GetConnectorConfig;
   validateConfig: ValidateConfig<T>;
 }
 
-interface SmsConnector<T = unknown> extends BaseConnector<T> {
+interface SmsConnector<T> extends BaseConnector<T> {
   sendMessage: SmsSendMessageFunction;
   sendTestMessage?: SmsSendTestMessageFunction;
 }
 
-interface EmailConnector<T = unknown> extends BaseConnector<T> {
+interface EmailConnector<T> extends BaseConnector<T> {
   sendMessage: EmailSendMessageFunction;
   sendTestMessage?: EmailSendTestMessageFunction;
 }
 
-export interface SocialConnector<T = unknown> extends BaseConnector<T> {
+export interface SocialConnector<T> extends BaseConnector<T> {
   getAuthorizationUri: GetAuthorizationUri;
   getUserInfo: GetUserInfo;
 }
