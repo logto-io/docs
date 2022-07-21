@@ -3,21 +3,23 @@ Connector's class is an implementation among _SMSConnector_, _EmailConnector_, a
 Here is an interface definition of different types of connectors.
 
 ```typescript
-interface BaseConnector {
+interface BaseConnector<T> {
   metadata: ConnectorMetadata;
-  validateConfig: ValidateConfig;
   getConfig: GetConnectorConfig;
+  validateConfig: ValidateConfig<T>;
 }
 
-interface SmsConnector extends BaseConnector {
+interface SmsConnector<T> extends BaseConnector<T> {
   sendMessage: SmsSendMessageFunction;
+  sendTestMessage?: SmsSendTestMessageFunction;
 }
 
-interface EmailConnector extends BaseConnector {
+interface EmailConnector<T> extends BaseConnector<T> {
   sendMessage: EmailSendMessageFunction;
+  sendTestMessage?: EmailSendTestMessageFunction;
 }
 
-interface SocialConnector extends BaseConnector {
+export interface SocialConnector<T> extends BaseConnector<T> {
   getAuthorizationUri: GetAuthorizationUri;
   getUserInfo: GetUserInfo;
 }
@@ -26,7 +28,7 @@ interface SocialConnector extends BaseConnector {
 To see connector methods' definition and build a picture of connector interface design, see [`@logto/connector-types`](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts). You can also find _ConnectorMetadata_ reference at "[Connectors](../../references/connectors)".
 
 - A connector `validateConfig` is obligatory for all connectors.
-- All _SMS Connectors_ and _Email Connectors_ require a `sendMessage` method to call providers message sending APIs.
+- All _SMS Connectors_ and _Email Connectors_ require a `sendMessage` method to call providers message sending APIs using configs from the database. Developers can choose to implement a `sendTestMessage` method to send a testing message with unsaved config while setting connectors up.
 - Authorization URL generator `getAuthorizationUri` and user profile retriever `getUserInfo` are required for all _Social Connectors_.
 - The `getUserInfo` method, which can retrieve an access token with an authorization code, is expected for most _Social Connectors_.
 
