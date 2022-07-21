@@ -3,23 +3,23 @@
 这里有对于不同类型连接器接口的详细定义。
 
 ```typescript
-interface BaseConnector<T = unknown> {
+interface BaseConnector<T> {
   metadata: ConnectorMetadata;
   getConfig: GetConnectorConfig;
   validateConfig: ValidateConfig<T>;
 }
 
-interface SmsConnector<T = unknown> extends BaseConnector<T> {
+interface SmsConnector<T> extends BaseConnector<T> {
   sendMessage: SmsSendMessageFunction;
   sendTestMessage?: SmsSendTestMessageFunction;
 }
 
-interface EmailConnector<T = unknown> extends BaseConnector<T> {
+interface EmailConnector<T> extends BaseConnector<T> {
   sendMessage: EmailSendMessageFunction;
   sendTestMessage?: EmailSendTestMessageFunction;
 }
 
-export interface SocialConnector<T = unknown> extends BaseConnector<T> {
+export interface SocialConnector<T> extends BaseConnector<T> {
   getAuthorizationUri: GetAuthorizationUri;
   getUserInfo: GetUserInfo;
 }
