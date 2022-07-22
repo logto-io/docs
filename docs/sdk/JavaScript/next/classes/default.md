@@ -17,6 +17,7 @@
 
 - [createNodeClient](default.md#createnodeclient)
 - [getLogtoUserFromRequest](default.md#getlogtouserfromrequest)
+- [handleAuthRoutes](default.md#handleauthroutes)
 - [handleSignIn](default.md#handlesignin)
 - [handleSignInCallback](default.md#handlesignincallback)
 - [handleSignOut](default.md#handlesignout)
@@ -38,7 +39,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:15](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L15)
+[packages/next/src/index.ts:15](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L15)
 
 ## Properties
 
@@ -48,7 +49,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:13](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L13)
+[packages/next/src/index.ts:13](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L13)
 
 ---
 
@@ -58,7 +59,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:14](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L14)
+[packages/next/src/index.ts:14](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L14)
 
 ## Accessors
 
@@ -80,7 +81,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:98](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L98)
+[packages/next/src/index.ts:124](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L124)
 
 ## Methods
 
@@ -100,7 +101,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:81](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L81)
+[packages/next/src/index.ts:107](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L107)
 
 ---
 
@@ -121,7 +122,27 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:109](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L109)
+[packages/next/src/index.ts:135](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L135)
+
+---
+
+### handleAuthRoutes
+
+**handleAuthRoutes**(`configs?`): `NextApiHandler`<`any`\>
+
+#### Parameters
+
+| Name       | Type              |
+| :--------- | :---------------- |
+| `configs?` | `WithLogtoConfig` |
+
+#### Returns
+
+`NextApiHandler`<`any`\>
+
+#### Defined in
+
+[packages/next/src/index.ts:60](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L60)
 
 ---
 
@@ -141,7 +162,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:17](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L17)
+[packages/next/src/index.ts:17](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L17)
 
 ---
 
@@ -161,7 +182,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:28](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L28)
+[packages/next/src/index.ts:30](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L30)
 
 ---
 
@@ -181,7 +202,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:39](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L39)
+[packages/next/src/index.ts:41](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L41)
 
 ---
 
@@ -201,7 +222,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:52](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L52)
+[packages/next/src/index.ts:54](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L54)
 
 ---
 
@@ -222,7 +243,7 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:57](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L57)
+[packages/next/src/index.ts:83](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L83)
 
 ---
 
@@ -261,4 +282,4 @@
 
 #### Defined in
 
-[packages/next/src/index.ts:67](https://github.com/logto-io/js/blob/f0f78e6/packages/next/src/index.ts#L67)
+[packages/next/src/index.ts:93](https://github.com/logto-io/js/blob/b919948/packages/next/src/index.ts#L93)
