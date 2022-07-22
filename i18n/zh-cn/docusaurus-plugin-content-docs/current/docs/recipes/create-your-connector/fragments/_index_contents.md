@@ -27,7 +27,7 @@ export interface SocialConnector<T> extends BaseConnector<T> {
 
 若是要了解连接器接口的设计和连接器类型中方法的定义，参见 [`@logto/connector-types`](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts)。
 
-关于 _ConnectorMetadata_ 的参考，见「[连接器](../../references/connectors)」。
+关于 _ConnectorMetadata_ 的参考，见「[连接器 - ConnectorMetadata](../../../references/connectors/README.mdx#连接器的-本地储存connectormetadata)」。
 
 - 连接器的 `validateConfig` 方法对于所有类型的连接器都是必须的。
 - 所有 _邮件连接器_ 和 _短信连接器_ 都需要 `sendMessage` 方法来调用发送信息的 API（使用的是数据库中的连接器配置）。开发者可以选择性地实现 `sendTestMessage` 方法，来在设置连接器时使用尚未保存的配置发送测试信息。

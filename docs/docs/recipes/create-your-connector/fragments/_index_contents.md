@@ -25,7 +25,7 @@ export interface SocialConnector<T> extends BaseConnector<T> {
 }
 ```
 
-To see connector methods' definition and build a picture of connector interface design, see [`@logto/connector-types`](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts). You can also find _ConnectorMetadata_ reference at "[Connectors](../../references/connectors)".
+To see connector methods' definition and build a picture of connector interface design, see [`@logto/connector-types`](https://github.com/logto-io/logto/blob/master/packages/connector-types/src/index.ts). You can also find _ConnectorMetadata_ reference at "[Connectors - ConnectorMetadata](../../../references/connectors/README.mdx#connectors-local-storage-connectormetadata)".
 
 - A connector `validateConfig` is obligatory for all connectors.
 - All _SMS Connectors_ and _Email Connectors_ require a `sendMessage` method to call providers message sending APIs using configs from the database. Developers can choose to implement a `sendTestMessage` method to send a testing message with unsaved config while setting connectors up.
