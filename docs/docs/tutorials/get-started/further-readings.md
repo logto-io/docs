@@ -29,7 +29,7 @@ Learn more about how to know your users and see the figures like DAU and MAU gra
 From one regional business to a global corporate, the willingness to offer the best user experience won't change.<br/>
 You can change current language phrases or add a new language without friction.
 
-### [🚀 Deploy Logto](../../recipes/deploy-logto/README.md)
+### [🚀 Deployment](../../recipes/deployment/README.md)
 
 When it's time to go live, let's go gentle.<br/>
 We'll help to go through this exciting journey.
