@@ -32,4 +32,4 @@ You may use Node.js to serve HTTPS directly or set up an HTTPS proxy/balancer in
 
 If we don't mention it in the changelog, you can feel free to upgrade Logto without changing your code or database schema. Our API follows [semver](https://semver.org/).
 
-We'll build a smooth database migration process if a schema change is inevitable. You'll be able to do that with chill.
+We'll build a smooth database migration process and demonstrate it in our changelog if a schema change is inevitable. You'll be able to do that with chill.
