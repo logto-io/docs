@@ -1,6 +1,6 @@
 # 📃 SDK Convention
 
-This section demonstrates the SDK functionalities provided by Logto and the convention between various languages and platforms.
+This section demonstrates SDK functionalities provided by Logto and the convention between various languages and platforms.
 
 This convention contains three main parts:
 
