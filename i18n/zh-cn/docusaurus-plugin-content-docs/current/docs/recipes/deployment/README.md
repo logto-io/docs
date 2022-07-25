@@ -14,7 +14,7 @@ sidebar_position: 8
 
 - `DB_URL` Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
 - `PORT` Logto 监听的本地端口。默认 `3001`。
-- `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
+- `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境（例如 `ENDPOINT=https://logto.domain.com`）。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
 - `OIDC_COOKIE_KEYS` [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。定期轮换以确保安全。
 - `OIDC_PRIVATE_KEY` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。
 

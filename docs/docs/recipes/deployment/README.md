@@ -14,7 +14,7 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 
 - `DB_URL` The [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) for Logto database.
 - `PORT` The port that Logto listens to. Default `3001`.
-- `ENDPOINT` You may specify a URL with your custom domain for production. This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs.
+- `ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ENDPOINT=https://logto.domain.com`). This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs.
 - `OIDC_COOKIE_KEYS` The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys). Rotate regularly to keep safety.
 - `OIDC_PRIVATE_KEY` The content of the private key for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support.
 
