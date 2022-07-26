@@ -149,6 +149,11 @@ const config = {
       colorMode: {
         respectPrefersColorScheme: true,
       },
+      algolia: {
+        appId: 'DE7QZWOVO6',
+        apiKey: '6a95adc313e3bf3c03391b11dffe70fb',
+        indexName: 'logto',
+      },
     }),
   plugins: [addAliasPlugin, injectPlausiblePlugin, 'docusaurus-plugin-sass'],
   themes: ['docusaurus-theme-redoc'],
