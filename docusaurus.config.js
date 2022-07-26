@@ -151,7 +151,7 @@ const config = {
       },
       algolia: {
         appId: 'DE7QZWOVO6',
-        apiKey: '6a95adc313e3bf3c03391b11dffe70fb',
+        apiKey: '4c64ad7f3b8622f59d8121dbac801337',
         indexName: 'logto',
       },
     }),
