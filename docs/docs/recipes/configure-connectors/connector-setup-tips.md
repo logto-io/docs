@@ -13,7 +13,15 @@ Let's go over some worthy of notice tips for previously mentioned cases.
 
 Suppose you are now on the "Connectors" page in Admin Console. Click the "Set up" button and select an SMS or Email connector to enter the configuration process.
 
+![Add SMS or email connector modal](./assets/add-sms-or-email-connector-modal.png)
+
 Follow the README on the left and compose the connector config JSON in the text input box on your right. You can check whether the config can work before saving changes.
+
+![Configure SMS or email connector guide](./assets/configure-sms-or-email-connector-guide.png)
+
+:::tip
+We suggest you use different templates for various use cases, or it could trigger flow control, leading to a temporary outage of your service.
+:::
 
 You can change the current SMS or Email connector in the top-right corner on the connector details page, where a review of the connector README is also available.
 
@@ -26,13 +34,11 @@ You may keep the old connectors' _config_ properly if you want to switch back to
 
 You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/enable-passcode-sign-in.mdx) as soon as you finish the setup.
 
-![Add SMS or email connector modal](./assets/add-sms-or-email-connector-modal.png)
-
-![Configure SMS or email connector guide](./assets/configure-sms-or-email-connector-guide.png)
-
 ## Social Connector
 
 Suppose you are now on the "Connectors" page in Admin Console. Go to the "Social connectors" tab and add a new connector to enter the configuration process.
+
+![Add social connector modal](./assets/add-social-connector-modal.png)
 
 :::tip
 You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_ description](../../references/connectors/README.mdx#platform) to know more.
@@ -43,8 +49,6 @@ You can set up a single _Native_ connector w/o adding a _Web_ connector if you o
 
 Follow the README to compose the connector config JSON with little effort.
 
-See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in.mdx) to bring your social connector into use.
-
-![Add social connector modal](./assets/add-social-connector-modal.png)
-
 ![Configure social connector guide](./assets/configure-social-connector-guide.png)
+
+See [how to enable social sign-in](../../tutorials/get-started/enable-social-sign-in.mdx) to bring your social connector into use.
