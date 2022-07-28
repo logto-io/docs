@@ -5,7 +5,7 @@ import spec from './swagger.json';
 import './index.scss';
 
 const Api = () => (
-  <Layout>
+  <Layout title="API">
     <Redoc spec={spec} />
   </Layout>
 );
