@@ -13,6 +13,7 @@ If the list doesn't cover your desired platform/framework, please file a feature
 - [Vanilla JS](./vanilla-js.mdx)
 - [React](./react.mdx)
 - [Vue](./vue.mdx)
+- [Next.js](./next-js.mdx)
 - [Traditional web](./traditional.mdx)
 
 ## Native
