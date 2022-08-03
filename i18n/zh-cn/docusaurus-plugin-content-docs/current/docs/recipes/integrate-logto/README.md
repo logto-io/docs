@@ -13,6 +13,7 @@ sidebar_position: 1
 - [原生 JS](./vanilla-js.mdx)
 - [React](./react.mdx)
 - [Vue](./vue.mdx)
+- [Next.js](./next-js.mdx)
 - [传统 web](./traditional.mdx)
 
 ## Native
