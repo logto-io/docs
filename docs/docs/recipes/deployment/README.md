@@ -18,7 +18,7 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 - `OIDC_COOKIE_KEYS` The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys). Rotate regularly to keep safety.
 - `OIDC_PRIVATE_KEYS` The string array of the content of the private key for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support.
 
-**I prefer using a `.pem` file for my OIDC private key. What should I do?**
+**I prefer using `.pem` files for my OIDC private keys. What should I do?**
 
 Just leave `OIDC_PRIVATE_KEYS` empty, and set the path of your `.pem` file in the `OIDC_PRIVATE_KEY_PATHS` array. It has a default value of `['./oidc-private-key.pem']`.
 
