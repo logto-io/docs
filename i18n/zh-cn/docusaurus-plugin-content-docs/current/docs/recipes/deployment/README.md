@@ -16,11 +16,11 @@ sidebar_position: 8
 - `PORT` Logto 监听的本地端口。默认 `3001`。
 - `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境（例如 `ENDPOINT=https://logto.domain.com`）。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
 - `OIDC_COOKIE_KEYS` [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。定期轮换以确保安全。
-- `OIDC_PRIVATE_KEY` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。
+- `OIDC_PRIVATE_KEYS` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容数组。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。
 
 **我想使用 `.pem` 文件用作 OIDC private key。我该怎么做？**
 
-将 `OIDC_PRIVATE_KEY` 置空，并将 `OIDC_PRIVATE_KEY_PATH` 设置为 `.pem` 文件的路径。它的默认值是 `'./oidc-private-key.pem'`。
+将 `OIDC_PRIVATE_KEYS` 置空，并将 `.pem` 文件的路径配置到 `OIDC_PRIVATE_KEY_PATHS` 数组中 。它的默认值是 `['./oidc-private-key.pem']`。
 
 有关环境变量的详情，请参见 [配置](../../references/core/configuration.md)。
 
