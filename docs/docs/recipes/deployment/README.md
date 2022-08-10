@@ -16,7 +16,25 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 - `PORT` The port that Logto listens to. Default `3001`.
 - `ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ENDPOINT=https://logto.domain.com`). This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs.
 - `OIDC_COOKIE_KEYS` The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys). Rotate regularly to keep safety.
-- `OIDC_PRIVATE_KEYS` The string array of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support (E.g. `["-----BEGIN RSA PRIVATE KEY-----\nKh9NV...\n-----END DSA PRIVATE KEY-----\n", "-----BEGIN RSA PRIVATE KEY-----\nOlQ1nS...\n-----END DSA PRIVATE KEY-----\n"]`).
+- `OIDC_PRIVATE_KEYS` The string array of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support.
+
+**How to set up `OIDC_PRIVATE_KEYS` correctly?**
+
+The value format for `OIDC_PRIVATE_KEYS` is as follows (You can use `\n` to replace newline characters):
+
+```bash
+OIDC_PRIVATE_KEYS=[
+"-----BEGIN RSA PRIVATE KEY-----
+...
+Kh9NV...
+...
+-----END DSA PRIVATE KEY-----",
+"-----BEGIN RSA PRIVATE KEY-----
+...
+nOlQ1nS...
+...
+-----END DSA PRIVATE KEY-----"]
+```
 
 **I prefer using `.pem` files for my OIDC private keys. What should I do?**
 

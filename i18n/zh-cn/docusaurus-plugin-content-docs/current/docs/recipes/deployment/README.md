@@ -16,7 +16,25 @@ sidebar_position: 8
 - `PORT` Logto 监听的本地端口。默认 `3001`。
 - `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境（例如 `ENDPOINT=https://logto.domain.com`）。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
 - `OIDC_COOKIE_KEYS` [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。定期轮换以确保安全。
-- `OIDC_PRIVATE_KEYS` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容数组。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现（例如 `["-----BEGIN RSA PRIVATE KEY-----\nKh9NV...\n-----END DSA PRIVATE KEY-----\n", "-----BEGIN RSA PRIVATE KEY-----\nOlQ1nS...\n-----END DSA PRIVATE KEY-----\n"]`）。
+- `OIDC_PRIVATE_KEYS` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容数组。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。
+
+**如何正确配置 `OIDC_PRIVATE_KEYS` ？**
+
+`OIDC_PRIVATE_KEYS` 的配置格式如下（可使用 `\n` 代替换行）：
+
+```bash
+OIDC_PRIVATE_KEYS=[
+"-----BEGIN RSA PRIVATE KEY-----
+...
+Kh9NV...
+...
+-----END DSA PRIVATE KEY-----",
+"-----BEGIN RSA PRIVATE KEY-----
+...
+nOlQ1nS...
+...
+-----END DSA PRIVATE KEY-----"]
+```
 
 **我想使用（多个） `.pem` 文件用作 OIDC private keys。我该怎么做？**
 
