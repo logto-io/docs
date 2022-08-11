@@ -15,8 +15,8 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 - `DB_URL` The [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) for Logto database.
 - `PORT` The port that Logto listens to. Default `3001`.
 - `ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ENDPOINT=https://logto.domain.com`). This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs.
-- `OIDC_COOKIE_KEYS` The string list of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys). Rotate regularly to keep safety. If you'd like to set multi keys, separate them with comma.
-- `OIDC_PRIVATE_KEYS` The private key content list for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support. If you'd like to set multi keys, separate them with comma.
+- `OIDC_COOKIE_KEYS` The comma-separated string list of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys). Rotate regularly to keep safety. If you'd like to set multi keys, separate them with comma.
+- `OIDC_PRIVATE_KEYS` The comma-separated string list of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support. If you'd like to set multi keys, separate them with comma.
 
 **How to set up `OIDC_PRIVATE_KEYS` correctly?**
 
@@ -37,7 +37,9 @@ nOlQ1nS...
 
 **I prefer using `.pem` files for my OIDC private keys. What should I do?**
 
-Just leave `OIDC_PRIVATE_KEYS` empty, and set the path of your `.pem` file in the `OIDC_PRIVATE_KEY_PATHS` list. It has a default value of `./oidc-private-key.pem`. You can set multi paths by separating them with comma. E.g. `oidc-private-key1.pem, oidc-private-key-2.pem`.
+Just leave `OIDC_PRIVATE_KEYS` empty, and set the path of your `.pem` file in the `OIDC_PRIVATE_KEY_PATHS` list. It has a default value of `'./oidc-private-key.pem'`.
+
+You can set multi paths by separating them with comma. E.g. `oidc-private-key1.pem, oidc-private-key-2.pem`.
 
 For more details about environment variables, see [Configuration](../../references/core/configuration.md).
 

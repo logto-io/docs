@@ -15,8 +15,8 @@ sidebar_position: 8
 - `DB_URL` Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
 - `PORT` Logto 监听的本地端口。默认 `3001`。
 - `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境（例如 `ENDPOINT=https://logto.domain.com`）。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
-- `OIDC_COOKIE_KEYS` [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串列表。定期轮换以确保安全。
-- `OIDC_PRIVATE_KEYS` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容列表。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。如果你想要设置多个 key，请使用逗号隔开。
+- `OIDC_COOKIE_KEYS` [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串列表（以逗号分隔）。定期轮换以确保安全。
+- `OIDC_PRIVATE_KEYS` [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容列表（以逗号分隔）。如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。如果你想要设置多个 key，请使用逗号隔开。
 
 **如何正确配置 `OIDC_PRIVATE_KEYS` ？**
 
@@ -37,9 +37,9 @@ nOlQ1nS...
 
 **我想使用（多个） `.pem` 文件用作 OIDC private keys。我该怎么做？**
 
-将 `OIDC_PRIVATE_KEYS` 置空，并将 `.pem` 文件的路径配置到 `OIDC_PRIVATE_KEY_PATHS` 列表中 。它的默认值是 `./oidc-private-key.pem`。如果你想使用多个 `.pem` 文件路径，请使用逗号隔开。例如 `oidc-private-key1.pem, oidc-private-key-2.pem`。
+将 `OIDC_PRIVATE_KEYS` 置空，并将 `.pem` 文件的路径配置到 `OIDC_PRIVATE_KEY_PATHS` 列表中 。它的默认值是 `./oidc-private-key.pem`。
 
-```bash
+如果你想使用多个 `.pem` 文件路径，请使用逗号隔开。例如 `oidc-private-key1.pem, oidc-private-key-2.pem`。
 
 有关环境变量的详情，请参见 [配置](../../references/core/configuration.md)。
 
@@ -52,4 +52,7 @@ nOlQ1nS...
 除非我们在 changelog 里特意提出，你都无需变更代码和数据库即可轻松升级 Logto。我们的 API 遵循 [semver](https://semver.org/) 标准。
 
 如果数据库变更无法避免，我们将提供一个顺滑的数据库迁移过程，并在 changelog 中详细描述。你将能轻松完成它。
+
+```
+
 ```
