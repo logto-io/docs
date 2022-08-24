@@ -1,0 +1,205 @@
+---
+sidebar_label: Spring Boot
+---
+
+import redirectUriFigure from './assets/spring-boot-redirect-uri.png';
+import AppNote from './fragments/_app-note.mdx';
+import ConfigureRedirectUri from './fragments/_configure-redirect-uri.mdx';
+
+# Spring Boot
+
+<AppNote type="Traditional web" />
+
+Your web app may run on the server-side using Spring Boot framework.
+For now, you need to integrate Logto in Spring Boot manually.
+This article guides you on how to finish it step by step.
+And we use Java, Gradle, Spring MVC and [Thymeleaf](https://www.thymeleaf.org/) to take the example.
+
+## Start a Spring Boot project
+
+With [Spring Initializr](https://start.spring.io/), you can quickly start a Spring Boot project.
+Follow the options below:
+
+- Gradle Project
+- Language: Java
+- Spring Boot: 2.7.2
+
+Generate and open the project.
+
+## Add dependencies
+
+Add the dependencies to your Gradle project build file `build.gradle`:
+
+```groovy
+// path/to/project/build.gradle
+dependencies {
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+    implementation("org.thymeleaf.extras:thymeleaf-extras-springsecurity5")
+    implementation("nz.net.ultraq.thymeleaf:thymeleaf-layout-dialect")
+}
+```
+
+:::note
+
+Since Spring Boot and Spring Security have built-in support for both OAuth 2 and OIDC,
+you DO NOT need to add additional libraries from Logto to integrate.
+
+See [Spring Security and OpenID Connect](https://www.baeldung.com/spring-security-openid-connect)
+and [Spring Security Architecture](https://spring.io/guides/topicals/spring-security-architecture)
+for more details.
+
+:::
+
+## Configure Spring Security
+
+Spring Security makes it easy to configure your application for authentication with OIDC providers such as Logto.
+
+Use an `application.yml` file (instead of the default `application.properties`) to configure the OAuth2 client and provider.
+
+```yaml
+# path/to/project/src/main/resources/application.yaml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          logto:
+            client-id: <your-app-id>
+            client-secret: <your-app-secret> # Copy from application details in Admin Console
+            scope:
+              - offline_access
+              - openid
+              - profile
+        provider:
+          logto:
+            issuer-uri: <your-issuer-uri> # e.g. `http://localhost:3001/oidc`. Replace it with your logto issuer URI.
+```
+
+## Sign-in
+
+### Configure Redirect URI
+
+<ConfigureRedirectUri
+  figureSrc={redirectUriFigure}
+  redirectUri="http://localhost:3000/login/oauth2/code/logto"
+/>
+
+### Configure Spring Security
+
+To enable Logto user sign-in, you need to provide an instance of `SecurityFilterChain` (as a Spring Bean) and add the `@EnableWebSecurity` annotation.
+
+Use `authorizationRequestResolver` to enable [PKCE](https://oauth.net/2/pkce/) extension for increased safety and add parameter `prompt=consent`.
+
+:::note
+
+As the `offline_access` scope has been provided above, we should add the parameter `prompt=consent`;
+otherwise, the `offline_access` scope will be ignored, and no refresh token will be returned.
+
+:::
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/configuration/SecurityConfiguration.java
+package io.logto.springboot.sample.configuration;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.web.SecurityFilterChain;
+
+@EnableWebSecurity
+public class SecurityConfiguration {
+
+    @Bean
+    public OAuth2AuthorizationRequestResolver authorizationRequestResolver(
+            ClientRegistrationRepository clientRegistrationRepository
+    ) {
+        DefaultOAuth2AuthorizationRequestResolver authorizationRequestResolver =
+                new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization");
+        authorizationRequestResolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce()
+                .andThen(customizer -> customizer.additionalParameters(params -> params.put("prompt", "consent"))));
+        return  authorizationRequestResolver;
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            OAuth2AuthorizationRequestResolver authorizationRequestResolver
+    ) throws Exception {
+        http.authorizeRequests()
+                // Anyone can access the home page.
+                // (At least one mapping is required. Change it as you need.)
+                .mvcMatchers("/").permitAll()
+                .and().oauth2Login(oauth2LoginCustomizer -> oauth2LoginCustomizer
+                        .authorizationEndpoint()
+                        .authorizationRequestResolver(authorizationRequestResolver)
+                );
+        return http.build();
+    }
+}
+```
+
+### Implement sign-in route
+
+A user can visit the route `/oauth2/authorization/logto` (e.g. `http://localhost:3000/oauth2/authorization/logto`) to sign in.
+Spring Security will use the `spring.security.oauth2.client` configuration defined above to handle user sign-in automatically.
+
+Let's try this sign-in link on your web application page.
+
+Add a home page template file:
+
+```html
+<!-- path/to/project/src/main/resources/templates/index.html -->
+<!DOCTYPE html>
+<html
+  lang="en"
+  xmlns:th="http://www.thymeleaf.org"
+  xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity5"
+>
+  <body>
+    <div sec:authorize="!isAuthenticated()">
+      <a th:href="@{/oauth2/authorization/logto}">Sign in</a>
+    </div>
+    <div sec:authorize="isAuthenticated()">
+      <p>Signed in</p>
+    </div>
+  </body>
+</html>
+```
+
+Add a controller to render the view:
+
+```java
+package io.logto.springboot.sample.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+
+    @GetMapping("/")
+    public String home() {
+        return "index";
+    }
+}
+```
+
+Run your Spring Boot web application, visit the home page [http://localhost:3000/](http://localhost:3000/), click the _Sign in_ link on it, and it will redirect to the Logto sign-in page.
+
+Provide your credentials, and once authenticated, it will redirect you back to the home page with a message that shows "Signed in".
+
+## Sign out
+
+TODO
+
+## Profile
+
+TODO
