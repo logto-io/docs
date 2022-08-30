@@ -132,13 +132,13 @@ Fetch a token (`RefreshTokenTokenResponse`) via `/oidc/token` (by refresh token)
 
 **Parameters**
 
-| Name          | Type     | Required |
-| ------------- | -------- | -------- |
-| tokenEndpoint | `string` | ✅       |
-| clientId      | `string` | ✅       |
-| refreshToken  | `string` | ✅       |
-| resource      | `string` |          |
-| scopes        | `string` |          |
+| Name          | Type       | Required |
+| ------------- | ---------- | -------- |
+| tokenEndpoint | `string`   | ✅       |
+| clientId      | `string`   | ✅       |
+| refreshToken  | `string`   | ✅       |
+| resource      | `string`   |          |
+| scopes        | `string[]` |          |
 
 **HTTP Request**
 
@@ -147,13 +147,13 @@ Fetch a token (`RefreshTokenTokenResponse`) via `/oidc/token` (by refresh token)
 - Content-Type: `application/x-www-form-urlencoded`
 - Payload:
 
-| Query Key     | Type                      | Required |
-| ------------- | ------------------------- | -------- |
-| grant_type    | `string: 'refresh_token'` | ✅       |
-| refresh_token | `string`                  | ✅       |
-| client_id     | `string`                  | ✅       |
-| resource      | `string`                  |          |
-| scope         | `string`                  |          |
+| Query Key     | Type                      | Required | Notes                                                               |
+| ------------- | ------------------------- | -------- | ------------------------------------------------------------------- |
+| grant_type    | `string: 'refresh_token'` | ✅       |                                                                     |
+| refresh_token | `string`                  | ✅       |                                                                     |
+| client_id     | `string`                  | ✅       |                                                                     |
+| resource      | `string`                  |          |                                                                     |
+| scope         | `string`                  |          | we concatenate the `scopes` values to construct this `scope` string |
 
 **Return Type**
 
