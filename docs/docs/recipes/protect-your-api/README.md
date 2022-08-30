@@ -18,7 +18,7 @@ With a fluent user sign-in experience, by default, Logto comes with the [API res
 
 Logto will identify the registered [API resources](../../references/resources/README.md) from an authorization request and issue an audience-restricted `access_token` accordingly.
 
-Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io.` This resource indicates all the management APIs you may use to maintain the Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
+Go to the **API Resources** section in **Admin Console**. You will notice a build-in resource listed with the API identifier as `https://api.logto.io`. This resource indicates all the management APIs you may use to maintain the Logto service. It will guarantee all our APIs are under protection and restricted to the Logto authorized users with Admin Role.
 
 ![API resources](./assets/api-resources.png)
 
@@ -131,8 +131,8 @@ The requested target resource should be:
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-logtoClient.getAccessToken("<your-target-api-resource>", { logtoException: LogtoException?, result: AccessToken? ->
-  // custom logic
+logtoClient.getAccessToken("<your-target-api-resource>", { logtoException, accessToken ->
+    // custom logic
 })
 ```
 
