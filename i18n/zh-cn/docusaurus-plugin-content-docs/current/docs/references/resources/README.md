@@ -6,11 +6,11 @@ import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
 ### 什么是 API 资源?
 
-API 资源, 即 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), 被用来声明用户所请求的目标服务接口或者资源。通常是一个指向到接口或资源地址的 URI 变量。
+API 资源，即 [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html)，被用来声明用户所请求的目标服务接口或者资源。通常是一个指向到接口或资源地址的 URI 变量。
 
 ### 为什么需要 API 资源
 
-Logto, 作为一个授权服务器，旨在为大量不同的资源和接口提供权限服务。我们将会根据用户所声明的 API 资源标识来生成和颁发带有特定内容、类型，和受众目标的加密令牌。
+Logto 作为一个授权服务器，旨在为大量不同的资源和接口提供权限服务。我们将会根据用户所声明的 API 资源标识来生成和颁发带有特定内容、类型，和受众目标的加密令牌。
 
 将授权令牌及对应的权限校验应用到你的请求当中，可以更好的保护你的私有资源不被匿名身份者访问或者攻击。
 

@@ -18,7 +18,7 @@ import JavaSetupCode from '../integrate-logto/fragments/\_android_sdk_setup_code
 
 Logto 服务可以从每一个授权请求中识别出所申请的目标 [API 资源](../../references/resources/README.md)，并相应的颁发其专属的 `access_token` 令牌。
 
-访问 Logto 管理控制台的 **API 资源** 页面。在列表中你会看到一个拥有 `https://api.logto.io.` 作为 `API identifier ` 的内置 API 资源。该资源代表了所有注册在此路由地址下，Logto 服务所提供的管理 API。它将保证我们所有的 API 都设置了权限保护，仅具有管理员角色的 Logto 授权用户才可以访问。
+访问 Logto 管理控制台的 **API 资源** 页面。在列表中你会看到一个拥有 `https://api.logto.io` 作为 `API identifier` 的内置 API 资源。该资源代表了所有注册在此路由地址下，Logto 服务所提供的管理 API。它将保证我们所有的 API 都设置了权限保护，仅具有管理员角色的 Logto 授权用户才可以访问。
 
 ![API 资源](./assets/api-resources.png)
 
@@ -147,8 +147,8 @@ const logtoClient = new LogtoClient({
 <TabItem value="kotlin" label="Kotlin">
 
 ```kotlin
-logtoClient.getAccessToken("<your-target-api-resource>", { logtoException: LogtoException?, result: AccessToken? ->
-  // custom logic
+logtoClient.getAccessToken("<your-target-api-resource>", { logtoException, accessToken ->
+    // custom logic
 })
 ```
 
