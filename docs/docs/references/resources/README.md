@@ -82,7 +82,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 ```
 
 :::tip
-Please follow our [**Protect Your API**](../../recipes/protect-your-api/README.md) guide to implement the token validation on your server-side APIs and make your resources well protected.
+Please follow our [**Protect Your API**](../../recipes/protect-your-api/README.mdx) guide to implement the token validation on your server-side APIs and make your resources well protected.
 :::
 
 Logto follows the standard token-based authorization protocol to protect your API resources. To learn more about OAuth 2.0, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1).

@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # Further readings
 
-### [⚔️ Protect your API](../../recipes/protect-your-api/README.md)
+### [⚔️ Protect your API](../../recipes/protect-your-api/README.mdx)
 
 For native and single page apps, you'll need to call one or more API endpoints to retrieve and update data.<br/>
 Learn more about identifying who's who and keeping your API secure.

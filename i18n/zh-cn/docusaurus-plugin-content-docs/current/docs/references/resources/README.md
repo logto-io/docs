@@ -82,7 +82,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3O
 ```
 
 :::tip
-请参照我们的 [**API 资源保护**](../../recipes/protect-your-api/README.md) 指南，添加令牌验证到你的服务器接口端，是你的私有资源得到更好的保护。
+请参照我们的 [**API 资源保护**](../../recipes/protect-your-api/README.mdx) 指南，添加令牌验证到你的服务器接口端，是你的私有资源得到更好的保护。
 :::
 
 Logto 遵循标准的 OAuth 2.0 令牌授权协议来保护你的数据资源。 你可以访问 OAuth 2.0 的[官方文档](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1)，以获取跟多细节。
