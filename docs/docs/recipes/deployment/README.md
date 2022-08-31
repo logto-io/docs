@@ -45,7 +45,46 @@ For more details about environment variables, see [Configuration](../../referenc
 
 ### HTTPS
 
-You may use Node.js to serve HTTPS directly or set up an HTTPS proxy/balancer in front of Node.js. See [Enabling HTTPS](../../references/core/configuration.md#enabling-https) for details.
+You may use Node.js to serve HTTPS directly or set up an HTTPS proxy / balancer in front of Node.js. See [Enabling HTTPS](../../references/core/configuration.md#enabling-https) for details.
+
+### Reverse proxy
+
+If you want to use reverse proxy on your server, for example Nginx, usually we need to define Logto as an upstream.
+Assuming you are using Nginx and your Logto instance is running on port 3001, put the following config in nginx.conf:
+
+```
+upstream logto_upstream {
+  server 127.0.0.1:3001;
+}
+```
+
+Also, make sure you have properly configured the following request headers:
+
+```
+server {
+  listen 80;
+  server_name your_domain_url;
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://logto_upstream
+    proxy_redirect off;
+  }
+}
+```
+
+Reload Nginx config to pick up the latest changes:
+
+```
+nginx -s reload
+```
+
+You are all set. Open the browser and visit your domain URL, you should be able to see Logto welcome page.
 
 ## How can I upgrade Logto safely?
 
