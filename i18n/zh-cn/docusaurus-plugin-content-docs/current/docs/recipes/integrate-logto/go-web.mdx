@@ -22,24 +22,6 @@ import SignInFlowSummary from './fragments/_web-sign-in-flow-summary.mdx';
 在示例代码中，我们假定你的应用运行在 <code>http://localhost:8080</code> 上。
 :::
 
-假定 Web 应用的代码如下：
-
-```go
-package main
-
-import (
-	"github.com/gin-gonic/gin"
-)
-
-func main() {
-	router := gin.Default()
-	router.GET("/", func(ctx *gin.Context) {
-		ctx.String(200, "Hello Logto!")
-	})
-	router.Run(":8080")
-}
-```
-
 在项目目录下执行：
 
 ```bash
@@ -67,13 +49,17 @@ func main() {
 }
 ```
 
-## 创建一个 Storage 供 Logto 存储用户认证信息
+## 使用 session 存储用户认证信息
 
-Logto 把用户的认证信息存储在 `Storage` 中。  
-而对于传统网页应用，我们需要将用户的认证信息存储在各自请求的 session 中。  
-虽然 Go 本身未提供 session 的实现，但我们可以使用 Logto SDK 提供的 `Storage` 类型，创建一个基于 session 的 `Storage` 适配器。
+在传统网页应用中，用户的认证信息将会被存储在用户的 session 中。
 
-Logto SDK 中的 `Storage` 类型如下：
+Logto SDK 提供了一个 `Storage` 接口，你可以结合自己所使用的网络框架实现一个 `Storage` 的适配器，使 Logto SDK 能将用户认证信息存储到 session 中。
+
+:::note
+我们推荐使用非 cookie 的 session，因为 Logto 所存储的信息可能会超过 cookie 的大小限制。在示例中我们使用基于内存 session，在实际项目中，你可以根据需要使用 Redis、 MongoDB 等技术来存储 session。
+:::
+
+Logto SDK 的 `Storage` 接口定义如下：
 
 ```go
 // github.com/logto-io/client/storage.go
@@ -85,9 +71,42 @@ type Storage interface {
 }
 ```
 
-我们基于 [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) 来实现我们的 Storage。
+我们将以 [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) 为例，示范这个过程。
 
-创建一个 `session_storage.go` 文件，定义一个 `SessionStorage` 并实现 Logto SDK 中 `Storage` 的接口:
+### 在应用中使用 Session 中间件
+
+在应用中使用 [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) 中间件，这样在请求的路由处理函数中就可以根据用户请求的上下文获取用户的 session：
+
+```go
+package main
+
+import (
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/memstore"
+	"github.com/gin-gonic/gin"
+	"github.com/logto-io/go/client"
+)
+
+func main() {
+	router := gin.Default()
+
+	// 示例中使用基于内存的 session
+	store := memstore.NewStore([]byte("your session secret"))
+	router.Use(sessions.Sessions("logto-session", store))
+
+	router.GET("/", func(ctx *gin.Context) {
+		// 获取用户的 session
+		session := sessions.Default(ctx)
+		// ...
+		ctx.String(200, "Hello Logto!")
+	})
+	router.Run(":8080")
+}
+```
+
+### 创建 session storage 供 Logto 存储用户认证信息
+
+创建一个 `session_storage.go` 文件，定义一个 `SessionStorage` 并实现 Logto SDK 定义的 `Storage` 的接口：
 
 ```go
 // session_storage.go
@@ -115,36 +134,14 @@ func (storage *SessionStorage) SetItem(key, value string) {
 }
 ```
 
-## 准备前置中间件
-
-接下来在应用中使用 [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) 中间件：
+至此，你就可以在请求的路由处理函数中通过
 
 ```go
-package main
-
-import (
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/memstore"
-	"github.com/gin-gonic/gin"
-	"github.com/logto-io/go/client"
-)
-
-func main() {
-	router := gin.Default()
-
-	store := memstore.NewStore([]byte("your session secret"))
-	router.Use(sessions.Sessions("logto-session", store))
-
-	router.GET("/", func(ctx *gin.Context) {
-		ctx.String(200, "Hello Logto!")
-	})
-	router.Run(":8080")
-}
+session := sessions.Default(ctx)
+sessionStorage := &SessionStorage{session: session}
 ```
 
-:::note
-我们推荐使用非 cookie 的 session，因为 Logto 所存储的信息可能会超过 cookie 的大小限制。在示例中我们使用基于内存 session，在实际项目中，你可以根据需要使用 Redis、 MongoDB 等技术来存储 session。
-:::
+创建一个 session storage 给 Logto 使用了。
 
 ## 初始化 LogtoClient
 
