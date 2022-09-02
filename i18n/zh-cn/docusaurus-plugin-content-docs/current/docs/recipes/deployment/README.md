@@ -47,6 +47,45 @@ nOlQ1nS...
 
 你可以直接使用 Node.js 来直接提供 HTTPS，或者在 Node.js 前设置一个 HTTPS 代理/负载均衡。详情参见 [启用 HTTPS](../../references/core/configuration.md#启用-https)。
 
+### 反向代理
+
+如果你想使用反向代理，如 Nginx，通常我们需要先将 Logto 定义为 upstream。假设你在使用 Nginx，且你的 Logto 实例运行在 3001 端口上，
+在 nginx.conf 中添加如下配置：
+
+```
+upstream logto_upstream {
+  server 127.0.0.1:3001;
+}
+```
+
+然后，确保正确配置了如下请求头部信息：
+
+```
+server {
+  listen 80;
+  server_name your_domain_url;
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://logto_upstream
+    proxy_redirect off;
+  }
+}
+```
+
+重新加载 Nginx 配置文件：
+
+```
+nginx -s reload
+```
+
+大功告成！打开浏览器，访问你的域名。恭喜你，现在你应该可以看到 Logto 的欢迎页面了！
+
 ## 如何安全地升级 Logto？
 
 除非我们在 changelog 里特意提出，你都无需变更代码和数据库即可轻松升级 Logto。我们的 API 遵循 [semver](https://semver.org/) 标准。
