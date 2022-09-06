@@ -6,11 +6,11 @@ import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
 ### What is an API resource?
 
-API resources, a.k.a. [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), indicate the target services or resources to be requested. Usually in a URI format variable, representing the resource's identity.
+API resources, a.k.a. [Resource Indicators](https://www.rfc-editor.org/rfc/rfc8707.html), indicate the target services or resources to be requested, usually, a URI format variable representing the resource's identity.
 
 ### Why is API resource needed?
 
-Logto, as an authorization server, is designed to serve a large number of diverse resources and APIs. By indicating which API resource an end-user intends to request, Logto will be able to determine the type and content of authorization tokens to be issued, how tokens are encrypted, and apply audience restrictions accordingly.
+Logto, as an authorization server, is designed to serve a large number of services and APIs. By indicating which API resource an end-user intends to access, Logto can issue a private encrypted authorization token and apply audience restrictions accordingly.
 
 A guarded request with an authorization token provided will help you protect your private resources from being accessed and attacked by anonymous identities.
 
@@ -24,15 +24,15 @@ A guarded request with an authorization token provided will help you protect you
 - It **SHOULD NOT** include a query component.
 - You **SHOULD** provide the most specific URI it can for the complete API or set of resources it intends to access.
 
-In practice, a client may know a base URI for the application or resource to interact with. It would be appropriate to use it as the value of the resource parameter.
+In practice, a client may know a base URI or the application or resource to interact with. It would be appropriate to use it as the value of the resource parameter.
 
-I.e., Logto management API base URI
+E.g., Logto management API base URI.
 
 ```
 https://api.logto.io
 ```
 
-By default, this API resource is pre-registered. All the management APIs under this URI are protected by Logto server.
+By default, this API resource is pre-registered to your Logto service. All the management APIs under this URI are protected by Logto.
 
 ### Logto API Resource Schema
 
@@ -42,7 +42,7 @@ By default, this API resource is pre-registered. All the management APIs under t
 
 ### 1. Authorization request
 
-When the resource parameter is used in an authorization request to the authorization endpoint, it indicates the identity of the protected resource(s) to which access is being requested.
+Provide a list of resource indicator parameters in an authorization request. It will indicate all the protected resource(s) that the user may request.
 
 ```bash
 GET https://logto.dev/oidc/auth?response_type=code
@@ -53,11 +53,11 @@ GET https://logto.dev/oidc/auth?response_type=code
     &resource=https%3A%2F%2Flogto.dev%2Fapi%2Fusers
 ```
 
-Logto will validate and process these resource indicators and grant the `authorization_code`.
+Logto will validate and store these resource indicators. An `authorization_code` will be granted and returned with scopes restricted to these specified resources.
 
 ### 2. Access Token request
 
-When the resource parameter is used on an access token request made to the token endpoint, it indicates the target service or protected resource where the client intends to use the requested access token.
+When the resource parameter is present on an access token request along with the `authorization_code` granted above, it will specify the target API resource audience of the access token is requested.
 
 ```bash
 POST https://logto.dev/oidc/token HTTP/1.1
@@ -68,11 +68,11 @@ POST https://logto.dev/oidc/token HTTP/1.1
     resource=https%3A%2F%2Flogto.test.dev%2Fusers
 ```
 
-An access token with the audience restricted to the requested resource will be granted by Logto.
+An encrypted access token with the audience restricted to this requested resource will be granted by Logto. The token carries all the data you will need to represent the authorization status of the request. E.g., the request user's identity and role, the token's audience and expiration time.
 
 ### 3. API resource request
 
-Client sent a request to the API resource with `access_token` provided in the Authorization header. Audience info and token expiration time are encoded in the encrypted `access_token`.
+The client user sent a request to the API resource by presenting the given `access_token` in the Authorization header.
 
 ```bash
 GET https://logto.dev/api/users
