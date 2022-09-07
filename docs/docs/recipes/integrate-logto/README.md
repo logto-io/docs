@@ -8,15 +8,24 @@ We provide a bunch of SDKs to let you integrate Logto with front-end clients wit
 
 If the list doesn't cover your desired platform/framework, please file a feature request or contribute a new SDK.
 
-## Web
+## SPA
 
 - [Vanilla JS](./vanilla-js.mdx)
 - [React](./react.mdx)
 - [Vue](./vue.mdx)
-- [Next.js](./next-js.mdx)
+
+## Traditional Web
+
 - [Traditional web](./traditional.mdx)
+- [Next.js](./next-js.mdx)
+- [Express](./express.mdx)
+- [Go](./go-web.mdx)
 
 ## Native
 
 - [iOS](./ios.mdx)
 - [Android](./android.mdx)
+
+## Backend Application
+
+Please refer to [Protect your API](../protect-your-api/README.mdx) to integrate Logto authorization to your backend app.
