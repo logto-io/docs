@@ -28,4 +28,4 @@ If the list doesn't cover your desired platform/framework, please file a feature
 
 ## Backend Application
 
-Please refer to [Protect your API](../../protect-your-api/README.mdx) to integrate Logto authorization to you backend app.
+Please refer to [Protect your API](../protect-your-api/README.mdx) to integrate Logto authorization to your backend app.
