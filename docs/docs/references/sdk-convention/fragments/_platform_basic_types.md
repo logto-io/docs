@@ -13,7 +13,7 @@
 **\*Notes**
 
 - You can extend this `LogtoConfig` if you need to.
-- `usingPersistStorage` is only provided in client SDK. E.g., iOS, Android, and SPA.
+- `usingPersistStorage` is only provided in client SDKs. E.g., iOS, Android, and SPA.
 
 </details>
 
