@@ -1,4 +1,4 @@
-Logto 还提供了 API 请求的授权服务，以帮助你更好的保护你的后端应用。 如需了解更多关于如何在后端处理 Logto 的授权信息，请参阅 [保护你的 API](../protect-your-api/README.mdx) 集成指南。
+Logto 还提供了 API 请求的授权服务，以帮助你更好的保护你的后端应用。 如需了解更多关于如何在后端处理 Logto 的授权信息，请参阅 [保护你的 API](../../protect-your-api/README.mdx) 集成指南。
 
 你可以通过 Logto SDK 轻松的为受保护 API 资源申请一个访问授权令牌。
 
