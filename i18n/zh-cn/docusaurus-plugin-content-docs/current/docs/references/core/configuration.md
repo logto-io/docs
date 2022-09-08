@@ -48,11 +48,11 @@ Logto 按如下顺序处理环境变量 (environment variables)：
 
 ### OIDC
 
-| Key                    | 默认值                     | 类型                                 | 描述                                                                                                                                                                                                                                    |
-| ---------------------- | -------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC_COOKIE_KEYS       | N/A                        | <code>string</code>                  | [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串列表（以逗号分隔）。                                                                                                    |
-| OIDC_PRIVATE_KEYS      | N/A                        | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容列表（以逗号分隔）。<br/> 如果你想在 `.env` 中设置，你可以通过 [多行值](https://github.com/motdotla/dotenv#multiline-values) 来实现。 |
-| OIDC_PRIVATE_KEY_PATHS | `'./oidc-private-key.pem'` | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 文件路径列表。 <br/> 注意：如果 `OIDC_PRIVATE_KEYS` 非空，Logto 将 _忽略_ 该值。                                                          |
+| Key                    | 默认值                     | 类型                                 | 描述                                                                                                                                                                           |
+| ---------------------- | -------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OIDC_COOKIE_KEYS       | N/A                        | <code>string</code>                  | [Signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串列表（以逗号分隔）。                                           |
+| OIDC_PRIVATE_KEYS      | N/A                        | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 内容列表（内容用 base64 格式表示，各项以逗号分隔）。                             |
+| OIDC_PRIVATE_KEY_PATHS | `'./oidc-private-key.pem'` | <code>string &#124; undefined</code> | [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的 private key 文件路径列表。 <br/> 注意：如果 `OIDC_PRIVATE_KEYS` 非空，Logto 将 _忽略_ 该值。 |
 
 #### 支持的 private key 类型
 
