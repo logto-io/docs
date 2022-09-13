@@ -77,7 +77,7 @@ Its max length is 128.
 
 ### primary_phone
 
-_primary_phone_ is the user's phone number, used for sign-in with the phone number and passcode from SMS.
+_primary_phone_ is the user's phone number, used for sign-in with the phone number and passcode from Sms.
 
 Its value is usually from the phone number that the user first registered with.
 It may be `null`.

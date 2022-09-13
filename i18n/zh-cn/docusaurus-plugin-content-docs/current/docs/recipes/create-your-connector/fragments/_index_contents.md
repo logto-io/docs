@@ -1,4 +1,4 @@
-连接器类型是对于 _SMSConnector_，_EmailConnector_ 和 _SocialConnector_ 接口的一个实现。
+连接器类型是对于 _SmsConnector_，_EmailConnector_ 和 _SocialConnector_ 接口的一个实现。
 
 这里有对于不同类型连接器接口的详细定义。
 

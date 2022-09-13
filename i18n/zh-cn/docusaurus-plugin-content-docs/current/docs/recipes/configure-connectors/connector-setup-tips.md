@@ -52,3 +52,9 @@ sidebar_position: 1
 ![配置社交连接器的指南](./assets/configure-social-connector-guide.png)
 
 然后参考「[启用社交登录](../../tutorials/get-started/enable-social-sign-in.mdx)」，让你刚配置的 _社交连接器_ 开始工作。
+
+## Install connector
+
+After finishing implementation, the easiest way to install connector is to copy the folder to the path `logto/packages/core/connectors` and then compile files in the folder.
+
+Otherwise, if you have already published the connector to npm, you may install the connector with CLI commands `pnpm add-connector ${connectorPackageName}` at `logto/packages/core`.
