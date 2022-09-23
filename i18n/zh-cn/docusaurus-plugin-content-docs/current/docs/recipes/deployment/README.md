@@ -90,4 +90,6 @@ nginx -s reload
 
 除非我们在 changelog 里特意提出，你都无需变更代码和数据库即可轻松升级 Logto。我们的 API 遵循 [semver](https://semver.org/) 标准。
 
-如果数据库变更无法避免，我们将提供一个顺滑的数据库迁移过程，并在 changelog 中详细描述。你将能轻松完成它。
+### 数据库迁移
+
+如果数据库变更无法避免，我们将提供迁移脚本。你无需关心，只需运行 `pnpm migration-deploy` 即可升级数据库。

@@ -90,4 +90,6 @@ You are all set. Open the browser and visit your domain URL, you should be able 
 
 If we don't mention it in the changelog, you can feel free to upgrade Logto without changing your code or database schema. Our API follows [semver](https://semver.org/).
 
-We'll build a smooth database migration process and demonstrate it in our changelog if a schema change is inevitable. You'll be able to do that with chill.
+### Database migration
+
+If a schema change is inevitable, we will provide a migration script. You don't need to care about it, simply run "pnpm migration-deploy" to upgrade your database schema.
