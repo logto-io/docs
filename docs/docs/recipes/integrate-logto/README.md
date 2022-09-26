@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # 🔗 Integrate Logto in your application
 
-We provide a bunch of SDKs to let you integrate Logto with your clients with ease. If the list doesn't cover your desired platform/framework, please file a feature request or contribute a new SDK.
+We provide a bunch of SDKs to let you integrate Logto with your clients with ease. If the list doesn't cover your desired platform / framework, please file a feature request or contribute a new SDK.
 
 ## Native App
 
