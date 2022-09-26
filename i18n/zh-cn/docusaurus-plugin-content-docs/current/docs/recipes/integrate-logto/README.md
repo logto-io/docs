@@ -28,4 +28,4 @@ sidebar_position: 1
 
 ## Backend Application
 
-利用 Logto 的权限控制服务来保护你的后端应用程序， 请参阅 [保护你的 API](../protect-your-api/README.mdx) 集成指南。
+利用 Logto 的权限控制服务来保护你的后端应用程序，请参阅 [保护你的 API](../protect-your-api/README.mdx) 集成指南。
