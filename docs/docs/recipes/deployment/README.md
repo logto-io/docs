@@ -92,4 +92,4 @@ If we don't mention it in the changelog, you can feel free to upgrade Logto with
 
 ### Database migration
 
-If a schema change is inevitable, we will provide a migration script. You don't need to care about it, simply run "pnpm migration-deploy" to upgrade your database schema.
+If a schema change is inevitable, we will provide a migration script. Simply run "pnpm migration-deploy" with ease to upgrade your database schema.
