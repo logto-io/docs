@@ -92,4 +92,4 @@ nginx -s reload
 
 ### 数据库迁移
 
-如果数据库变更无法避免，我们将提供迁移脚本。你无需关心，只需运行 `pnpm migration-deploy` 即可升级数据库。
+如果数据库变更无法避免，我们将提供迁移脚本。只需简单运行 `pnpm migration-deploy` 即可轻松升级数据库。
