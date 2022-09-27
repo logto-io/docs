@@ -93,3 +93,79 @@ If we don't mention it in the changelog, you can feel free to upgrade Logto with
 ### Database alteration
 
 If a schema change is inevitable, we will provide an alteration script. Simply run "pnpm alteration deploy" with ease to upgrade your database schema.
+
+## Containerization
+
+For production, you may use Docker to containerize Logto. You can find the Dockerfile in the root directory of the project. If you want to run mutiple instances of Logto, for instance, deploy Logto in a Kubernetes cluster, There are some additional steps you need to take.
+
+### Share connectors folder
+
+By default, Logto will create a `connectors` folder in the root directory of the `core` folder. We recommend sharing the folder between multiple instances of Logto, you need to mount the `packages/core/connectors` folder to the container and run `cd packages/core && pnpm add-official-connectors` to deploy the connectors.
+
+There is a minimum example `deployment` for Kubernetes:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'cd /etc/logto/packages/core && pnpm add-official-connectors'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+In this example, we create an empty directory as a volume and mount it to containers. Then we run `pnpm add-official-connectors` in the init container to download the connectors. Finally, every container will share the same connectors folder with our official connectors already inside.
+
+:::note
+This is an example yaml, in order to run Logto, you need to set envs properly.
+:::
+
+For production, you can replace the "empty dir" volumn with a persistent volume, and do the "init" job by your own way, you know what you are doing!
+
+### Database alteration
+
+Similar to connectors, the database alteration need to run in a single instance. You can use a job to run the alteration script.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+      - name: alteration
+        image: ghcr.io/logto-io/logto
+        imagePullPolicy: always
+        env:
+          - name: DB_URL
+            value: postgresql://user:password@localhost:5432/logto
+        command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'pnpm alteration deploy'
+      restartPolicy: Never
+```
