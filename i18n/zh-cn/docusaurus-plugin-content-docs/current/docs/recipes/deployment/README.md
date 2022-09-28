@@ -90,6 +90,82 @@ nginx -s reload
 
 除非我们在 changelog 里特意提出，你都无需变更代码和数据库即可轻松升级 Logto。我们的 API 遵循 [semver](https://semver.org/) 标准。
 
-### 数据库迁移
+### 数据库变更
 
-如果数据库变更无法避免，我们将提供迁移脚本。只需简单运行 `pnpm migration-deploy` 即可轻松升级数据库。
+如果数据库变更无法避免，我们将提供变更脚本。只需在 Logto 项目根目录下运行 `npm migration-deploy` 即可轻松升级数据库。
+
+## 容器化
+
+在生产环境中，你可能希望使用 Docker 来以容器化的方式运行 Logto。你可以在项目的根目录下找到 Dockerfile。如果你想运行多个 Logto 实例，例如在 Kubernetes 集群中部署 Logto，你需要做一些额外的工作。
+
+### 共享连接器目录
+
+默认情况下，Logto 将在 `core` 文件夹的根目录下创建一个 `connectors` 文件夹作为连接器目录。我们建议在多个 Logto 实例之间共享此文件夹，你需要将 `packages/core/connectors` 文件夹挂载到容器中，并运行 `cd packages/core && pnpm add-official-connectors` 来安装官方推荐的连接器。
+
+这里有一个 Kubernetes 的最小部署（deployment）示例：
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'cd /etc/logto/packages/core && pnpm add-official-connectors'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+在这个例子中，我们创建了一个空目录卷（empty dir volumn）并将其挂载到容器中。然后我们在初始化容器中运行 `pnpm add-official-connectors` 来下载连接器。最后，每个容器都将共享相同的 connectors 文件夹，里面已经准备好了官方推荐的连接器。
+
+:::note
+这是一个示例配置文件，如果要完整的运行 Logto，还需要配置环境变量等。
+:::
+
+在生产环境中，你可以将空目录卷替换为持久化存储卷，也可以用你自己的方式来替代 initContainer，你应该知道你在做什么！
+
+### 数据库变更
+
+和连接器相同，数据库变更需要在单个实例中运行。你可以使用一个 job 来运行变更脚本。、
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+      - name: alteration
+        image: ghcr.io/logto-io/logto
+        imagePullPolicy: always
+        env:
+          - name: DB_URL
+            value: postgresql://user:password@localhost:5432/logto
+        command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'pnpm alteration deploy'
+      restartPolicy: Never
+```
