@@ -92,13 +92,13 @@ If we don't mention it in the changelog, you can feel free to upgrade Logto with
 
 ### Database alteration
 
-If a schema change is inevitable, we will provide an alteration script. Simply run "pnpm alteration deploy" with ease to upgrade your database schema.
+If a schema change is inevitable, we will provide an alteration script. Simply run `npm alteration deploy` in the Logto project root with ease to upgrade your database schema.
 
 ## Containerization
 
 For production, you may use Docker to containerize Logto. You can find the Dockerfile in the root directory of the project. If you want to run mutiple instances of Logto, for instance, deploy Logto in a Kubernetes cluster, There are some additional steps you need to take.
 
-### Share connectors folder
+### Shared connectors folder
 
 By default, Logto will create a `connectors` folder in the root directory of the `core` folder. We recommend sharing the folder between multiple instances of Logto, you need to mount the `packages/core/connectors` folder to the container and run `cd packages/core && pnpm add-official-connectors` to deploy the connectors.
 

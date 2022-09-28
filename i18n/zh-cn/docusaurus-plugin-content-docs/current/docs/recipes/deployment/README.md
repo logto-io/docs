@@ -92,7 +92,7 @@ nginx -s reload
 
 ### 数据库变更
 
-如果数据库变更无法避免，我们将提供变更脚本。只需简单运行 `pnpm migration-deploy` 即可轻松升级数据库。
+如果数据库变更无法避免，我们将提供变更脚本。只需在 Logto 项目根目录下运行 `npm migration-deploy` 即可轻松升级数据库。
 
 ## 容器化
 
