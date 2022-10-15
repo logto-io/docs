@@ -100,7 +100,7 @@ For production, you may use Docker to containerize Logto. You can find the Docke
 
 ### Shared connectors folder
 
-By default, Logto will create a `connectors` folder in the root directory of the `core` folder. We recommend sharing the folder between multiple instances of Logto, you need to mount the `packages/core/connectors` folder to the container and run `cd packages/core && pnpm add-official-connectors` to deploy the connectors.
+By default, Logto will create a `connectors` folder in the root directory of the `core` folder. We recommend sharing the folder between multiple instances of Logto, you need to mount the `packages/core/connectors` folder to the container and run `npm run cli connector add -- --official` to deploy the connectors.
 
 There is a minimum example `deployment` for Kubernetes:
 
@@ -122,7 +122,7 @@ spec:
             - /bin/sh
           args:
             - '-c'
-            - 'cd /etc/logto/packages/core && pnpm add-official-connectors'
+            - 'npm run cli connector add -- --official'
           name: init
           volumeMounts:
             - name: connectors
@@ -135,7 +135,7 @@ spec:
               mountPath: /etc/logto/packages/core/connectors
 ```
 
-In this example, we create an empty directory as a volume and mount it to containers. Then we run `pnpm add-official-connectors` in the init container to download the connectors. Finally, every container will share the same connectors folder with our official connectors already inside.
+In this example, we create an empty directory as a volume and mount it to containers. Then we run `npm run cli connector add -- --official` in the init container to download the connectors. Finally, every container will share the same connectors folder with our official connectors already inside.
 
 :::note
 This is an example yaml, in order to run Logto, you need to set envs properly.

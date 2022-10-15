@@ -100,7 +100,7 @@ nginx -s reload
 
 ### 共享连接器目录
 
-默认情况下，Logto 将在 `core` 文件夹的根目录下创建一个 `connectors` 文件夹作为连接器目录。我们建议在多个 Logto 实例之间共享此文件夹，你需要将 `packages/core/connectors` 文件夹挂载到容器中，并运行 `cd packages/core && pnpm add-official-connectors` 来安装官方推荐的连接器。
+默认情况下，Logto 将在 `core` 文件夹的根目录下创建一个 `connectors` 文件夹作为连接器目录。我们建议在多个 Logto 实例之间共享此文件夹，你需要将 `packages/core/connectors` 文件夹挂载到容器中，并运行 `npm run cli connector add -- --official` 来安装官方推荐的连接器。
 
 这里有一个 Kubernetes 的最小部署（deployment）示例：
 
@@ -122,7 +122,7 @@ spec:
             - /bin/sh
           args:
             - '-c'
-            - 'cd /etc/logto/packages/core && pnpm add-official-connectors'
+            - 'npm run cli connector add -- --official'
           name: init
           volumeMounts:
             - name: connectors
@@ -135,7 +135,7 @@ spec:
               mountPath: /etc/logto/packages/core/connectors
 ```
 
-在这个例子中，我们创建了一个空目录卷（empty dir volumn）并将其挂载到容器中。然后我们在初始化容器中运行 `pnpm add-official-connectors` 来下载连接器。最后，每个容器都将共享相同的 connectors 文件夹，里面已经准备好了官方推荐的连接器。
+在这个例子中，我们创建了一个空目录卷（empty dir volumn）并将其挂载到容器中。然后我们在初始化容器中运行 `npm run cli connector add -- --official` 来下载连接器。最后，每个容器都将共享相同的 connectors 文件夹，里面已经准备好了官方推荐的连接器。
 
 :::note
 这是一个示例配置文件，如果要完整的运行 Logto，还需要配置环境变量等。
