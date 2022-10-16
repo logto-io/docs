@@ -1,5 +1,9 @@
 # 配置
 
+:::caution
+本页内容已过期，请参阅英文版文档。
+:::
+
 ## 用法
 
 Logto 按如下顺序处理环境变量 (environment variables)：
