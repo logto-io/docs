@@ -1,36 +1,17 @@
 # Configuration
 
-## Usage
+## Environment variables
+
+### Usage
 
 Logto handles environment variables in the following order:
 
+- System environment variables
 - The `.env` file in the project root, which conforms with [dotenv](https://github.com/motdotla/dotenv#readme) format
-- System environment variable
 
-Thus the system environment variable will override the value in `.env`.
+Thus the system environment variables will override the values in `.env`.
 
-<!-- Will remove and update soon -->
-
-## First-time setup questions {#questions}
-
-For the first time you start Logto with no related environment variable, unless `--no-inquiry` is specified in arguments, it'll ask several questions for a smooth experience to fulfill the minimum requirements:
-
-- If you'd like to generate a cookie keys array for the OIDC provider
-- If you'd like to generate a private key for the OIDC provider
-- If you'd like to set up a new Logto database
-- Enter the [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)
-
-Most of them are simple yes/no questions, or you can just go with the default value, except the [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6).
-
-The generated private key for the OIDC provider will locate on `./oidc-private-key.pem`, while other values will append to `./.env`.
-
-:::note
-The `--no-inquiry` argument is appended by default in the Docker image.
-:::
-
-## Variable list
-
-### General
+### Variables
 
 :::caution
 If you run Logto via `npm start` in the project root, `NODE_ENV` will always be `production`.
@@ -48,15 +29,15 @@ In default values, `protocol` will be either `http` or `https` according to your
 | TRUST_PROXY_HEADER | `false`                        | `boolean`                                                | Ditto.                                                                                                                                                                                                                                              |
 | ENDPOINT           | `'protocol://localhost:$PORT'` | `string`                                                 | You may specify a URL with your custom domain for online testing or production. This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs. |
 
-## Enabling HTTPS
+### Enabling HTTPS
 
-### Using Node
+#### Using Node
 
 Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_PATH` to enable HTTPS via Node.
 
 `HTTPS_CERT_PATH` implies the path to your HTTPS certificate, while `HTTPS_KEY_PATH` implies the path to your HTTPS key.
 
-### Using a HTTPS proxy
+#### Using a HTTPS proxy
 
 Another common practice is to have an HTTPS proxy in front of Node (E.g. Nginx).
 
@@ -66,7 +47,7 @@ See [Trusting TLS offloading proxies](https://github.com/panva/node-oidc-provide
 
 ## Database configs
 
-Managing too many environment variables are not efficient and flexible, so most of our general configs store in the database table `_logto_configs`.
+Managing too many environment variables are not efficient and flexible, so most of our general configs are stored in the database table `_logto_configs`.
 
 The table is a simple key-value storage, and the key is enumerable as following:
 
