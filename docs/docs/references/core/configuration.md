@@ -9,6 +9,8 @@ Logto handles environment variables in the following order:
 
 Thus the system environment variable will override the value in `.env`.
 
+<!-- Will remove and update soon -->
+
 ## First-time setup questions {#questions}
 
 For the first time you start Logto with no related environment variable, unless `--no-inquiry` is specified in arguments, it'll ask several questions for a smooth experience to fulfill the minimum requirements:
@@ -46,20 +48,6 @@ In default values, `protocol` will be either `http` or `https` according to your
 | TRUST_PROXY_HEADER | `false`                        | `boolean`                                                | Ditto.                                                                                                                                                                                                                                              |
 | ENDPOINT           | `'protocol://localhost:$PORT'` | `string`                                                 | You may specify a URL with your custom domain for online testing or production. This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs. |
 
-### OIDC
-
-| Key                    | Default Value              | Type                                 | Description                                                                                                                                                                                                                                                                                    |
-| ---------------------- | -------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC_COOKIE_KEYS       | N/A                        | <code>string</code>                  | The comma-separated string list of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys).                                                                                                                                                |
-| OIDC_PRIVATE_KEYS      | N/A                        | <code>string &#124; undefined</code> | The comma-separated string list of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> If you'd like to set this in `.env`, you can leverage [multiline values](https://github.com/motdotla/dotenv#multiline-values) support. |
-| OIDC_PRIVATE_KEY_PATHS | `'./oidc-private-key.pem'` | <code>string &#124; undefined</code> | The comma-separated string list of the path to the private key file for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). <br/> Note Logto will _ignore_ this value if `OIDC_PRIVATE_KEYS` is not empty.                                                      |
-
-#### Supported private key types
-
-- RSA
-- OKP (Ed25519, Ed448, X25519, X448 sub types)
-- EC (P-256, secp256k1, P-384, and P-521 curves)
-
 ## Enabling HTTPS
 
 ### Using Node
@@ -75,3 +63,31 @@ Another common practice is to have an HTTPS proxy in front of Node (E.g. Nginx).
 In this case, you're likely want to set `TRUST_PROXY_HEADER` to `true` which indicates if proxy header fields should be trusted. Logto will pass the value to [Koa app settings](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings).
 
 See [Trusting TLS offloading proxies](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) for when to configure this field.
+
+## Database configs
+
+Managing too many environment variables are not efficient and flexible, so most of our general configs store in the database table `_logto_configs`.
+
+The table is a simple key-value storage, and the key is enumerable as following:
+
+| Key                            | Type                  | Description                                                                                                                        |
+| ------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| oidc.privateKeys               | <code>string[]</code> | The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys).   |
+| oidc.cookieKeys                | <code>string[]</code> | The string array of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). |
+| oidc.refreshTokenReuseInterval | <code>number</code>   | See the section below.                                                                                                             |
+
+### About refresh token reuse interval
+
+This interval helps to avoid concurrency issues when exchanging the rotating refresh token multiple times within a given timeframe.
+
+During the leeway window (in seconds), the consumed refresh token will be considered as valid.
+
+This is useful for distributed apps and serverless apps like Next.js, in which there is no shared memory.
+
+It has a default value `3` if you went through our seeding process.
+
+### Supported private key types
+
+- RSA
+- OKP (Ed25519, Ed448, X25519, X448 sub types)
+- EC (P-256, secp256k1, P-384, and P-521 curves)
