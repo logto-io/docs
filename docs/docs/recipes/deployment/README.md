@@ -92,11 +92,13 @@ If we don't mention it in the changelog, you can feel free to upgrade Logto with
 
 ### Database alteration
 
-If a schema change is inevitable, we will provide an alteration script. Simply run `npm alteration deploy` in the Logto project root with ease to upgrade your database schema.
+If a schema change is inevitable, we will provide an alteration script. Simply run `npm run alteration deploy latest` in the Logto project root with ease to upgrade your database schema.
+
+See [Database alteration](../../tutorials/using-cli/database-alteration.mdx) for details about the alteration command.
 
 ## Containerization
 
-For production, you may use Docker to containerize Logto. You can find the Dockerfile in the root directory of the project. If you want to run mutiple instances of Logto, for instance, deploy Logto in a Kubernetes cluster, There are some additional steps you need to take.
+For production, you may use Docker to containerize Logto. You can find the Dockerfile in the root directory of the project. If you want to run multiple instances of Logto, for instance, deploy Logto in a Kubernetes cluster, There are some additional steps you need to take.
 
 ### Shared connectors folder
 
@@ -141,7 +143,7 @@ In this example, we create an empty directory as a volume and mount it to contai
 This is an example yaml, in order to run Logto, you need to set envs properly.
 :::
 
-For production, you can replace the "empty dir" volumn with a persistent volume, and do the "init" job by your own way, you know what you are doing!
+For production, you can replace the "empty dir" volume with a persistent volume, and do the "init" job by your own way, you know what you are doing!
 
 ### Database alteration
 
@@ -156,16 +158,18 @@ spec:
   template:
     spec:
       containers:
-      - name: alteration
-        image: ghcr.io/logto-io/logto
-        imagePullPolicy: always
-        env:
-          - name: DB_URL
-            value: postgresql://user:password@localhost:5432/logto
-        command:
-            - /bin/sh
-          args:
-            - '-c'
-            - 'pnpm alteration deploy'
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: always
+          env:
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+            command:
+              - /bin/sh
+            args:
+              - '-c'
+              - 'npm run alteration deploy latest'
       restartPolicy: Never
 ```
+
+See [Database alteration](../../tutorials/using-cli/database-alteration.mdx) for details about the alteration command.

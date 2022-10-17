@@ -92,7 +92,9 @@ nginx -s reload
 
 ### 数据库变更
 
-如果数据库变更无法避免，我们将提供变更脚本。只需在 Logto 项目根目录下运行 `npm migration-deploy` 即可轻松升级数据库。
+如果数据库变更无法避免，我们将提供变更脚本。只需在 Logto 项目根目录下运行 `npm run alteration deploy` 即可轻松升级数据库。
+
+关于变更命令的详情参见 [Database alteration](/docs/tutorials/using-cli/database-alteration)。
 
 ## 容器化
 
@@ -135,7 +137,7 @@ spec:
               mountPath: /etc/logto/packages/core/connectors
 ```
 
-在这个例子中，我们创建了一个空目录卷（empty dir volumn）并将其挂载到容器中。然后我们在初始化容器中运行 `npm run cli connector add -- --official` 来下载连接器。最后，每个容器都将共享相同的 connectors 文件夹，里面已经准备好了官方推荐的连接器。
+在这个例子中，我们创建了一个空目录卷（empty dir volume）并将其挂载到容器中。然后我们在初始化容器中运行 `npm run cli connector add -- --official` 来下载连接器。最后，每个容器都将共享相同的 connectors 文件夹，里面已经准备好了官方推荐的连接器。
 
 :::note
 这是一个示例配置文件，如果要完整的运行 Logto，还需要配置环境变量等。
@@ -166,6 +168,8 @@ spec:
             - /bin/sh
           args:
             - '-c'
-            - 'pnpm alteration deploy'
+            - 'npm run alteration deploy latest'
       restartPolicy: Never
 ```
+
+关于变更命令的详情参见 [Database alteration](/docs/tutorials/using-cli/database-alteration)。
