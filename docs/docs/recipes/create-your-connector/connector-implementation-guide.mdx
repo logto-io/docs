@@ -3,44 +3,248 @@ sidebar_label: Guide to implement connectors
 sidebar_position: 2
 ---
 
-import ContentsInConstant from './fragments/_constant_contents.md';
-import ContentsInIndex from './fragments/_index_contents.md';
-import ContentsInTypes from './fragments/_types_contents.md';
-import ContentsInUtils from './fragments/_utils_contents.md';
-
 # Guide to implementing connectors
 
 After looking at the connector's file structure, let's discuss the implementation and main idea of developing a connector.
 
-## Create a new account on the connector's website
+We will go through a straightforward example for social and passwordless connectors so that you can build your connector with almost the same idea.
 
-Looking at the website and its console is always the first step in building a connector. You can find out some basic information about the connector provider.
+## Build a social connector
 
-## Search for the documentation which demonstrates the functionality and workflow
+Let's take GitHub connector as an example.
 
-We should search for documents with different topics as connectors vary by type: _Social Connector_ is used to guide end-users through authorization sign-in flow, and _SMS/Email Connector_ is designed to call message sender APIs.
+Most social connector's authorization flow obeys [OAuth Authorization Code Flow](https://openid.net/specs/openid-connect-basic-1_0.html).
 
-:::tip
-_Social Connector_ doc keyword(s): authorization flow, OAuth 2.0 (most _Social_ connectors follow this protocol), and obtaining user profile.<br/>
-_SMS/Email Connector_ doc keyword: integrate SMS/Email sender API.
+:::note
+Majority of the _Social Connectors_, obtaining a user profile with end-users authorization follows a two-step scheme (assume that user authorization succeeds):
+
+1. Fetch `accessToken` by a connector vendor granted `authCode`.
+2. Request for a publicly accessible user profile using `accessToken`.
+
 :::
 
-## Implementation and critical information composition
+In order to accomplish the flow, we need to have following three methods:
 
-### constant.ts
+### `getAuthorizationUri`
 
-<ContentsInConstant />
+`getAuthorizationUri` directs end-users to the page that need their authentication.
 
-### types.ts
+Listed parameters are required:
 
-<ContentsInTypes />
+- `authorizationEndpoint` can be found in GitHub OAuth doc site, which is the page where end-user should go for authentication
+- `config`, which includes `clientId` and `clientSecret` in GitHub scenario
+- `state`, a random string to proof CSRF
+- `scope` to determine specific user information
+- `redirectUri` of landing page after end-user's successful authentication.
 
-### utils.ts^
+```typescript
+const getAuthorizationUri = async ({ state, redirectUri }) => {
+  const queryParameters = new URLSearchParams({
+    client_id: config.clientId, // `config` is your GitHub application credential
+    redirect_uri: redirectUri,
+    state,
+    scope,
+  });
 
-<ContentsInUtils />
+  return `${authorizationEndpoint}?${queryParameters.toString()}`;
+};
+```
 
-### index.ts
+### `getAccessToken`
 
-<ContentsInIndex />
+`getAccessToken` gets access token with authorization code issued after end-users successful authentication.
 
-Congratulations! Your connector should be ready for work after going through this guide. Try it out! :rocket: :rocket: :rocket:
+Besides `config` we mentioned in previous `getAuthorizationUri` method, we also want to get:
+
+- authorization `code` from parameters brought to redirect landing page
+- `accessTokenEndpoint`, which is the endpoint to get access token with authorization code
+
+```typescript
+const getAccessToken = async (config: GithubConfig, code: string) => {
+  const { clientId: client_id, clientSecret: client_secret } = config;
+
+  const httpResponse = await got.post({
+    url: accessTokenEndpoint,
+    json: {
+      client_id,
+      client_secret,
+      code,
+    },
+    timeout: defaultTimeout,
+  });
+
+  const result = accessTokenResponseGuard.safeParse(qs.parse(httpResponse.body));
+
+  if (!result.success) {
+    throw new ConnectorError(ConnectorErrorCodes.InvalidResponse, result.error);
+  }
+
+  const { access_token: accessToken } = result.data;
+
+  assert(accessToken, new ConnectorError(ConnectorErrorCodes.SocialAuthCodeInvalid));
+
+  return { accessToken };
+};
+```
+
+### `getUserInfo`
+
+`getUserInfo` fetches user information with access token got in previous step.
+
+`userInfoEndpoint` is the endpoint which is used to get user information.
+
+You may check official documents to find specific user information that can be accessed at user info endpoint and corresponding scope.
+
+`id` assigned by the connector's service provider (in this case, GitHub) is required; other information is optional. If you can get `email` or `phone` from the user profile, MAKE SURE that they are "verified" since they will be used to receive passcodes in passwordless flows. You also need to align the returning keys with the fields name in [Logto user profile](../../references/users/README.md#basic-data).
+
+```typescript
+const getUserInfo = async (config: GithubConfig, code: string) => {
+  const { accessToken } = await getAccessToken(config, code);
+
+  try {
+    const httpResponse = await got.get(userInfoEndpoint, {
+      headers: {
+        authorization: `token ${accessToken}`,
+      },
+      timeout: defaultTimeout,
+    });
+
+    const result = userInfoResponseGuard.safeParse(parseJson(httpResponse.body));
+
+    if (!result.success) {
+      throw new ConnectorError(ConnectorErrorCodes.InvalidResponse, result.error);
+    }
+
+    const { id, avatar_url: avatar, email, name } = result.data;
+
+    return {
+      id: String(id),
+      avatar: conditional(avatar),
+      email: conditional(email),
+      name: conditional(name),
+    };
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const { statusCode, body: rawBody } = error.response;
+
+      if (statusCode === 401) {
+        throw new ConnectorError(ConnectorErrorCodes.SocialAccessTokenInvalid);
+      }
+
+      throw new ConnectorError(ConnectorErrorCodes.General, JSON.stringify(rawBody));
+    }
+
+    throw error;
+  }
+};
+```
+
+## Build a passwordless connector
+
+Let's go through the implementation of Aliyun direct mail connector to get the process of building passwordless connector.
+
+Passwordless connectors are used to send a random code to end-users' email or phone. As a result, a `sendMessage` method is required.
+
+### `sendMessage`
+
+In order to send message, we need `config` and `endpoint` to be correctly set up.
+
+- `endpoint` is the endpoint your API calls connect to.
+- `config` contains `templates` (for sending passcode in different user flows), `clientId` and `clientSecret` (to access to API requests).
+
+```typescript
+const sendMessage = async (data, inputConfig) => {
+  const { to, type, payload } = data;
+  const config = inputConfig ?? (await getConfig(defaultMetadata.id));
+  validateConfig<AliyunDmConfig>(config, aliyunDmConfigGuard);
+  const { accessKeyId, accessKeySecret, accountName, fromAlias, templates } = config;
+  const template = templates.find((template) => template.usageType === type);
+
+  assert(
+    template,
+    new ConnectorError(
+      ConnectorErrorCodes.TemplateNotFound,
+      `Cannot find template for type: ${type}`
+    )
+  );
+
+  const parameters = {
+    AccessKeyId: accessKeyId,
+    AccountName: accountName,
+    ReplyToAddress: 'false',
+    AddressType: '1',
+    ToAddress: to,
+    FromAlias: fromAlias,
+    Subject: template.subject,
+    HtmlBody:
+      typeof payload.code === 'string'
+        ? template.content.replace(/{{code}}/g, payload.code)
+        : template.content,
+  };
+
+  try {
+    const httpResponse = await request(
+      endpoint,
+      { Action: 'SingleSendMail', ...staticConfigs, ...parameters },
+      accessKeySecret
+    );
+
+    const result = sendEmailResponseGuard.safeParse(parseJson(httpResponse.body));
+
+    if (!result.success) {
+      throw new ConnectorError(ConnectorErrorCodes.InvalidResponse, result.error);
+    }
+
+    return result.data;
+  } catch (error: unknown) {
+    if (error instanceof HTTPError) {
+      const {
+        response: { body: rawBody },
+      } = error;
+
+      assert(typeof rawBody === 'string', new ConnectorError(ConnectorErrorCodes.InvalidResponse));
+
+      errorHandler(rawBody);
+    }
+
+    throw error;
+  }
+};
+
+const request = async (
+  url: string,
+  parameters: PublicParameters & Record<string, string>,
+  accessKeySecret: string
+) => {
+  const finalParameters: Record<string, string> = {
+    ...parameters,
+    SignatureNonce: String(Math.random()),
+    Timestamp: new Date().toISOString(),
+  };
+  const signature = getSignature(finalParameters, accessKeySecret, 'POST');
+
+  const payload = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(finalParameters)) {
+    payload.append(key, value);
+  }
+  payload.append('Signature', signature);
+
+  return got.post({
+    url,
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    form: payload,
+  });
+};
+```
+
+## What's more?
+
+To see connector methods' definition and build a picture of connector interface design, see [`@logto/connector-kit`](https://github.com/logto-io/toolkit/tree/master/packages/connector-kit). You can also find _ConnectorMetadata_ reference at "[Connectors - ConnectorMetadata](../../references/connectors/#connectors-local-storage-connectormetadata)" and "[Connector file structure](./connector-file-structure.mdx)" can help you figure out how to organize your implementation.
+
+- A connector's config [_Zod_](https://github.com/colinhacks/zod) schema is obligatory for all connectors. This is quite important since we do type check before saving `config` to DB and calling APIs which requires `config` information.
+- All _SMS Connectors_ and _Email Connectors_ require a `sendMessage` method to call service providers message sending APIs using configs from the database. Developers can also reuse this method to send a testing message with unsaved config while setting connectors up in Admin Console.
+- Authorization URL generator `getAuthorizationUri` and user profile retriever `getUserInfo` are required for all _Social Connectors_ (`getAccessToken` is regarded as a step in `getUserInfo`).
+- All connectors' methods work through API calls, as a result, connector developers need to check documents and handle possible unsuccessful API call responses.
