@@ -24,7 +24,7 @@ While we're working on more built-in connectors, you can create your own with an
 We know you care about user management and activities, as we also do.<br/>
 Learn more about how to know your users and see the figures like DAU and MAU graphically.
 
-### [🌐 Localization](../../recipes/localization/README.md)
+### [🌐 Localization](../../recipes/localization/README.mdx)
 
 From one regional business to a global corporate, the willingness to offer the best user experience won't change.<br/>
 You can change current language phrases or add a new language without friction.
