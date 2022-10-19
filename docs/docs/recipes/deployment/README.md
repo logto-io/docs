@@ -72,7 +72,7 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto https;
 
-    proxy_pass http://logto_upstream
+    proxy_pass http://logto_upstream;
     proxy_redirect off;
   }
 }
