@@ -92,7 +92,7 @@ If we don't mention it in the changelog, you can feel free to upgrade Logto with
 
 ### Database alteration
 
-If a schema change is inevitable, we will provide an alteration script. Simply run `npm run alteration deploy latest` in the Logto project root with ease to upgrade your database schema.
+If a schema change is inevitable, we will provide an alteration script. Simply run `npm run alteration deploy` in the Logto project root with ease to upgrade your database schema.
 
 See [Database alteration](../../tutorials/using-cli/database-alteration.mdx) for details about the alteration command.
 
