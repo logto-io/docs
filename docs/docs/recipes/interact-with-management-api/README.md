@@ -17,5 +17,5 @@ In this case, you need to use a backend service that directly talks to Logto Man
 - Interact with Management API with Bearer authorization using the Access Token.
 
 :::note
-Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new one if needed before sending requests.
+Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests.
 :::
