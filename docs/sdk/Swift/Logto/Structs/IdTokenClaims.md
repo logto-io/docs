@@ -3,43 +3,22 @@
 # `IdTokenClaims`
 
 ```swift
-public struct IdTokenClaims: Codable, Equatable
-```
+public struct IdTokenClaims: UserInfoProtocol {
+    public let sub: String
+    public let atHash: String?
+    public let aud: String
+    public let exp: Int64
+    public let iat: Int64
+    public let iss: String
 
-## Properties
+    // Protocol
+    public let name: String?
+    public let picture: String?
+    public let username: String?
+    public let email: String?
+    public let emailVerified: String?
+    public let phoneNumber: String?
+    public let phoneNumberVerified: String?
+}
 
-### `sub`
-
-```swift
-public let sub: String
-```
-
-### `atHash`
-
-```swift
-public let atHash: String?
-```
-
-### `aud`
-
-```swift
-public let aud: String
-```
-
-### `exp`
-
-```swift
-public let exp: Int64
-```
-
-### `iat`
-
-```swift
-public let iat: Int64
-```
-
-### `iss`
-
-```swift
-public let iss: String
 ```

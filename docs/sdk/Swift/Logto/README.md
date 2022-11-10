@@ -24,6 +24,7 @@
 ## Protocols
 
 - [NetworkSession](Protocols/NetworkSession.md)
+- [UserInfoProtocol](Protocols/UserInfoProtocol.md)
 
 ## Extensions
 

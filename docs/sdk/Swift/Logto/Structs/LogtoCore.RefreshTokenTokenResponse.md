@@ -3,7 +3,13 @@
 # `LogtoCore.RefreshTokenTokenResponse`
 
 ```swift
-struct RefreshTokenTokenResponse: Codable, Equatable
+struct RefreshTokenTokenResponse: Codable, Equatable {
+    public let accessToken: String
+    public let refreshToken: String
+    public let idToken: String?
+    public let scope: String
+    public let expiresIn: Int64
+}
 ```
 
 ## Properties
