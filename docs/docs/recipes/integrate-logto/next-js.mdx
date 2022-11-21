@@ -7,9 +7,11 @@ import Tabs from '@theme/Tabs';
 
 import redirectUriFigure from './assets/next-redirect-uri.png';
 import AppNote from './fragments/_app-note.mdx';
+import ApplyAuthorizationToken from './fragments/_apply_authorization_token.md';
 import ConfigureRedirectUri from './fragments/_configure-redirect-uri.mdx';
 import FurtherReadings from './fragments/_further-readings.md';
 import GetAppSecret from './fragments/_get-app-secret.mdx';
+import GetAuthorizationToken from './fragments/_get_authorization_token.md';
 import AssumingUrl from './fragments/_web-assuming-url.md';
 import SignInFlowSummary from './fragments/_web-sign-in-flow-summary.mdx';
 
@@ -54,7 +56,7 @@ pnpm add @logto/next
 Import and initialize LogtoClient:
 
 ```ts
-// libraries/logto.js
+// libraries/logto.ts
 import LogtoClient from '@logto/next';
 
 export const logtoClient = new LogtoClient({
@@ -121,11 +123,11 @@ There are two ways to get user profile.
 You can fetch user info by calling `/api/logto/user`
 
 ```tsx
-import { LogtoUser } from '@logto/next';
+import { LogtoContext } from '@logto/next';
 import useSWR from 'swr';
 
 const Home = () => {
-  const { data } = useSWR<LogtoUser>('/api/logto/user');
+  const { data } = useSWR<LogtoContext>('/api/logto/user');
 
   return <div>userId: {data?.claims?.sub}</div>;
 };
@@ -138,11 +140,11 @@ Check [this guide](https://swr.vercel.app/docs/getting-started) to learn more ab
 ### Through `getServerSideProps`
 
 ```tsx
-import { LogtoUser } from '@logto/next';
+import { LogtoContext } from '@logto/next';
 import { logtoClient } from '../libraries/logto';
 
 type Props = {
-  user: LogtoUser;
+  user: LogtoContext;
 };
 
 const Profile = ({ user }: Props) => {
@@ -227,6 +229,92 @@ After signing out, it'll be great to redirect your user back to your website. Le
 ```tsx
 <button onClick={() => push('/api/logto/sign-out')}>Sign Out</button>
 ```
+
+## Backend API Authorization
+
+<GetAuthorizationToken />
+
+Add your API resource indicators to the Logto SDK configs:
+
+```ts
+// libraries/logto.ts
+import LogtoClient from '@logto/next';
+
+export const logtoClient = new LogtoClient({
+  appId: '<your-application-id>',
+  appSecret: '<your-app-secret-copied-from-console>',
+  endpoint: '<your-logto-endpoint>', // E.g. http://localhost:3001
+  baseUrl: '<your-nextjs-app-base-url>', // E.g. http://localhost:3000
+  cookieSecret: 'complex_password_at_least_32_characters_long',
+  cookieSecure: process.env.NODE_ENV === 'production',
+  resources: ['<your-api-resource>'],
+});
+```
+
+Specify the resource when creating the API routes:
+
+```ts
+// pages/api/logto/[action].ts
+import { logtoClient } from '../../../libraries/logto';
+
+export default logtoClient.handleAuthRoutes({ resource: '<your-target-api-resource>' });
+```
+
+Claim an authorization token from inside wrapper withLogtoApiRoute:
+
+```ts
+// pages/api/protected-resource.ts
+import { logtoClient } from '../../libraries/logto';
+
+export default logtoClient.withLogtoApiRoute(
+  (request, response) => {
+    if (!request.user.isAuthenticated) {
+      response.status(401).json({ message: 'Unauthorized' });
+
+      return;
+    }
+
+    // Access token can be obtained from request.user.accessToken
+
+    response.json({
+      data: 'this_is_protected_resource',
+    });
+  },
+  { getAccessToken: true, resource: '<your-target-api-resource>' }
+);
+```
+
+You can also get the access token from inside getServerSideProps:
+
+```tsx
+import { LogtoContext } from '@logto/next';
+import { logtoClient } from '../libraries/logto';
+
+type Props = {
+  user: LogtoContext;
+};
+
+const Profile = ({ user }: Props) => {
+  return <div>User ID: {user.claims?.sub}</div>;
+};
+
+export default Profile;
+
+export const getServerSideProps = logtoClient.withLogtoSsr(
+  async function ({ req }) {
+    const { user } = req;
+
+    // Access token can be obtained from user.accessToken
+
+    return {
+      props: { user },
+    };
+  },
+  { getAccessToken: true, resource: '<your-target-api-resource>' }
+);
+```
+
+<ApplyAuthorizationToken />
 
 ## Further readings
 
