@@ -19,3 +19,39 @@ In this case, you need to use a backend service that directly talks to [Logto Ma
 :::note
 Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests.
 :::
+
+## Using pagination
+
+Some of the API responses may include many results, the results will be paginated. Logto provides 2 kinds of pagination info.
+
+### Using link headers
+
+A paginated response header will be like:
+
+```
+Link: <https://logto.dev/users?page=1&page_size=20>; rel="first"
+```
+
+The link header provides the URL for the previous, next, first, and last page of results:
+
+- The URL for the previous page is followed by rel="prev".
+- The URL for the next page is followed by rel="next".
+- The URL for the last page is followed by rel="last".
+- The URL for the first page is followed by rel="first".
+
+### Using total-number header
+
+In addition to the standard link headers, Logto will also add a `Total-Number` header:
+
+```
+Total-Number: 216
+```
+
+That would be very convenient and useful to show page numbers.
+
+### Changing page number and page size
+
+There are 2 optional query parameters:
+
+- `page`: indicates the page number, starts from 1, the default value is 1.
+- `page_size`: indicates the number of items per page, the default value is 20.
