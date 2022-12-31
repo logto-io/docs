@@ -38,7 +38,8 @@ You can check out [how to enable SMS or email passcode sign-in](../../tutorials/
 
 Suppose you are now on the "Connectors" page in Admin Console. Go to the "Social connectors" tab and add a new connector to enter the configuration process.
 
-![Add social connector modal](./assets/add-social-connector-modal.png)
+![Add social connector modal non standard](./assets/add-social-connector-modal-non-standard.png)
+![Add social connector modal standard](./assets/add-social-connector-modal-standard.png)
 
 :::tip
 You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_ description](../../references/connectors/README.mdx#platform) to know more.
