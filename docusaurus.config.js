@@ -50,6 +50,10 @@ const config = {
     locales: ['en', 'zh-cn'],
   },
 
+  markdown: {
+    mermaid: true,
+  },
+
   presets: [
     [
       'classic',
@@ -156,7 +160,7 @@ const config = {
       },
     }),
   plugins: [addAliasPlugin, injectPlausiblePlugin, 'docusaurus-plugin-sass'],
-  themes: ['docusaurus-theme-redoc'],
+  themes: ['docusaurus-theme-redoc', '@docusaurus/theme-mermaid'],
 };
 
 module.exports = config;
