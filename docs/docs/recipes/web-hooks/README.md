@@ -52,7 +52,7 @@ graph LR
 
 ## Manage web hooks
 
-For now, Logto only supports web hooks and managing them via Management API. See [🚝 Interact with Management API](../interact-with-management-api/README.md) for detailed instructions.
+For now, Logto only supports web hooks and managing them via Management API. See [🚝 Interact with Management API](/docs/recipes/interact-with-management-api/) for detailed instructions.
 
 Standard REST APIs are available to manage hooks:
 
@@ -191,4 +191,4 @@ const fields = [
 ];
 ```
 
-See [Users](../../references/users/README.md) and [Applications](../../references/applications/README.mdx) reference for detailed field explanations.
+See [Users](/docs/references/users/) and [Applications](/docs/references/applications/) reference for detailed field explanations.
