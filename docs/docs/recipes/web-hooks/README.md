@@ -65,7 +65,7 @@ PUT /api/hooks/:id
 DELETE /api/hooks/:id
 ```
 
-Except `GET /api/hooks` will return an array of hook entities and `DELETE /api/hooks/:id` will return no content, other APIs will return a full hook entity in the response body.
+Except `GET /api/hooks` will return an array of hook entities and `DELETE /api/hooks/:id` will return no content, other APIs will return a hook entity in the response body.
 
 The full definition of a hook entity:
 
@@ -97,6 +97,13 @@ type HookConfig = {
   retries: number;
 };
 ```
+
+Every hook request carries two default headers:
+
+- `user-agent` with predefined value
+- `content-type: application/json`
+
+You can overwrite them by passing `headers` with the same key.
 
 ### Create a hook
 
@@ -148,7 +155,7 @@ Use `DELETE /api/hooks/:id` to delete an existing hook.
 
 ## Web hook request
 
-Once a valid hook event is emitted, Logto will find corresponding web hooks and send a `POST` request with the following content:
+Once a valid hook event is emitted, Logto will find corresponding web hooks and send a `POST` request per hook config with the following JSON schema in the request body:
 
 ```ts
 type HookEventPayload = {
