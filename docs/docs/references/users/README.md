@@ -142,6 +142,11 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 }
 ```
 
+### is_suspended
+
+_is_suspended_ is a boolean value that indicates whether a user is suspended or not. The value can be managed by calling the [Logto Management API](../../../docs/recipes/manage-users/management-api.md).
+Once a user is suspended all the pre-granted authorization tokens will be revoked immediately and the user won't be able to get authenticated by Logto anymore.
+
 ## Property reference
 
 The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
@@ -162,6 +167,7 @@ which means you can query them using [Management API](../../../docs/recipes/mana
 | [last_sign_in_at](#last_signed_in_at)                     | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
 | [password_encrypted](#password_encrypted)                 | string       | Encrypted password                            | ❌     | ❌       |
 | [password_encryption_method](#password_encryption_method) | string       | Password encryption method                    | ❌     | ❌       |
+| [is_suspended](#is_suspended)                             | bool         | User suspend mark                             | ❌     | ✅       |
 
 :::note
 
