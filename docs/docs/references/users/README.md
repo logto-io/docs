@@ -145,7 +145,7 @@ Sample a _password_encrypted_ and _password_encryption_method_ from a user whose
 ### is_suspended
 
 _is_suspended_ is a boolean value that indicates whether a user is suspended or not. The value can be managed by calling the [Logto Management API](../../../docs/recipes/manage-users/management-api.md).
-Once a user is suspended all the pre-granted authorization tokens will be revoked immediately and the user won't be able to get authenticated by Logto anymore.
+Once a user is suspended the pre-granted refresh token will be revoked immediately and the user won't be able to get authenticated by Logto anymore.
 
 ## Property reference
 
