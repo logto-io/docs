@@ -25,5 +25,6 @@ What Admin Console can do, so do Management API.
 | [Reset user password](../../../docs/recipes/manage-users/admin-console.md#reset-user-password)               | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1password/patch" target="_blank">`PATCH /api/users/:userId/password`</a>                        |
 | [Delete a user](../../../docs/recipes/manage-users/admin-console.md#delete-user)                             | <a href="/api/#tag/Users/paths/~1api~1users~1:userId/delete" target="_blank">`DELETE /api/users/:userId`</a>                                         |
 | [Remove social connection](../../../docs/recipes/manage-users/admin-console.md#view-and-update-user-profile) | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1identities~1:target/delete" target="_blank">`DELETE /api/users/:userId/identities/:target`</a> |
+| Suspend User (Not available through Admin Console)                                                           | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1password/patch" target="_blank">`PATCH /api/users/:userId/is-suspended`</a>                    |
 
 See <a href="/api/#tag/Users" target="_blank">API Reference</a> for more.

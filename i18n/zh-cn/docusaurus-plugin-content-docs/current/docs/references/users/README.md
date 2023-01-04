@@ -129,6 +129,10 @@ _password_encrypted_ 和 _password_encryption_method_ 的示例，明文密码�
 }
 ```
 
+### is_suspended
+
+_is_suspended_ 是一个布尔值，用来标记该用户账号是否已被暂停使用。你可以通过 「[管理 API](../../../docs/recipes/manage-users/management-api.md)」来暂停或回复改用户的授权。一旦用户被暂停，之前授予的刷新令牌将被立即撤销，用户将无法再次通过 Logto 进行登录。
+
 ## 属性参照表
 
 以下属性（_password_encrypted_ 和 _password_encryption_method_ 除外）在用户资料中可见，这意味着你可以使用「管理 API」查询它们。
@@ -148,6 +152,7 @@ _password_encrypted_ 和 _password_encryption_method_ 的示例，明文密码�
 | [last_sign_in_at](#last_signed_in_at)                     | date time    | 用户上次登录的时间戳       | ❌     | ✅     |
 | [password_encrypted](#password_encrypted)                 | string       | 加密的密码                 | ❌     | ❌     |
 | [password_encryption_method](#password_encryption_method) | string       | 密码的加密方式             | ❌     | ❌     |
+| [is_suspended](#is_suspended)                             | bool         | 被暂停用户标识符           | ❌     | ✅     |
 
 :::note
 

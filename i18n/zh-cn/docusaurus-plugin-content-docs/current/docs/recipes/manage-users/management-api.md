@@ -26,5 +26,6 @@ API 都挂载在 `/api/users`，除了用户活动，即用户日志 `/api/logs?
 | [重置用户密码](../../../docs/recipes/manage-users/admin-console.md#重置用户密码)       | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1password/patch" target="_blank">`PATCH /api/users/:userId/password`</a>                        |
 | [删除用户](../../../docs/recipes/manage-users/admin-console.md#删除用户)               | <a href="/api/#tag/Users/paths/~1api~1users~1:userId/delete" target="_blank">`DELETE /api/users/:userId`</a>                                         |
 | [删除社交连接](../../../docs/recipes/manage-users/admin-console.md#查看和更新用户资料) | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1identities~1:target/delete" target="_blank">`DELETE /api/users/:userId/identities/:target`</a> |
+| 禁止和恢复用户 (无法直接通过管理控制台管理)                                            | <a href="/api/#tag/Users/paths/~1api~1users~1:userId~1password/patch" target="_blank">`PATCH /api/users/:userId/is-suspended`</a>                    |
 
 查看 <a href="/api/#tag/Users" target="_blank">API 参考</a> 以了解更多.
