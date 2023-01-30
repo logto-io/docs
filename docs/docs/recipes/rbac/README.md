@@ -4,6 +4,10 @@ sidebar_position: 7.2
 
 # 🔐 Role Based Access Control (RBAC)
 
+:::info
+RBAC has not been released yet.
+:::
+
 ## What is RBAC
 
 Role-based access control (RBAC) is a method of assigning permissions to users based on their roles. By controlling access to resources through role authorization, RBAC can help in different perspectives:
