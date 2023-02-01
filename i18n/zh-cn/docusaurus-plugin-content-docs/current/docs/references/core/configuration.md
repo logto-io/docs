@@ -69,6 +69,6 @@ It has a default value `3` if you went through our seeding process.
 
 ### Supported private key types
 
+- EC (P-256, secp256k1, P-384, and P-521 curves)
 - RSA
 - OKP (Ed25519, Ed448, X25519, X448 sub types)
-- EC (P-256, secp256k1, P-384, and P-521 curves)
