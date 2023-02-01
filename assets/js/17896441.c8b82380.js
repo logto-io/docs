@@ -1,0 +1,1 @@
+(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[7918],{37319:function(o,e,n){var r={"./locale":62642,"./locale.js":62642};function t(o){var e=c(o);return n(e)}function c(o){if(!n.o(r,o)){var e=new Error("Cannot find module '"+o+"'");throw e.code="MODULE_NOT_FOUND",e}return r[o]}t.keys=function(){return Object.keys(r)},t.resolve=c,o.exports=t,t.id=37319}}]);
