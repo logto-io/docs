@@ -38,6 +38,10 @@ By default, this API resource is pre-registered to your Logto service. All the m
 
 <APIResourceSchema />
 
+### Permissions and RBAC
+
+See [🔐 RBAC](/docs/recipes/rbac) for details.
+
 ## How does it work
 
 ### 1. Authorization request
@@ -70,19 +74,18 @@ POST https://logto.dev/oidc/token HTTP/1.1
 
 An encrypted access token with the audience restricted to this requested resource will be granted by Logto. The token carries all the data you will need to represent the authorization status of the request. E.g., the request user's identity and role, the token's audience and expiration time.
 
-### 3. API resource request
+### 3. API Resource request
 
 The client user sent a request to the API resource by presenting the given `access_token` in the Authorization header.
 
 ```bash
 GET https://logto.dev/api/users
 
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiYXVkIjoiaHR0cHM6Ly9sb2d0by5kZXYvYXBpL3VzZXJzIiwiaXNzIjoiaHR0cHM6Ly9sb2d0by5kZXYvb2lkYyIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MzI1NDIyfQ.PjIJl00YNC84EPNYLEdpEEAdAxqhekCYhFEckvRokek
-
+Authorization: Bearer eyJhbGciOiJIUz...
 ```
 
 :::tip
-Please follow our [**Protect Your API**](../../recipes/protect-your-api/README.mdx) guide to implement the token validation on your server-side APIs and make your resources well protected.
+Please follow our [⚔️ Protect Your API](../../recipes/protect-your-api/README.mdx) guide to implement the token validation on your server-side APIs and make your resources well protected.
 :::
 
 Logto follows the standard token-based authorization protocol to protect your API resources. To learn more about OAuth 2.0, please refer to OAuth 2.0's [official document](https://datatracker.ietf.org/doc/html/rfc6749#section-1.3.1).
