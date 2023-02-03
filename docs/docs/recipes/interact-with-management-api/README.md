@@ -13,7 +13,7 @@ In this case, you need to use a backend service that directly talks to [Logto Ma
 ## How to?
 
 1. Follow the tutorial [Create and integrate the first application](/docs/tutorials/get-started/create-and-integrate-the-first-app) to create a Machine to Machine app in Admin Console.
-2. Follow the guide [Machine to Machine: Auth with Logto](/docs/recipes/integrate-logto/machine-to-machine) to fetch an Access Token for the API identifier `https://api.logto.io` (indicates Management API).
+2. Follow the guide [Machine to Machine: Auth with Logto](/docs/recipes/integrate-logto/machine-to-machine) to fetch an Access Token for the API identifier `https://api.logto.io` (indicates Management API) and scope `all` (all permissions).
 3. Interact with Management API with Bearer authorization using the Access Token.
 
 :::note
