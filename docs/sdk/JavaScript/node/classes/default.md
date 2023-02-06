@@ -307,18 +307,17 @@ packages/client/lib/index.d.ts:88
 
 `Object`
 
-| Name          | Type                 |
-| :------------ | :------------------- |
-| `at_hash?`    | `null` \| `string`   |
-| `aud`         | `string`             |
-| `avatar?`     | `null` \| `string`   |
-| `exp`         | `number`             |
-| `iat`         | `number`             |
-| `iss`         | `string`             |
-| `name?`       | `null` \| `string`   |
-| `role_names?` | `null` \| `string`[] |
-| `sub`         | `string`             |
-| `username?`   | `null` \| `string`   |
+| Name        | Type               |
+| :---------- | :----------------- |
+| `at_hash?`  | `null` \| `string` |
+| `aud`       | `string`           |
+| `avatar?`   | `null` \| `string` |
+| `exp`       | `number`           |
+| `iat`       | `number`           |
+| `iss`       | `string`           |
+| `name?`     | `null` \| `string` |
+| `sub`       | `string`           |
+| `username?` | `null` \| `string` |
 
 #### Inherited from
 

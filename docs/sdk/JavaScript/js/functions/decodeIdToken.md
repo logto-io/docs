@@ -10,18 +10,17 @@
 
 `Object`
 
-| Name         | Type                                |
-| :----------- | :---------------------------------- |
-| `at_hash`    | `undefined` \| `null` \| `string`   |
-| `aud`        | `string`                            |
-| `avatar`     | `undefined` \| `null` \| `string`   |
-| `exp`        | `number`                            |
-| `iat`        | `number`                            |
-| `iss`        | `string`                            |
-| `name`       | `undefined` \| `null` \| `string`   |
-| `role_names` | `undefined` \| `null` \| `string`[] |
-| `sub`        | `string`                            |
-| `username`   | `undefined` \| `null` \| `string`   |
+| Name       | Type                              |
+| :--------- | :-------------------------------- |
+| `at_hash`  | `undefined` \| `null` \| `string` |
+| `aud`      | `string`                          |
+| `avatar`   | `undefined` \| `null` \| `string` |
+| `exp`      | `number`                          |
+| `iat`      | `number`                          |
+| `iss`      | `string`                          |
+| `name`     | `undefined` \| `null` \| `string` |
+| `sub`      | `string`                          |
+| `username` | `undefined` \| `null` \| `string` |
 
 #### Defined in
 

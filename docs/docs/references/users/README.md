@@ -95,18 +95,6 @@ Its max length is 2048.
 
 If the user registers with a social connector like Facebook and WeChat, its value may be retrieved from the social user info.
 
-### role_names
-
-_roles_names_ represent the roles granted to the user in Logto.
-
-:::info
-
-For example, only the users whose _roles_names_ contain `admin`, i.e., the admin users, have permission to use "Admin Console" and "Management API" in Logto.
-
-:::
-
-You cannot update the user's _role_names_ using [Admin Console](../../../docs/recipes/manage-users/admin-console.md#view-and-update-user-profile) for now.
-
 ### application_id
 
 The value of [_application_id_](../applications/README.mdx#application-id) is from the application the user first signed in to.
@@ -151,22 +139,21 @@ Once a user is suspended the pre-granted refresh tokens will be revoked immediat
 The following properties (except _password_encrypted_ and _password_encryption_method_) are visible on the user profile,
 which means you can query them using [Management API](../../../docs/recipes/manage-users/management-api.md).
 
-| Name                                                      | Type         | Description                                   | Unique | Required |
-| --------------------------------------------------------- | ------------ | --------------------------------------------- | ------ | -------- |
-| [id](#id)                                                 | string       | Unique identifier                             | ✅     | ✅       |
-| [username](#username)                                     | string       | Username for sign-in                          | ✅     | ❌       |
-| [primary_email](#primary_email)                           | string       | Primary email                                 | ✅     | ❌       |
-| [primary_phone](#primary_phone)                           | string       | Primary phone number                          | ✅     | ❌       |
-| [name](#name)                                             | string       | Full name                                     | ❌     | ❌       |
-| [avatar](#avatar)                                         | string       | URL pointing to user's avatar image           | ❌     | ❌       |
-| [role_names](#role_names)                                 | string array | List of roles                                 | ❌     | ✅       |
-| [identities](./social-identities.md)                      | object       | User info retrieved from social sign-in       | ❌     | ✅       |
-| [custom_data](./custom-data.md)                           | object       | Additional info in customizable properties    | ❌     | ✅       |
-| [application_id](#application_id)                         | string       | Application ID that the user first registered | ❌     | ✅       |
-| [last_sign_in_at](#last_signed_in_at)                     | date time    | Timestamp when the user signed in last time   | ❌     | ✅       |
-| [password_encrypted](#password_encrypted)                 | string       | Encrypted password                            | ❌     | ❌       |
-| [password_encryption_method](#password_encryption_method) | string       | Password encryption method                    | ❌     | ❌       |
-| [is_suspended](#is_suspended)                             | bool         | User suspend mark                             | ❌     | ✅       |
+| Name                                                      | Type      | Description                                   | Unique | Required |
+| --------------------------------------------------------- | --------- | --------------------------------------------- | ------ | -------- |
+| [id](#id)                                                 | string    | Unique identifier                             | ✅     | ✅       |
+| [username](#username)                                     | string    | Username for sign-in                          | ✅     | ❌       |
+| [primary_email](#primary_email)                           | string    | Primary email                                 | ✅     | ❌       |
+| [primary_phone](#primary_phone)                           | string    | Primary phone number                          | ✅     | ❌       |
+| [name](#name)                                             | string    | Full name                                     | ❌     | ❌       |
+| [avatar](#avatar)                                         | string    | URL pointing to user's avatar image           | ❌     | ❌       |
+| [identities](./social-identities.md)                      | object    | User info retrieved from social sign-in       | ❌     | ✅       |
+| [custom_data](./custom-data.md)                           | object    | Additional info in customizable properties    | ❌     | ✅       |
+| [application_id](#application_id)                         | string    | Application ID that the user first registered | ❌     | ✅       |
+| [last_sign_in_at](#last_signed_in_at)                     | date time | Timestamp when the user signed in last time   | ❌     | ✅       |
+| [password_encrypted](#password_encrypted)                 | string    | Encrypted password                            | ❌     | ❌       |
+| [password_encryption_method](#password_encryption_method) | string    | Password encryption method                    | ❌     | ❌       |
+| [is_suspended](#is_suspended)                             | bool      | User suspend mark                             | ❌     | ✅       |
 
 :::note
 
