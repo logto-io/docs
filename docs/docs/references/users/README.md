@@ -23,7 +23,6 @@ Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
   "primaryPhone": null,
   "name": "John Joe",
   "avatar": "https://example.com/avatar.png",
-  "roleNames": ["admin"],
   "customData": {
     "preferences": {
       "language": "en",

@@ -22,7 +22,6 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
   "primaryPhone": null,
   "name": "John Joe",
   "avatar": "https://example.com/avatar.png",
-  "roleNames": ["admin"],
   "customData": {
     "preferences": {
       "language": "en",
