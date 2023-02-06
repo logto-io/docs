@@ -59,6 +59,10 @@ In Logto, a resource (i.e. API Resource) usually represents a set of entities or
 
 One of the advantages of enforcing the URL format is it can map to a real address of your API service, which improves the readability and recognizability when integrating with other components in the system.
 
+:::note
+🤔 Resources should be divided according to the needs of the business. There is no one-size-fits-all approach; the decision should be made on a case-by-case basis. The example in this article that divides Books and Orders may be suitable for microservices, but not for a monolithic architecture.
+:::
+
 ### Define permissions
 
 Since we introduced the concept of resource, in Logto, we also enforce that permissions must belong to a resource, in reverse, resources can have permissions.
@@ -123,18 +127,18 @@ In the RBAC model, permissions are always "positive", meaning the authorization 
 Let's say Alice has the role `seller`, Bob and Carol have the role `customer`. We'll describe actions in natural language first, and transpile them to the standard authorization format: **IDENTITY** performs **ACTION** on **RESOURCE**, finally giving the conclusion.
 
 - Alice wants to add a new book for sale:
-    - User Alice performs `create` on resource Books (`https://api.bookstore.io/books`).
-    - Since Alice has been assigned the permission `create` of Books according to their role `seller`, the result is ✅ **ACCEPT**.
+  - User Alice performs `create` on resource Books (`https://api.bookstore.io/books`).
+  - Since Alice has been assigned the permission `create` of Books according to their role `seller`, the result is ✅ **ACCEPT**.
 - Alice wants to view all orders to see if the sale meets their expectation:
-    - User Alice performs `read` on resource Orders (`https://api.bookstore.io/orders`).
-    - Since Alice has been assigned the permission `read` of Orders according to their role `seller`, the result is ✅ **ACCEPT**.
+  - User Alice performs `read` on resource Orders (`https://api.bookstore.io/orders`).
+  - Since Alice has been assigned the permission `read` of Orders according to their role `seller`, the result is ✅ **ACCEPT**.
 - Bob wants to browse the book list to see if there’s any books they want to purchase.
-    - User Bob performs `read` on resource Books (`https://api.bookstore.io/books`).
-    - Since Bob has been assigned the permission `read` of Books according to their role `cusomter`, the result is ✅ **ACCEPT**.
+  - User Bob performs `read` on resource Books (`https://api.bookstore.io/books`).
+  - Since Bob has been assigned the permission `read` of Books according to their role `cusomter`, the result is ✅ **ACCEPT**.
 - Bob wants to view Carol’s order.
-    - Since it’s someone else’s order, the permission `read:self` of `Orders` does not work here.
-    - User Bob performs `read` on resource Orders (`https://api.bookstore.io/order`).
-    - Since Bob has no permission `read` of Orders, the result is ❌ **DENY**.
+  - Since it’s someone else’s order, the permission `read:self` of `Orders` does not work here.
+  - User Bob performs `read` on resource Orders (`https://api.bookstore.io/order`).
+  - Since Bob has no permission `read` of Orders, the result is ❌ **DENY**.
 
 ### Other RBAC levels
 
