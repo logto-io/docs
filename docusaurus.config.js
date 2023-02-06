@@ -66,7 +66,10 @@ const config = {
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
         },
-        blog: false,
+        blog: {
+          path: 'blog',
+          blogSidebarCount: 0,
+        },
         theme: {
           customCss: require.resolve('./src/scss/custom.scss'),
         },
@@ -90,6 +93,11 @@ const config = {
             docId: 'docs/README',
             position: 'left',
             label: 'Docs',
+          },
+          {
+            to: 'blog',
+            position: 'left',
+            label: 'Blog',
           },
           {
             type: 'doc',
