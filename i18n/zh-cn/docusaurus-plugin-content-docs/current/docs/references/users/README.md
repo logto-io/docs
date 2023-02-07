@@ -22,7 +22,6 @@ _用户_ 是身份服务的主要实体。我们将会在下文描述用户相�
   "primaryPhone": null,
   "name": "John Joe",
   "avatar": "https://example.com/avatar.png",
-  "roleNames": ["admin"],
   "customData": {
     "preferences": {
       "language": "en",
@@ -86,18 +85,6 @@ _avatar_ 即用户的头像，是指向用户头像图片的 URL。
 
 如果用户使用 Facebook 和微信等社交连接器注册，则可能会直接采用社交用户信息中获取到的头像。
 
-### role_names
-
-_roles_names_ 即用户的角色名称集合，表示在 Logto 中授予给该用户的角色集合。
-
-:::info
-
-例如，只有 _roles_names_ 中包含 admin 的用户，即管理员用户，才有权限使用 Logto 中的「管理控制台」和「管理 API」。
-
-:::
-
-你目前还不能通过「管理控制台」更新用户的 _role_names_。
-
 ### application_id
 
 [_application_id_](../applications/README.mdx#应用-id) 的值来自用户首次登录的应用程序。可能为 `null`。
@@ -137,22 +124,21 @@ _is_suspended_ 是一个布尔值，用来标记该用户账号是否已被暂�
 
 以下属性（_password_encrypted_ 和 _password_encryption_method_ 除外）在用户资料中可见，这意味着你可以使用「管理 API」查询它们。
 
-| 名称                                                      | 类型         | 描述                       | 唯一的 | 必须的 |
-| --------------------------------------------------------- | ------------ | -------------------------- | ------ | ------ |
-| [id](#id)                                                 | string       | 唯一标识符                 | ✅     | ✅     |
-| [username](#username)                                     | string       | 用于登录的用户名           | ✅     | ❌     |
-| [primary_email](#primary_email)                           | string       | 主要邮箱                   | ✅     | ❌     |
-| [primary_phone](#primary_phone)                           | string       | 主要手机号                 | ✅     | ❌     |
-| [name](#name)                                             | string       | 全名                       | ❌     | ❌     |
-| [avatar](#avatar)                                         | string       | 用户头像图片的 URL         | ❌     | ❌     |
-| [role_names](#role_names)                                 | string array | Role 的列表                | ❌     | ✅     |
-| [identities](./social-identities.md)                      | object       | 从社交登录中获取的用户信息 | ❌     | ✅     |
-| [custom_data](./custom-data.md)                           | object       | 自定义的附加信息           | ❌     | ✅     |
-| [application_id](#application_id)                         | string       | 用户首次注册的应用 ID      | ❌     | ✅     |
-| [last_sign_in_at](#last_signed_in_at)                     | date time    | 用户上次登录的时间戳       | ❌     | ✅     |
-| [password_encrypted](#password_encrypted)                 | string       | 加密的密码                 | ❌     | ❌     |
-| [password_encryption_method](#password_encryption_method) | string       | 密码的加密方式             | ❌     | ❌     |
-| [is_suspended](#is_suspended)                             | bool         | 被暂停用户标识符           | ❌     | ✅     |
+| 名称                                                      | 类型      | 描述                       | 唯一的 | 必须的 |
+| --------------------------------------------------------- | --------- | -------------------------- | ------ | ------ |
+| [id](#id)                                                 | string    | 唯一标识符                 | ✅     | ✅     |
+| [username](#username)                                     | string    | 用于登录的用户名           | ✅     | ❌     |
+| [primary_email](#primary_email)                           | string    | 主要邮箱                   | ✅     | ❌     |
+| [primary_phone](#primary_phone)                           | string    | 主要手机号                 | ✅     | ❌     |
+| [name](#name)                                             | string    | 全名                       | ❌     | ❌     |
+| [avatar](#avatar)                                         | string    | 用户头像图片的 URL         | ❌     | ❌     |
+| [identities](./social-identities.md)                      | object    | 从社交登录中获取的用户信息 | ❌     | ✅     |
+| [custom_data](./custom-data.md)                           | object    | 自定义的附加信息           | ❌     | ✅     |
+| [application_id](#application_id)                         | string    | 用户首次注册的应用 ID      | ❌     | ✅     |
+| [last_sign_in_at](#last_signed_in_at)                     | date time | 用户上次登录的时间戳       | ❌     | ✅     |
+| [password_encrypted](#password_encrypted)                 | string    | 加密的密码                 | ❌     | ❌     |
+| [password_encryption_method](#password_encryption_method) | string    | 密码的加密方式             | ❌     | ❌     |
+| [is_suspended](#is_suspended)                             | bool      | 被暂停用户标识符           | ❌     | ✅     |
 
 :::note
 

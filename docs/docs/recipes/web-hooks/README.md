@@ -188,7 +188,6 @@ const fields = [
   'primaryPhone',
   'name',
   'avatar',
-  'roleNames',
   'customData',
   'identities',
   'lastSignInAt',

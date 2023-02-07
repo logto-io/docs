@@ -57,17 +57,16 @@ Claims carried by the id token.
 
 **Properties**
 
-| Name      | Type       | Required |
-| --------- | ---------- | -------- |
-| sub       | `string`   | ✅       |
-| aud       | `string`   | ✅       |
-| exp       | `number`   | ✅       |
-| iat       | `number`   | ✅       |
-| iss       | `string`   | ✅       |
-| atHash    | `string`   |          |
-| username  | `string`   |          |
-| name      | `string`   |          |
-| avatar    | `string`   |          |
-| roleNames | `string[]` |          |
+| Name     | Type     | Required |
+| -------- | -------- | -------- |
+| sub      | `string` | ✅       |
+| aud      | `string` | ✅       |
+| exp      | `number` | ✅       |
+| iat      | `number` | ✅       |
+| iss      | `string` | ✅       |
+| atHash   | `string` |          |
+| username | `string` |          |
+| name     | `string` |          |
+| avatar   | `string` |          |
 
 </details>
