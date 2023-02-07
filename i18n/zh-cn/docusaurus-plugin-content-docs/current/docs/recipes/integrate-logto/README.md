@@ -32,7 +32,7 @@ sidebar_position: 1
 - [传统 web](./traditional.mdx)
 - [Next.js](./next-js.mdx)
 - [Express](./express.mdx)
-- [Go](./go-web.mdx)
+- [Go](./go.mdx)
 
 ## Machine to Machine
 
