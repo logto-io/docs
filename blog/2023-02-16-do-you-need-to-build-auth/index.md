@@ -12,13 +12,13 @@ Although article is inspired from personal dev experience and I tried my best to
 I would like to point out this first for a better reading experience.
 :::
 
-I’ve seen a lot of developers are asking questions like “should I build my own auth for my app”. While the answer cannot be simple yes or no, I’d like to write an article to breakdown the implementation and demonstrate the pros and cons to help you decide.
+I’ve seen a lot of developers asking questions like “Should I build my own auth for my app?”. While the answer cannot be a simple "Yes" or "No", I’d like to write an article to breakdown the implementation and demonstrate the pros and cons to help you decide.
 
 > **TL;DR** If you're still learning, auth will be a good challenge. If you want full control, it's worth building your own auth system. Otherwise, it depends on several conditions.
 
 ## Intro
 
-As a developer, I have built many applications during my career. No matter the programming language, there is a common foundation I always need to construct: user auth.
+As a developer, I have built many applications during my career. Regardless of the programming language, there is a common foundation I always need to construct: user auth.
 
 It was a negligible part since everything was straightforward going back to 20 years ago:
 
@@ -53,9 +53,9 @@ Let’s start with “authentication”, which is user sign-in in our example. B
 
 The choice of method depends on the business decision, while we can take a look on the tech effort:
 
-- For passwordless, you need to find a vendor to send email or sms; then integrate with your API service (new APIs may needed).
+- For passwordless, you need to find a vendor to send verification codes via email or sms; then integrate with your API service (new APIs may needed).
 - For social sign-in, you must adhere to the integration guidelines of the social identity provider(s) you wish to use. Additionally, you must create a mapping between your bookstore's user IDs and the identity provider's.
-  - For example, when a user signs in with a Gmail account `foo@gmail.com`, you need to link this address to the user `foo` in the bookstore. This is to implement a unified identity system and give the user the ability to change or unlink their social identity in the future.
+  - For example, when a user signs in with a Gmail account `foo@gmail.com`, you can link this email address to the user `foo` in the bookstore. This process helps you to build a unified identity system and allows the user to modify or unlink their social identity in the future.
 
 ### Design and implement sign-in experience
 
