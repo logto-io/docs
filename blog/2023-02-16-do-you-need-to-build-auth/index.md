@@ -39,10 +39,9 @@ Let’s say you are trying to build an online bookstore with an API service and 
 First, the scope of “auth” should be defined. Auth can be explained as authentication and authorization, and they have totally different definitions and use cases:
 
 :::note 🤔 About Auth
-
 - Authentication (AuthN) answers the question “Which identity do you own?”
 - Authorization (AuthZ) answers the question “What can you do?”
-  :::
+:::
 
 I wrote an article [CIAM 101: Authentication, Identity, SSO](../2022-11-28-ciam-101-authn-identity-sso/index.mdx) to discuss these concepts in detail.
 
