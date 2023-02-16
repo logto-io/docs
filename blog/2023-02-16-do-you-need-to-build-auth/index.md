@@ -14,6 +14,8 @@ I would like to point out this first for a better reading experience.
 
 I’ve seen a lot of developers asking questions like “Should I build my own auth for my app?”. While the answer cannot be a simple "Yes" or "No", I’d like to write an article to breakdown the implementation and demonstrate the pros and cons to help you decide.
 
+<!--truncate-->
+
 > **TL;DR** If you're still learning, auth will be a good challenge. If you want full control, it's worth building your own auth system. Otherwise, it depends on several conditions.
 
 ## Intro
@@ -37,10 +39,9 @@ Let’s say you are trying to build an online bookstore with an API service and 
 First, the scope of “auth” should be defined. Auth can be explained as authentication and authorization, and they have totally different definitions and use cases:
 
 :::note 🤔 About Auth
-
 - Authentication (AuthN) answers the question “Which identity do you own?”
 - Authorization (AuthZ) answers the question “What can you do?”
-  :::
+:::
 
 I wrote an article [CIAM 101: Authentication, Identity, SSO](../2022-11-28-ciam-101-authn-identity-sso/index.mdx) to discuss these concepts in detail.
 
