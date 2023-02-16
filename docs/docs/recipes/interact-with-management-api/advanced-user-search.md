@@ -11,7 +11,7 @@ Use `GET /api/users` for searching users. Note it is a Management API that requi
 **Request**
 
 ```bash
-curl --location --request GET 'http://<your-logto-endpoint>/api/users?search=%25alice%25&hideAdminUser=true'
+curl --location --request GET 'http://<your-logto-endpoint>/api/users?search=%25alice%25'
 ```
 
 **Response**
@@ -40,7 +40,6 @@ A search request consists of the following parameter keys:
 - Search mode for fields: `mode`, `mode.*` (default value `'like'`, available `['exact', 'like', 'similar_to', 'posix']`)
 - Joint mode: `joint` or `jointMode` (default value `'or'`, available `['or', 'and']`)
 - Is case-sensitive: `isCaseSensitive` (default value `false`)
-- Hide admin users: `hideAdminUser` (default value `false`)
 
 This API has [pagination](./README.md#using-pagination) enabled.
 
@@ -166,16 +165,5 @@ new URLSearchParams([
   ['mode.primaryEmail', 'like'],
   ['search.phone', '0{3,}'], // Posix mode
   ['joint', 'and'],
-]);
-```
-
-### Hide admin user
-
-For convenience, you can apply `hideAdminUser` to quickly filter out all admins from the result:
-
-```ts
-new URLSearchParams([
-  ['search', '%foo%'],
-  ['hideAdminUser', 'true'],
 ]);
 ```
