@@ -49,7 +49,7 @@ I wrote an article [CIAM 101: Authentication, Identity, SSO](../2022-11-28-ciam-
 Let’s start with “authentication”, which is user sign-in in our example. Besides the username-and-password method, here are some trending methods people are adopting for a better user conversion and security:
 
 - Passwordless, i.e. dynamic verification code (via email or sms)
-- Social sign-in (Google, GitHub, etc.)
+- Social sign-in (Google, Facebook, etc.)
 
 The choice of method depends on the business decision, while we can take a look on the tech effort:
 
@@ -59,11 +59,11 @@ The choice of method depends on the business decision, while we can take a look 
 
 ### Design and implement sign-in experience
 
-After you decide authentication methods, a graceful and smooth sign-in experience for your end-users is the next target. The conversion here is fundamental but crucial to the business since it's a nature way to leave the persist customer data.
+After you decide authentication methods, a graceful and smooth sign-in experience for your end-users is the next target. The conversion here is fundamental but crucial to the business since it's a natural way to leave the persisted customer data.
 
-When I worked for Airbnb, there was a whole team dedicated to optimizing the sign-in experience for multiple platforms. They conducted numerous A/B tests to determine which combination had the highest conversion rate.
+When I was working for Airbnb, there was a whole team dedicated to optimize the sign-in experience for multiple platforms. They conducted numerous A/B tests to determine which combination had the highest conversion rate.
 
-It’s not practical to do so when a business is getting started. But we still need to try our best to make every piece right. Which platforms would you like to run the bookstore? You may start with mobile, web, or both. The exact design will depend on the authentication methods you chose:
+It’s not practical to do so when a business is getting started. But we still need to try our best to make every piece right. Which platforms would you like to run the bookstore? You may start with mobile, web, or both. The exact design will depend on the authentication methods you choose:
 
 - Username and password: The easiest one, just several input boxes and buttons.
 - Passwordless: Enter phone / email, then send and verify a dynamic code.
@@ -98,7 +98,7 @@ I also wrote an article [CIAM 102: Authorization & Role-based Access Control](..
 
 ## Make the decision
 
-You can see auth is not an “all or nothing” problem, since it involves multiple technical components and you or your team may have different tech expertise on these areas. It's important to break it down into smaller parts to gain a better understanding of the status quo.
+You can see auth is not an “all or nothing” problem, since it involves multiple technical components and you or your team may have different tech expertise in these areas. It's important to break it down into smaller parts to gain a better understanding of the status quo.
 
 To make the decision, I'll ask myself the following questions:
 
