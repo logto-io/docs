@@ -16,7 +16,7 @@ I’ve seen a lot of developers asking questions like “Should I build my own a
 
 <!--truncate-->
 
-> **TL;DR** If you're still learning, auth will be a good challenge. If you want full control, it's worth building your own auth system. Otherwise, it depends on several conditions.
+> **TL;DR** If you're still learning, auth will be a good challenge. If you want full control, it's worth building your own auth system. Otherwise, it's necessary to find an existing solution that fits your needs.
 
 ## Intro
 
