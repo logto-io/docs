@@ -41,10 +41,14 @@ Suppose you are now on the "Connectors" page in Admin Console. Go to the "Social
 ![Add social connector modal non-standard](./assets/add-social-connector-modal-non-standard.png)
 ![Add social connector modal standard](./assets/add-social-connector-modal-standard.png)
 
-:::tip
-You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_ description](../../references/connectors/README.mdx#platform) to know more.
+You can select a social connector to add by choosing it and clicking "Next," as shown in the previous screenshots. However, it's important to note that you can only add a normal social connector (such as Google or GitHub) once. Therefore, if a specific connector already exists, it won't be available for selection when creating a new connector.
 
-Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit your use case.<br/>
+When it comes to "standard" social connectors, things work a bit differently. For example, you'll find that you can add multiple OpenID Connect (OIDC) connectors. This is because standard social connectors are built on open and standard authentication protocols, which allows you to create a corresponding connector as long as a social identity provider supports the protocol.
+
+:::tip
+You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_](../../references/connectors/README.mdx#platform) to know more.
+
+Choose a proper _platform_ from either _Web_ or _Native_ (if applicable) for connectors to fit your use case.<br/>
 You can set up a single _Native_ connector w/o adding a _Web_ connector if you only provide native mobile apps and vice versa.
 :::
 
