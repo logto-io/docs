@@ -23,7 +23,7 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 
 **Disable Admin Console**
 
-- `ADMIN_DISABLE_LOCALHOST` Set it to `1` or `true` to close the port for Admin Console. With `ADMIN_ENDPOINT` unset, it'll completely close the Admin Console.
+- `ADMIN_DISABLE_LOCALHOST` Set it to `1` or `true` to close the port for Admin Console. With `ADMIN_ENDPOINT` unset, it'll completely disable the Admin Console.
 
 For more details about environment variables, see [Configuration](../../references/core/configuration.md).
 
