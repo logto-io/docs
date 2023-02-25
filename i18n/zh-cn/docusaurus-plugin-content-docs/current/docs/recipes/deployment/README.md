@@ -13,8 +13,17 @@ sidebar_position: 8
 ### 基础
 
 - `DB_URL` Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
-- `PORT` Logto 监听的本地端口。默认 `3001`。
-- `ENDPOINT` 你可以指定一个带有自定义域名的指向 Logto 的 URL，用于在线测试或生产环境（例如 `ENDPOINT=https://logto.domain.com`）。这也会影响到 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 和「管理控制台」Redirect URIs 的值。
+- `PORT` Logto 监听的本地端口。默认为 `3001`。
+- `ENDPOINT` 指向 Logto 服务的自定义域名，通常用于生产环境（例如 `ENDPOINT=https://logto.domain.com`）。修改 ENDPOINT 会影响 [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 的值。
+
+**启用管理控制台**
+
+- `ADMIN_PORT` Logto 管理控制台监听的本地端口。默认为 `3002`。
+- `ADMIN_ENDPOINT` 指向 Logto 管理控制台的自定义域名，通常用于生产环境（例如 `ADMIN_ENDPOINT=https://admin.domain.com`）。修改 ADMIN_ENDPOINT 将会影响管理控制台应用的 Redirect URIs。
+
+**禁用管理控制台**
+
+- `ADMIN_DISABLE_LOCALHOST` 设置为 `1` 或 `true` 来禁止以 localhost 地址访问管理控制台。如此时 `ADMIN_ENDPOINT` 也未设置，管理控制台将彻底被禁用。
 
 有关环境变量的详情，请参见 [配置](../../references/core/configuration.md)。
 
