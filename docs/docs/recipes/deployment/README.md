@@ -14,7 +14,16 @@ You can set env directly or put a `.env` file inside the Logto project root. If 
 
 - `DB_URL` The [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) for Logto database.
 - `PORT` The port that Logto listens to. Default `3001`.
-- `ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ENDPOINT=https://logto.domain.com`). This will affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) and Admin Console Redirect URIs.
+- `ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ENDPOINT=https://logto.domain.com`). This will also affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier).
+
+**Enable Admin Console**
+
+- `ADMIN_PORT` The port that Logto Admin Console listens to. Default `3002`.
+- `ADMIN_ENDPOINT` You may specify a URL with your custom domain for production (E.g. `ADMIN_ENDPOINT=https://admin.domain.com`). This will also affect the value of Admin Console Redirect URIs.
+
+**Disable Admin Console**
+
+- `ADMIN_DISABLE_LOCALHOST` Set it to `1` or `true` to close the port for Admin Console. With `ADMIN_ENDPOINT` unset, it'll completely disable the Admin Console.
 
 For more details about environment variables, see [Configuration](../../references/core/configuration.md).
 
