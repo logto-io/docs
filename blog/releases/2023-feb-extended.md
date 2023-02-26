@@ -13,7 +13,7 @@ While Logto Cloud is still under construction, we would like to introduce some n
 Notable updates include:
 
 - Refactored infrastructure and enhanced security
-- Combined Input and Customize CSS added to Sign-in Experience
+- Smart Input and Customize CSS added to Sign-in Experience
 - Open standard connectors (SAML, OIDC, and OAuth 2.0)
 - New language support
 
@@ -73,7 +73,7 @@ If you have any questions regarding this issue or the removal of data, please do
 
 ## 🧑‍🚀 Feature update
 
-### 💡 Combined Input for Sign-in Experience
+### 💡 Smart Input for Sign-in Experience
 
 We have integrated the traditional input fields for username, phone number, and email into a single intelligent input box:
 
