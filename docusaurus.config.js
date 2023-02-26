@@ -23,14 +23,20 @@ const addAliasPlugin = () => ({
 const injectPlausiblePlugin = () => ({
   name: 'inject-plausible-plugin',
   injectHtmlTags: () => ({
-    headTags: {
+    headTags: [{
       tagName: 'script',
       attributes: {
         src: 'https://plausible.io/js/plausible.js',
         defer: true,
         'data-domain': 'docs.logto.io',
       },
-    },
+    }, {
+      tagName: 'meta',
+      attributes: {
+        name: 'google-site-verification',
+        content: '3EYzsnarDwG6zL2dlHvyC8ySVcV6Q3RGlvh7-bvhb2k',
+      },
+    }],
   }),
 });
 
