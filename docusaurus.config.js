@@ -167,7 +167,30 @@ const config = {
         indexName: 'logto',
       },
     }),
-  plugins: [addAliasPlugin, injectPlausiblePlugin, 'docusaurus-plugin-sass'],
+  plugins: [
+    addAliasPlugin,
+    injectPlausiblePlugin,
+    'docusaurus-plugin-sass',
+    [
+      '@docusaurus/plugin-content-blog',
+      {
+        /**
+         * Required for any multi-instance plugin
+         */
+        id: 'tutorial',
+        /**
+         * URL route for the blog section of your site.
+         * *DO NOT* include a trailing slash.
+         */
+        routeBasePath: 'tutorial',
+        /**
+         * Path to data on filesystem relative to site dir.
+         */
+        path: './tutorial',
+        blogSidebarCount: 0,
+      },
+    ],
+  ],
   themes: ['docusaurus-theme-redoc', '@docusaurus/theme-mermaid'],
 };
 
