@@ -45,6 +45,14 @@ This API has [pagination](./README.md#using-pagination) enabled.
 
 Let's go through them via some examples. All search params will be formatted as a constructor of `URLSearchParams`.
 
+:::note
+Search mode is set to `like` by default, which uses [approximate string matching](https://en.wikipedia.org/wiki/Approximate_string_matching) ("fuzzy search").
+:::
+
+:::info
+All fuzzy search modes only support matching one value per field. If you need to match multiple values for a single field, you should use the "exact" mode. See [Exact match and case sensitivity](#exact-match-and-case-sensitivity) for details.
+:::
+
 ### Basic fuzzy search
 
 If you want to perform a fuzzy search over all available fields, just provide a value for key `search`. It will use [the `like` operator](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) under the hood:
