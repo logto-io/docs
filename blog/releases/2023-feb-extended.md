@@ -50,14 +50,14 @@ From this version, Logto now listens to two ports by default, one for normal use
 
 If you are upgrading from a previous version, simply run the [database alteration command](https://docs.logto.io/docs/tutorials/using-cli/database-alteration) as usual, and we'll take care of the rest.
 
-:::success ***DID YOU KNOW?***
+:::success **_DID YOU KNOW?_**
 Under the hood, we use the powerful Postgres feature Row-Level Security to isolate admin and user data.
 :::
 
 ### CORS policy
 
 - If `ADMIN_ENDPOINT` is not specified, `localhost:[admin-port]` will be allowed to perform Cross-Origin Resource Sharing (CORS) in Logto.
-- If `ADMIN_ENDPOINT` is specified, only requests from the origin of ADMIN_ENDPOINT will be allowed.
+- If `ADMIN_ENDPOINT` is specified, only requests from the origin of `ADMIN_ENDPOINT` will be allowed.
 
 ## 🔐 Security update
 
@@ -91,7 +91,7 @@ We have put a lot of effort into improving the user sign-in experience and have 
 
 You can now use the Management API `PATCH /api/sign-in-exp` with body `{ "customCss": "arbitrary string" }` to set customized CSS for the sign-in experience. You should see the value of `customCss` attached after `<title>` of the page. If the style has a higher priority, it should be able to override.
 
-For instance, if you want to give your sign-in page a feel of the ***Night City***, try this CSS:
+For instance, if you want to give your sign-in page a feel of the **_Night City_**, try this CSS:
 
 <details>
 
@@ -100,23 +100,88 @@ For instance, if you want to give your sign-in page a feel of the ***Night City*
 <p></p>
 
 ```css
-@font-face { font-family: 'Rock Salt'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/rocksalt/v18/MwQ0bhv11fWD6QsAVOZrt0M6p7NGrQ.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: 'Share Tech'; font-style: normal; font-weight: 400; font-display: swap; src: url(https://fonts.gstatic.com/s/sharetech/v17/7cHtv4Uyi5K0OeZ7bohU8H0JmBUhfrE.woff2) format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-#app * { font-family: 'Share Tech'; letter-spacing: 0.5px; }
-#app > div[class$=viewBox] { background-image: url(https://silverhand.io/assets/v-in-nc.jpg); background-size: cover; }
-#app main[class$=main] { background-image: url(https://silverhand.io/assets/gentle-universe.png); background-size: cover; opacity: 0.98; min-height: initial; padding: 24px; padding-bottom: 72px; border-radius: 12px; }
-#app main[class$=main] img[class$=logo] { content: url(https://silverhand.io/assets/cyberpunk-2077.png); margin: -20px 0 -12px; height: 160px; }
-#app main[class$=main] div[class$=headline] { visibility: hidden; height: 60px; }
-#app main[class$=main] div[class$=headline]:before { content: 'Welcome to Night City'; visibility: visible; display: block; font-family: 'Rock Salt'; font-style: italic; line-height: 60px; font-size: 20px; color: rgba(245,250,255,0.6); padding: 0 20px; }
-#app form div[class$=inputField] > div { outline: none; border: none; border-radius: 4px; }
-#app form div[class$=inputField] > div > input, #app form div[class$=inputField] div[class$=countryCodeSelector] { background: initial; background-color: #453f67; font-family: 'Share Tech'; letter-spacing: 0.5px; font-size: 16px; font-weight: 600; }
-#app button { font-weight: 600; font-size: 16px; border-radius: 4px; }
-#app button[type=submit] { background: linear-gradient(270.84deg, #2FD6FB -24.55%, #6369FC 44.33%, #A741EB 119.2%), #5D34F2; }
+@font-face {
+  font-family: 'Rock Salt';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/rocksalt/v18/MwQ0bhv11fWD6QsAVOZrt0M6p7NGrQ.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F,
+    U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Share Tech';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/sharetech/v17/7cHtv4Uyi5K0OeZ7bohU8H0JmBUhfrE.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F,
+    U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+#app * {
+  font-family: 'Share Tech';
+  letter-spacing: 0.5px;
+}
+#app > div[class$='viewBox'] {
+  background-image: url(https://silverhand.io/assets/v-in-nc.jpg);
+  background-size: cover;
+}
+#app main[class$='main'] {
+  background-image: url(https://silverhand.io/assets/gentle-universe.png);
+  background-size: cover;
+  opacity: 0.98;
+  min-height: initial;
+  padding: 24px;
+  padding-bottom: 72px;
+  border-radius: 12px;
+}
+#app main[class$='main'] img[class$='logo'] {
+  content: url(https://silverhand.io/assets/cyberpunk-2077.png);
+  margin: -20px 0 -12px;
+  height: 160px;
+}
+#app main[class$='main'] div[class$='headline'] {
+  visibility: hidden;
+  height: 60px;
+}
+#app main[class$='main'] div[class$='headline']:before {
+  content: 'Welcome to Night City';
+  visibility: visible;
+  display: block;
+  font-family: 'Rock Salt';
+  font-style: italic;
+  line-height: 60px;
+  font-size: 20px;
+  color: rgba(245, 250, 255, 0.6);
+  padding: 0 20px;
+}
+#app form div[class$='inputField'] > div {
+  outline: none;
+  border: none;
+  border-radius: 4px;
+}
+#app form div[class$='inputField'] > div > input,
+#app form div[class$='inputField'] div[class$='countryCodeSelector'] {
+  background: initial;
+  background-color: #453f67;
+  font-family: 'Share Tech';
+  letter-spacing: 0.5px;
+  font-size: 16px;
+  font-weight: 600;
+}
+#app button {
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 4px;
+}
+#app button[type='submit'] {
+  background: linear-gradient(270.84deg, #2fd6fb -24.55%, #6369fc 44.33%, #a741eb 119.2%), #5d34f2;
+}
 ```
 
 ![custom-css-preview](https://user-images.githubusercontent.com/14722250/221394786-4ae77638-8f35-4791-afae-8ab6a314dbf8.jpg)
 
-*"We have a city to burn!"*
+_"We have a city to burn!"_
 
 </details>
 
@@ -138,9 +203,9 @@ Added Russian translation. (credit [@evist0](https://github.com/evist0))
 
 ## 🎉 New Contributors
 
-* [@Alanimdeo](https://github.com/Alanimdeo) made their first contribution in [#3064](https://github.com/logto-io/logto/pull/3064)
-* [@gadkins](https://github.com/gadkins) made their first contribution in [#3032](https://github.com/logto-io/logto/pull/3032)
-* [@evist0](https://github.com/evist0) made their first contribution in [#3158](https://github.com/logto-io/logto/pull/3158)
-* [@muratgozel](https://github.com/muratgozel) made their first contribution in [#3203](https://github.com/logto-io/logto/pull/3203)
+- [@Alanimdeo](https://github.com/Alanimdeo) made their first contribution in [#3064](https://github.com/logto-io/logto/pull/3064)
+- [@gadkins](https://github.com/gadkins) made their first contribution in [#3032](https://github.com/logto-io/logto/pull/3032)
+- [@evist0](https://github.com/evist0) made their first contribution in [#3158](https://github.com/logto-io/logto/pull/3158)
+- [@muratgozel](https://github.com/muratgozel) made their first contribution in [#3203](https://github.com/logto-io/logto/pull/3203)
 
 Thank you!
