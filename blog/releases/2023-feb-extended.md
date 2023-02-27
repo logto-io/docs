@@ -57,7 +57,7 @@ Under the hood, we use the powerful Postgres feature Row-Level Security to isola
 ### CORS policy
 
 - If `ADMIN_ENDPOINT` is not specified, `localhost:[admin-port]` will be allowed to perform Cross-Origin Resource Sharing (CORS) in Logto.
-- If `ADMIN_ENDPOINT` is specified, only requests from the origin of ADMIN_ENDPOINT will be allowed.
+- If `ADMIN_ENDPOINT` is specified, only requests from the origin of `ADMIN_ENDPOINT` will be allowed.
 
 ## 🔐 Security update
 
