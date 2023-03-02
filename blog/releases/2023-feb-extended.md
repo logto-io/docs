@@ -32,7 +32,7 @@ Logto was using a single port to serve both normal users and admins, as well as 
 From this version, Logto now listens to two ports by default, one for normal users (`3001`), and one for admins (`3002`).
 
 <details>
-<summary><b>Click to expand details</b></summary>
+<summary><b>‼️ Click to expand details</b></summary>
 <p>
 
 - Nothing changed for normal users. No adaption is needed.
@@ -44,6 +44,7 @@ From this version, Logto now listens to two ports by default, one for normal use
   - Admin Console and admin user data are not accessible via normal user endpoints, including `localhost` and `ENDPOINT` from the environment.
   - Admin Console no longer displays audit logs of admin users. However, these logs still exist in the database, and Logto still inserts admin user logs. There is just no convenient interface to inspect them.
   - Due to the data isolation, the numbers on the dashboard may slightly decrease (admins are excluded).
+- Resource Indicator for Logto Management API changed from `https://api.logto.io` to `https://default.logto.app/api`.
 
 </p>
 </details>
