@@ -20,7 +20,7 @@ Usually, Native apps need to talk to an API (resource). Please refer to [Protect
 An app that runs in a web browser and dynamically updates data in place.
 
 - [Vanilla JS](./vanilla-js.mdx)
-- [React](./react.mdx)
+- [React](./react/README.mdx)
 - [Vue](./vue.mdx)
 
 Usually, SPAs need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
