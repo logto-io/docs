@@ -1,0 +1,66 @@
+/*
+This script generates blog posts with the cartesian product of the const `sdks` and `connectors`.
+
+For example:
+
+```ts
+const sdks = [{ name: 'React', ... }, { name: 'Vue', ... }];
+const connectors = [{ name: 'GitHub', ... }, { name: 'Google', ... }];
+```
+
+will generate four blog posts:
+
+- `react-github.mdx`
+- `react-google.mdx`
+- `vue-github.mdx`
+- `vue-google.mdx`
+
+*/
+
+const fs = require('fs/promises');
+
+/**
+ * SDKs to read. You should keep the name in original cases such as "React" to provide a better reading experience.
+ * 
+ * @type Array<{ name: string; language: string; officialLink: string; appType: string; }>
+ */
+const sdks = [
+  { name: 'React', language: 'js', officialLink: 'https://reactjs.org/', appType: 'Single Page App' },
+];
+
+/**
+ * Connector names to read. You should keep the name in original cases such as "GitHub" to provide a better reading experience.
+ * 
+ * * @type Array<{ name: string; configName: string; }>
+ */
+const connectors = [
+  { name: 'GitHub', configName: 'GitHub OAuth app' },
+  { name: 'Google', configName: 'Google OAuth app' },
+];
+
+const run = async () => {
+  const template = await fs.readFile('./_template.mdx', 'utf8');
+
+  await Promise.all(sdks.flatMap((sdk) => connectors.map(async (connector) => {
+    const connectorPath = connector.name.toLowerCase();
+    const sdkPath = sdk.name.toLowerCase();
+
+    const post = template
+      .replaceAll('${connector}', connector.name)
+      .replaceAll('${connectorPath}', connectorPath)
+      .replaceAll('${connectorConfigName}', connector.configName)
+      .replaceAll('${sdk}', sdk.name)
+      .replaceAll('${sdkPath}', sdkPath)
+      .replaceAll('${sdkOfficialLink}', sdk.officialLink)
+      .replaceAll('${language}', sdk.language)
+      .replaceAll('${appType}', sdk.appType);
+
+    const filename = `generated-${sdkPath}-${connectorPath}.mdx`;
+
+    await fs.writeFile(filename, post, 'utf8');
+    
+    console.log('Generated', filename);
+  })));
+};
+
+run();
