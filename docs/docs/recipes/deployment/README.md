@@ -131,7 +131,8 @@ For production, you can replace the "empty dir" volume with a persistent volume,
 
 ### Database alteration
 
-Similar to connectors, the database alteration need to run in a single instance. You can use a job to run the alteration script.
+Similar to connectors, the database alteration need to run in a single instance. You can use a job to run the alteration script.  
+`CI=true` environment variable is necessary when alteration is ran noninteractive.
 
 ```yaml
 apiVersion: batch/v1
@@ -146,6 +147,8 @@ spec:
           image: ghcr.io/logto-io/logto
           imagePullPolicy: always
           env:
+            - name: CI
+              value: true
             - name: DB_URL
               value: postgresql://user:password@localhost:5432/logto
             command:
