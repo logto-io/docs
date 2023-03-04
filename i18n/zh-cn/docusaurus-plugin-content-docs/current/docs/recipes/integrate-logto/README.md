@@ -20,7 +20,7 @@ sidebar_position: 1
 在浏览器中运行并动态更新数据的应用程序。
 
 - [原生 JS](./vanilla-js.mdx)
-- [React](./react.mdx)
+- [React](./react/README.mdx)
 - [Vue](./vue.mdx)
 
 通常单页应用需要与 API（resource）交流。参见 [保护你的 API](../protect-your-api/README.mdx) 以在 API 中鉴权。
