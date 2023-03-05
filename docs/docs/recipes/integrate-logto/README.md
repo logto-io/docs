@@ -19,7 +19,7 @@ Usually, Native apps need to talk to an API (resource). Please refer to [Protect
 
 An app that runs in a web browser and dynamically updates data in place.
 
-- [Vanilla JS](./vanilla-js.mdx)
+- [Vanilla JS](./vanilla-js/README.mdx)
 - [React](./react/README.mdx)
 - [Vue](./vue.mdx)
 

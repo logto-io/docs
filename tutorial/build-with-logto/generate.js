@@ -26,6 +26,7 @@ const fs = require('fs/promises');
  */
 const sdks = [
   { name: 'React', language: 'js', officialLink: 'https://reactjs.org/', appType: 'Single Page App' },
+  { name: 'Vanilla JS', language: 'js', officialLink: 'https://en.wikipedia.org/wiki/ECMAScript', appType: 'Single Page App' },
 ];
 
 /**
@@ -47,8 +48,8 @@ const run = async () => {
   const template = await fs.readFile('./_template.mdx', 'utf8');
 
   await Promise.all(sdks.flatMap((sdk) => connectors.map(async (connector) => {
-    const connectorPath = connector.name.replaceAll(' ', '').toLowerCase();
-    const sdkPath = sdk.name.replaceAll(' ', '').toLowerCase();
+    const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
+    const sdkPath = sdk.name.replaceAll(' ', '-').toLowerCase();
 
     const post = template
       .replaceAll('${connector}', connector.name)

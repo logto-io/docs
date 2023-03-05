@@ -19,7 +19,7 @@ sidebar_position: 1
 
 在浏览器中运行并动态更新数据的应用程序。
 
-- [原生 JS](./vanilla-js.mdx)
+- [原生 JS](./vanilla-js/README.mdx)
 - [React](./react/README.mdx)
 - [Vue](./vue.mdx)
 
