@@ -27,6 +27,7 @@ const fs = require('fs/promises');
 const sdks = [
   { name: 'React', language: 'js', officialLink: 'https://reactjs.org/', appType: 'Single Page App' },
   { name: 'Vanilla JS', language: 'js', officialLink: 'https://en.wikipedia.org/wiki/ECMAScript', appType: 'Single Page App' },
+  { name: 'iOS Swift', language: 'swift', officialLink: 'https://developer.apple.com/ios/ ', appType: 'Native App' },
 ];
 
 /**

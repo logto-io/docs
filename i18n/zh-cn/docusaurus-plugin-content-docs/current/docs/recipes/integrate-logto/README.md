@@ -10,7 +10,7 @@ sidebar_position: 1
 
 在原生环境中运行的应用程序。
 
-- [iOS](./ios.mdx)
+- [iOS](./ios/README.mdx)
 - [Android](./android.mdx)
 
 通常原生应用需要与 API（resource）交流。参见 [保护你的 API](../protect-your-api/README.mdx) 以在 API 中鉴权。
