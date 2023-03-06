@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[6546],{87490:function(s){s.exports=JSON.parse('{"label":"social-sign-in","permalink":"/zh-cn/tutorial/tags/social-sign-in","allTagsPath":"/zh-cn/tutorial/tags","count":2}')}}]);
