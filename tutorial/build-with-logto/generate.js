@@ -36,14 +36,19 @@ const sdks = [
 const connectors = [
   { name: 'GitHub', configName: 'GitHub OAuth app' },
   { name: 'Google', configName: 'Google OAuth app' },
+  { name: 'Apple', configName: 'Sign in with Apple' },
+  { name: 'Azure AD', configName: 'Azure AD' },
+  { name: 'Discord', configName: 'Discord OAuth app' },
+  { name: 'Kakao', configName: 'Kakao login' },
+  { name: 'Naver', configName: 'Naver login' },
 ];
 
 const run = async () => {
   const template = await fs.readFile('./_template.mdx', 'utf8');
 
   await Promise.all(sdks.flatMap((sdk) => connectors.map(async (connector) => {
-    const connectorPath = connector.name.toLowerCase();
-    const sdkPath = sdk.name.toLowerCase();
+    const connectorPath = connector.name.replaceAll(' ', '').toLowerCase();
+    const sdkPath = sdk.name.replaceAll(' ', '').toLowerCase();
 
     const post = template
       .replaceAll('${connector}', connector.name)
