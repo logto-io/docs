@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[6383],{94721:function(t){t.exports=JSON.parse('{"permalink":"/zh-cn/tutorial/tags/authentication/page/2","page":2,"postsPerPage":10,"totalPages":2,"totalCount":14,"previousPage":"/zh-cn/tutorial/tags/authentication","blogDescription":"Blog","blogTitle":"Blog"}')}}]);

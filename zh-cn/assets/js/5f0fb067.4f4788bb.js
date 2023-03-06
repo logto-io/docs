@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[678],{13087:function(a){a.exports=JSON.parse('{"label":"vanilla-js","permalink":"/zh-cn/tutorial/tags/vanilla-js","allTagsPath":"/zh-cn/tutorial/tags","count":7}')}}]);

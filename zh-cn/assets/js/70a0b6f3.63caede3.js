@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[434],{2324:function(o){o.exports=JSON.parse('{"permalink":"/zh-cn/tutorial/page/2","page":2,"postsPerPage":10,"totalPages":2,"totalCount":14,"previousPage":"/zh-cn/tutorial","blogDescription":"Blog","blogTitle":"Blog"}')}}]);
