@@ -196,6 +196,17 @@ const config = {
         blogSidebarCount: 0,
       },
     ],
+    [
+      '@docusaurus/plugin-content-blog',
+      {
+        id: 'terms',
+        routeBasePath: 'terms',
+        path: './terms',
+        blogSidebarCount: 0,
+        showReadingTime: false,
+        feedOptions: {},
+      },
+    ],
   ],
   themes: ['docusaurus-theme-redoc', '@docusaurus/theme-mermaid'],
 };
