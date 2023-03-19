@@ -1,15 +1,14 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # 🧑‍🚀 Manage users
 
-You can access your user data using [Admin Console](./admin-console.md) or [Management API](./management-api.md).
+User management is a significant area of focus for Logto. You can access your user data and manage them using either the Admin Console or the Management API, both of which are effective. With these tools, you can perform tasks such as
 
-With the help of them can do something like these:
+- Searching for users by username, ID, full name, phone number, or email
+- Performing several actions on user, such as unlinking social accounts, updating profile information, deleting users, or resetting passwords
+- Checking user logs
+- Assigning roles to control access.
 
-- Search users by username, full name, phone number, or email; view their profile, including avatar, social connections, etc.
-- Unlink a user's social identity from Facebook, or even delete their account directly in extreme cases.
-- Help a user reset the password.
-
-Also, [you don't need a user table](./you-dont-need-a-user-table.md).
+Additionally, we have two items to highlight: you don't need a user table, and advanced user search. We will guide you through each of these actions step-by-step.

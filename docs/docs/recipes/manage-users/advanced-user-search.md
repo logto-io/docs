@@ -1,3 +1,9 @@
+---
+sidebar_label: Management API
+sidebar_position: 3
+---
+
+
 # Advanced user search
 
 Directly using Management API to leverage advanced user search conditions.

@@ -1,39 +1,37 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
-# You don't need a user table
+# Common practice: you don't need a user table 
 
 ## Identify user
 
-We recommend using `user.id` to identify a user since we guarantee every user has a unique and non-null `id` property.
+We suggest utilizing the `user.id` property to identify a user, as we ensure each user has a distinct and non-null `id`. Additionally, the `username`, `primary_email`, and `primary_phone` properties are unique but may be empty. Therefore, it is important to handle `null` values appropriately if you intend to use these properties as identifiers for a user.
 
-Also, `username` `primary_email` and `primary_phone` are unique properties. But they may be empty. Remember to handle `null` properly if you want to use these properties to identify a user.
+## Why skip preparing a user table?
 
-## Why no user table
+When using Logto as an identity solution, it is important to consider how to organize user information and related data. This involves defining a user schema to determine the structure and properties of a user object and deciding how to store and manage user-related data.
 
-When preparing to take Logto as an identity solution, you may think about approaches to organizing user information and user-related stuffs.
+In the past, it was common for developers to create a user table in a SQL database to store a user's profile and related information. They would then establish a many-to-one relationship in other tables using a `user`column that pointed back to the user table. Other identity providers, such as Google, would require the creation of a `google_id`column to enable "sign in with Google" functionality. However, this approach is not appropriate for Logto since it is not just a service provider, but also an identity provider. Logto is a comprehensive solution that can manage all user-related information, including identifiers, social connections, custom data, and more. Therefore, creating a `logto_id`column is not an effective strategy.
 
-Traditionally, developers will create a user table in a SQL database containing the profile and other user-related information, then create a many-to-one relation in other tables, a `user` column pointing to the user table. For other identity providers, take Google as an example. Create a column named `google_id` to achieve "sign in with Google" linking. Now, for Logto, you may want to create a column `logto_id`, but it is not a good way since Logto is more than a social provider, it is a solution that can take charge of all user-related stuffs.
+Using Logto eliminates the need for a user table.
 
-With the help of Logto, **you don't need a user table**.
+Forget the user table, store user info in Logto. Here is a common practice:
 
-Here is a common practice (with Logto):
+1. Create a `user_id` column in other tables and save the user's user.id value from Logto. You can refer to the previous chapter on [Identify User](#identify-user) for more information.
+2. Use [Logto's Management API](./management-api.md) f for CRUD operations, such as creating and updating users, getting user details, and listing users.
+3. Store any additional user information in custom data. You can refer to the [User Custom Data](../../references/users/custom-data.md) for more information.
 
-Forget the user table, store user info in Logto:
+By utilizing these methods, Logto essentially takes on the role of a "user table".
 
-1. Create `user_id` column in other tables, save Logto's `user.id`, refer to the previous chapter [Identify User](#identify-user).
-2. Call [Logto's Management API](./management-api.md) for CRUD: create and update a user, get user detail, list users...
-3. Save any additional user information to custom data. Check this link for more info: [User Custom Data](../../references/users/custom-data.md).
+For example, let's consider an "Online Store" application that uses Logto as its identity service. If you want to implement two features
 
-By doing this, Logto is now playing the "user table" role.
+1. Storing user preference data in the cloud
+2. Implementing access control for different groups of users 
 
-Let's say that you have an "Online Store" app using Logto as the identity service, and you want two features:
+Logto can facilitate both of these tasks.
 
-1. Store user preference data in the cloud.
-2. Access control for different groups of users.
-
-With the help of _customData_, we can quickly implement this, and the data object will be like:
+With the help of *customData*, we can quickly implement this, and the data object will be like:
 
 ```json
 {
@@ -45,10 +43,3 @@ With the help of _customData_, we can quickly implement this, and the data objec
 :::caution
 You cannot do "join" or other complex queries on Logto's user storage. In this circumstance, you should use a cache layer or your own user table.
 :::
-
-## Compare with the common practice
-
-TODO:
-
-- how to do in common practice
-- pros and cons

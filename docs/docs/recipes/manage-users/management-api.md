@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Manage users using Management API
 
-[Management API](../../../docs/references/core/README.mdx#management-api) is a set of APIs to access Logto data, including users.
+[Management API](../../../docs/references/core/README.mdx#management-api)is a collection of APIs that provide access to the Logto backend service. As previously mentioned, the user API is a critical component of this service and can support a wide range of scenarios.
 :::info
 [**Authentication**](../../../docs/references/core/README.mdx#authentication) is REQUIRED when you're calling Management API.
 :::

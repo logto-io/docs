@@ -1,35 +1,27 @@
 ---
-sidebar_position: 6
+sidebar_position: 8
 ---
 
 # Further readings
+Once you have familiarized yourself with Logto's primary features, you can proceed to investigate additional functionalities. The following are some items that may pique your interest.
 
 ### [⚔️ Protect your API](../../recipes/protect-your-api/README.mdx)
 
-For native and single page apps, you'll need to call one or more API endpoints to retrieve and update data.<br/>
-Learn more about identifying who's who and keeping your API secure.
+For native and single page apps, you'll need to call one or more API endpoints to retrieve and update data. Learn more about identifying who's who and keeping your API secure.
 
-### [🛵 Change primary sign-in method](../../recipes/customize-sie/configure-sign-in-methods.mdx)
 
-By default, Logto uses username-with-password as the primary sign-in method.<br/>
-Depending on the business, you may want to promote passcode or social sign-in to the primary area.
+### [🧑‍🔬 Write your own connector](../../recipes/create-your-connector/README.md)
 
-### [🧑‍🔬 Create your connector](../../recipes/create-your-connector/README.md)
-
-Logto has some built-in connectors for out-of-box usage.<br/>
-While we're working on more built-in connectors, you can create your own with an easy setup.
+Logto offers a set of ready-to-use connectors, and we are constantly expanding this collection. Nevertheless, you can create your own connectors with minimal effort using our straightforward setup process. By utilizing supported protocols such as OAuth and OIDC, you can create a custom connector that can be shared with the Logto community. Follow our instructions to get started.
 
 ### [🧑‍🚀 Manage users](../../recipes/manage-users/README.md)
 
-We know you care about user management and activities, as we also do.<br/>
-Learn more about how to know your users and see the figures like DAU and MAU graphically.
+We prioritize empowering our users at Logto. That's why we've invested heavily in user management. Our Admin Console and Management API provide powerful tools for accessing and managing user data with ease.
 
 ### [🌐 Localization](/docs/recipes/localization/README.mdx)
 
-From one regional business to a global corporate, the willingness to offer the best user experience won't change.<br/>
-You can change current language phrases or add a new language without friction.
+Whether you're a regional business or a global corporation, your commitment to providing the best user experience remains steadfast. With Logto, you can effortlessly modify existing language phrases or incorporate new languages without any impediments.
 
 ### [🚀 Deployment](../../recipes/deployment/README.md)
 
-When it's time to go live, let's go gentle.<br/>
-We'll help to go through this exciting journey.
+When it's time to go live, let's proceed with caution. The deployment section includes everything you need to pay attention to in terms of self-hosting. We'll help you navigate this exciting journey.
