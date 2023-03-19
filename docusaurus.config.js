@@ -207,6 +207,17 @@ const config = {
         feedOptions: {},
       },
     ],
+    [
+      '@docusaurus/plugin-content-blog',
+      {
+        id: 'about',
+        routeBasePath: 'about',
+        path: './about',
+        blogSidebarCount: 0,
+        showReadingTime: false,
+        feedOptions: {},
+      },
+    ],
   ],
   themes: ['docusaurus-theme-redoc', '@docusaurus/theme-mermaid'],
 };
