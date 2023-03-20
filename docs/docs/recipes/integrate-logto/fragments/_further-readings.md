@@ -1,3 +1,2 @@
-- [Customize sign-in experience](../../customize-sie/README.md)
-- [Enable SMS or email passcode sign-in](../../../tutorials/get-started/enable-passcode-sign-in.mdx)
-- [Enable social sign-in](../../../tutorials/get-started/enable-social-sign-in.mdx)
+- [Customize sign-in experience](/docs/recipes/customize-sie/)
+- [Enable SMS, email, or social passwordless sign-in](/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors/)

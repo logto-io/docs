@@ -53,7 +53,7 @@ const config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'zh-cn'],
+    locales: ['en'],
   },
 
   markdown: {

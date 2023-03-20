@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 ---
 
 # 🪛 Configure connectors
@@ -14,7 +14,7 @@ Don't worry. This doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
 
-Let's start from Admin Console, signing in with your Logto account ("admin" role needed). You may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
+Let's start from Console. Click the "Connectors" button in the left navigation bar. If you use the Open-source Version, sign in with your Logto account ("admin" role needed), and you may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
 
 Click the "Connectors" button on the sidebar :neutral_face:
 
@@ -30,4 +30,4 @@ _Connectors_ can be classified into three types: _SMS Connector_, _Email Connect
 
 You can continue setting up _Email connector_ or _SMS connector_, and you need to go to "Social connectors" tab before adding _Social connector_.
 
-Move on to detailed [connector setup tips](./connector-setup-tips.md) for different connector types' configuration.
+Move on to detailed connector setup tips for different connector types' configuration.
