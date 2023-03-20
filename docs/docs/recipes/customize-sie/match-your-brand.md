@@ -11,11 +11,11 @@ To customize the sign-in page for the core brand element, go to "Sign-in Experie
 
 # Brand color[](https://docs.logto.io/docs/recipes/customize-sie/configure-branding#brand-color)
 
-- *Brand color* will affect the primary color of components, including but not limited to CTA buttons, links, etc. Feel free to replace the Logto purple-blue with your brand color.
-- If dark mode is enabled, you'll see an additional brand color input named *Brand color (Dark)*.
+- _Brand color_ will affect the primary color of components, including but not limited to CTA buttons, links, etc. Feel free to replace the Logto purple-blue with your brand color.
+- If dark mode is enabled, you'll see an additional brand color input named _Brand color (Dark)_.
 
 :::tip
-You may notice the auto-generated Brand color (Dark) is slightly different compared to the original Brand color. Because Logto just took care of the visual difference between light and dark and computes a brand color exclusively for dark mode. If you are unsatisfied with the color, you’re also free to customize it.
+You may notice the auto-generated Brand color (Dark) is slightly different compared to the original Brand color. Because Logto just took care of the visual difference between light and dark and computes a brand color exclusively for dark mode. If you are unsatisfied with the color, you’re also free to customize it.
 :::
 
 ## App logo
@@ -38,6 +38,6 @@ A favicon is a small icon representing a website and is displayed in the browser
 
 ## Dark mode
 
-The *Enable dark mode* switch controls if the UI has a "dark feeling" when Logto detects related system preference.
+The _Enable dark mode_ switch controls if the UI has a "dark feeling" when Logto detects related system preference.
 
 ![SIE branding dark mode](./assets/sie-branding-dark-mode.png)

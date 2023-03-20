@@ -7,7 +7,7 @@ sidebar_position: 3
 
 When building an app, it's important to have a Terms of Use and Privacy Policy. These documents protect both the app developer and the user. The Terms of Use outline the rules and regulations for using the app, while the Privacy Policy explains how personal data is collected, stored, and used.
 
-To do this, you need to provide the relevant URLs to these documents, which will be displayed on the sign-in and sign-up pages. Logto will load it via an `<iframe>`.
+To do this, you need to provide the relevant URLs to these documents, which will be displayed on the sign-in and sign-up pages. Logto will load it via an `<iframe>`.
 
 If the input box is left empty, the app will skip the "agree on terms" flow, and the legal agreements won't be displayed on the sign-in or sign-up pages.
 

@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Configure Email Connector
 
-Configuring an Email connector allows you to send a one-time verification code (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity. 
+Configuring an Email connector allows you to send a one-time verification code (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity.
 
 Logto has some built-in email connectors which allow out-of-box usage:
 
@@ -15,20 +15,17 @@ Logto has some built-in email connectors which allow out-of-box usage:
 - [SMTP](https://github.com/logto-io/connectors/tree/master/packages/connector-smtp)
 
 :::tip
-We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub. 
-For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../../create-your-connector/README.md) to extend.
+We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.
+For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../create-your-connector/) to extend.
 :::
-
-
 
 ## Configure steps
 
-Navigate to “Connector > Email and SMS connectors” in Logto Console. 
-
+Navigate to “Connector > Email and SMS connectors” in Logto Console.
 
 ### Add a new Email connector
 
-To add a new Email connector, click the “Add Social Connector”  button, and select the desired Email connector.
+To add a new Email connector, click the “Add Social Connector” button, and select the desired Email connector.
 
 ![Select email connector](./assets/configure-select-email-connector.png)
 
@@ -42,35 +39,33 @@ In the configuration process, follow the steps below:
 
 ![Configure email connector guideline](./assets/configure-email-connector-guideline.png)
 
-
 ### Change to another Email connector
 
 If you wish to change the current Email connector, simply access the connector details page and click the “Change connector” button of the “More” menu in the top-right corner. Or you can delete the old connector first, then add a new Email connector.
 
 :::note
-You can bring ONLY ONE *SMS Connector* alive.
+You can bring ONLY ONE _SMS Connector_ alive.
 
-If you change the living SMS connector and save changes, the previous Email connector will be disabled automatically. Also, the *config* of past connectors will lose track. You may keep the old connectors' *config* properly if you want to switch back to those connectors in the future.
+If you change the living SMS connector and save changes, the previous Email connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
 :::
-
-
 
 ## Email template
 
-Notice that: 
+Notice that:
 
 - Logto provides four different templates for customizing Email content, which are categorized based on their usage type: Register, SignIn, ForgotPassword, and Generic. It is highly recommended that you use different templates for various use cases, or it could trigger flow control, leading to a temporary outage of your service.
 - The verification code is valid for 10 minutes by default.
 - The verification code number sent to users uses the variate of {{code}}.
 
-| Usage | Scenario  |
-| --- | --- |
-| Register | Users create an account using their phone number and verify by entering the verification code. |
-| SignIn | Users sign in using their phone number and verify by entering verification code instead of entering a password. |
-| ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their phone number. |
-| Generic | This template can be used as a generic backup option for various scenarios, including linking a phone number to an existing account or testing connector configuration… |
+| Usage          | Scenario                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register       | Users create an account using their phone number and verify by entering the verification code.                                                                          |
+| SignIn         | Users sign in using their phone number and verify by entering verification code instead of entering a password.                                                         |
+| ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their phone number.                                                       |
+| Generic        | This template can be used as a generic backup option for various scenarios, including linking a phone number to an existing account or testing connector configuration… |
 
 There is a template example just for reference:
+
 ```jsx
 <table cellpadding="0" cellspacing="0" border="0" width="100%"
   style="font-family: -apple-system, system-ui, 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Arial', sans-serif;">

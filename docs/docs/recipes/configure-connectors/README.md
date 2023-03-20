@@ -30,4 +30,4 @@ _Connectors_ can be classified into three types: _SMS Connector_, _Email Connect
 
 You can continue setting up _Email connector_ or _SMS connector_, and you need to go to "Social connectors" tab before adding _Social connector_.
 
-Move on to detailed [connector setup tips](./connector-setup-tips.md) for different connector types' configuration.
+Move on to detailed connector setup tips for different connector types' configuration.

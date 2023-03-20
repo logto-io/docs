@@ -8,43 +8,41 @@ sidebar_position: 3
 Configuring social connectors allows users to easily sign in using their existing social media accounts, without entering a password or basic profile information. This can help increase the registration conversion rate for your website or app. At Logto, we're constantly improving our social connector's capabilities to support new platforms and enhance the user experience.
 
 Logto offers two types of social connectors:
+
 - **Common Social Connectors**: Google, Apple, Facebook, GitHub, Discord, Wechat, Alipay, Kakao, Naver, Azure Active Directory.
 - **Standard Connectors**: OIDC, OAuth 2.0, SAML.
 
 :::tip
-If the social connector you need isn't among our Common Social Connectors, you can create your own using the Standard Connector protocol. Check out our “[Custom Social Connector with Standard Protocol](../custom social connector with standard protocol.md)” guide to learn more. 
-If the Standard Connector still doesn't meet your needs, don't hesitate to contact us. For those using the Logto Open-Source Version, you can even [Write your connector (OSS)](../../create-your-connector/README.md).
+If the social connector you need isn't among our Common Social Connectors, you can create your own using the Standard Connector protocol. Check out our “[Custom Social Connector with Standard Protocol](../custom social connector with standard protocol.md)” guide to learn more.
+If the Standard Connector still doesn't meet your needs, don't hesitate to contact us. For those using the Logto Open-Source Version, you can even [Write your connector (OSS)](../create-your-connector/).
 :::
 
-
-
 ## Types of common Social Connectors
-We have provided lots of universal third-party social platforms preinstalled by Logto Console. 
+
+We have provided lots of universal third-party social platforms preinstalled by Logto Console.
 
 Follow the README to compose the connector config with little effort.
 
-- **Google** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-google)
-- **Apple** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-apple)
-- **Facebook** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-facebook)
-- **GitHub** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-github)
-- **Discord** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-discord)
-- **WeChat** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-native)
-- **Alipay** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-native)
+- **Google** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-google)
+- **Apple** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-apple)
+- **Facebook** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-facebook)
+- **GitHub** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-github)
+- **Discord** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-discord)
+- **WeChat** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-native)
+- **Alipay** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-native)
 - **Kakao** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-kakao)
-- **Naver** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-naver)
-- **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-azuread)
+- **Naver** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-naver)
+- **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-azuread)
 
 :::About the platform of Social connector
-You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' *platform* are *Universal*. Explore *[platform* description](https://docs.logto.io/docs/references/connectors/#platform) to know more.
+You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore _[platform_ description](https://docs.logto.io/docs/references/connectors/#platform) to know more.
 
-Choose a proper *platform* from either *Web* or *Native* for connectors to fit your use case. You can set up a single *Native* connector w/o adding a *Web* connector if you only provide native mobile apps and vice versa.
+Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit your use case. You can set up a single _Native_ connector w/o adding a _Web_ connector if you only provide native mobile apps and vice versa.
 :::
-
-
 
 ## Configure steps
 
-To add a new Social connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add Social Connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button. 
+To add a new Social connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add Social Connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button.
 
 Note that **each type of common social connector can only create one instance** in a Logto tenant.
 
@@ -56,8 +54,6 @@ Note that **each type of common social connector can only create one instance** 
 
 ![Configure social connector guideline](./assets/configure-social-connector-guideline.png)
 
-
-
 ## **Related Readings**
 
-- See [Configure sign-in method](../../customize-sie/configure-sign-in-methods.mdx) by adding connectors to bring your social connector into use.
+- See [Configure sign-in method](../customize-sie/configure-sign-in-methods/) by adding connectors to bring your social connector into use.

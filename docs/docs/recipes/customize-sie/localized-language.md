@@ -3,7 +3,6 @@ sidebar_label: Localized language
 sidebar_position: 4
 ---
 
-
 # Localized language
 
 The Sign-in Experience i18n is a powerful tool that allows you to create and manage your own unique set of language options.
