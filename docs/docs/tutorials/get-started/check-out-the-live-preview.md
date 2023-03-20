@@ -15,20 +15,20 @@ Please note, in this preview, you should create an account first to test the exp
 :::
 
 ## Open-source
+
 Logto inherently provides a sign-in experience that requires a username and password, without the need for additional configuration. To try it out, simply create an account using your desired username and password.
 
 ## Cloud preview
+
 The Cloud preview version differs from the open-source version, as the live preview reflects the configurations made during onboarding and shows a sign-in experience tailored to your initial set-up.
 
 It's important to note that both the Cloud preview and open-source versions of Logto follow the same identity model and architecture . Therefore, be sure to create an account before attempting to sign in.
 
 ## Test the live preview
+
 If you try to sign in with the user account you created and the process is successful with no issues, you will be redirected to a success page that displays your identifiers and ID.
 
-
-
 ![Check out the demo app](./assets/check-out-the-live-preview.png)
-
 
 ## What's next
 

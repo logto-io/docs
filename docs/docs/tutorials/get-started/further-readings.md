@@ -3,12 +3,12 @@ sidebar_position: 8
 ---
 
 # Further readings
+
 Once you have familiarized yourself with Logto's primary features, you can proceed to investigate additional functionalities. The following are some items that may pique your interest.
 
 ### [⚔️ Protect your API](../../recipes/protect-your-api/README.mdx)
 
 For native and single page apps, you'll need to call one or more API endpoints to retrieve and update data. Learn more about identifying who's who and keeping your API secure.
-
 
 ### [🧑‍🔬 Write your own connector](../../recipes/create-your-connector/README.md)
 

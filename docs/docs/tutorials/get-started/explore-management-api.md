@@ -14,10 +14,9 @@ Before calling and using the management API, it's important to create a **machin
 
 ![explore-management-api](./assets/api-resources.png)
 
-
 ## Guide
 
-1. To create a Machine to Machine app in the Admin Console, follow the tutorial [Create and integrate the first application](./create-and-integrate-the-first-app.mdx).
+1. To create a Machine to Machine app in the Admin Console, follow the tutorial [Create and integrate the first application](./create-and-integrate-the-first-app/).
 2. To obtain an access token for the `https://tenantid.logto.app/api` Management API and the `all` scope (which grants all permissions), follow the instructions in the [Machine to Machine: Auth with Logto](../../recipes/integrate-logto/machine-to-machine.mdx) guide.
 3. Interact with the Management API using Bearer authorization and the Access Token.
 
