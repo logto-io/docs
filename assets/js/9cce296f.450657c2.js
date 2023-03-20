@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[42175],{30769:function(l){l.exports=JSON.parse('{"label":"graphql","permalink":"/blog/tags/graphql","allTagsPath":"/blog/tags","count":1}')}}]);

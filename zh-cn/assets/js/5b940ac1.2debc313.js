@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[8254],{79727:function(o){o.exports=JSON.parse('{"name":"docusaurus-plugin-content-blog","id":"tutorial"}')}}]);

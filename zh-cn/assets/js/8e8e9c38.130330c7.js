@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[840],{88485:function(s){s.exports=JSON.parse('{"label":"discord","permalink":"/zh-cn/tutorial/tags/discord","allTagsPath":"/zh-cn/tutorial/tags","count":3}')}}]);

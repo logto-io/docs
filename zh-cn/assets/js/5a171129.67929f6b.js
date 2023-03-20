@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[2524],{71301:function(o){o.exports=JSON.parse('{"label":"authorization","permalink":"/zh-cn/blog/tags/authorization","allTagsPath":"/zh-cn/blog/tags","count":3}')}}]);
