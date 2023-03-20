@@ -1,5 +1,5 @@
 ---
-sidebar_label: Management API
+sidebar_label: Advanced User Search
 sidebar_position: 3
 ---
 
