@@ -29,7 +29,7 @@ In practice, a client may know a base URI or the application or resource to inte
 E.g., Logto management API base URI.
 
 ```
-https://api.logto.io
+https://tenantId.logto.app/api
 ```
 
 By default, this API resource is pre-registered to your Logto service. All the management APIs under this URI are protected by Logto.
@@ -49,7 +49,7 @@ See [🔐 RBAC](/docs/recipes/rbac) for details.
 Provide a list of resource indicator parameters in an authorization request. It will indicate all the protected resource(s) that the user may request.
 
 ```bash
-GET https://logto.dev/oidc/auth?response_type=code
+GET http://localhost:3001/oidc/auth?response_type=code
     &client_id=s6BhdRkqt3
     &state=tNwzQ87pC6llebpmac_IDeeq-mCR2wLDYljHUZUAWuI
     &redirect_uri=https%3A%2F%2Fclient.example.org%2Fcb
@@ -64,7 +64,7 @@ Logto will validate and store these resource indicators. An `authorization_code`
 When the resource parameter is present on an access token request along with the `authorization_code` granted above, it will specify the target API resource audience of the access token is requested.
 
 ```bash
-POST https://logto.dev/oidc/token HTTP/1.1
+POST http://localhost:3001/oidc/token HTTP/1.1
 
     grant_type=authorization_code
     redirect_uri=https%3A%2F%2Fclient.example.org%2Fcb
@@ -79,7 +79,7 @@ An encrypted access token with the audience restricted to this requested resourc
 The client user sent a request to the API resource by presenting the given `access_token` in the Authorization header.
 
 ```bash
-GET https://logto.dev/api/users
+GET http://localhost:3001/api/users
 
 Authorization: Bearer eyJhbGciOiJIUz...
 ```
