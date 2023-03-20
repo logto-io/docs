@@ -1,5 +1,5 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 ---
 
 # 🪛 Configure connectors
@@ -14,7 +14,7 @@ Don't worry. This doc will show you an easy way to have things done!
 
 ## :watch: Kick-off :zap:
 
-Let's start from Admin Console, signing in with your Logto account ("admin" role needed). You may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
+Let's start from Console. Click the "Connectors" button in the left navigation bar. If you use the Open-source Version, sign in with your Logto account ("admin" role needed), and you may [create an admin account](../../tutorials/get-started/README.mdx#create-an-admin-account) if you don't have one.
 
 Click the "Connectors" button on the sidebar :neutral_face:
 
