@@ -1,10 +1,15 @@
+---
+sidebar_label: Management API
+sidebar_position: 3
+---
+
 # Advanced user search
 
 Directly using Management API to leverage advanced user search conditions.
 
 ## Perform a search request
 
-Use `GET /api/users` for searching users. Note it is a Management API that requires auth like others. See [Interact with Management API](./README.md) for the interaction recipe.
+Use `GET /api/users` for searching users. Note it is a Management API that requires auth like others. See [Interact with Management API](/docs/recipes/manage-users/) for the interaction recipe.
 
 ### Sample
 
@@ -41,7 +46,7 @@ A search request consists of the following parameter keys:
 - Joint mode: `joint` or `jointMode` (default value `'or'`, available `['or', 'and']`)
 - Is case-sensitive: `isCaseSensitive` (default value `false`)
 
-This API has [pagination](./README.md#using-pagination) enabled.
+This API has [pagination](/docs/recipes/manage-users/#using-pagination) enabled.
 
 Let's go through them via some examples. All search params will be formatted as a constructor of `URLSearchParams`.
 
