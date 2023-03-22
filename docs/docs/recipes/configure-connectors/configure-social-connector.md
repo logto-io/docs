@@ -34,7 +34,7 @@ Follow the README to compose the connector config with little effort.
 - **Naver** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-naver)
 - **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-azuread)
 
-:::About the platform of Social connector
+:::info About the platform of Social connector
 You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore _[platform_ description](https://docs.logto.io/docs/references/connectors/#platform) to know more.
 
 Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit your use case. You can set up a single _Native_ connector w/o adding a _Web_ connector if you only provide native mobile apps and vice versa.
