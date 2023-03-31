@@ -7,7 +7,7 @@ sidebar_position: 4
 
 The Sign-in Experience i18n is a powerful tool that allows you to create and manage your own unique set of language options.
 
-Logto supports 6 different languages pre-defined from v1.0.0-beta.11. Now, 113 language tags are also included. You can make your own translation of the product's user interface and apply it in a different language.
+Logto supports 8 different languages pre-defined from v1.0.0-beta.11. Now, 113 language tags are also included. You can make your own translation of the product's user interface and apply it in a different language.
 
 :::note
 Currently, this language setting only affects the Sign-in UI and has no bearing on the language used in the Admin Console.
