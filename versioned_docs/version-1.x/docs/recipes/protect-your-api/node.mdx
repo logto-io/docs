@@ -1,0 +1,97 @@
+---
+sidebar_label: Node (Express)
+---
+
+import RetrieveOidcConfiguration from './fragments/_retrieve_oidc_configuration.md';
+
+# Protect your API on Node (Express)
+
+:::note
+
+Make sure to [register your api resource in Logto Admin Console](./README.mdx#register-the-api-resources-using-logto-admin-console) before continuing.
+
+:::
+
+## Extract the Bearer Token from request header
+
+A authorized request should contain an `Authorization` header with `Bearer <access_token>` as its content. Extract the Authorization Token from the request header:
+
+```js
+// auth_middleware.ts
+
+import { IncomingHttpHeaders } from 'http';
+
+const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
+
+  if (!authorization.startsWith('Bearer')) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+```
+
+## Token validation
+
+For demonstration, we use [jose](https://github.com/panva/jose) package to validate the token's signature, expiration status, and required claims.
+
+### Install `jose` as your dependency
+
+```sh
+npm i jose --save
+```
+
+<RetrieveOidcConfiguration />
+
+### Add auth middleware
+
+Jose's `jwtVerify` method may helps you to verify the token's JWS format, token signature, issuer, audience and the expiration status. A exception will be thrown if validation failed.
+
+:::note
+For [🔐 RBAC](/docs/recipes/rbac), scope validation is also required.
+:::
+
+```js
+// auth-middleware.ts
+
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (req, res, next) => {
+  // Extract the token
+  const token = extractBearerTokenFromHeaders(req.headers);
+
+  const { payload } = await jwtVerify(
+    token, // The raw Bearer Token extracted from the request header
+    createRemoteJWKSet('https://<your-logto-domain>/oidc/jwks'), // generate a jwks using jwks_uri inquired from Logto server
+    {
+      // expected issuer of the token, should be issued by the Logto server
+      issuer: 'https://<your-logto-domain>/oidc',
+      // expected audience token, should be the resource indicator of the current API
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // if you are using RBAC
+  assert(payload.scope.includes('some_scope'));
+
+  // custom payload logic
+  userId = payload.sub;
+
+  return next();
+};
+```
+
+## Apply middleware to your API
+
+```js
+import { verifyAuthFromRequest } from '/middleware/auth-middleware.ts';
+
+app.get('/user/:id', verifyAuthFromRequest, (req, res, next) => {
+  // Custom code
+});
+```

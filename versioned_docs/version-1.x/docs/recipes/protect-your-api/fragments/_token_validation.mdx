@@ -1,0 +1,164 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### Token Parse and Validation
+
+An encoded [JWS](https://datatracker.ietf.org/doc/html/rfc7515) token is constructed with three parts:
+
+- JOSE Header: Declares the code type and encoding algorithm
+- JWS Payload: Includes all the token's claims
+- JWS Signature: Signature signed with JWK
+
+A standard schema of Logto JWS Payload: (claims may vary, based on your OIDC config)
+
+| key       | description                |
+| --------- | -------------------------- |
+| jti       | unique JWT ID              |
+| sub       | subject, usually user-id   |
+| iat       | timestamp token issues at  |
+| exp       | timestamp token expires at |
+| client_id | application id             |
+| iss       | token issuer identity      |
+| aud       | audience of the token      |
+
+:::note
+For development, to visually inspect a JWT you could visit [jwt.io](https://jwt.io/) to decode and check the tokens you received. Be careful with the tokens from production env, as a third party provides the service, and your token may be toasted.
+:::
+
+The Bearer Token should be accepted only if:
+
+- the token's JWS format is verified ( See [JWT](https://datatracker.ietf.org/doc/html/rfc7519#section-7.2) for more details)
+- the token's issuer is `https://<your-logto-domain>/oidc` (issued by the Logto server)
+- the token's audience is the current API indicator (audience-restricted)
+- the token is with in its valid lifetime
+
+There are various open-source libraries and middleware can help you validate the tokens easily. Most of them are implemented with just one method with various customizable configurations to verify and parse a JWT token.
+
+<Tabs>
+
+<TabItem value="js" label="NodeJs">
+
+Use [jose](https://github.com/panva/jose) to validate the token's signature, expiration status, and the required claims.
+
+```js
+import { jwtVerify } from 'jose';
+
+const { payload } = await jwtVerify(
+  token, // The raw Bearer Token extracted from the request header
+  publicKey, // jwks inquired from Logto server
+  {
+    // expected issuer of the token, should be (issued by the Logto server)
+    issuer: 'https://<your-logto-domain>/oidc',
+    // expected audience token, should be the resource indicator of the current API
+    audience: '<your request listener>',
+  }
+);
+```
+
+</TabItem>
+
+<TabItem value="java" label="Java">
+
+Use [io.jsonwebtoken](https://javadoc.io/doc/io.jsonwebtoken/jjwt/latest/index.html) package
+
+Add package dependency:
+
+```xml
+<dependency>
+  <groupId>io.jsonwebtoken</groupId>
+  <artifactId>jjwt</artifactId>
+  <version>0.9.1</version>
+</dependency>
+```
+
+JwtTokenUtil:
+
+```java
+
+import java.util.Date;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+
+public class JwtTokenUtil {
+
+    private final String secret;
+
+    public JwtTokenUtil(String secret) {
+        this.secret = secret;
+    }
+
+    public Boolean validateToken(String token, String listener, String logtoPath) {
+        final Claims claims = getAllClaimsFromToken(token);
+        final String audience = claims.getAudience();
+        final String issuer = claims.getIssuer();
+
+        return (audience.equals(listener) && issuer.equals(logtoPath) && !isTokenExpired(claims));
+    }
+
+    public Claims getAllClaimsFromToken(String token) {
+        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+    }
+
+    public Date getExpirationDateFromToken(String token) {
+        return getAllClaimsFromToken(token).getExpiration();
+    }
+
+    public String getUserIdFromToken(String token) {
+        return getAllClaimsFromToken(token).getSubject();
+    }
+
+    public String getAudienceFromToken(String token) {
+        return getAllClaimsFromToken(token).getAudience();
+    }
+
+    public String getIssuerFromToken(String token) {
+        return getAllClaimsFromToken(token).getIssuer();
+    }
+
+    private static Boolean isTokenExpired(Claims claims) {
+        return claims.getExpiration().before(new Date());
+    }
+}
+
+```
+
+:::info
+Package selections vary depending on the framework you are using.
+I.e., checkout [org.springframework.security.oauth2.jwt](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/jwt/package-summary.html), if you use Spring Framework.
+:::
+
+</TabItem>
+<TabItem value="python" label="Python">
+
+Leverage authlib's [JWTBearerTokenValidator](https://github.com/lepture/authlib/blob/169c7dcfc47478c8d55553cc95fb0f5578162b77/authlib/oauth2/rfc7523/validator.py)
+
+```python
+from authlib.oauth2.rfc7523 import JWTBearerTokenValidator
+from authlib.jose.rfc7517.jwk import JsonWebKey
+
+class MyLogtoBearerTokenValidator(JWTBearerTokenValidator):
+    """
+    jwks: You will need to inquire the jwks from Logto's jwks endpoint: "https://<your-logto-domain>/oidc/jwks" and pass in the response
+    """
+    def __init__(self, jwks, issuer="https://<your-logto-domain>/oidc", audience):
+        public_key = JsonWebKey.import_key_set(jwks)
+        super(MyLogtoBearerTokenValidator, self).__init__(public_key, issuer)
+        self.claims_options = {
+           'exp': {'essential': True},
+           'iss': {'essential': True, 'value': issuer}
+           'aud': {'essential': True, "value": audience} # Optional if you are using request url to validate the token audience
+        }
+
+    """
+    OPTIONAL: To guard the token audience more strictly at each endpoint level:
+    """
+    def validate_token(self, token, scopes, request):
+        super(MyLogtoBearerTokenValidator, self).validate_token(token, scopes, request)
+        if token.get('aud') != str(request.url):
+            raise InvalidTokenError()
+
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,196 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# Protect your API Resource with RBAC
+
+:::note
+This page assumes you have configured roles and permissions based on your demand. Go through [🔐 RBAC (Role Based Access Control)](./README.mdx) first if you haven't done yet.
+:::
+
+## Server
+
+To ensure the incoming request has the right access, you need to validate Access Token on the server side. Detailed validation process is demonstrated in [⚔️ Protect your API](/docs/recipes/protect-your-api/#validate-the-api-requests-authorization-token).
+
+In short, besides the basic JWT and JWS validtion, you need to focus on:
+
+- The token has the correct issuer (`iss`)
+- The token has the correct audience (i.e. resource indicator, `aud`)
+- The token has the desired scope (i.e. permission, `scope`)
+
+Note `scope` is a string that includes all granted scopes separated by space. Usually the library you use to validate will take care of it.
+
+:::caution
+Currently, there's no limitation for requesting valid resource indicators in an auth flow. Thus validating `scope` (permission) is crucial when implementing RBAC. Otherwise the meaning of resource indicator will become trivial.
+:::
+
+:::info
+You may notice that `role` is missing in the Access Token, which is by design since the scope (permission) of an API Resource is the final representative of the access control model and what we only care about.
+:::
+
+## Client
+
+### Assumption
+
+Let's say you have two resources with permissions as below:
+
+- API Resource `https://api-1.store.io`
+  - Permission `read:order`
+  - Permission `write:order`
+- API Resource `https://api-2.store.io`
+  - Permission `read:order`
+
+To gain the specific access, the client needs to exchange a proper Access Token from Logto, and use it as a Bearer Token in the request header.
+
+### Configure client SDK
+
+This tutorial uses TypeScript as the sample language, and the convention applies to all Logto Client SDKs.
+
+When [integrating client SDK](/docs/recipes/integrate-logto/) with your application, make sure to include both `resources` and `scopes` (permissions) in the configuration for `LogtoClient`.
+
+For example, in order to access the API Resource `https://api-1.store.io` and fetch `read:order` and `write:order` permissions, the config should look like:
+
+```ts
+const config: LogtoConfig = {
+  // ...other configs
+  resources: ['https://api-1.store.io'],
+  scopes: ['read:order', 'write:order'], // i.e. permissions
+};
+```
+
+:::tip
+In Logto SDKs, the term `scope` is used to align with the OAuth 2.0 protocol. However, in the Admin Console, it is referred to `permission` for better readability and understanding of real-world scenarios, in line with the [NIST RBAC model](https://csrc.nist.gov/CSRC/media/Publications/conference-paper/2000/07/26/the-nist-model-for-role-based-access-control-towards-a-unified-/documents/sandhu-ferraiolo-kuhn-00.pdf). Thus `scope` and `permission` are identical and exchangeable in all cases except coding.
+:::
+
+### Fetch an access token for a resource
+
+When user has successfully signed in, you can use `logtoClient.getAccessToken()` to fetch an access token for a given resource:
+
+<Tabs>
+
+<TabItem value="ts" label="TypeScript">
+
+```ts
+const accessToken = await logtoClient.getAccessToken('https://api-1.store.io');
+```
+
+</TabItem>
+
+<TabItem value="swift" label="Swift">
+
+```swift
+let token = try await client.getAccessToken(for: "https://api-1.store.io")
+```
+
+</TabItem>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```swift
+logtoClient.getAccessToken("https://api-1.store.io", { logtoException, accessToken ->
+    //...
+})
+```
+
+</TabItem>
+
+</Tabs>
+
+The Access Token will include all eligble scopes (permissions) for the current user. The definition of eligble scopes is the joint of the following sets:
+
+- A subset of `scopes` in the initial Logto config that includes all the scopes that belong to the resource indicator you passed in `getAccessToken()`
+- The scopes that the user can obtain based on your RBAC configuration
+
+For example, in the initial Logto config:
+
+```ts
+const config: LogtoConfig = {
+  // ...other configs
+  resources: ['https://api-1.store.io'],
+  scopes: ['read:order', 'write:order', 'custom_data'],
+};
+```
+
+Per our [assumption](#assumption), scope `cusom_data` is not available in the API Resource `https://api-1.store.io`. When getting an Access Token:
+
+```ts
+const accessToken = await logtoClient.getAccessToken('https://api-1.store.io');
+```
+
+If the user has both `read:order` and `write:order` permissions for the API Resource `https://api-1.store.io`, the returned Access Token will have both scopes:
+
+```ts
+{
+  // ...other token claims
+  iss: '<your-logto-endpoint>/oidc', // issuer
+  aud: 'https://api-1.store.io', // audience, i.e. resource indicator
+  scope: 'read:order write:order'
+}
+```
+
+If no resource indicator is passed in `getAccessToken()`, it will try to fetch an Access Token for the [UserInfo Endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo). Check out the "Fetch user information" section in the SDK integration guide for details.
+
+:::note
+While you can specify multiple resource indicators in the config, `getAccessToken()` only accepts a single resource parameter for security reason. As a result, Access Tokens are resource-specific.
+:::
+
+### Carry the Access Token in requests
+
+Put the token in the `Authorization` field of HTTP headers with the Bearer format (`Bearer YOUR_TOKEN`), and you are good to go. Now `https://api-1.store.io` can receive and validate the token from the server side.
+
+:::note
+The Bearer Token's integration flow may vary based on the framework or requester you are using. Choose your own way to apply the request `Authorization` header.
+:::
+
+### Optional: Access multiple API Resources
+
+While your business or the amount of micro services is growing, your client app may need to access multiple API Resources. We found it confusing since we cannot specify the relation between `resources` and `scopes` per OAuth 2.0 protocol.
+
+So we took another look at RFC 8707. In [section 2.2](https://www.rfc-editor.org/rfc/rfc8707.html#section-2.2-3), it turns out the result is the [cartesian product](https://en.wikipedia.org/wiki/Cartesian_product) of `resources` and `scopes`:
+
+> _... Effectively, the requested access rights of the token are the cartesian product of all the scopes at all the target services. To the extent possible, when issuing access tokens, the authorization server should downscope the scope value..._
+
+<details>
+
+<summary>OK cool. Let's go with this.</summary>
+
+We are not sure if the cartesian product is the best solution to this, since all permissions are "attached" to a resource indicator and the result is implicit.
+
+But it is also understandable since [RFC 8087](https://www.rfc-editor.org/rfc/rfc8707.html) published eight years later than [RFC 6749](https://www.rfc-editor.org/rfc/rfc6749) (i.e. the OAuth 2.0 Authorization Framework).
+
+</details>
+
+Thus, if the client wants to access all `read:order` permissions across the two resources in our [assumption](#assumption), the config should look like:
+
+```ts
+const config: LogtoConfig = {
+  // ...other configs
+  resources: ['https://api-1.store.io', 'https://api-2.store.io'],
+  scopes: ['read:order'],
+};
+```
+
+During the auth flow, Logto will try to validate two permissions:
+
+- Permission `read:order` of the API Resource `https://api-1.store.io`
+- Permission `read:order` of the API Resource `https://api-2.store.io`
+
+What if you want to request the `write:order` permission of API Resource `https://api-1.store.io`? Simply update the config to:
+
+```ts
+const config: LogtoConfig = {
+  // ...other configs
+  resources: ['https://api-1.store.io', 'https://api-2.store.io'],
+  scopes: ['read:order', 'write:order'],
+};
+```
+
+Per definition of the cartesian product, during the auth flow, Logto will try to validate four permissions:
+
+- Permission `read:order` of the API Resource `https://api-1.store.io`
+- Permission `write:order` of the API Resource `https://api-1.store.io`
+- Permission `read:order` of the API Resource `https://api-2.store.io`
+- Permission `write:order` of the API Resource `https://api-2.store.io`
+
+But the `write:order` permission does not exist in the API Resource `https://api-2.store.io`. Logto will ignore (i.e. "downscope") this permission in the API Resource `https://api-2.store.io` which will reflect in the auth result.
+
+Now you can also specify `https://api-2.store.io` as the resource indicator when calling `logtoClient.getAccessToken()`. Only `read:order` will present in the `scope` claim of the returned Access Token even if the user has the full access of `https://api-2.store.io`.
