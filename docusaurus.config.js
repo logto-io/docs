@@ -23,20 +23,23 @@ const addAliasPlugin = () => ({
 const injectPlausiblePlugin = () => ({
   name: 'inject-plausible-plugin',
   injectHtmlTags: () => ({
-    headTags: [{
-      tagName: 'script',
-      attributes: {
-        src: 'https://plausible.io/js/plausible.js',
-        defer: true,
-        'data-domain': 'docs.logto.io',
+    headTags: [
+      {
+        tagName: 'script',
+        attributes: {
+          src: 'https://plausible.io/js/plausible.js',
+          defer: true,
+          'data-domain': 'docs.logto.io',
+        },
       },
-    }, {
-      tagName: 'meta',
-      attributes: {
-        name: 'google-site-verification',
-        content: '3EYzsnarDwG6zL2dlHvyC8ySVcV6Q3RGlvh7-bvhb2k',
+      {
+        tagName: 'meta',
+        attributes: {
+          name: 'google-site-verification',
+          content: '3EYzsnarDwG6zL2dlHvyC8ySVcV6Q3RGlvh7-bvhb2k',
+        },
       },
-    }],
+    ],
   }),
 });
 
@@ -115,10 +118,6 @@ const config = {
             to: 'api',
             position: 'left',
             label: 'API',
-          },
-          {
-            type: 'localeDropdown',
-            position: 'right',
           },
           {
             href: 'https://github.com/logto-io/logto',
