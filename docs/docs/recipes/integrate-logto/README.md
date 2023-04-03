@@ -11,7 +11,7 @@ We provide a bunch of SDKs to let you integrate Logto with your clients with eas
 An app that runs in a native environment.
 
 - [iOS](./ios/README.mdx)
-- [Android](./android.mdx)
+- [Android](./android/README.mdx)
 
 Usually, Native apps need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
 

@@ -29,6 +29,7 @@ const sdks = [
   { name: 'Vanilla JS', language: 'js', officialLink: 'https://en.wikipedia.org/wiki/ECMAScript', appType: 'Single Page App' },
   { name: 'iOS Swift', language: 'swift', officialLink: 'https://developer.apple.com/ios/ ', appType: 'Native App' },
   { name: 'Go', language: 'go', officialLink: 'https://go.dev/', appType: 'Traditional Web' },
+  { name: 'Android', language: 'kotlin/java', officialLink: 'https://developer.android.com/', appType: 'Native App' },
 ];
 
 /**
