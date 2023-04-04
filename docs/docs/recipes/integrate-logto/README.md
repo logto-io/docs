@@ -32,7 +32,7 @@ An app that renders and updates pages by the web server alone. E.g., server-side
 - [Traditional Web general guide](./traditional.mdx)
 - [Next.js](./next-js.mdx)
 - [Express](./express.mdx)
-- [Go](./go.mdx)
+- [Go](./go/README.mdx)
 
 ## Machine to Machine
 
