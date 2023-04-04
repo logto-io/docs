@@ -3,7 +3,6 @@ import io.logto.sdk.android.LogtoClient
 import io.logto.sdk.android.type.LogtoConfig
 import io.logto.sdk.core.constant.PromptValue
 
-
 class MainActivity : AppCompatActivity() {
 
     private lateinit var logtoClient: LogtoClient
