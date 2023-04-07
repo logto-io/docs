@@ -18,7 +18,7 @@ Logto offers a set of ready-to-use connectors, and we are constantly expanding t
 
 We prioritize empowering our users at Logto. That's why we've invested heavily in user management. Our Admin Console and Management API provide powerful tools for accessing and managing user data with ease.
 
-### [🌐 Localization](/docs/recipes/localization/README.mdx)
+### [🌐 Localization](/docs/recipes/customize-sie/localized-language.md)
 
 Whether you're a regional business or a global corporation, your commitment to providing the best user experience remains steadfast. With Logto, you can effortlessly modify existing language phrases or incorporate new languages without any impediments.
 
