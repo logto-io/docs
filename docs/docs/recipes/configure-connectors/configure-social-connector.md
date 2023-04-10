@@ -13,7 +13,7 @@ Logto offers two types of social connectors:
 - **Standard Connectors**: OIDC, OAuth 2.0, SAML.
 
 :::tip
-If the social connector you need isn't among our Common Social Connectors, you can create your own using the Standard Connector protocol. Check out our “[Custom Social Connector with Standard Protocol](../custom social connector with standard protocol.md)” guide to learn more.
+If the social connector you need isn't among our Common Social Connectors, you can create your own using the Standard Connector protocol. Check out our “[Custom Social Connector with Standard Protocol](./custom-social-connector-with-standard-protocols.md)” guide to learn more.
 If the Standard Connector still doesn't meet your needs, don't hesitate to contact us. For those using the Logto Open-Source Version, you can even [Write your connector (OSS)](../create-your-connector/).
 :::
 
