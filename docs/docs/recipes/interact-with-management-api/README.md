@@ -39,7 +39,7 @@ While Logto's sign-in experience is exceptional, there may be instances where yo
 
 ### Advanced user search
 
-You can certainly use Logto's user management feature in the console for some tasks, our management API offers additional functions that support more advanced user search scenarios.Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
+You can certainly use Logto's user management feature in the console for some tasks, our management API offers additional functions that support more advanced user search scenarios. Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
 
 Our developers have implemented many additional features using our management API. We believe that our API is highly scalable and can support a wide range of your needs. Additionally, we have continued distilling some use cases and incorporated them into our low-code platform to boost productivity and enhance the developer experience.
 
