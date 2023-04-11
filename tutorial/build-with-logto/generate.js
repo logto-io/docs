@@ -30,6 +30,7 @@ const sdks = [
   { name: 'iOS Swift', language: 'swift', officialLink: 'https://developer.apple.com/ios/ ', appType: 'Native App' },
   { name: 'Go', language: 'go', officialLink: 'https://go.dev/', appType: 'Traditional Web' },
   { name: 'Android', language: 'kotlin/java', officialLink: 'https://developer.android.com/', appType: 'Native App' },
+  { name: 'Flutter', language: 'dart', officialLink: 'https://flutter.dev/', appType: 'Native App' },
 ];
 
 /**
