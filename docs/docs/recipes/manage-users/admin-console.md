@@ -40,10 +40,12 @@ To view the details of a user, simply click on the corresponding row in the user
 Please note that while the full name, avatar image URL, and custom data can be edited, the social connections can be removed, and the other properties are read-only.
 
 :::danger
-It is important to confirm that the user has an alternative sign-in method before removing a social connection, such as another social connection, phone number, email, or username-with-password. If the user does not have any other sign-in method, they will not be able to access their account again once the social connection is removed.:::
+It is important to confirm that the user has an alternative sign-in method before removing a social connection, such as another social connection, phone number, email, or username-with-password. If the user does not have any other sign-in method, they will not be able to access their account again once the social connection is removed.
+:::
 
 :::info
-Don't forget to click "Save changes" after updating.:::
+Don't forget to click "Save changes" after updating.
+:::
 
 ![User profile](./assets/user-profile.png)
 
