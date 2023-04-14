@@ -9,7 +9,7 @@
  */
 
 import Link from '@docusaurus/Link';
-import { FooterLinkItem } from '@docusaurus/theme-common';
+import { type FooterLinkItem } from '@docusaurus/theme-common';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import clsx from 'clsx';
 

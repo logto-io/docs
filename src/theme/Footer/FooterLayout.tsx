@@ -1,4 +1,4 @@
-import { FooterLogo, FooterLinkItem } from '@docusaurus/theme-common';
+import { type FooterLogo, type FooterLinkItem } from '@docusaurus/theme-common';
 
 import LinkItem from './LinkItem';
 import styles from './index.module.scss';
