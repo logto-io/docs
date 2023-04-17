@@ -47,6 +47,7 @@ const connectors = [
   { name: 'Discord', configName: 'Discord OAuth app' },
   { name: 'Kakao', configName: 'Kakao login' },
   { name: 'Naver', configName: 'Naver login' },
+  { name: 'Facebook', configName: 'Facebook login' },
 ];
 
 const run = async () => {
