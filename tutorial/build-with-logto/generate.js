@@ -31,6 +31,7 @@ const sdks = [
   { name: 'Go', language: 'go', officialLink: 'https://go.dev/', appType: 'Traditional Web' },
   { name: 'Android', language: 'kotlin/java', officialLink: 'https://developer.android.com/', appType: 'Native App' },
   { name: 'Flutter', language: 'dart', officialLink: 'https://flutter.dev/', appType: 'Native App' },
+  { name: 'Next', language: 'js', officialLink: 'https://nextjs.org/', appType: 'Traditional Web' },
 ];
 
 /**
