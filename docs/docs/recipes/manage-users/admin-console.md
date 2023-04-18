@@ -59,6 +59,18 @@ Click the table row to see more details in the user log, e.g., IP address, user 
 
 ![User log details](./assets/user-log-details.png)
 
+## Suspend user
+
+On the "User details" panel, click "MORE OPTIONS" -> "Suspend User" button.
+
+One a user is suspended, the user will be unable to log in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
+
+![Suspend user](./assets/suspend-user.png)
+
+If you want to reactive this user, you can do so by clicking "MORE OPTIONS" -> "Reactivate User" button.
+
+![Reactivate user](./assets/reactivate-user.png)
+
 ## Delete user
 
 On the "User details" panel, click "MORE OPTIONS" -> "Delete" button.
