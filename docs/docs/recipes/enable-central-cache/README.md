@@ -1,5 +1,7 @@
 # 🗄️ Enable central cache
 
+_Added in v1.2.0_
+
 Logto supports using Redis®[^1] as a central cache for well-known data. By using a central cache, Logto can significantly speed up the end-user experience by reducing the number of database queries needed to generate a response.
 
 [^1]: Redis is a registered trademark of Redis Ltd. Any rights therein are reserved to Redis Ltd. Any use by Silverhand is for referential purposes only and does not indicate any sponsorship, endorsement or affiliation between Redis and Silverhand.
