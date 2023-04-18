@@ -20,6 +20,8 @@ Before calling and using the management API, it's important to create a **machin
 2. To obtain an access token for the `https://tenantid.logto.app/api` Management API and the `all` scope (which grants all permissions), follow the instructions in the [Machine to Machine: Auth with Logto](../../recipes/integrate-logto/machine-to-machine.mdx) guide.
 3. Interact with the Management API using Bearer authorization and the Access Token.
 
-:::note Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests. :::
+:::note
+Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests.
+:::
 
 To learn more about use cases and how to effectively utilize the management API, please refer to the 'Interact with Management API' recipe.
