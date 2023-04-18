@@ -2,9 +2,11 @@
 sidebar_position: 10
 ---
 
-# 💾 Configure storage providers
+# 💾 File storage provider
 
-To store user uploaded files, Logto uses a storage provider. Logto supports multiple storage providers, including AWS S3, Azure Storage. This recipe will show you how to configure a storage provider for Logto.
+By default, Logto Console uses a text input for static file URLs such as avatars. To enable a more intuitive file upload experience with drag and drop, you need to configure a storage provider.
+
+Logto supports multiple storage providers, including AWS S3, Azure Storage. This recipe will show you how to configure a storage provider for Logto.
 
 The configuration is stored in DB's `systems` table, but it is recommended to use the CLI to configure the storage provider. For more information, try the "help" command:
 
