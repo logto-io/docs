@@ -61,19 +61,19 @@ Click the table row to see more details in the user log, e.g., IP address, user 
 
 ## Suspend user
 
-On the "User details" panel, click "MORE OPTIONS" -> "Suspend User" button.
+On the "User details" panel, click "Three Dots" -> "Suspend User" button.
 
 Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
 
 ![Suspend user](./assets/suspend-user.png)
 
-If you want to reactive this user, you can do so by clicking "MORE OPTIONS" -> "Reactivate User" button.
+If you want to reactive this user, you can do so by clicking "Three Dots" -> "Reactivate User" button.
 
 ![Reactivate user](./assets/reactivate-user.png)
 
 ## Delete user
 
-On the "User details" panel, click "MORE OPTIONS" -> "Delete" button.
+On the "User details" panel, click "Three Dots" -> "Delete" button.
 
 :::danger
 Be careful! The user data deletion CANNOT be undone.
@@ -83,7 +83,7 @@ Be careful! The user data deletion CANNOT be undone.
 
 ## Reset user password
 
-On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button.
+On the "User details" panel, click "Three Dots" -> "Reset password" button.
 
 After you reset the password, copy and send it to the end-user.
 
