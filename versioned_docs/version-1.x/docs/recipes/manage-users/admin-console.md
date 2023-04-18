@@ -35,7 +35,7 @@ If you fail to retain the password after closing the "Add User" modal, you will 
 
 ## View and update user profile
 
-To view the details of a user, simply click on the corresponding row in the user table. This will take you to the "**User details**" panel where you can find the user's profile information, such as their avatar, full name, user ID, email, phone number, username, and social connections. The "Social connections" section displays a list of social connectors that the user has linked to their account. For example, if the user has signed in using their Facebook account, you will see a "Facebook" item in the list. You can refer to the [identities](https://docs.logto.io/docs/references/users/social-identities) documentation for more information.
+To view the details of a user, simply click on the corresponding row in the user table. This will take you to the "**User details**" page where you can find the user's profile information, such as their avatar, full name, user ID, email, phone number, username, and social connections. The "Social connections" section displays a list of social connectors that the user has linked to their account. For example, if the user has signed in using their Facebook account, you will see a "Facebook" item in the list. You can refer to the [identities](https://docs.logto.io/docs/references/users/social-identities) documentation for more information.
 
 Please note that while the full name, avatar image URL, and custom data can be edited, the social connections can be removed, and the other properties are read-only.
 
@@ -51,7 +51,7 @@ Don't forget to click "Save changes" after updating.
 
 ## View user activities
 
-To view the recent activities of a user, navigate to the "User logs" sub-tab on the "User details" panel. Here, you can find a table that displays the user's recent activities, including the action performed, the result of the action, the related application, and the time that the user acted.
+To view the recent activities of a user, navigate to the "User logs" sub-tab on the "User details" page. Here, you can find a table that displays the user's recent activities, including the action performed, the result of the action, the related application, and the time that the user acted.
 
 ![User logs](./assets/user-logs.png)
 
@@ -59,9 +59,21 @@ Click the table row to see more details in the user log, e.g., IP address, user 
 
 ![User log details](./assets/user-log-details.png)
 
+## Suspend user
+
+On the "User details" page, click "Three Dots" -> "Suspend User" button.
+
+Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
+
+![Suspend user](./assets/suspend-user.png)
+
+If you want to reactive this user, you can do so by clicking "Three Dots" -> "Reactivate User" button.
+
+![Reactivate user](./assets/reactivate-user.png)
+
 ## Delete user
 
-On the "User details" panel, click "MORE OPTIONS" -> "Delete" button.
+On the "User details" page, click "Three Dots" -> "Delete" button.
 
 :::danger
 Be careful! The user data deletion CANNOT be undone.
@@ -71,7 +83,7 @@ Be careful! The user data deletion CANNOT be undone.
 
 ## Reset user password
 
-On the "User details" panel, click "MORE OPTIONS" -> "Reset password" button.
+On the "User details" page, click "Three Dots" -> "Reset password" button.
 
 After you reset the password, copy and send it to the end-user.
 

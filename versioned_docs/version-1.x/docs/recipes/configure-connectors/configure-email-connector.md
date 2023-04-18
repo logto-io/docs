@@ -66,6 +66,8 @@ Notice that:
 
 There is a template example just for reference:
 
+![Email connector Demo template](./assets/configure-email-connector-demo-template.png)
+
 ```jsx
 <table cellpadding="0" cellspacing="0" border="0" width="100%"
   style="font-family: -apple-system, system-ui, 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Arial', sans-serif;">
