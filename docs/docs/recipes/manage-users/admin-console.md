@@ -63,7 +63,7 @@ Click the table row to see more details in the user log, e.g., IP address, user 
 
 On the "User details" panel, click "MORE OPTIONS" -> "Suspend User" button.
 
-One a user is suspended, the user will be unable to log in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
+Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
 
 ![Suspend user](./assets/suspend-user.png)
 
