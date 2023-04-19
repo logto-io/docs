@@ -59,14 +59,14 @@ S3 Storage is a cloud storage service that offers object storage through a web s
 Example usage:
 
 ```
-pnpm logto db system set storageProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","secretAccessKey": "my-secret-access-key","bucket":"logto","endpoint":"https://s3.us-east-2.amazonaws.com"}'
+pnpm logto db system set storageProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","accessSecretKey": "my-secret-access-key","bucket":"logto","endpoint":"https://s3.us-east-2.amazonaws.com"}'
 ```
 
 #### `accessKeyId`
 
 The access key ID is an identifier for your AWS account. To find your access Key ID for your AWS account, follow the official [AWS access key ID documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
 
-#### `secretAccessKey`
+#### `accessSecretKey`
 
 The secret access key is used in conjunction with the access key ID to sign programmatic requests. To find your access key secret for your AWS account, follow the official [AWS access key secret documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html#Using_CreateAccessKey).
 
