@@ -48,6 +48,7 @@ const connectors = [
   { name: 'Kakao', configName: 'Kakao login' },
   { name: 'Naver', configName: 'Naver login' },
   { name: 'Facebook', configName: 'Facebook login' },
+  { name: 'Twilio', configName: 'Send SMS with Twilio' },
 ];
 
 const run = async () => {
