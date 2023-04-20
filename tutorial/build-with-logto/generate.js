@@ -49,6 +49,7 @@ const connectors = [
   { name: 'Naver', configName: 'Naver login' },
   { name: 'Facebook', configName: 'Facebook login' },
   { name: 'Twilio', configName: 'Send SMS with Twilio' },
+  { name: 'OIDC', configName: 'Standard OIDC app' },
 ];
 
 const run = async () => {
