@@ -50,6 +50,7 @@ const connectors = [
   { name: 'Facebook', configName: 'Facebook login' },
   { name: 'Twilio', configName: 'Send SMS with Twilio' },
   { name: 'OIDC', configName: 'Standard OIDC app' },
+  { name: 'SAML', configName: 'Standard SAML app' },
 ];
 
 const run = async () => {
