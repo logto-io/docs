@@ -9,9 +9,9 @@ Logto supports standard connectors such as OAuth2.0, OIDC, and SAML, which are w
 
 Follow the README to compose the connector config with little effort.
 
-- [OAuth 2.0](https://github.com/logto-io/connectors/tree/master/packages/connector-oauth2)
-- [OIDC](https://github.com/logto-io/connectors/tree/master/packages/connector-oidc)
-- [SAML](https://github.com/logto-io/connectors/tree/master/packages/connector-saml)
+- [OAuth 2.0](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-oauth2)
+- [OIDC](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-oidc)
+- [SAML](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-saml)
 
 :::tip
 We highly recommend using Logto's preinstalled social connectors, including Google, Apple, Facebook, GitHub, Discord, Wechat, Alipay, Kakao, Naver, and Microsoft Azure AD, as they are simple to configure and highly stable.
