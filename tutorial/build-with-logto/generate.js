@@ -51,6 +51,7 @@ const connectors = [
   { name: 'Twilio', configName: 'Send SMS with Twilio' },
   { name: 'OIDC', configName: 'Standard OIDC app' },
   { name: 'SAML', configName: 'Standard SAML app' },
+  { name: 'OAuth2', configName: 'Standard OAuth 2.0 app' },
 ];
 
 const run = async () => {
