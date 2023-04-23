@@ -23,16 +23,16 @@ We have provided lots of universal third-party social platforms preinstalled by 
 
 Follow the README to compose the connector config with little effort.
 
-- **Google** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-google)
-- **Apple** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-apple)
-- **Facebook** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-facebook)
-- **GitHub** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-github)
-- **Discord** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-discord)
-- **WeChat** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-wechat-native)
-- **Alipay** [Web connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-web) | [Native connector](https://github.com/logto-io/connectors/tree/master/packages/connector-alipay-native)
-- **Kakao** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-kakao)
-- **Naver** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-naver)
-- **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/connectors/tree/master/packages/connector-azuread)
+- **Google** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-google)
+- **Apple** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-apple)
+- **Facebook** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-facebook)
+- **GitHub** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-github)
+- **Discord** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-discord)
+- **WeChat** [Web connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-wechat-web) | [Native connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-wechat-native)
+- **Alipay** [Web connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-alipay-web) | [Native connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-alipay-native)
+- **Kakao** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-kakao)
+- **Naver** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-naver)
+- **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-azuread)
 
 :::info About the platform of Social connector
 You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_](https://docs.logto.io/docs/references/connectors/#platform) to know more.

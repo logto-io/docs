@@ -9,10 +9,10 @@ Configuring an Email connector allows you to send a one-time verification code (
 
 Logto has some built-in email connectors which allow out-of-box usage:
 
-- [AWS DM](https://github.com/logto-io/connectors/tree/master/packages/connector-aws-ses)
-- [SendGrid Mail](https://github.com/logto-io/connectors/tree/master/packages/connector-sendgrid-email)
-- [Aliyun DM](https://github.com/logto-io/connectors/tree/master/packages/connector-aliyun-dm)
-- [SMTP](https://github.com/logto-io/connectors/tree/master/packages/connector-smtp)
+- [AWS DM](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aws-ses)
+- [SendGrid Mail](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-sendgrid-email)
+- [Aliyun DM](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-dm)
+- [SMTP](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-smtp)
 
 :::tip
 We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.
