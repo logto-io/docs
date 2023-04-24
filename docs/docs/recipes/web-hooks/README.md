@@ -72,8 +72,14 @@ The full definition of a hook entity:
 ```ts
 type Hook = {
   id: string;
-  /** The event to trigger the hook. */
+  name: string;
+  /**
+   * @deprecated `event` is deprecated, use `events` instead.
+   * The event to trigger the hook.
+   */
   event: HookEvent;
+  /** Events to trigger the hook. */
+  events: HookEvent[];
   config: HookConfig;
   createdAt: Date;
 };
@@ -95,6 +101,8 @@ type HookConfig = {
    * Must be less than or equal to `3`. Use `0` to disable retry.
    **/
   retries: number;
+  /** The signing key for the hook request */
+  signingKey: string;
 };
 ```
 
@@ -115,7 +123,8 @@ curl --location  \
   --header 'Authorization: Bearer eyJhbGciOiJS...' \
   --header 'Content-Type: application/json' \
   --data-raw '{
-    "event": "PostSignIn",
+    "name": "My first hook",
+    "events": ["PostSignIn"],
     "config": {
       "url": "https://another.service.endpoint/path/to/api",
       "retries": 3
@@ -145,7 +154,31 @@ curl --location  \
   --header 'Authorization: Bearer eyJhbGciOiJS...' \
   --header 'Content-Type: application/json' \
   --data-raw '{
-    "event": "PostRegister"
+    "events": ["PostRegister"]
+  }'
+```
+
+### Update the signing key of a hook
+
+Use `PATCH /api/hooks/:id/signing-key` to update the signing key for a hook. E.g.:
+
+```bash
+curl --location \
+  --request PATCH 'https://<your-logto-endpoint>/api/hooks/2UT84OTmf9tT4F5vMhBnZ/signing-key' \
+  --header 'Authorization: Bearer eyJhbGciOiJS...'
+```
+
+### Update the enable status of a hook
+
+Use `PATCH /api/hooks/:id/enable` to toggle the enable status of a hook. E.g.:
+
+```bash
+curl --location \
+  --request PATCH 'https://<your-logto-endpoint>/api/hooks/2UT84OTmf9tT4F5vMhBnZ/enabled' \
+  --header 'Authorization: Bearer eyJhbGciOiJS...' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+    "enabled": true
   }'
 ```
 
