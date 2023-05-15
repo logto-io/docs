@@ -63,6 +63,8 @@ const config = {
     mermaid: true,
   },
 
+  trailingSlash: true,
+
   presets: [
     [
       'classic',
@@ -104,7 +106,7 @@ const config = {
             label: 'Docs',
           },
           {
-            to: 'blog',
+            href: 'https://blog.logto.io/',
             position: 'left',
             label: 'Blog',
           },
