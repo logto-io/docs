@@ -14,7 +14,7 @@ Logto offers two types of social connectors:
 
 :::tip
 If the social connector you need isn't among our Common Social Connectors, you can create your own using the Standard Connector protocol. Check out our “[Custom Social Connector with Standard Protocol](./custom-social-connector-with-standard-protocols.md)” guide to learn more.
-If the Standard Connector still doesn't meet your needs, don't hesitate to contact us. For those using the Logto Open-Source Version, you can even [Write your connector (OSS)](../create-your-connector/).
+If the Standard Connector still doesn't meet your needs, don't hesitate to contact us. For those using the Logto Open-Source Version, you can even [Write your connector (OSS)](../create-your-connector/README.md).
 :::
 
 ## Types of common Social Connectors
@@ -35,7 +35,7 @@ Follow the README to compose the connector config with little effort.
 - **Microsoft Azure AD** [Universal connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-azuread)
 
 :::info About the platform of Social connector
-You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_](https://docs.logto.io/docs/references/connectors/#platform) to know more.
+You may find that some connectors do not have a secondary choice of platform, such as Google, Facebook, and GitHub. These connectors' _platform_ are _Universal_. Explore [_platform_](https://docs.logto.io/docs/references/connectors/README.mdx#platform) to know more.
 
 Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit your use case. You can set up a single _Native_ connector w/o adding a _Web_ connector if you only provide native mobile apps and vice versa.
 :::
@@ -56,4 +56,4 @@ Note that **each type of common social connector can only create one instance** 
 
 ## **Related Readings**
 
-- See [Configure sign-in method](../customize-sie/configure-sign-in-methods/) by adding connectors to bring your social connector into use.
+- See [Configure sign-in method](../customize-sie/configure-sign-in-methods.mdx) by adding connectors to bring your social connector into use.
