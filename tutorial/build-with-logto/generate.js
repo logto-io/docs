@@ -55,6 +55,7 @@ const socialConnectors = [
 
 const emailConnectors = [
   { name: 'AWS SES', configName: 'AWS SES email connector' },
+  { name: 'SendGrid', configName: 'SendGrid email connector' },
 ];
 
 const smsConnectors = [
