@@ -82,6 +82,34 @@ It is always recommended to fetch the profile data in prior, and pre-fill the fo
 
 Alternatively, you can also call the management API `GET /api/users/:userId` from your backend service, through the M2M mechanism.
 
+### Submit profile data
+
+After the user has finished editing the form on their profile page, the new changes need to be saved.
+
+Typically, your app client will call your backend service and send the new data in its request body. Your backend service should then dispatch the new data to either Logto or your own database, depending on your business model.
+
+#### Basic user information
+
+For basic user information, such as user name, email address, phone number, etc., you can use the `PATCH /api/users/:userId` API to update the user information in Logto. This API should be called from your backend service through M2M.
+
+#### Verify and reset password
+
+Before allowing the user to update their password, you should verify their identity. To do this, call `POST /api/users/:userId/password/verify` to check if the user knows their current password. If the user has forgotten their current password, they can use a verification code to help with identity verification.
+
+To update the user's password, simply call `PATCH /api/users/:userId/password`.
+
+You might also want to check if the user has a password set up already. To do this, use the `GET /api/users/:userId/has-password API`.
+
+#### Extend your business model with custom data
+
+In real-world scenarios, you might have specific business models associated with the user profile, such as age, gender, ethnicity, mailing address, payment methods, etc. Usually, sensitive information should be stored in your own database for security reasons. However, if no sensitive data is concerned, you can alternatively store the data in Logto using the custom data feature.
+
+To fetch and update custom data, use the `GET /api/users/:userId/custom-data` and `PATCH /api/users/:userId/custom-data` APIs.
+
+:::tip
+Check the [Custom Data](/docs/references/users/custom-data) section for more details.
+:::
+
 ### (Optional) Validate verification code
 
 If your user wants to change either email address or phone number, you may want to validate them before submitting the entire form, as this ensures all emails and phone numbers are verified in your system, which plays a vital part if you want to enable passwordless sign-in methods (e.g. email and verification code) in your application.
@@ -99,14 +127,6 @@ Then, from your backend service, you can call the following Logto management API
 :::tip
 Check the [API Documentation](/api#tag/Verification-Codes) for more details.
 :::
-
-### Submit profile data
-
-When user is done editing the form on profile page, it's time to save the new changes.
-
-Typically, your app client will call your own backend service and send the new data in its request body. After receiving the data, your backend service should dispatch the new data to either Logto or your own database, depending on your own business model.
-
-Call `PATCH /api/users/:userId` from your backend service through M2M to update userinfo in Logto.
 
 ## Recap
 
