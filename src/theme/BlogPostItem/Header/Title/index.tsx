@@ -13,6 +13,10 @@ const Title = ({ className }: Props): JSX.Element => {
 
   // Redirect to the new blog. The whole component will be removed later.
   useEffect(() => {
+    if (!window.location.pathname.startsWith('/blog')) {
+      return;
+    }
+
     const url = new URL(
       isBlogPostPage ? window.location.pathname.replace(/^\/blog/, '') : '/',
       'https://blog.logto.io'
