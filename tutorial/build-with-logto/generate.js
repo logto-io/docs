@@ -39,24 +39,29 @@ const sdks = [
  * 
  * * @type Array<{ name: string; configName: string; }>
  */
-const connectors = [
+const socialConnectors = [
   { name: 'GitHub', configName: 'GitHub OAuth app' },
   { name: 'Google', configName: 'Google OAuth app' },
-  { name: 'Apple', configName: 'Sign in with Apple' },
+  { name: 'Apple', configName: 'Apple Sign-in' },
   { name: 'Azure AD', configName: 'Azure AD' },
   { name: 'Discord', configName: 'Discord OAuth app' },
   { name: 'Kakao', configName: 'Kakao login' },
   { name: 'Naver', configName: 'Naver login' },
   { name: 'Facebook', configName: 'Facebook login' },
-  { name: 'Twilio', configName: 'Send SMS with Twilio' },
   { name: 'OIDC', configName: 'Standard OIDC app' },
   { name: 'SAML', configName: 'Standard SAML app' },
   { name: 'OAuth2', configName: 'Standard OAuth 2.0 app' },
 ];
 
-const run = async () => {
-  const template = await fs.readFile('./_template.mdx', 'utf8');
+const emailConnectors = [
+  { name: 'AWS SES', configName: 'AWS SES email connector' },
+];
 
+const smsConnectors = [
+  { name: 'Twilio', configName: 'Twilio SMS connector' },
+];
+
+const generator = async (sdks, connectors, template, type) => {
   await Promise.all(sdks.flatMap((sdk) => connectors.map(async (connector) => {
     const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
     const sdkPath = sdk.name.replaceAll(' ', '-').toLowerCase();
@@ -65,6 +70,8 @@ const run = async () => {
       .replaceAll('${connector}', connector.name)
       .replaceAll('${connectorPath}', connectorPath)
       .replaceAll('${connectorConfigName}', connector.configName)
+      .replaceAll('${connectorType}', type)
+      .replaceAll('${passwordlessSignUpIdentifier}', type === 'Email' ? 'Email address' : 'Phone number')
       .replaceAll('${sdk}', sdk.name)
       .replaceAll('${sdkPath}', sdkPath)
       .replaceAll('${sdkOfficialLink}', sdk.officialLink)
@@ -74,9 +81,18 @@ const run = async () => {
     const filename = `generated-${sdkPath}-${connectorPath}.mdx`;
 
     await fs.writeFile(filename, post, 'utf8');
-    
+
     console.log('Generated', filename);
   })));
+};
+
+const run = async () => {
+  const socialTemplate = await fs.readFile('./_template-social.mdx', 'utf8');
+  await generator(sdks, socialConnectors, socialTemplate);
+
+  const passwordlessTemplate = await fs.readFile('./_template-passwordless.mdx', 'utf8');
+  await generator(sdks, emailConnectors, passwordlessTemplate, 'Email');
+  await generator(sdks, smsConnectors, passwordlessTemplate, 'SMS');
 };
 
 run();
