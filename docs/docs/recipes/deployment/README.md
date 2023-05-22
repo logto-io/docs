@@ -33,21 +33,13 @@ You may use Node.js to serve HTTPS directly or set up an HTTPS proxy / balancer 
 
 ### Reverse proxy
 
-If you want to use reverse proxy on your server, for example Nginx, usually we need to define Logto as an upstream.
-Assuming you are using Nginx and your Logto instance is running on port 3001, put the following config in nginx.conf:
-
-```
-upstream logto_upstream {
-  server 127.0.0.1:3001;
-}
-```
-
-Also, make sure you have properly configured the following request headers:
+If you want to use reverse proxy on your server, for example Nginx or Apache, you need to map 3001 and 3002 ports separately in your proxy pass settings.
+Assuming you are using Nginx, your Logto auth endpoint is running on port 3001, and your Logto admin console is running on 3002, put the following config in nginx.conf:
 
 ```
 server {
-  listen 80;
-  server_name your_domain_url;
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // e.g. auth.your-domain.com
   ...
 
   location / {
@@ -56,9 +48,35 @@ server {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto https;
 
-    proxy_pass http://logto_upstream;
-    proxy_redirect off;
+    proxy_pass http://127.0.0.1:3001;
   }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+Then add the similar config for your admin console:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // e.g. admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
 }
 ```
 
@@ -68,7 +86,7 @@ Reload Nginx config to pick up the latest changes:
 nginx -s reload
 ```
 
-You are all set. Open the browser and visit your domain URL, you should be able to see Logto welcome page.
+You are all set. Open the browser and visit `https://admin.your-domain.com`, you should be able to see Logto welcome page.
 
 ## How can I upgrade Logto safely?
 
