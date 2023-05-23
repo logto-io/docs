@@ -32,6 +32,7 @@ const sdks = [
   { name: 'Android', language: 'kotlin/java', officialLink: 'https://developer.android.com/', appType: 'Native App' },
   { name: 'Flutter', language: 'dart', officialLink: 'https://flutter.dev/', appType: 'Native App' },
   { name: 'Next', language: 'js', officialLink: 'https://nextjs.org/', appType: 'Traditional Web' },
+  { name: 'Express', language: 'js', officialLink: 'https://expressjs.com/', appType: 'Traditional Web' },
 ];
 
 /**
