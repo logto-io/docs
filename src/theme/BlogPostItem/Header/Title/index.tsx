@@ -24,6 +24,11 @@ const Title = ({ className }: Props): JSX.Element => {
       url.searchParams.append(key, value);
     }
 
+    if (!url.pathname.endsWith('/')) {
+      // eslint-disable-next-line @silverhand/fp/no-mutation
+      url.pathname += '/';
+    }
+
     return url;
   }, [isBlogPostPage]);
 
@@ -45,7 +50,7 @@ const Title = ({ className }: Props): JSX.Element => {
     const linkTag = document.createElement('link');
     linkTag.setAttribute('rel', 'canonical');
     // eslint-disable-next-line @silverhand/fp/no-mutation
-    linkTag.href = getNewBlogUrl().href + '/';
+    linkTag.href = getNewBlogUrl().href;
     document.head.append(linkTag);
   }, [getNewBlogUrl, shouldReplace]);
 
