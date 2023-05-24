@@ -1,3 +1,4 @@
+import BrowserOnly from '@docusaurus/BrowserOnly';
 import Link from '@docusaurus/Link';
 import { useBlogPost } from '@docusaurus/theme-common/internal';
 import Admonition from '@theme/Admonition';
@@ -7,7 +8,7 @@ import { useCallback, useEffect } from 'react';
 
 import styles from './styles.module.css';
 
-const Title = ({ className }: Props): JSX.Element => {
+const Content = ({ className }: Props): JSX.Element => {
   const { metadata, isBlogPostPage } = useBlogPost();
   const { permalink, title } = metadata;
   const TitleHeading = isBlogPostPage ? 'h1' : 'h2';
@@ -79,6 +80,10 @@ const Title = ({ className }: Props): JSX.Element => {
       </TitleHeading>
     </>
   );
+};
+
+const Title = () => {
+  return <BrowserOnly>{() => <Content />}</BrowserOnly>;
 };
 
 export default Title;
