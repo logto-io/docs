@@ -5,6 +5,8 @@ sidebar_position: 4
 
 # Securing Your Webhooks
 
+_Added in v1.5.0_
+
 Once your server is ready to receive webhook requests, you may want to make sure that it can handle the requests securely. Logto generates a signature for each webhook request payload, which allows you to verify that the request comes from Logto.
 
 ## Getting the signing key

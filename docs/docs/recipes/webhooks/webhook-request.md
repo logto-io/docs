@@ -5,6 +5,8 @@ sidebar_position: 3
 
 # Webhook Request
 
+_Added in v1.5.0_
+
 Once a valid hook event is emitted, Logto will find corresponding webhooks and send a POST request per hook config.
 
 ## Request headers

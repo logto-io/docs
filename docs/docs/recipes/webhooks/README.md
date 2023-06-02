@@ -4,6 +4,8 @@ sidebar_position: 7.2
 
 # 🪝 Webhooks
 
+_Added in v1.5.0_
+
 Logto Webhook enables you to effortlessly receive real-time updates regarding specific events, such as user registration, sign-in, or password reset. You no longer need to continuously poll for updates.
 
 When an event is triggered, Logto sends an HTTP request to the Endpoint URL you provide, containing detailed information about the event, such as user ID, username, email, and other relevant details (for more about the data included in the payload and header, refer to [Webhook Request](./webhook-request.md)). Your application can process this request and take customized actions, like sending an email or updating a database.
