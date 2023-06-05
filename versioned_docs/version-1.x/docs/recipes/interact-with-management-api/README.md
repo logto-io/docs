@@ -33,10 +33,6 @@ Logto currently does not provide a pre-built UI solution for user profiles. We r
 
 Check out [User Profile](../user-profile/README.md) for more information.
 
-### Programmatically sign-in
-
-While Logto's sign-in experience is exceptional, there may be instances where your product team has a specific design in mind that is tailored to your unique product logic and does not require the flow we provide. In such cases, you can create your own sign-in experience using our interaction API along with other relevant resources.
-
 ### Advanced user search
 
 You can certainly use Logto's user management feature in the console for some tasks, our management API offers additional functions that support more advanced user search scenarios. Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
