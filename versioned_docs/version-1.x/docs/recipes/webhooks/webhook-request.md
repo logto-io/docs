@@ -16,7 +16,6 @@ Once a valid hook event is emitted, Logto will find corresponding webhooks and s
 | user-agent              | ✅           | `Logto (https://logto.io/)` by default                                                            |
 | content-type            | ✅           | `application/json` by default                                                                     |
 | logto-signature-sha-256 |              | the signature of the request body, refer to [Securing your webhooks](./securing-your-webhooks.md) |
-| logto-message-id        |              | a unique message ID                                                                               |
 
 You can overwrite customizable headers by [customizing request](./configure-webhooks-in-console.md#secure-webhook) headers with the same key.
 
