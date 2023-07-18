@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7.2
+sidebar_position: 7.1
 ---
 
 # 👤 User Profiles
