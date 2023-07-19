@@ -5,7 +5,7 @@ sidebar_label: Email connector
 
 # Configure Email Connector
 
-Configuring an Email connector allows you to send a one-time verification code (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity.
+Configuring an Email connector allows you to send a one-time password (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity.
 
 We provide Logto built-in email service for your online usage or onboarding. It is completely free to use and doesn’t require any additional configuration. You just need to customize your basic brand information for email templates:
 

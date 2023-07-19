@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Configure SMS Connector
 
-Configuring an SMS connector allows you to send a one-time verification code (OTP) to the user's phone number. This passwordless authentication mechanism can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity. It streamlines user authentication and enhances security by minimizing the risk of password-related breaches.
+Configuring an SMS connector allows you to send a one-time password (OTP) to the user's phone number. This passwordless authentication mechanism can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity. It streamlines user authentication and enhances security by minimizing the risk of password-related breaches.
 
 Logto has some built-in SMS connectors which allow out-of-box usage:
 

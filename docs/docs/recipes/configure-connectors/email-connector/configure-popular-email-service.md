@@ -35,9 +35,9 @@ Follow these steps to configure your email connector:
 If you wish to change the current Email connector, simply access the connector details page and click the “Change connector” button of the “More” menu in the top-right corner. Or you can delete the old connector first, then add a new Email connector.
 
 :::note
-You can bring ONLY ONE _Email Connector_ alive.
+You can bring ONLY ONE _email connector_ alive.
 
-If you change the living Email connector and save changes, the previous Email connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
+If you change the active email connector and save changes, the previous Email connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
 :::
 
 ## Email template
