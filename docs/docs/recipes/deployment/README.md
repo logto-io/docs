@@ -163,17 +163,17 @@ spec:
       containers:
         - name: alteration
           image: ghcr.io/logto-io/logto
-          imagePullPolicy: always
+          imagePullPolicy: Always
           env:
             - name: CI
-              value: true
+              value: 'true'
             - name: DB_URL
               value: postgresql://user:password@localhost:5432/logto
-            command:
-              - /bin/sh
-            args:
-              - '-c'
-              - 'npm run alteration deploy latest'
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
       restartPolicy: Never
 ```
 
