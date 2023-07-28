@@ -1,4 +1,4 @@
-`Const` **createLogto**: `LogtoVuePlugin`
+> `const` **createLogto**: `LogtoVuePlugin`
 
 Creates the Logto Vue plugin
 
@@ -17,6 +17,6 @@ app.mount('#app');
 
 Use this in your Vue root component to register the plugin
 
-#### Defined in
+## Source
 
-[packages/vue/src/index.ts:51](https://github.com/logto-io/js/blob/5254dee/packages/vue/src/index.ts#L51)
+[src/index.ts:62](https://github.com/logto-io/js/blob/54d7193/packages/vue/src/index.ts#L62)
