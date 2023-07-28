@@ -17,7 +17,7 @@
 
 #### Source
 
-[src/utils/errors.ts:47](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L47)
+[src/utils/errors.ts:47](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L47)
 
 ## Properties
 
@@ -27,7 +27,7 @@
 
 #### Source
 
-[src/utils/errors.ts:48](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L48)
+[src/utils/errors.ts:48](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L48)
 
 ---
 
@@ -37,4 +37,4 @@
 
 #### Source
 
-[src/utils/errors.ts:49](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L49)
+[src/utils/errors.ts:49](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L49)

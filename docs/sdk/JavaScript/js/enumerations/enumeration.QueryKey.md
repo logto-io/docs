@@ -6,7 +6,7 @@
 
 #### Source
 
-[src/consts/index.ts:11](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L11)
+[src/consts/index.ts:11](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L11)
 
 ---
 
@@ -16,7 +16,7 @@
 
 #### Source
 
-[src/consts/index.ts:12](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L12)
+[src/consts/index.ts:12](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L12)
 
 ---
 
@@ -26,7 +26,7 @@
 
 #### Source
 
-[src/consts/index.ts:13](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L13)
+[src/consts/index.ts:13](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L13)
 
 ---
 
@@ -36,7 +36,7 @@
 
 #### Source
 
-[src/consts/index.ts:14](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L14)
+[src/consts/index.ts:14](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L14)
 
 ---
 
@@ -46,7 +46,7 @@
 
 #### Source
 
-[src/consts/index.ts:15](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L15)
+[src/consts/index.ts:15](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L15)
 
 ---
 
@@ -56,7 +56,7 @@
 
 #### Source
 
-[src/consts/index.ts:16](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L16)
+[src/consts/index.ts:16](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L16)
 
 ---
 
@@ -66,7 +66,7 @@
 
 #### Source
 
-[src/consts/index.ts:17](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L17)
+[src/consts/index.ts:17](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L17)
 
 ---
 
@@ -76,7 +76,7 @@
 
 #### Source
 
-[src/consts/index.ts:18](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L18)
+[src/consts/index.ts:18](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L18)
 
 ---
 
@@ -86,7 +86,7 @@
 
 #### Source
 
-[src/consts/index.ts:19](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L19)
+[src/consts/index.ts:19](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L19)
 
 ---
 
@@ -96,7 +96,7 @@
 
 #### Source
 
-[src/consts/index.ts:20](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L20)
+[src/consts/index.ts:20](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L20)
 
 ---
 
@@ -106,7 +106,7 @@
 
 #### Source
 
-[src/consts/index.ts:31](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L31)
+[src/consts/index.ts:31](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L31)
 
 ---
 
@@ -116,7 +116,7 @@
 
 #### Source
 
-[src/consts/index.ts:21](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L21)
+[src/consts/index.ts:21](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L21)
 
 ---
 
@@ -126,7 +126,7 @@
 
 #### Source
 
-[src/consts/index.ts:22](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L22)
+[src/consts/index.ts:22](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L22)
 
 ---
 
@@ -136,7 +136,7 @@
 
 #### Source
 
-[src/consts/index.ts:23](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L23)
+[src/consts/index.ts:23](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L23)
 
 ---
 
@@ -146,7 +146,7 @@
 
 #### Source
 
-[src/consts/index.ts:24](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L24)
+[src/consts/index.ts:24](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L24)
 
 ---
 
@@ -156,7 +156,7 @@
 
 #### Source
 
-[src/consts/index.ts:25](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L25)
+[src/consts/index.ts:25](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L25)
 
 ---
 
@@ -166,7 +166,7 @@
 
 #### Source
 
-[src/consts/index.ts:26](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L26)
+[src/consts/index.ts:26](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L26)
 
 ---
 
@@ -176,7 +176,7 @@
 
 #### Source
 
-[src/consts/index.ts:27](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L27)
+[src/consts/index.ts:27](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L27)
 
 ---
 
@@ -186,7 +186,7 @@
 
 #### Source
 
-[src/consts/index.ts:28](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L28)
+[src/consts/index.ts:28](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L28)
 
 ---
 
@@ -196,4 +196,4 @@
 
 #### Source
 
-[src/consts/index.ts:29](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L29)
+[src/consts/index.ts:29](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L29)

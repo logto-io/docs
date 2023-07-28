@@ -6,7 +6,7 @@
 
 #### Source
 
-[src/consts/index.ts:42](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L42)
+[src/consts/index.ts:42](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L42)
 
 ---
 
@@ -16,4 +16,4 @@
 
 #### Source
 
-[src/consts/index.ts:41](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L41)
+[src/consts/index.ts:41](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L41)

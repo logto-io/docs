@@ -20,4 +20,4 @@
 
 ## Source
 
-[src/utils/id-token.ts:70](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/id-token.ts#L70)
+[src/utils/id-token.ts:70](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/id-token.ts#L70)

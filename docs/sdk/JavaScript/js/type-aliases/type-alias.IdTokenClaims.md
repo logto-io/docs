@@ -80,4 +80,4 @@
 
 ## Source
 
-[src/utils/id-token.ts:11](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/id-token.ts#L11)
+[src/utils/id-token.ts:11](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/id-token.ts#L11)

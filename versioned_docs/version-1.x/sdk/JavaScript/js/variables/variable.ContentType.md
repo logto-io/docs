@@ -14,4 +14,4 @@
 
 ## Source
 
-[src/consts/index.ts:1](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L1)
+[src/consts/index.ts:1](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L1)

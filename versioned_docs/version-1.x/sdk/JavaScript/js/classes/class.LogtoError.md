@@ -25,7 +25,7 @@ Error.constructor
 
 #### Source
 
-[src/utils/errors.ts:22](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L22)
+[src/utils/errors.ts:22](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L22)
 
 ## Properties
 
@@ -49,7 +49,7 @@ Error.cause
 
 #### Source
 
-[src/utils/errors.ts:19](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L19)
+[src/utils/errors.ts:19](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L19)
 
 ---
 
@@ -59,7 +59,7 @@ Error.cause
 
 #### Source
 
-[src/utils/errors.ts:20](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/errors.ts#L20)
+[src/utils/errors.ts:20](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/errors.ts#L20)
 
 ---
 

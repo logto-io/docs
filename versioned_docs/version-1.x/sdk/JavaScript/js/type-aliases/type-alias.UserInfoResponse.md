@@ -62,4 +62,4 @@
 
 ## Source
 
-[src/core/user-info.ts:10](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/core/user-info.ts#L10)
+[src/core/user-info.ts:10](https://github.com/logto-io/js/blob/54d7193/packages/js/src/core/user-info.ts#L10)

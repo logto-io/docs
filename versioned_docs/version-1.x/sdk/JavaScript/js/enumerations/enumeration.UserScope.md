@@ -12,7 +12,7 @@ See idTokenClaims for mapped claims in ID Token and userinfoClaims for additiona
 
 #### Source
 
-[src/consts/index.ts:72](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L72)
+[src/consts/index.ts:72](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L72)
 
 ---
 
@@ -26,7 +26,7 @@ See idTokenClaims for mapped claims in ID Token and userinfoClaims for additiona
 
 #### Source
 
-[src/consts/index.ts:60](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L60)
+[src/consts/index.ts:60](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L60)
 
 ---
 
@@ -40,7 +40,7 @@ See idTokenClaims for mapped claims in ID Token and userinfoClaims for additiona
 
 #### Source
 
-[src/consts/index.ts:78](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L78)
+[src/consts/index.ts:78](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L78)
 
 ---
 
@@ -54,7 +54,7 @@ See idTokenClaims for mapped claims in ID Token and userinfoClaims for additiona
 
 #### Source
 
-[src/consts/index.ts:66](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L66)
+[src/consts/index.ts:66](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L66)
 
 ---
 
@@ -68,4 +68,4 @@ See idTokenClaims for mapped claims in ID Token and userinfoClaims for additiona
 
 #### Source
 
-[src/consts/index.ts:54](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/consts/index.ts#L54)
+[src/consts/index.ts:54](https://github.com/logto-io/js/blob/54d7193/packages/js/src/consts/index.ts#L54)
