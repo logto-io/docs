@@ -1,29 +1,36 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
 ---
 
 # @logto/react
 
-## Table of contents
+## Table of Contents
+
+### Enumerations
+
+- [Prompt](enumerations/enumeration.Prompt.md)
+- [ReservedScope](enumerations/enumeration.ReservedScope.md)
+- [UserScope](enumerations/enumeration.UserScope.md)
 
 ### Classes
 
-- [LogtoClientError](classes/LogtoClientError.md)
-- [LogtoError](classes/LogtoError.md)
-- [OidcError](classes/OidcError.md)
+- [LogtoClientError](classes/class.LogtoClientError.md)
+- [LogtoError](classes/class.LogtoError.md)
+- [OidcError](classes/class.OidcError.md)
 
 ### Type Aliases
 
-- [IdTokenClaims](types/IdTokenClaims.md)
-- [LogtoClientErrorCode](types/LogtoClientErrorCode.md)
-- [LogtoConfig](types/LogtoConfig.md)
-- [LogtoContextProps](types/LogtoContextProps.md)
-- [LogtoErrorCode](types/LogtoErrorCode.md)
-- [LogtoProviderProps](types/LogtoProviderProps.md)
-- [UserInfoResponse](types/UserInfoResponse.md)
+- [IdTokenClaims](type-aliases/type-alias.IdTokenClaims.md)
+- [InteractionMode](type-aliases/type-alias.InteractionMode.md)
+- [LogtoClientErrorCode](type-aliases/type-alias.LogtoClientErrorCode.md)
+- [LogtoConfig](type-aliases/type-alias.LogtoConfig.md)
+- [LogtoContextProps](type-aliases/type-alias.LogtoContextProps.md)
+- [LogtoErrorCode](type-aliases/type-alias.LogtoErrorCode.md)
+- [LogtoProviderProps](type-aliases/type-alias.LogtoProviderProps.md)
+- [UserInfoResponse](type-aliases/type-alias.UserInfoResponse.md)
 
 ### Functions
 
-- [LogtoProvider](functions/LogtoProvider.md)
-- [useHandleSignInCallback](functions/useHandleSignInCallback.md)
-- [useLogto](functions/useLogto.md)
+- [LogtoProvider](functions/function.LogtoProvider.md)
+- [useHandleSignInCallback](functions/function.useHandleSignInCallback.md)
+- [useLogto](functions/function.useLogto.md)
