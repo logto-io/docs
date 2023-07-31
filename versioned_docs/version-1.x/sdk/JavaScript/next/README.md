@@ -1,15 +1,21 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # @logto/next
 
-## Table of contents
+## Table of Contents
+
+### Enumerations
+
+- [ReservedScope](enumerations/enumeration.ReservedScope.md)
+- [UserScope](enumerations/enumeration.UserScope.md)
 
 ### Classes
 
-- [default](classes/default.md)
+- [default](classes/class.default.md)
 
 ### Type Aliases
 
-- [LogtoUser](types/LogtoUser.md)
+- [InteractionMode](type-aliases/type-alias.InteractionMode.md)
+- [LogtoContext](type-aliases/type-alias.LogtoContext.md)
