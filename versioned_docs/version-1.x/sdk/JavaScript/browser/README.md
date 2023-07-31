@@ -4,23 +4,27 @@ sidebar_position: 3
 
 # @logto/browser
 
-## Table of contents
+## Table of Contents
 
 ### Enumerations
 
-- [Prompt](enums/Prompt.md)
+- [Prompt](enumerations/enumeration.Prompt.md)
+- [ReservedScope](enumerations/enumeration.ReservedScope.md)
+- [UserScope](enumerations/enumeration.UserScope.md)
 
 ### Classes
 
-- [LogtoClientError](classes/LogtoClientError.md)
-- [LogtoError](classes/LogtoError.md)
-- [LogtoRequestError](classes/LogtoRequestError.md)
-- [OidcError](classes/OidcError.md)
-- [default](classes/default.md)
+- [LogtoClientError](classes/class.LogtoClientError.md)
+- [LogtoError](classes/class.LogtoError.md)
+- [LogtoRequestError](classes/class.LogtoRequestError.md)
+- [OidcError](classes/class.OidcError.md)
+- [default](classes/class.default.md)
 
 ### Type Aliases
 
-- [IdTokenClaims](types/IdTokenClaims.md)
-- [LogtoClientErrorCode](types/LogtoClientErrorCode.md)
-- [LogtoConfig](types/LogtoConfig.md)
-- [LogtoErrorCode](types/LogtoErrorCode.md)
+- [IdTokenClaims](type-aliases/type-alias.IdTokenClaims.md)
+- [InteractionMode](type-aliases/type-alias.InteractionMode.md)
+- [LogtoClientErrorCode](type-aliases/type-alias.LogtoClientErrorCode.md)
+- [LogtoConfig](type-aliases/type-alias.LogtoConfig.md)
+- [LogtoErrorCode](type-aliases/type-alias.LogtoErrorCode.md)
+- [UserInfoResponse](type-aliases/type-alias.UserInfoResponse.md)
