@@ -20,4 +20,4 @@
 
 ## Source
 
-[src/core/revoke.ts:4](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/core/revoke.ts#L4)
+[src/core/revoke.ts:4](https://github.com/logto-io/js/blob/54d7193/packages/js/src/core/revoke.ts#L4)

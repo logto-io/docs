@@ -34,4 +34,4 @@
 
 ## Source
 
-[src/utils/access-token.ts:8](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/access-token.ts#L8)
+[src/utils/access-token.ts:8](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/access-token.ts#L8)

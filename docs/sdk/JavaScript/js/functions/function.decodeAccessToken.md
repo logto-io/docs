@@ -12,4 +12,4 @@
 
 ## Source
 
-[src/utils/access-token.ts:45](https://github.com/logto-io/js/blob/d2c2dce/packages/js/src/utils/access-token.ts#L45)
+[src/utils/access-token.ts:45](https://github.com/logto-io/js/blob/54d7193/packages/js/src/utils/access-token.ts#L45)
