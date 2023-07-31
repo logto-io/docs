@@ -1,6 +1,6 @@
 ---
-sidebar_label: Configure SMS connector
-sidebar_position: 1
+sidebar_label: SMS connector
+sidebar_position: 2
 ---
 
 # Configure SMS Connector
@@ -9,9 +9,9 @@ Configuring an SMS connector allows you to send a one-time password (OTP) to the
 
 Logto has some built-in SMS connectors which allow out-of-box usage:
 
-- Twilio SMS
-- Aliyun SMS
-- Tencent SMS
+- [Twilio SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-twilio-sms)
+- [Aliyun SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-sms)
+- [Tencent SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-tencent-sms)
 
 :::tip
 We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.

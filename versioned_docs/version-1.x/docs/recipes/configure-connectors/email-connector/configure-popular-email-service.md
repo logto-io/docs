@@ -1,52 +1,43 @@
 ---
-sidebar_label: Configure email connector
+sidebar_label: Configure popular email service
 sidebar_position: 2
 ---
 
-# Configure Email Connector
+# Configure popular email service
 
-Configuring an Email connector allows you to send a one-time password (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity.
+Logto provides a low-code configuration for the most popular email delivery service providers. They are using similar configuration steps so you can get started quickly.
 
-Logto has some built-in email connectors which allow out-of-box usage:
+You can refer to the specific doc for detailed instructions on registering each email service provider. Supported email service providers:
 
-- [AWS DM](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aws-ses)
-- [SendGrid Mail](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-sendgrid-email)
-- [Aliyun DM](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-dm)
-- [SMTP](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-smtp)
+- [AWS direct mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aws-ses)
+- [SendGrid mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-sendgrid-email)
+- [SMTP connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-smtp)
+- [Aliyun direct mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-dm)
 
-:::tip
-We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.
-For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../create-your-connector/README.md) to extend.
-:::
+## Configuration steps
 
-## Configure steps
+Follow these steps to configure your email connector:
 
-Navigate to “Connector > Email and SMS connectors” in Logto Console.
+1. Go to “Connector > Email and SMS connectors” in Logto Console.
+2. To add a new one, click the "Set up" button and select the desired Email connector.
+3. In the configuration process, follow the steps below:
 
-### Add a new Email connector
+- Go through the README doc for each type connector on the left, then follow the instructions.
+- Fill out any required forms in the Parameter Configuration section on the right.
+- Customize the Email template to fit your needs by editing the JSON code.
+- Test the configuration by sending an Email verification code to your email address using the “Generic” template.
+- Click "Save and Done" to finish.
 
-To add a new Email connector, click the “Add Social Connector” button, and select the desired Email connector.
+4. After making the necessary changes, remember to send a test email to your email address.
 
-![Select email connector](./assets/configure-select-email-connector.png)
-
-In the configuration process, follow the steps below:
-
-1. Go through the README doc for each type connector on the left, then follow the instructions.
-2. Fill out any required forms in the Parameter Configuration section on the right.
-3. Customize the Email template to fit your needs by editing the JSON code.
-4. Test the configuration by sending an Email verification code to your email address using the “Generic” template.
-5. Click "Save and Done" to finish.
-
-![Configure email connector guideline](./assets/configure-email-connector-guideline.png)
-
-### Change to another Email connector
+![Configure email connector guideline](../assets/configure-email-connector-guideline.png)
 
 If you wish to change the current Email connector, simply access the connector details page and click the “Change connector” button of the “More” menu in the top-right corner. Or you can delete the old connector first, then add a new Email connector.
 
 :::note
-You can bring ONLY ONE _SMS Connector_ alive.
+You can bring ONLY ONE _email connector_ alive.
 
-If you change the living SMS connector and save changes, the previous Email connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
+If you change the active email connector and save changes, the previous Email connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
 :::
 
 ## Email template
@@ -66,7 +57,7 @@ Notice that:
 
 There is a template example just for reference:
 
-![Email connector Demo template](./assets/configure-email-connector-demo-template.png)
+![Email template of Logto for reference](../assets/email-template-of-Logto-for-reference.webp)
 
 ```jsx
 <table cellpadding="0" cellspacing="0" border="0" width="100%"
@@ -185,7 +176,3 @@ There is a template example just for reference:
   </tr>
 </table>
 ```
-
-## Related Readings
-
-You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/passwordless-sign-in-by-adding-connectors.mdx) as soon as you finish the setup.
