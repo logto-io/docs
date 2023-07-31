@@ -21,10 +21,10 @@ export default {
 
 Use this composable in the setup script of your Vue component to make sure the injection works
 
-#### Returns
+## Returns
 
 `Logto`
 
-#### Defined in
+## Source
 
-[packages/vue/src/index.ts:90](https://github.com/logto-io/js/blob/5254dee/packages/vue/src/index.ts#L90)
+[src/index.ts:101](https://github.com/logto-io/js/blob/54d7193/packages/vue/src/index.ts#L101)
