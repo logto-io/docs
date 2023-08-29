@@ -176,3 +176,14 @@ There is a template example just for reference:
   </tr>
 </table>
 ```
+
+You can then escape the HTML code above and add it to the connector "Template" field in configs as follows (assuming using SendGrid connector):
+
+```json
+{
+  "subject": "<sign-in-template-subject>",
+  "content": "<table cellpadding=\"0\" cellspacing=\"0\" ...",
+  "usageType": "SignIn",
+  "type": "text/html"
+}
+```
