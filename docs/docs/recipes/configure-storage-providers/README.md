@@ -76,9 +76,21 @@ The secret access key is used in conjunction with the access key ID to sign prog
 
 The bucket is a container for objects stored in Amazon S3. To create a bucket, follow the official [AWS S3 bucket documentation](https://docs.aws.amazon.com/AmazonS3/latest/userguide/creating-buckets.html).
 
+#### `region`
+
+Optional.
+
+The region is the geographical region where the AWS S3 bucket is located. If `endpoint` is a standard AWS S3 endpoint, it can be parsed from `endpoint`. To find your AWS S3 region, follow the official [AWS S3 region documentation](https://docs.aws.amazon.com/general/latest/gr/s3.html).
+
+If you are using a S3 compatible storage service, you may leave this field blank.
+
 #### `endpoint`
 
+Optional.
+
 Endpoint is the URL that is used to access the AWS S3 service. To find your AWS S3 endpoint, follow the official [AWS S3 endpoint documentation](https://docs.aws.amazon.com/general/latest/gr/s3.html).
+
+You can leave this field blank to use the default endpoint for the region. If you are using a S3 compatible storage service, you can use the endpoint of the service.
 
 #### `publicUrl`
 
