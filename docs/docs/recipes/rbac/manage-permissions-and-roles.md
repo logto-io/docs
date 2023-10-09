@@ -28,7 +28,7 @@ To create a new role, click the "Create Role" button in the top right corner. A 
 
 1. Keep in mind that while it is technically possible to create a role _without_ permissions or users assigned, it is not recommended to create too many empty roles. This will disrupt the harmony of role management and render the RBAC system ineffective.
 2. Permissions are grouped by API in the selector, allowing you to add them in bulk or select them individually. The selected permissions will be displayed on the right side.
-3. A new role has two available types: user role or machine-to-machine app role.
+3. A new role has two available types: "User role" or "Machine-to-machine app role".
 
 ![Create role](assets/create-role.webp)
 
@@ -53,7 +53,7 @@ Deleting the role will eliminate all the permissions linked to it for the impact
 
 Depending on the type of role you choose, you will be able to assign or remove users or machine-to-machine applications in the role details page.
 
-Click the "Users" or "Machine-to-machine apps" tab to view the users or apps assigned to the role. To add a user or app to the role, click the "Assign users" or "Assign applications" button in the top right corner.
+Click the "Users" or "Machine-to-machine apps" tab to view the users or apps assigned to the role. To add user(s) or app(s) to the role, click the "Assign users" or "Assign applications" button in the top right corner.
 
 To remove a user or app from the role, click the trash bin icon in the very right of the row.
 
