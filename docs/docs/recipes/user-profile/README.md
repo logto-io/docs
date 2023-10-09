@@ -13,7 +13,7 @@ To enable this, you will need to create your own profile page with the help of t
 :::tip
 
 - In order to call Logto management APIs, a backend service is required for your app.
-- Make sure your backend service has acquired a pair of API key and API secret through the [Machine to Machine](/docs/recipes/integrate-logto/machine-to-machine) process.
+- Make sure your backend service has acquired a pair of API key and API secret through the [machine-to-machine](/docs/recipes/integrate-logto/machine-to-machine) process.
 
 :::
 

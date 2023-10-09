@@ -36,8 +36,8 @@ An app that renders and updates pages by the web server alone. E.g., server-side
 - [Express](./express/README.mdx)
 - [Go](./go/README.mdx)
 
-## Machine to Machine
+## Machine-to-machine
 
 An app (usually without UI) that directly talks to resources.
 
-- [Machine to Machine](./machine-to-machine.mdx)
+- [Machine-to-machine](./machine-to-machine.mdx)
