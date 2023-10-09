@@ -1,20 +1,20 @@
 # Manage permissions and roles
 
 :::info
-This page is for managing permissions and roles via Admin Console. Visit [API Reference](/api) for RESTful APIs.
+This page is for managing permissions and roles via Admin Console. For managing them via Logto Management API, please refer to [API reference](/api) and [🚝 Interact with Management API](../interact-with-management-api/README.md).
 :::
 
-## Manage API Resource permissions
+## Manage API resource permissions
 
 :::note
-The pre-defined Logto Management API is immutable. A new API Resource is needed to proceed.
+The Logto Management API resource is immutable. A new API Resource is needed if you want to protect your API with a different set of permissions.
 :::
 
-Permissions are set in the API Resource level. Navigate to the "API Resources" tab, click the API Resource you want to manage, and then go to the "Permissions" tab.
+Permissions are set **in the API resource level**. Navigate to the "API resources" tab, click the API resource you want to manage, and then go to the "Permissions" tab.
 
 To create a new permission, click the "Create permission" button in the top right corner. It's important to provide a name and details for the permission, as it will make it easier to identify and manage permissions.
 
-![Manage Permissions](./assets/manage-permissions.png)
+![Manage permissions](./assets/manage-permissions.webp)
 
 To delete a permission, click the trash bin icon in the very right of the row.
 
@@ -28,9 +28,20 @@ To create a new role, click the "Create Role" button in the top right corner. A 
 
 1. Keep in mind that while it is technically possible to create a role _without_ permissions or users assigned, it is not recommended to create too many empty roles. This will disrupt the harmony of role management and render the RBAC system ineffective.
 2. Permissions are grouped by API in the selector, allowing you to add them in bulk or select them individually. The selected permissions will be displayed on the right side.
-3. After creating a role, you will be taken to the user assignment page, where you can authorize the role to specific users. You can search for users by name, email, phone number, username or ID if available. If you prefer, you can also skip this step and assign users to the role later.
+3. A new role has two available types: "User role" or "Machine-to-machine app role".
 
-![Create Role](./assets/create-role.png)
+:::note
+Machine-to-machine app roles are available from Logto v1.10.0.
+:::
+
+![Create role](assets/create-role.webp)
+
+**Constraints**
+
+- After creating a role, you cannot modify its type.
+- The Logto Management API resource can only be accessed by machine-to-machine application roles.
+
+Depending the type of role you choose, you will be able to assign users or machine-to-machine applications to the role once it is created.
 
 ### View or update a role
 
@@ -39,24 +50,16 @@ After completing the role creation and assignment process or click a role name i
 You can also edit the role name and description, inspect and manage the permissions and users assigned to the role at any time.
 
 :::danger
-Deleting the role will eliminate all the permissions linked to it for the impacted users and delete the connection between roles, users, and permissions.
+Deleting the role will eliminate all the permissions linked to it for the impacted users and delete the connection between roles, users or apps, and permissions.
 :::
 
-### Add users to roles
+### Manage users or apps in roles
 
-To add more users to a role, navigate to the role's details page and click the "Users" tab. Then, click "Assign Users" to open the dialog.
+Depending on the type of role you choose, you will be able to assign or remove users or machine-to-machine applications in the role details page.
 
-![Manage Role Users](./assets/manage-role-users.png)
+Click the "Users" or "Machine-to-machine apps" tab to view the users or apps assigned to the role. To add user(s) or app(s) to the role, click the "Assign users" or "Assign applications" button in the top right corner.
 
-Search or browse for the desired users and click "Assign Users" to add them to the role.
-
-### Remove users from roles
-
-To remove a user from the role, under the "Users" tab, click the trash bin icon in the very right of the row.
-
-:::info
-Taking users out of a designated role does not delete them from your user base, they will still exist but will no longer have access to the permissions associated with that role.
-:::
+To remove a user or app from the role, click the trash bin icon in the very right of the row.
 
 ### Manage role permissions
 
@@ -69,16 +72,10 @@ If you need to change the capabilities of a role, you can easily do so by assign
 If a permission is deleted, users with this role will lose the access granted by this permission.
 :::
 
-![Manage Role Permissions](./assets/manage-role-permissions.png)
+![Manage role permissions](./assets/manage-role-permissions.webp)
 
-## Manage a user's roles
+## Manage roles from the details page of a user or app
 
-You've learned how to manage roles by assigning or removing users from them, but you can also achieve the same result from the user's perspective.
+You can find a "roles" tab in the details page of a user or app. Click the tab to view and manage the roles assigned to the user or app.
 
-If you need to change a user's access, go to the "User Management" tab and click the desired user name. In the "Roles" tab of the user details page, you can easily assign or remove roles to meet your desired outcome.
-
-:::caution
-Removing a role from a user means that the user will no longer have access to all the permissions associated with that role. The role itself will still exist, but it will no longer be linked to that specific user.
-:::
-
-![Manage User Roles](./assets/manage-user-roles.png)
+![Application roles](./assets/app-roles.webp)

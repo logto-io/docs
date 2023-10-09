@@ -30,6 +30,10 @@ To create a new role, click the "Create Role" button in the top right corner. A 
 2. Permissions are grouped by API in the selector, allowing you to add them in bulk or select them individually. The selected permissions will be displayed on the right side.
 3. A new role has two available types: "User role" or "Machine-to-machine app role".
 
+:::note
+Machine-to-machine app roles are available from Logto v1.10.0.
+:::
+
 ![Create role](assets/create-role.webp)
 
 **Constraints**
