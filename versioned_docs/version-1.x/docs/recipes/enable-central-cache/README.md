@@ -1,3 +1,7 @@
+---
+sidebar_position: 11
+---
+
 # 🗄️ Enable central cache
 
 _Added in v1.2.0_
