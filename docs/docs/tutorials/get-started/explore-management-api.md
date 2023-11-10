@@ -24,4 +24,4 @@ Before calling and using the management API, it's important to create a **machin
 Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests.
 :::
 
-To learn more about use cases and how to effectively utilize the management API, please refer to the 'Interact with Management API' recipe.
+To learn more about use cases and how to effectively utilize the management API, please refer to the '[Interact with Management API](/docs/recipes/interact-with-management-api)' recipe.
