@@ -117,7 +117,7 @@ const config = {
             label: 'SDK',
           },
           {
-            to: 'api',
+            to: 'https://openapi.logto.io/',
             position: 'left',
             label: 'API',
           },

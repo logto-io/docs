@@ -19,7 +19,7 @@ Some frequently used APIs are listed below:
 - Resources
 - Connectors
 
-To learn more about the APIs that are available, please visit https://docs.logto.io/api.
+To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
 Wondering what you can do with the Logto Management API? Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the management API.
 
