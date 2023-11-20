@@ -1,5 +1,6 @@
 ---
-sidebar_position: 5
+sidebar_label: Create your connector
+sidebar_position: 4
 ---
 
 # 🧑‍🔬 Create your connector

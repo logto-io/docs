@@ -1,22 +1,8 @@
 ---
-sidebar_label: SMS connector
-sidebar_position: 2
+sidebar_label: Configure SMS service
+sidebar_position: 1
 ---
 
-# Configure SMS Connector
-
-Configuring an SMS connector allows you to send a one-time password (OTP) to the user's phone number. This passwordless authentication mechanism can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity. It streamlines user authentication and enhances security by minimizing the risk of password-related breaches.
-
-Logto has some built-in SMS connectors which allow out-of-box usage:
-
-- [Twilio SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-twilio-sms)
-- [Aliyun SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-sms)
-- [Tencent SMS](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-tencent-sms)
-
-:::tip
-We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.
-For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../create-your-connector/README.md) to extend.
-:::
 
 ## Configure steps
 
@@ -26,7 +12,7 @@ Navigate to “Connector > Email and SMS connectors” in Logto Console.
 
 To add a new SMS connector, click the “Set up” button, and select the desired SMS connector.
 
-![Select SMS connector](./assets/configure-select-sms-connetor.png)
+![Select SMS connector](../assets/configure-select-sms-connetor.png)
 
 In the configuration process, follow the steps below:
 
@@ -36,7 +22,7 @@ In the configuration process, follow the steps below:
 4. Test the configuration by sending an SMS verification code to your phone number using the “Generic” template.
 5. Click "Save and Done" to finish.
 
-![Configure SMS connector guideline](./assets/configure-sms-connector-guideline.png)
+![Configure SMS connector guideline](../assets/configure-sms-connector-guideline.png)
 
 ### Change to another SMS connector
 
@@ -66,6 +52,3 @@ Follow the README to compose the connector config JSON with little effort.
 | ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their phone number.                                                       | Your Logto password change verification code is {{code}}. The code will remain active for 10 minutes. |
 | Generic        | This template can be used as a generic backup option for various scenarios, including linking a phone number to an existing account or testing connector configuration… | Your Logto verification code is {{code}}. The code will remain active for 10 minutes.                 |
 
-## Related Readings
-
-You can check out [how to enable SMS or email passcode sign-in](../../tutorials/get-started/passwordless-sign-in-by-adding-connectors.mdx) as soon as you finish the setup.

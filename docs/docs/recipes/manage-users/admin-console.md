@@ -31,7 +31,6 @@ After the new user has been created, you can copy their **username** and **initi
 If you fail to retain the password after closing the "Add User" modal, you will not be able to view it again. If you forget to keep it, you can [reset the password](#reset-user-password).
 :::
 
-![Add user](./assets/add-user.png)
 
 ## View and update user profile
 
@@ -47,7 +46,6 @@ It is important to confirm that the user has an alternative sign-in method befor
 Don't forget to click "Save changes" after updating.
 :::
 
-![User profile](./assets/user-profile.png)
 
 ## View user activities
 
@@ -57,7 +55,6 @@ To view the recent activities of a user, navigate to the "User logs" sub-tab on 
 
 Click the table row to see more details in the user log, e.g., IP address, user agent, raw data, etc.
 
-![User log details](./assets/user-log-details.png)
 
 ## Suspend user
 
@@ -65,11 +62,9 @@ On the "User details" page, click "Three Dots" -> "Suspend User" button.
 
 Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
 
-![Suspend user](./assets/suspend-user.png)
 
 If you want to reactive this user, you can do so by clicking "Three Dots" -> "Reactivate User" button.
 
-![Reactivate user](./assets/reactivate-user.png)
 
 ## Delete user
 
@@ -79,7 +74,6 @@ On the "User details" page, click "Three Dots" -> "Delete" button.
 Be careful! The user data deletion CANNOT be undone.
 :::
 
-![Delete user](./assets/delete-user.png)
 
 ## Reset user password
 
@@ -92,7 +86,6 @@ Once the "Reset password" modal is closed, you can no longer view the password.
 If you forget to keep it, you can reset it again.
 :::
 
-![Reset user password](./assets/reset-user-password.png)
 
 ## Mange roles of users
 
