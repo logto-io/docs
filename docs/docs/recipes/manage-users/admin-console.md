@@ -31,7 +31,6 @@ After the new user has been created, you can copy their **username** and **initi
 If you fail to retain the password after closing the "Add User" modal, you will not be able to view it again. If you forget to keep it, you can [reset the password](#reset-user-password).
 :::
 
-
 ## View and update user profile
 
 To view the details of a user, simply click on the corresponding row in the user table. This will take you to the "**User details**" page where you can find the user's profile information, such as their avatar, full name, user ID, email, phone number, username, and social connections. The "Social connections" section displays a list of social connectors that the user has linked to their account. For example, if the user has signed in using their Facebook account, you will see a "Facebook" item in the list. You can refer to the [identities](https://docs.logto.io/docs/references/users/social-identities) documentation for more information.
@@ -46,7 +45,6 @@ It is important to confirm that the user has an alternative sign-in method befor
 Don't forget to click "Save changes" after updating.
 :::
 
-
 ## View user activities
 
 To view the recent activities of a user, navigate to the "User logs" sub-tab on the "User details" page. Here, you can find a table that displays the user's recent activities, including the action performed, the result of the action, the related application, and the time that the user acted.
@@ -55,16 +53,13 @@ To view the recent activities of a user, navigate to the "User logs" sub-tab on 
 
 Click the table row to see more details in the user log, e.g., IP address, user agent, raw data, etc.
 
-
 ## Suspend user
 
 On the "User details" page, click "Three Dots" -> "Suspend User" button.
 
 Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
 
-
 If you want to reactive this user, you can do so by clicking "Three Dots" -> "Reactivate User" button.
-
 
 ## Delete user
 
@@ -73,7 +68,6 @@ On the "User details" page, click "Three Dots" -> "Delete" button.
 :::danger
 Be careful! The user data deletion CANNOT be undone.
 :::
-
 
 ## Reset user password
 
@@ -85,7 +79,6 @@ After you reset the password, copy and send it to the end-user.
 Once the "Reset password" modal is closed, you can no longer view the password.
 If you forget to keep it, you can reset it again.
 :::
-
 
 ## Mange roles of users
 

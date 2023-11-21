@@ -3,7 +3,6 @@ sidebar_label: Configure SMS service
 sidebar_position: 1
 ---
 
-
 ## Configure steps
 
 Navigate to “Connector > Email and SMS connectors” in Logto Console.
@@ -51,4 +50,3 @@ Follow the README to compose the connector config JSON with little effort.
 | SignIn         | Users sign in using their phone number and verify by entering verification code instead of entering a password.                                                         | Your Logto sign-up verification code is {{code}}. The code will remain active for 10 minutes.         |
 | ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their phone number.                                                       | Your Logto password change verification code is {{code}}. The code will remain active for 10 minutes. |
 | Generic        | This template can be used as a generic backup option for various scenarios, including linking a phone number to an existing account or testing connector configuration… | Your Logto verification code is {{code}}. The code will remain active for 10 minutes.                 |
-

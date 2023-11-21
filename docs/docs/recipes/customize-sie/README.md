@@ -22,7 +22,7 @@ The left column is the customization section with three tabs: **Branding**, **Si
 4. Terms & Policy: Link your website's **Terms of Use** and **Privacy Policy** to the sign-in page. Users will be prompted to agree to these policies when they register.
 5. Language (i18n): Create a localized experience by selecting your language mode to **enable auto-detect** or **choose a default language**. Edit **i18n translations** for tailored content.
 6. Password policy: Enhance your password security by tailoring rules of password length, character types, breached password rejection, and phrase restriction.
-The right column is a live preview that will immediately update to synchronize the change when you update things on the left.
+   The right column is a live preview that will immediately update to synchronize the change when you update things on the left.
 
 ![Sign-in Experience homepage](./assets/sie-set-homepage.png)
 
