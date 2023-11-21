@@ -49,7 +49,7 @@ From this version, Logto now listens to two ports by default, one for normal use
 </p>
 </details>
 
-If you are upgrading from a previous version, simply run the [database alteration command](https://docs.logto.io/docs/tutorials/using-cli/database-alteration) as usual, and we'll take care of the rest.
+If you are upgrading from a previous version, simply run the [database alteration command](https://docs.logto.io/docs/references/using-cli/database-alteration) as usual, and we'll take care of the rest.
 
 :::success ***DID YOU KNOW?***
 Under the hood, we use the powerful Postgres feature Row-Level Security to isolate admin and user data.

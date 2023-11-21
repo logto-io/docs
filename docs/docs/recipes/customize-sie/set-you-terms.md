@@ -1,6 +1,6 @@
 ---
 sidebar_label: Set your terms
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Set your terms

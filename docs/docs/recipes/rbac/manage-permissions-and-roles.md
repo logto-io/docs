@@ -1,7 +1,7 @@
 # Manage permissions and roles
 
 :::info
-This page is for managing permissions and roles via Admin Console. For managing them via Logto Management API, please refer to [API reference](/api) and [🚝 Interact with Management API](../interact-with-management-api/README.md).
+This page is for managing permissions and roles via Admin Console. For managing them via Logto Management API, please refer to [API references](https://openapi.logto.io/) and [🚝 Interact with Management API](../interact-with-management-api/README.md).
 :::
 
 ## Manage API resource permissions

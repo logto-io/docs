@@ -125,7 +125,7 @@ Then, from your backend service, you can call the following Logto management API
 - `POST /api/verification-code/verify` to verify the code against a given email or phone
 
 :::tip
-Check the [API Documentation](/api#tag/Verification-Codes) for more details.
+Check the [API references](https://openapi.logto.io/group/endpoint-verification-codes) for more details.
 :::
 
 ## Recap
