@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[3160],{70448:function(a){a.exports=JSON.parse('{"label":"naver","permalink":"/tutorial/tags/naver","allTagsPath":"/tutorial/tags","count":8}')}}]);
