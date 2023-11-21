@@ -48,7 +48,7 @@ Here is a sample of a user's data which is retrieved from a sign-in to Facebook:
 You can query the user profile using
 [Admin Console](../../../docs/recipes/manage-users/admin-console.md#view-and-update-user-profile) or
 [Management API](../../../docs/recipes/manage-users/management-api.md),
-such as <a href="/api/#tag/Users/paths/~1api~1users~1:userId/get" target="_blank">`GET /api/users/:userId`</a>.
+such as <a href="https://openapi.logto.io/operation/operation-get-api-users-parameter" target="_blank">`GET /api/users/:userId`</a>.
 
 ## Basic data
 

@@ -21,7 +21,7 @@ The signing keys are applied to the entire Logto instance (a Logto open-source i
 ## Signing keys rotation
 
 :::info
-If you are Logto open source user, please refer to [this tutorial](/docs/references/using-cli/rotate-signing-keys/) to generate new signing keys using CLI.
+If you are Logto open source user, please refer to [this tutorial](/docs/docs/references/using-cli/rotate-signing-keys.mdx) to generate new signing keys using CLI.
 :::
 
 Logto Cloud introduces a “Signing Keys Rotation” feature, which allows you to create a new OIDC private key and cookie key in your tenant.
