@@ -22,5 +22,5 @@ Alternatively, you have the option to connect with other email service providers
 
 :::tip
 We're still working on more connectors! But If you don't see the connector you want, just let us know your needs in Discord or file a Feature Request on GitHub.
-For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../../create-your-connector/README.md) to extend.
+For those using the Logto Open-Source Version, we offer the flexibility to [create your own connector](../../configure-connectors/create-your-connector/README.md) to extend.
 :::

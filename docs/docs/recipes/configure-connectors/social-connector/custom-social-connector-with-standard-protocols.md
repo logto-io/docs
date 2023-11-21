@@ -15,7 +15,7 @@ Follow the README to compose the connector config with little effort.
 
 :::tip
 We highly recommend using Logto's preinstalled social connectors, including Google, Apple, Facebook, GitHub, Discord, Wechat, Alipay, Kakao, Naver, and Microsoft Azure AD, as they are simple to configure and highly stable.
-Our standard connectors can meet most custom requirements, but if you need a specific connector beyond these, feel free to contact us. For those using the Logto Open-Source Version, you can even [Write your connector](../../create-your-connector/README.md).
+Our standard connectors can meet most custom requirements, but if you need a specific connector beyond these, feel free to contact us. For those using the Logto Open-Source Version, you can even [Write your connector](../../configure-connectors/create-your-connector/README.md).
 :::
 
 ## Configure steps
