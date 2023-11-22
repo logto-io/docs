@@ -162,13 +162,7 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        /**
-         * When the page uses 'docusaurus-theme-redoc' theme, it requires 'scala' language in prism, or it will crash.
-         *
-         * Since 'additionalLanguages' here will override `"additionalLanguages": ["scala"]` from 'docusaurus-theme-redoc'
-         * in `.docusaurus/globalData.json`, we should append 'scala' here instead.
-         */
-        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java', 'scala'],
+        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java'],
       },
       colorMode: {
         respectPrefersColorScheme: true,
@@ -225,7 +219,7 @@ const config = {
       },
     ],
   ],
-  themes: ['docusaurus-theme-redoc', '@docusaurus/theme-mermaid'],
+  themes: ['@docusaurus/theme-mermaid'],
 };
 
 module.exports = config;
