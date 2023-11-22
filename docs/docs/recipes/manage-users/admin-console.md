@@ -1,9 +1,9 @@
 ---
-sidebar_label: Using Admin Console
+sidebar_label: Manage in Console
 sidebar_position: 1
 ---
 
-# Manage users using Admin Console
+# Manage users in Console
 
 ## Browse and search users
 

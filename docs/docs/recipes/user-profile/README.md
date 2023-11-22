@@ -2,9 +2,9 @@
 sidebar_position: 7.1
 ---
 
-# 👤 User Profiles
+# 👤 User profiles
 
-In previous sections, we demonstrated how to manage your users [using Admin Console](/docs/recipes/manage-users/admin-console), or through [management APIs](/docs/recipes/manage-users/management-api). This is a straightforward process for those in the role of administrator. However, it is also important for the regular users to update their profiles on their own.
+In previous sections, we demonstrated how to manage your users [using Console](/docs/recipes/manage-users/admin-console), or through [Management API](/docs/recipes/manage-users/management-api). This is a straightforward process for those in the role of administrator. However, it is also important for the regular users to update their profiles on their own.
 
 To enable this, you will need to create your own profile page with the help of the management APIs.
 

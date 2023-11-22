@@ -1,9 +1,8 @@
 ---
-sidebar_label: Webhook Request
 sidebar_position: 3
 ---
 
-# Webhook Request
+# Webhook request
 
 _Added in v1.5.0_
 

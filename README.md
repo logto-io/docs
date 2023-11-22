@@ -1,1 +1,1 @@
-# Logto Docs
+# Logto docs

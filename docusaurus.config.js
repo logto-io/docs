@@ -45,7 +45,7 @@ const injectPlausiblePlugin = () => ({
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Logto Docs',
+  title: 'Logto docs',
   url: 'https://docs.logto.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',

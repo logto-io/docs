@@ -1,9 +1,9 @@
 ---
-sidebar_label: Configure Webhooks in Console
+sidebar_label: Configure in Console
 sidebar_position: 1
 ---
 
-# Configure Webhooks in Console
+# Configure webhooks in Console
 
 _Added in v1.5.0_
 
