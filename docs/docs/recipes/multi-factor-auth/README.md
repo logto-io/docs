@@ -39,6 +39,6 @@ Logto simplifies the process of enabling MFA by offering a one-click toggle, req
 
 We also provide support for two MFA policies: User-Controlled and Mandatory MFA, with Adaptive MFA on the horizon. Learn more about configuring these policies in our guide on [Setting MFA Policies](./config-mfa).
 
-Additionally, you have the flexibility to customize your User Account Settings and Profile pages through our [Management API](/docs/tutorials/get-started/explore-management-api). This functionality includes the ability to manage the Authenticator app OTP and Backup codes, with WebAuthn support coming soon.
+Additionally, you have the flexibility to customize your User Account Settings and Profile pages through our [Management API](/docs/recipes/interact-with-management-api/). This functionality includes the ability to manage the Authenticator app OTP and Backup codes, with WebAuthn support coming soon.
 
 Learn more about the usage and user flow for each verification factor, including [Authenticator app OTP](./authenticator-app-otp), [WebAuthn (Passkey)](./webauthn), and [Backup codes](./backup-code) in our dedicated resources.

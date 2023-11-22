@@ -21,10 +21,10 @@ To configure your MFA in the Logto Console, follow these steps:
 3. **Select a 2-step verification policy** after enabling factors. There are two choices:
    1. **User-controlled MFA**: Users can enable or disable MFA on their own.
       - After saving changes, during new users’ sign-up or old users’ first sign-in, users can choose to set up MFA voluntarily or skip it, and this set-up flow will only occur once per user.
-      - Or the user can enable/disable it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/tutorials/get-started/explore-management-api).
+      - Or the user can enable/disable it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/recipes/interact-with-management-api/).
    2. **Mandatory MFA**: Users are always required to use MFA at sign-in.
       - Users must set up MFA the first time at sign-in or sign-up, and use it for all future sign-ins.
-      - Users can also change it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/tutorials/get-started/explore-management-api).
+      - Users can also change it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/recipes/interact-with-management-api/).
 
 ![Config MFA](./assets/config-mfa.webp)
 
