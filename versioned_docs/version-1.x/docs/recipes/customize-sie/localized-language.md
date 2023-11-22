@@ -1,6 +1,6 @@
 ---
 sidebar_label: Localized language
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Localized language
@@ -45,10 +45,9 @@ Let's see how we did in the following sections.
 
 ## Set your language mode
 
-![SIE others setting language](./assets/sie-setting-languages.png)
+Go to **Sign-in Experience > Others > Language** to configure how language is determined for your sign-in experience.
 
-Go to **Sign-in Experience > Others > Language** to configure your languages.  
-You may have already configured your language mode during the initial launch; for a refresher, see [Get started - Language](/docs/tutorials/get-started/customize-sign-in-experience.mdx#language).
+![SIE others setting language](./assets/sie-setting-languages.png)
 
 ## Customize the existing language
 

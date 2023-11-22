@@ -13,7 +13,7 @@ Backup code, also known as Recovery code, is a one-time use code for MFA, acting
 
 Losing them can lead to account recovery challenges. Therefore, it's recommended to set up an additional primary factor before enabling Backup Codes, giving it priority.
 
-Logto automatically generates 10 Backup Codes for users once they configure an additional factor. Each code is single-use. Users are advised to regenerate a new set of codes in the User Account Settings (accessible through the [Management API](/docs/tutorials/get-started/explore-management-api)) before using up all the existing codes.
+Logto automatically generates 10 Backup Codes for users once they configure an additional factor. Each code is single-use. Users are advised to regenerate a new set of codes in the User Account Settings (accessible through the [Management API](/docs/recipes/interact-with-management-api/)) before using up all the existing codes.
 
 ## Auth flows
 
