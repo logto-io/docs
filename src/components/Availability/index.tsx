@@ -25,10 +25,10 @@ const getDisplayText = (status: boolean | ComingSoon | MinorVersion) => {
   }
 
   if (typeof status === 'boolean') {
-    return status ? 'Yes-green' : 'N/A-gray';
+    return status ? '✓ available-4EA254' : 'not applicable-78767F';
   }
 
-  return `v${status.major}.${status.minor}-green`;
+  return `since v${status.major}.${status.minor}-4EA254`;
 };
 
 /**
@@ -38,18 +38,11 @@ const getDisplayText = (status: boolean | ComingSoon | MinorVersion) => {
 const Availability = ({ cloud, oss }: Props) => {
   return (
     <div className={styles.availability}>
-      {cloud && (
-        <img
-          alt="Cloud availability"
-          src={`https://img.shields.io/badge/Cloud-${getDisplayText(cloud)}`}
-        />
-      )}
-      {oss && (
-        <img
-          alt="OSS availability"
-          src={`https://img.shields.io/badge/OSS-${getDisplayText(oss)}`}
-        />
-      )}
+      <img
+        alt="Cloud availability"
+        src={`https://img.shields.io/badge/Cloud-${getDisplayText(cloud)}`}
+      />
+      <img alt="OSS availability" src={`https://img.shields.io/badge/OSS-${getDisplayText(oss)}`} />
     </div>
   );
 };
