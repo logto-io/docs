@@ -19,6 +19,10 @@ Extract the signature from the `logto-signature-sha-256` header of the webhook r
 
 After that, you should generate a signature using your signing key, and the webhook request body and ensure that the result matches the signature from Logto.
 
+:::note
+Use the raw body of the webhook request for signature generation; avoid using the parsed body, as servers may preprocess it before reaching your webhook endpoint handler.
+:::
+
 Logto uses an HMAC hex digest to compute the signature.
 
 Here's an example of how to verify the signature in Node.js:
