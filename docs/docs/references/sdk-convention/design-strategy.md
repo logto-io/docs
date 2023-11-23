@@ -2,7 +2,7 @@
 sidebar_position: 1.1
 ---
 
-# Design Strategy
+# Design strategy
 
 - Every programming language should have an isolated git repository named `${language}`.
 - Each programming language repository should be a mono repo.

@@ -1,5 +1,4 @@
 ---
-sidebar_label: Advanced User Search
 sidebar_position: 3
 ---
 

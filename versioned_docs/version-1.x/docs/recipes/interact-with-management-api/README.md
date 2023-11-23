@@ -4,7 +4,7 @@ sidebar_position: 6
 
 # 🚝 Interact with Management API
 
-## What is Logto management API
+## What is Logto Management API
 
 The Logto Management API is a comprehensive collection of APIs that empower administrators to manage identity-related tasks, enforce security policies, and comply with regulations and standards.
 

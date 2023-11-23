@@ -1,9 +1,9 @@
 ---
-sidebar_label: Management API
+sidebar_label: Configure via Management API
 sidebar_position: 2
 ---
 
-# Manage webhooks using Management API
+# Configure webhooks via Management API
 
 _Added in v1.5.0_
 
