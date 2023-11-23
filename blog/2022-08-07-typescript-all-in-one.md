@@ -79,7 +79,7 @@ Since we are embracing the JavaScript ecosystem and using TypeScript as our main
 
 ### How about schemas?
 
-Something is still missing here: database system and schema <-> TypeScript definition mapping.
+Something is still missing here: database system and schema &lt;-&gt; TypeScript definition mapping.
 
 #### General v.s. opinionated
 
@@ -99,7 +99,7 @@ In conclusion, I decided to stick with Postgres and [Slonik](https://github.com/
 
 > …the benefit of allowing user to choose between the different database dialects is marginal and the overhead of developing for multiple databases at once is significant.
 
-#### SQL <-> TypeScript
+#### SQL &lt;-&gt; TypeScript
 
 Another advantage of writing SQL is we can easily use it as the single source of truth of TypeScript definitions. I wrote a [code generator](https://github.com/logto-io/logto/tree/af7e6ccd83723d623555dafa4650e115fa795838/packages/schemas/src/gen) to transpile SQL schemas to TypeScript code that we’ll use in our backend, and the result looks not bad:
 

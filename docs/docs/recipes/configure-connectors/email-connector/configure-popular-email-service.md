@@ -46,7 +46,7 @@ Notice that:
 
 - Logto provides four different templates for customizing Email content, which are categorized based on their usage type: Register, SignIn, ForgotPassword, and Generic. It is highly recommended that you use different templates for various use cases, or it could trigger flow control, leading to a temporary outage of your service.
 - The verification code is valid for 10 minutes by default.
-- The verification code number sent to users uses the variate of {{code}}.
+- The verification code number sent to users uses the variate of `{{code}}`.
 
 | Usage          | Scenario                                                                                                                                                                |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
