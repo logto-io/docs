@@ -14,7 +14,7 @@ To configure your MFA in the Logto Console, follow these steps:
       - [Authenticator App OTP](../authenticator-app-otp): This is the most common and widely accepted method.
       - [WebAuthn (Passkeys)](../webauthn): A high-security option suitable for web products supporting device biometrics or security keys, etc., ensuring robust protection.
    2. **Backup factors**
-      - [Backup codes](../backup-code): This serves as a backup option when users can't verify any of the primary factors mentioned above. Enabling this option reduces friction for users' access successfully.
+      - [Backup codes](../backup-codes): This serves as a backup option when users can't verify any of the primary factors mentioned above. Enabling this option reduces friction for users' access successfully.
 3. **Select a 2-step verification policy** after enabling factors. There are two choices:
    1. **User-controlled MFA**: Users can enable or disable MFA on their own.
       - After saving changes, during new users’ sign-up or old users’ first sign-in, users can choose to set up MFA voluntarily or skip it, and this set-up flow will only occur once per user.
@@ -23,7 +23,7 @@ To configure your MFA in the Logto Console, follow these steps:
       - Users must set up MFA the first time at sign-in or sign-up, and use it for all future sign-ins.
       - Users can also change it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/recipes/interact-with-management-api/).
 
-![Config MFA](./assets/config-mfa.webp)
+![Configure MFA](./assets/configure-mfa.webp)
 
 ## Universal authentication flows for MFA
 

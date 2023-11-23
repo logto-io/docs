@@ -16,8 +16,8 @@ Logto automatically generates 10 Backup Codes for users once they configure an a
 
 - **Setup flows**
 
-![Backup codes set up flow](./assets/backup-code-set-up-flow.webp)
+![Backup codes set up flow](./assets/backup-codes-set-up-flow.webp)
 
 - **Verification flow**
 
-![Backup codes verification flow](./assets/backup-code-verification-flow.webp)
+![Backup codes verification flow](./assets/backup-codes-verification-flow.webp)
