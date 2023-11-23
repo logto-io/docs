@@ -28,7 +28,7 @@ To add a new standard connector in Logto Console, navigate to “**Connector > S
 
 When customizing a standard connector, you will need to configure more general settings, such as the social sign-in button name and logo, and the IdP name.
 
-1. **Name for social sign-in button**: The name of the connector button will be displayed as "Continue with {{name}}." Be mindful of the naming length in case it gets too long.
+1. **Name for social sign-in button**: The name of the connector button will be displayed as "Continue with &#123;&#123;name&#125;&#125;." Be mindful of the naming length in case it gets too long.
 2. **Logo for social sign-in button**: Logto also supports adding different logo images for light and dark modes, with the dark mode logo taking effect after enabling Dark Mode in the Sign-in Experience tab of the Console.
 3. **Identity provider (IdP) name**: IdP name is a unique identifier for each social connector and cannot be changed after it's built.
    1. When configuring a new Standard connector with a new Identity Provider, you just need to enter a unique "IdP name" that hasn't been used before. This will allow you to distinguish the new social connector from others that have been created.
