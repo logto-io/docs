@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[65562],{43177:function(o){o.exports=JSON.parse('{"label":"facebook","permalink":"/tutorial/tags/facebook","allTagsPath":"/tutorial/tags","count":8}')}}]);
