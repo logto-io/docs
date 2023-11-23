@@ -3,9 +3,11 @@ sidebar_label: Configure via Management API
 sidebar_position: 2
 ---
 
+import Availability from '@components/Availability';
+
 # Configure webhooks via Management API
 
-_Added in v1.5.0_
+<Availability cloud oss={{ major: 1, minor: 5 }} />
 
 Logto supports managing web hooks via Management API. See [🚝 Interact with Management API](/docs/recipes/interact-with-management-api/) for detailed instructions.
 

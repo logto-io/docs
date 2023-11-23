@@ -2,9 +2,11 @@
 sidebar_position: 7.3
 ---
 
+import Availability from '@components/Availability';
+
 # 🪝 Webhooks
 
-_Added in v1.5.0_
+<Availability cloud oss={{ major: 1, minor: 5 }} />
 
 Logto Webhook enables you to effortlessly receive real-time updates regarding specific events, such as user registration, sign-in, or password reset. You no longer need to continuously poll for updates.
 
