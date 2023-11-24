@@ -1,9 +1,8 @@
 ---
-sidebar_label: Configure popular social connector
 sidebar_position: 1
 ---
 
-# Configure popular social connector
+# Configure popular social connectors
 
 We have provided lots of universal third-party social platforms preinstalled by Logto Console.
 

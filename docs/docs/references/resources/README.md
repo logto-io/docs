@@ -40,7 +40,7 @@ By default, this API Resource is pre-registered to your Logto service. All the m
 
 ### Default API
 
-Logto leverages [RFC 8707: Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707) to implement Role-Based Access Control (RBAC). While it is one of the features of OAuth 2.0, it is not yet widely supported.
+Logto leverages [RFC 8707: Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707) to implement Role-based access control (RBAC). While it is one of the features of OAuth 2.0, it is not yet widely supported.
 
 In Logto's implementation, every user-defined permission (scope) must be associated with an API Resource. Otherwise, it will be treated as an OpenID Connect (or OAuth) permission. Generally, this doesn't affect your authorization process. However, when integrating with third-party apps that lack support for RFC 8707 (e.g., ChatGPT plugins), it can pose challenges since the initial authorization request may not include a `resource` parameter. Consequently, Logto will always issue Opaque Access Tokens.
 
@@ -52,9 +52,9 @@ To address this issue, you can designate an API Resource as the tenant-level def
 
 By designating a default API Resource, you can ensure smooth integration with apps lacking RFC 8707 support while maintaining the appropriate access controls.
 
-### Permissions and Role-Based Access Control
+### Permissions and Role-based access control
 
-See [🔐 Role-Based Access Control (RBAC)](/docs/recipes/rbac) for details.
+See [🔐 Role-based access control (RBAC)](/docs/recipes/rbac) for details.
 
 ## How does it work
 

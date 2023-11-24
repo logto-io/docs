@@ -1,9 +1,8 @@
 ---
-sidebar_label: Custom social connector with standard protocol
 sidebar_position: 2
 ---
 
-# Custom Social Connector with Standard Protocols
+# Custom social connector with standard protocols
 
 Logto supports standard connectors such as OAuth2.0, OIDC, and SAML, which are widely used for authentication and authorization in many applications and services. With these standard protocols, you can easily configure your specific social connectors to connect external identity providers.
 
@@ -39,6 +38,6 @@ When customizing a standard connector, you will need to configure more general s
 
 ![Configure OIDC connector](../assets/configure-oidc-connector.png)
 
-## Related Readings
+## Related readings
 
 - See [Configure sign-in method](../../customize-sie/configure-sign-in-methods.mdx) by adding connectors to bring your social connector into use.

@@ -1,5 +1,4 @@
 ---
-sidebar_label: Enable social sign-in
 sidebar_position: 3
 ---
 

@@ -52,7 +52,7 @@ The other role today is the General Availability version of [Logto OSS](https://
 
 - A brand new end-user Sign-In Experience with superior customizability on sign-in and sign-up flows.
 - 10+ new connectors, including multiple open-standard connectors, such as OAuth 2.0 and SAML.
-- Role-Based Access Control that conforms to the NIST model.
+- Role-based access control that conforms to the NIST model.
 - Fully customizable translations with 8 languages built-in.
 - Machine-to-Machine apps and Web Hooks for building programmatic connections between Logto and your services.
 
