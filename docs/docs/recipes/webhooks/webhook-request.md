@@ -2,9 +2,11 @@
 sidebar_position: 3
 ---
 
+import Availability from '@components/Availability';
+
 # Webhook request
 
-_Added in v1.5.0_
+<Availability cloud oss={{ major: 1, minor: 5 }} />
 
 Once a valid hook event is emitted, Logto will find corresponding webhooks and send a POST request per hook config.
 

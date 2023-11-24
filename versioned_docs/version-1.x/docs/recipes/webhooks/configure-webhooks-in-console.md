@@ -3,9 +3,11 @@ sidebar_label: Configure in Console
 sidebar_position: 1
 ---
 
+import Availability from '@components/Availability';
+
 # Configure webhooks in Console
 
-_Added in v1.5.0_
+<Availability cloud oss={{ major: 1, minor: 5 }} />
 
 Configure webhooks in Logto Console to achieve seamless integration and receive real-time event notifications for your application. Enjoy easy configuration, enhanced security, and convenient health monitoring options.
 

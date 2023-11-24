@@ -2,9 +2,11 @@
 sidebar_position: 11
 ---
 
+import Availability from '@components/Availability';
+
 # 🗄️ Enable central cache
 
-_Added in v1.2.0_
+<Availability cloud oss={{ major: 1, minor: 2 }} />
 
 Logto supports using Redis®[^1] as a central cache for well-known data. By using a central cache, Logto can significantly speed up the end-user experience by reducing the number of database queries needed to generate a response.
 

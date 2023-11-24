@@ -1,11 +1,8 @@
 ---
-sidebar_label: Authenticator app OTP
 sidebar_position: 2
 ---
 
 # Authenticator app OTP
-
-_Added in v1.11.0_
 
 ## Concepts
 

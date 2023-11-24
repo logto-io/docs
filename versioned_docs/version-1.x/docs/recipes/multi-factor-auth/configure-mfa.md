@@ -1,11 +1,8 @@
 ---
-sidebar_label: Config MFA
 sidebar_position: 1
 ---
 
 # Configure MFA
-
-_Added in v1.11.0_
 
 ## Configure MFA in Logto
 
@@ -15,9 +12,9 @@ To configure your MFA in the Logto Console, follow these steps:
 2. **Enable the Factors for 2-step verification** available for users. You have the following options:
    1. **Primary factors**
       - [Authenticator App OTP](../authenticator-app-otp): This is the most common and widely accepted method.
-      - [WebAuthn (Passkey)](../webauthn): A high-security option suitable for web products supporting device biometrics or security keys, etc., ensuring robust protection.
+      - [WebAuthn (Passkeys)](../webauthn): A high-security option suitable for web products supporting device biometrics or security keys, etc., ensuring robust protection.
    2. **Backup factors**
-      - [Backup code](../backup-code): This serves as a backup option when users can't verify any of the primary factors mentioned above. Enabling this option reduces friction for users' access successfully.
+      - [Backup codes](../backup-codes): This serves as a backup option when users can't verify any of the primary factors mentioned above. Enabling this option reduces friction for users' access successfully.
 3. **Select a 2-step verification policy** after enabling factors. There are two choices:
    1. **User-controlled MFA**: Users can enable or disable MFA on their own.
       - After saving changes, during new users’ sign-up or old users’ first sign-in, users can choose to set up MFA voluntarily or skip it, and this set-up flow will only occur once per user.
@@ -26,7 +23,7 @@ To configure your MFA in the Logto Console, follow these steps:
       - Users must set up MFA the first time at sign-in or sign-up, and use it for all future sign-ins.
       - Users can also change it in the User Account Settings of your apps which can be integrated by Logto [Management API](/docs/recipes/interact-with-management-api/).
 
-![Config MFA](./assets/config-mfa.webp)
+![Configure MFA](./assets/configure-mfa.webp)
 
 ## Universal authentication flows for MFA
 
@@ -34,7 +31,7 @@ When MFA is enabled, the second-step verification flow will typically operate af
 
 ### MFA set-up flows
 
-1. Users will set up the primary factors (Authenticator app OTP or Passkey) after registering or signing in with the first factor.
+1. Users will set up the primary factors (Authenticator app OTP or Passkeys) after registering or signing in with the first factor.
    - If multiple primary factors are provided, users need to select their preferred primary factor and set it up.
    - If only a single primary factor is provided, users will be asked to set it up directly.
 2. Users can save backup codes if this option is enabled.
