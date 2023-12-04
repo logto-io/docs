@@ -48,12 +48,12 @@ Notice that:
 - The verification code is valid for 10 minutes by default.
 - The verification code number sent to users uses the variate of `{{code}}`.
 
-| Usage          | Scenario                                                                                                                                                                |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Register       | Users create an account using their phone number and verify by entering the verification code.                                                                          |
-| SignIn         | Users sign in using their phone number and verify by entering verification code instead of entering a password.                                                         |
-| ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their phone number.                                                       |
-| Generic        | This template can be used as a generic backup option for various scenarios, including linking a phone number to an existing account or testing connector configuration… |
+| Usage          | Scenario                                                                                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register       | Users create an account using their email and verify by entering the verification code.                                                                           |
+| SignIn         | Users sign in using their email and verify by entering verification code instead of entering a password.                                                          |
+| ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their email.                                                        |
+| Generic        | This template can be used as a generic backup option for various scenarios, including linking an email to an existing account or testing connector configuration… |
 
 There is a template example just for reference:
 
