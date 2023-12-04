@@ -2,7 +2,11 @@
 sidebar_position: 7.1
 ---
 
+import Availability from '@components/Availability';
+
 # ☁️ Enterprise SSO (SAML & OIDC)
+
+<Availability cloud oss="comingSoon" />
 
 Single Sign-On (SSO) streamlines authentication for B2B services, especially for today's SaaS platforms, allowing enterprise clients to manage member access via their chosen identity providers. Logto enhances your service with SP-initiated SSO, facilitating connections with a wide range of identity providers using SAML and OIDC protocols, including Okta, Azure AD, Google Workspace, and more.
 
