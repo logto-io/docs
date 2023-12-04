@@ -9,13 +9,13 @@ Logto continually enhances the user sign-in experience and has added a brand col
 
 ## Custom CSS in Logto Console
 
-Go to "Sign-in Experience > Brand > Custom CSS in the Logto Console.
+Go to "Sign-in Experience > Branding > Custom CSS" in the Logto Console.
 
 Editing CSS code in the left editor, it will render lively in the right preview modal immediately. Please note, the code editor only supports the CSS code so far. Not HTML or Javascript.
 
 After saving changes, don’t forget to click the “Live Preview” button to check the changes on all pages.
 
-To view the componentized interface design for Logto, you can either navigate to "Logto/packages/ui/src" on GitHub or open the browser’s "Inspect Elements" tool on the Logto Live preview page.
+To view the componentized interface design for Logto, you can either navigate to [Logto/packages/experience/src](https://github.com/logto-io/logto/tree/master/packages/experience/src) on GitHub or open the browser’s "Inspect Elements" tool on the Logto Live preview page.
 
 ## Examples
 
