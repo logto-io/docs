@@ -26,13 +26,13 @@ A guarded request with an authorization token provided will help you protect you
 
 In practice, a client may know a base URI or the application or resource to interact with. It would be appropriate to use it as the value of the resource parameter.
 
-E.g., Logto management API base URI.
+E.g., Logto Management API base URI.
 
 ```
 https://tenantId.logto.app/api
 ```
 
-By default, this API Resource is pre-registered to your Logto service. All the management APIs under this URI are protected by Logto.
+By default, this API Resource is pre-registered to your Logto service. All the Management APIs under this URI are protected by Logto.
 
 ### Logto API Resource Schema
 

@@ -24,7 +24,7 @@ Click the "Connectors" button on the sidebar :neutral_face:
 
 This is where you can add, delete or update connectors' configurations as you wish!
 
-_Connectors_ can be classified into three types: _SMS Connector_, _Email Connector_ and _Social Connector_. See [connector reference](../../references/connectors/README.mdx) for more details about connector type.
+_Connectors_ can be classified into three types: _SMS connector_, _email connector_ and _social connector_. See [connector reference](../../references/connectors/README.mdx) for more details about connector type.
 
 You can continue setting up _Email connector_ or _SMS connector_, and you need to go to "Social connectors" tab before adding _Social connector_.
 

@@ -8,7 +8,7 @@ sidebar_position: 6
 
 The Logto Management API is a comprehensive collection of APIs that empower administrators to manage identity-related tasks, enforce security policies, and comply with regulations and standards.
 
-With the Logto management API, you can access Logto's robust backend services, which are highly scalable and can be utilized in a multitude of scenarios. It goes beyond what's possible with the Admin Console's low-code capabilities.
+With the Logto Management API, you can access Logto's robust backend services, which are highly scalable and can be utilized in a multitude of scenarios. It goes beyond what's possible with the Admin Console's low-code capabilities.
 
 Some frequently used APIs are listed below:
 
@@ -21,11 +21,11 @@ Some frequently used APIs are listed below:
 
 To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
-Wondering what you can do with the Logto Management API? Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the management API.
+Wondering what you can do with the Logto Management API? Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the Management API.
 
 ## Some typical scenarios
 
-Our management API can be leveraged in several scenarios. For instance,
+Our Management API can be leveraged in several scenarios. For instance,
 
 ### Implement user profile on your own
 
@@ -35,9 +35,9 @@ Check out [User Profile](../user-profile/README.md) for more information.
 
 ### Advanced user search
 
-You can certainly use Logto's user management feature in the console for some tasks, our management API offers additional functions that support more advanced user search scenarios. Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
+You can certainly use Logto's user management feature in the console for some tasks, our Management API offers additional functions that support more advanced user search scenarios. Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
 
-Our developers have implemented many additional features using our management API. We believe that our API is highly scalable and can support a wide range of your needs. Additionally, we have continued distilling some use cases and incorporated them into our low-code platform to boost productivity and enhance the developer experience.
+Our developers have implemented many additional features using our Management API. We believe that our API is highly scalable and can support a wide range of your needs. Additionally, we have continued distilling some use cases and incorporated them into our low-code platform to boost productivity and enhance the developer experience.
 
 ## How to?
 

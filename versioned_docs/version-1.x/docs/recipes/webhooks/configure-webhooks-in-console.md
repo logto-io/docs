@@ -12,7 +12,7 @@ import Availability from '@components/Availability';
 Configure webhooks in Logto Console to achieve seamless integration and receive real-time event notifications for your application. Enjoy easy configuration, enhanced security, and convenient health monitoring options.
 
 :::tip
-Alternatively, you also can choose [management API](./management-api.md) to build a webhook.
+Alternatively, you also can choose [Management API](./management-api.md) to build a webhook.
 :::
 
 ## Create a webhook
