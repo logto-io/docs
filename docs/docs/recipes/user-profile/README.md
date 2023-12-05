@@ -6,13 +6,13 @@ sidebar_position: 7.1
 
 In previous sections, we demonstrated how to manage your users [using Console](/docs/recipes/manage-users/admin-console), or through [Management API](/docs/recipes/manage-users/management-api). This is a straightforward process for those in the role of administrator. However, it is also important for the regular users to update their profiles on their own.
 
-To enable this, you will need to create your own profile page with the help of the management APIs.
+To enable this, you will need to create your own profile page with the help of the Management APIs.
 
 ## Get Started
 
 :::tip
 
-- In order to call Logto management APIs, a backend service is required for your app.
+- In order to call Logto Management APIs, a backend service is required for your app.
 - Make sure your backend service has acquired a pair of API key and API secret through the [machine-to-machine](/docs/recipes/integrate-logto/machine-to-machine) process.
 
 :::
@@ -80,7 +80,7 @@ It is always recommended to fetch the profile data in prior, and pre-fill the fo
 - SDK function `getIdTokenClaims` to decode basic user claims cached in ID Token on client side
 - SDK function `fetchUserInfo` to fetch user data from Logto service
 
-Alternatively, you can also call the management API `GET /api/users/:userId` from your backend service, through the M2M mechanism.
+Alternatively, you can also call the Management API `GET /api/users/:userId` from your backend service, through the M2M mechanism.
 
 ### Submit profile data
 
@@ -119,7 +119,7 @@ In order to do this, you only have to:
 - Configure an email or phone connector in Admin Console
 - Make sure to add a message template with `Generic` usage type in the config of the above connector
 
-Then, from your backend service, you can call the following Logto management APIs to send and validate the code:
+Then, from your backend service, you can call the following Logto Management APIs to send and validate the code:
 
 - `POST /api/verification-code` to send verification code to a given email or phone
 - `POST /api/verification-code/verify` to verify the code against a given email or phone

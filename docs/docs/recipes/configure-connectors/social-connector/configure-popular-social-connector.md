@@ -28,7 +28,7 @@ Choose a proper _platform_ from either _Web_ or _Native_ for connectors to fit y
 
 ## Configure steps
 
-To add a new Social connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add Social Connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button.
+To add a new Social connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add social connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button.
 
 Note that **each type of common social connector can only create one instance** in a Logto tenant.
 

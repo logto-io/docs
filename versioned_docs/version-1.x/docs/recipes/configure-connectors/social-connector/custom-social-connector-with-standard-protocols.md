@@ -19,7 +19,7 @@ Our standard connectors can meet most custom requirements, but if you need a spe
 
 ## Configure steps
 
-To add a new standard connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add Social Connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button.
+To add a new standard connector in Logto Console, navigate to “**Connector > Social connectors**” and click the “**Add social connector**” button. Then Select the desired social connector type in the Modal that appears and click the “**Next**” button.
 
 **Each standard connector can create multiple social connectors!**
 

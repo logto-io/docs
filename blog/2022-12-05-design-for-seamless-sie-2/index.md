@@ -72,9 +72,9 @@ This framework allows developers to combine and categorize components based on t
 
 ![Authentication factors](auth-factors.jpg)
 
-##### Social Connector
+##### Social connector
 
-![Social Connector](social-connector.jpg)
+![Social connector](social-connector.jpg)
 
 ##### Personal information
 

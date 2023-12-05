@@ -28,7 +28,7 @@ In the configuration process, follow the steps below:
 If you wish to change the current SMS connector, simply access the connector details page and click the “Change connector” button of the “More” menu in the top-right corner. Or you can delete the old connector first, then add a new SMS connector.
 
 :::note
-You can bring ONLY ONE _SMS Connector_ alive.
+You can bring ONLY ONE _SMS connector_ alive.
 
 If you change the living SMS connector and save changes, the previous SMS connector will be disabled automatically. Also, the _config_ of past connectors will lose track. You may keep the old connectors' _config_ properly if you want to switch back to those connectors in the future.
 :::
