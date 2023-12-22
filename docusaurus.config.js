@@ -162,7 +162,7 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java', 'php'],
+        additionalLanguages: ['swift', 'kotlin', 'groovy', 'java', 'php', 'json', 'bash'],
       },
       colorMode: {
         respectPrefersColorScheme: true,
