@@ -2,7 +2,7 @@
 
 During the authentication process, if no resource is specified, Logto will issue an opaque access token instead of a JWT. The opaque token is a random string and it's much shorter than a JWT:
 
-```jsonc
+```json
 {
   "access_token": "some-random-string", // opaque token
   "expires_in": 3600,
@@ -29,7 +29,7 @@ The client ID (app ID) and client secret (app secret) can be the app credentials
 
 The introspection endpoint returns a JSON object with the claims of the token:
 
-```jsonc
+```json
 {
   "active": true, // whether the token is valid or not
   "sub": "1234567890" // the subject of the token (the user ID)
