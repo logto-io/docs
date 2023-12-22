@@ -1,8 +1,4 @@
----
-sidebar_position: 12
----
-
-# 🔑 Signing keys
+# Signing keys
 
 ## What are signing keys in Logto?
 
