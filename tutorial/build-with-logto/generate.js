@@ -21,23 +21,65 @@ const fs = require('fs/promises');
 
 /**
  * SDKs to read. You should keep the name in original cases such as "React" to provide a better reading experience.
- * 
+ *
  * @type Array<{ name: string; language: string; officialLink: string; appType: string; }>
  */
 const sdks = [
-  { name: 'React', language: 'js', officialLink: 'https://reactjs.org/', appType: 'Single Page App' },
-  { name: 'Vanilla JS', language: 'js', officialLink: 'https://en.wikipedia.org/wiki/ECMAScript', appType: 'Single Page App' },
-  { name: 'iOS Swift', language: 'swift', officialLink: 'https://developer.apple.com/ios/ ', appType: 'Native App' },
+  {
+    name: 'React',
+    language: 'js',
+    officialLink: 'https://reactjs.org/',
+    appType: 'Single Page App',
+    framework: 'React',
+  },
+  {
+    name: 'Vanilla JS',
+    language: 'js',
+    officialLink: 'https://en.wikipedia.org/wiki/ECMAScript',
+    appType: 'Single Page App',
+    framework: 'Vanilla JS',
+  },
+  {
+    name: 'iOS Swift',
+    language: 'swift',
+    officialLink: 'https://developer.apple.com/ios/ ',
+    appType: 'Native App',
+    framework: 'iOS(Swift)',
+  },
   { name: 'Go', language: 'go', officialLink: 'https://go.dev/', appType: 'Traditional Web' },
-  { name: 'Android', language: 'kotlin/java', officialLink: 'https://developer.android.com/', appType: 'Native App' },
-  { name: 'Flutter', language: 'dart', officialLink: 'https://flutter.dev/', appType: 'Native App' },
-  { name: 'Next', language: 'js', officialLink: 'https://nextjs.org/', appType: 'Traditional Web' },
-  { name: 'Express', language: 'js', officialLink: 'https://expressjs.com/', appType: 'Traditional Web' },
+  {
+    name: 'Android',
+    language: 'kotlin/java',
+    officialLink: 'https://developer.android.com/',
+    appType: 'Native App',
+    framework: 'Android(kotlin) or Android(Java)',
+  },
+  {
+    name: 'Flutter',
+    language: 'dart',
+    officialLink: 'https://flutter.dev/',
+    appType: 'Native App',
+    framework: 'Flutter',
+  },
+  {
+    name: 'Next',
+    language: 'js',
+    officialLink: 'https://nextjs.org/',
+    appType: 'Traditional Web',
+    framework: 'Next.js',
+  },
+  {
+    name: 'Express',
+    language: 'js',
+    officialLink: 'https://expressjs.com/',
+    appType: 'Traditional Web',
+    framework: 'Express',
+  },
 ];
 
 /**
  * Connector names to read. You should keep the name in original cases such as "GitHub" to provide a better reading experience.
- * 
+ *
  * * @type Array<{ name: string; configName: string; }>
  */
 const socialConnectors = [
@@ -59,33 +101,39 @@ const emailConnectors = [
   { name: 'SendGrid', configName: 'SendGrid email connector' },
 ];
 
-const smsConnectors = [
-  { name: 'Twilio', configName: 'Twilio SMS connector' },
-];
+const smsConnectors = [{ name: 'Twilio', configName: 'Twilio SMS connector' }];
 
 const generator = async (sdks, connectors, template, type) => {
-  await Promise.all(sdks.flatMap((sdk) => connectors.map(async (connector) => {
-    const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
-    const sdkPath = sdk.name.replaceAll(' ', '-').toLowerCase();
+  await Promise.all(
+    sdks.flatMap((sdk) =>
+      connectors.map(async (connector) => {
+        const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
+        const sdkPath = sdk.name.replaceAll(' ', '-').toLowerCase();
 
-    const post = template
-      .replaceAll('${connector}', connector.name)
-      .replaceAll('${connectorPath}', connectorPath)
-      .replaceAll('${connectorConfigName}', connector.configName)
-      .replaceAll('${connectorType}', type)
-      .replaceAll('${passwordlessSignUpIdentifier}', type === 'Email' ? 'Email address' : 'Phone number')
-      .replaceAll('${sdk}', sdk.name)
-      .replaceAll('${sdkPath}', sdkPath)
-      .replaceAll('${sdkOfficialLink}', sdk.officialLink)
-      .replaceAll('${language}', sdk.language)
-      .replaceAll('${appType}', sdk.appType);
+        const post = template
+          .replaceAll('${connector}', connector.name)
+          .replaceAll('${connectorPath}', connectorPath)
+          .replaceAll('${connectorConfigName}', connector.configName)
+          .replaceAll('${connectorType}', type)
+          .replaceAll(
+            '${passwordlessSignUpIdentifier}',
+            type === 'Email' ? 'Email address' : 'Phone number'
+          )
+          .replaceAll('${sdk}', sdk.name)
+          .replaceAll('${sdkPath}', sdkPath)
+          .replaceAll('${sdkOfficialLink}', sdk.officialLink)
+          .replaceAll('${language}', sdk.language)
+          .replaceAll('${appType}', sdk.appType)
+          .replaceAll('${framework}', sdk.framework);
 
-    const filename = `generated-${sdkPath}-${connectorPath}.mdx`;
+        const filename = `generated-${sdkPath}-${connectorPath}.mdx`;
 
-    await fs.writeFile(filename, post, 'utf8');
+        await fs.writeFile(filename, post, 'utf8');
 
-    console.log('Generated', filename);
-  })));
+        console.log('Generated', filename);
+      })
+    )
+  );
 };
 
 const run = async () => {
