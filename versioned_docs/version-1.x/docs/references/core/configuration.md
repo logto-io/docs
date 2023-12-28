@@ -31,6 +31,7 @@ In default values, `protocol` will be either `http` or `https` according to your
 | TRUST_PROXY_HEADER      | `false`                              | `boolean`                                                | Ditto.                                                                                                                                                                                                                   |
 | ENDPOINT                | `'protocol://localhost:$PORT'`       | `string`                                                 | You may specify a URL with your custom domain for online testing or production. This will also affect the value of the [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier). |
 | ADMIN_ENDPOINT          | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | You may specify a URL with your custom domain for production (E.g. `ADMIN_ENDPOINT=https://admin.domain.com`). This will also affect the value of Admin Console Redirect URIs.                                           |
+| CASE_SENSITIVE_USERNAME | `false`                              | `boolean`                                                | Specifies whether the username is case-sensitive. Exercise caution when modifying this value; changes will not automatically adjust existing database data, requiring manual management.                                 |
 
 ### Enabling HTTPS
 
