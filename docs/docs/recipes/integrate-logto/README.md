@@ -10,9 +10,9 @@ We provide a bunch of SDKs to let you integrate Logto with your clients with eas
 
 An app that runs in a native environment.
 
-- [iOS](./ios/README.mdx)
-- [Android](./android/README.mdx)
-- [Flutter](./flutter/README.mdx)
+- [iOS](../../../sdk/ios/README.mdx)
+- [Android](../../../sdk/android/README.mdx)
+- [Flutter](../../../sdk/flutter/README.mdx)
 
 Usually, Native apps need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
 
@@ -20,9 +20,9 @@ Usually, Native apps need to talk to an API (resource). Please refer to [Protect
 
 An app that runs in a web browser and dynamically updates data in place.
 
-- [Vanilla JS](./vanilla-js/README.mdx)
-- [React](./react/README.mdx)
-- [Vue](./vue.mdx)
+- [Vanilla JS](../../../sdk/vanilla-js/README.mdx)
+- [React](../../../sdk/react/README.mdx)
+- [Vue](../../../sdk/vue.mdx)
 
 Usually, SPAs need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
 
@@ -30,17 +30,17 @@ Usually, SPAs need to talk to an API (resource). Please refer to [Protect your A
 
 An app that renders and updates pages by the web server alone. E.g., server-side rending.
 
-- [Traditional Web general guide](./traditional.mdx)
-- [Next.js](./next-js.mdx)
-- [Next.js 13 App Router](./next-js-13/README.mdx)
-- [Express](./express/README.mdx)
-- [Go](./go/README.mdx)
+- [Traditional Web general guide](../../../sdk/traditional.mdx)
+- [Next.js](../../../sdk/next-js.mdx)
+- [Next.js 13 App Router](../../../sdk/next-js-13/README.mdx)
+- [Express](../../../sdk/express/README.mdx)
+- [Go](../../../sdk/go/README.mdx)
 
 ## Machine-to-machine
 
 An app (usually without UI) that directly talks to resources.
 
-- [Machine-to-machine](./machine-to-machine.mdx)
+- [Machine-to-machine](../../../sdk/machine-to-machine.mdx)
 
 ## Configuration steps
 
