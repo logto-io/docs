@@ -1,5 +1,5 @@
----
-sidebar_position: 1
----
+# SDK Page Placeholder
 
-# SDK Reference Overview
+<!-- Note: keep this file for compatibility with previous docs version. -->
+
+<!-- Todo: Remove this file when all sdk docs are ready and change the `docId: 'sdk/README'` config to `docId: 'sdk/next-js'` in the `docusaurus.config.js`. -->
