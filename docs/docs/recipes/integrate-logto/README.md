@@ -31,7 +31,7 @@ Usually, SPAs need to talk to an API (resource). Please refer to [Protect your A
 An app that renders and updates pages by the web server alone. E.g., server-side rending.
 
 - [Traditional Web general guide](../../../sdk/traditional.mdx)
-- [Next.js](../../../sdk/next-js.mdx)
+- [Next.js](../../../sdk/next-js/README.mdx)
 - [Next.js 13 App Router](../../../sdk/next-js-13/README.mdx)
 - [Express](../../../sdk/express/README.mdx)
 - [Go](../../../sdk/go/README.mdx)
