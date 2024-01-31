@@ -36,6 +36,7 @@ An app that renders and updates pages by the web server alone. E.g., server-side
 - [Express](../../../sdk/express/README.mdx)
 - [Go](../../../sdk/go/README.mdx)
 - [Python](../../../sdk/python/README.mdx)
+- [PHP](../../../sdk/php/README.mdx)
 
 ## Machine-to-machine
 
