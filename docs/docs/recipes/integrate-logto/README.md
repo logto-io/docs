@@ -35,6 +35,7 @@ An app that renders and updates pages by the web server alone. E.g., server-side
 - [Next.js 13 App Router](../../../sdk/next-js-13/README.mdx)
 - [Express](../../../sdk/express/README.mdx)
 - [Go](../../../sdk/go/README.mdx)
+- [Python](../../../sdk/python/README.mdx)
 
 ## Machine-to-machine
 
