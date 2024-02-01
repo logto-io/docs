@@ -75,6 +75,20 @@ const sdks = [
     appType: 'Traditional Web',
     framework: 'Express',
   },
+  {
+    name: 'Python',
+    language: 'python',
+    officialLink: 'https://www.python.org/',
+    appType: 'Traditional Web',
+    framework: 'Flask',
+  },
+  {
+    name: 'PHP',
+    language: 'php',
+    officialLink: 'https://www.php.net/',
+    appType: 'Traditional Web',
+    framework: 'Laravel',
+  },
 ];
 
 /**
