@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[18410],{56269:function(l){l.exports=JSON.parse('{"label":"login","permalink":"/tutorial/tags/login","allTagsPath":"/tutorial/tags","count":140,"unlisted":false}')}}]);
