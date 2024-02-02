@@ -20,11 +20,10 @@ Then, add the links to your View:
 
 ```html
 <p>Is authenticated: @User.Identity?.IsAuthenticated</p>
-@if (User.Identity?.IsAuthenticated == true)
-{
-  <a asp-controller="Home" asp-action="SignOut">Sign out</a>
+@if (User.Identity?.IsAuthenticated == true) {
+<a asp-controller="Home" asp-action="SignOut">Sign out</a>
 } else {
-  <a asp-controller="Home" asp-action="SignIn">Sign in</a>
+<a asp-controller="Home" asp-action="SignIn">Sign in</a>
 }
 ```
 
