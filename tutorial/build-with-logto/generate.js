@@ -52,7 +52,7 @@ const sdks = [
     language: 'kotlin/java',
     officialLink: 'https://developer.android.com/',
     appType: 'Native app',
-    framework: 'Android(kotlin) or Android(Java)',
+    framework: 'Android (Kotlin) / Android (Java)',
   },
   {
     name: 'Flutter',
@@ -89,6 +89,13 @@ const sdks = [
     appType: 'Traditional web',
     framework: 'Laravel',
   },
+  {
+    name: '.NET Core (MVC)',
+    language: 'c#',
+    officialLink: 'https://dotnet.microsoft.com/apps/aspnet/mvc',
+    appType: 'Traditional web',
+    framework: '.NET Core (MVC)',
+  },
 ];
 
 /**
@@ -122,7 +129,11 @@ const generator = async (sdks, connectors, template, type) => {
     sdks.flatMap((sdk) =>
       connectors.map(async (connector) => {
         const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
-        const sdkPath = sdk.name.replaceAll(' ', '-').toLowerCase();
+        const sdkPath = sdk.name
+          .replaceAll(' ', '-')
+          .replaceAll(/[\(\)]/g, '')
+          .replaceAll(/\./g, 'dot')
+          .toLowerCase();
 
         const post = template
           .replaceAll('${connector}', connector.name)
