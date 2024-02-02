@@ -6,7 +6,7 @@ sidebar_position: 1
 
 We provide a bunch of SDKs to let you integrate Logto with your clients with ease. If the list doesn't cover your desired platform / framework, please file a feature request or contribute a new SDK.
 
-## Native App
+## Native app
 
 An app that runs in a native environment.
 
@@ -26,11 +26,11 @@ An app that runs in a web browser and dynamically updates data in place.
 
 Usually, SPAs need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
 
-## Traditional Web
+## Traditional web
 
 An app that renders and updates pages by the web server alone. E.g., server-side rending.
 
-- [Traditional Web general guide](./traditional.mdx)
+- [Traditional web general guide](./traditional.mdx)
 - [Next.js](./next-js.mdx)
 - [Next.js 13 App Router](./next-js-13/README.mdx)
 - [Express](./express/README.mdx)
