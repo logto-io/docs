@@ -1,4 +1,3 @@
-
 ### Add `AuthorizeView` component
 
 In the Razor pages that require authentication, add the `AuthorizeView` component. Let's assume it's the `Home.razor` page:

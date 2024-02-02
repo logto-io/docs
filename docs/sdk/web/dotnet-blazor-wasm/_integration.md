@@ -46,20 +46,18 @@ There's no need to use the `Microsoft.AspNetCore.Components.WebAssembly.Authenti
 
 Add the following code to the `appsettings.json` file:
 
-{/* eslint-disable prettier/prettier */}
 ```json5
 {
   // ...
-  "IdentityServer": {
-    "Authority": "https://<your-logto-endpoint>/oidc",
-    "ClientId": "<your-logto-app-id>",
-    "PostLogoutRedirectUri": "<your-app-url>",
-    "RedirectUri": "<your-app-url>",
-    "ResponseType": "code",
-    "Scope": "openid profile" // Add more scopes if needed
-  }
+  IdentityServer: {
+    Authority: 'https://<your-logto-endpoint>/oidc',
+    ClientId: '<your-logto-app-id>',
+    PostLogoutRedirectUri: '<your-app-url>',
+    RedirectUri: '<your-app-url>',
+    ResponseType: 'code',
+    Scope: 'openid profile', // Add more scopes if needed
+  },
 }
 ```
-{/* eslint-enable prettier/prettier */}
 
 Remember to add the `RedirectUri` and `PostLogoutRedirectUri` to the list of allowed redirect URIs in the Logto application settings. They are both the URL of your WASM application.
