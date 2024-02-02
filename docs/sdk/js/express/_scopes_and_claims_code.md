@@ -1,6 +1,6 @@
 ```ts
 const config: LogtoExpressConfig = {
   // ...other configs
-  scopes: ['email', 'phone],
+  scopes: ['email', 'phone'],
 };
 ```
