@@ -45,7 +45,7 @@ A search request consists of the following parameter keys:
 - Joint mode: `joint` or `jointMode` (default value `'or'`, available `['or', 'and']`)
 - Is case-sensitive: `isCaseSensitive` (default value `false`)
 
-This API has [pagination](/docs/recipes/manage-users/#using-pagination) enabled.
+This API has [pagination](/docs/recipes/interact-with-management-api#using-pagination) enabled.
 
 Let's go through them via some examples. All search params will be formatted as a constructor of `URLSearchParams`.
 
