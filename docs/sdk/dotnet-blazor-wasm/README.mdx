@@ -1,0 +1,247 @@
+---
+sidebar_label: .NET Core (Blazor WASM)
+---
+
+import ApiResourcesDescription from '../fragments/_api_resources_description.md';
+import AppNote from '../fragments/_app-note.mdx';
+import FurtherReadings from '../fragments/_further-readings.md';
+import ScopeClaimList from '../fragments/_scope-claim-list.md';
+
+# .NET Core: Integrate Logto with Blazor WebAssembly
+
+<AppNote type="Single page app" />
+
+## Get started
+
+### Install the NuGet package
+
+[Blorc.OpenIdConnect](https://github.com/WildGums/Blorc.OpenIdConnect) is a NuGet package that contains all the required code to integrate Logto with your Blazor WebAssembly application.
+
+```bash
+dotnet add package Blorc.OpenIdConnect
+```
+
+### Add script references
+
+Include `Blorc.Core/injector.js` the `index.html` file:
+
+```html
+<head>
+  <!-- ... -->
+  <script src="_content/Blorc.Core/injector.js"></script>
+  <!-- ... -->
+</head>
+```
+
+### Register the services
+
+Add the following code to the `Program.cs` file:
+
+```csharp
+using Blorc.OpenIdConnect;
+using Blorc.Services;
+
+builder.Services.AddBlorcCore();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddBlorcOpenIdConnect(
+    options =>
+    {
+        builder.Configuration.Bind("IdentityServer", options);
+    });
+
+var webAssemblyHost = builder.Build();
+
+await webAssemblyHost
+    .ConfigureDocumentAsync(async documentService =>
+    {
+        await documentService.InjectBlorcCoreJsAsync();
+        await documentService.InjectOpenIdConnectAsync();
+    });
+
+await webAssemblyHost.RunAsync();
+```
+
+:::info
+There's no need to use the `Microsoft.AspNetCore.Components.WebAssembly.Authentication` package. The `Blorc.OpenIdConnect` package will take care of the authentication process.
+:::
+
+### Configure the application
+
+Add the following code to the `appsettings.json` file:
+
+{/* eslint-disable prettier/prettier */}
+```json5
+{
+  // ...
+  "IdentityServer": {
+    "Authority": "https://<your-logto-endpoint>/oidc",
+    "ClientId": "<your-logto-app-id>",
+    "PostLogoutRedirectUri": "<your-app-url>",
+    "RedirectUri": "<your-app-url>",
+    "ResponseType": "code",
+    "Scope": "openid profile" // Add more scopes if needed
+  }
+}
+```
+{/* eslint-enable prettier/prettier */}
+
+Remember to add the `RedirectUri` and `PostLogoutRedirectUri` to the list of allowed redirect URIs in the Logto application settings. They are both the URL of your WASM application.
+
+## Update Razor pages
+
+### Add `AuthorizeView` component
+
+In the Razor pages that require authentication, add the `AuthorizeView` component. Let's assume it's the `Home.razor` page:
+
+```cshtml
+@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        @* Signed in view *@
+        <button @onclick="OnLogoutButtonClickAsync">
+            Sign out
+        </button>
+    </Authorized>
+    <NotAuthorized>
+        @* Unauthenticated view *@
+        <button @onclick="OnLoginButtonClickAsync">
+            Sign in
+        </button>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### Set up authentication
+
+In the `Home.razor.cs` file (create it if it doesn't exist), add the following code:
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Blorc.OpenIdConnect;
+using Microsoft.AspNetCore.Components.Authorization;
+
+[Authorize]
+public partial class Home : ComponentBase
+{
+    [Inject]
+    public required IUserManager UserManager { get; set; }
+
+    public User<Profile>? User { get; set; }
+
+    [CascadingParameter]
+    protected Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await UserManager.GetUserAsync<User<Profile>>(AuthenticationStateTask!);
+    }
+
+    private async Task OnLoginButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignInRedirectAsync();
+    }
+
+    private async Task OnLogoutButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignOutRedirectAsync();
+    }
+}
+```
+
+Once the user is authenticated, the `User` property will be populated with the user information.
+
+### Display user information
+
+Here are some examples of how to display user information in the `Home.razor` page:
+
+```cshtml
+<AuthorizeView>
+    <Authorized>
+        @* Signed in view *@
+        @* ... *@
+        <p>You are signed in as @(@User?.Profile?.Name ?? "(unknown name)").</p>
+    </Authorized>
+    @* ... *@
+</AuthorizeView>
+```
+
+For more properties and claims, check the `User` and `Profile` classes in the `Blorc.OpenIdConnect` package.
+
+## Fetch user information
+
+The above config uses the `openid` and `profile` scopes. These two scopes will inform Logto to return the basic user information in the `id_token` response (you can access the claims `User.Profile`).
+
+- To fetch more information, you can add valid scopes to the `IdentityServer.Scope` property in the `appsettings.json` file.
+- Some scopes require an additional [userinfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) request. To enable this feature, set the `IdentityServer.LoadUserInfo` property to `true` in the `appsettings.json` file.
+
+For example, to fetch the user's email address and custom data, you can use the following configuration:
+
+{/* eslint-disable prettier/prettier */}
+```json5
+{
+  // ...
+  "IdentityServer": {
+    // ...
+    "Scope": "openid profile email custom_data",
+    "LoadUserInfo": true
+  }
+}
+```
+{/* eslint-enable prettier/prettier */}
+
+<ScopeClaimList />
+
+## API resources
+
+<ApiResourcesDescription />
+
+By default, when you access `User?.AccessToken`, you will get an opaque token which has a short length and is not a JWT (JSON Web Token). This token is used to access the userinfo endpoint.
+
+### Add API resource to configuration
+
+In order to get a JWT token that can be used to access an API resource defined in Logto, add the following parameters to the `appsettings.json` file (taking `https://my-api-resource` as an example):
+
+{/* eslint-disable prettier/prettier */}
+```json5
+{
+  // ...
+  "IdentityServer": {
+    // ...
+    "Scope": "openid profile email <your-api-scopes>", // Add your API scopes here
+    "Resource": "https://my-api-resource",
+    "ExtraTokenParams": {
+        "resource": "https://my-api-resource"
+    }
+  }
+}
+```
+{/* eslint-enable prettier/prettier */}
+
+The `Resource` property is used to add the API resource to the auth request. The `ExtraTokenParams` property is used to add the API resource to the token request. Since Logto conforms [RFC 8707](https://tools.ietf.org/html/rfc8707) for API resources, both properties are required.
+
+:::caution
+Since WebAssembly is a client-side application, the token request will only be sent to the server-side once. Due to this nature, `LoadUserInfo` is conflict with fetching access token for API resources.
+:::
+
+### Use access token
+
+Once the user is authenticated, you can access the API resource by using the `User?.AccessToken` property. For example, you can use the `HttpClient` to access the API resource:
+
+```csharp
+using Blorc.OpenIdConnect;
+
+builder.Services
+    .AddHttpClient("MyApiResource", client =>
+    {
+        client.BaseAddress = new Uri("https://my-api-resource");
+    })
+    .AddAccessToken(); // Add access token to the request header
+```
+
+## Further readings
+
+<FurtherReadings />
