@@ -1,5 +1,10 @@
-# SDK Page Placeholder
+---
+sidebar_position: 1
+sidebar_label: Introduction
+---
 
-<!-- Note: keep this file for compatibility with previous docs version. -->
+# Introduction
 
-<!-- Todo: Remove this file when all sdk docs are ready and change the `docId: 'sdk/README'` config to `docId: 'sdk/next-js'` in the `docusaurus.config.js`. -->
+Welcome to Logto SDK documentation. This documentation contains useful guides for integrating Logto into your application.
+
+Most of guides uses Logto official SDKs. Please don't hesitate to contact us if you have any questions.
