@@ -96,6 +96,13 @@ const sdks = [
     appType: 'Traditional web',
     framework: '.NET Core (MVC)',
   },
+  {
+    name: '.NET Core (Razor Pages)',
+    language: 'c#',
+    officialLink: 'https://learn.microsoft.com/aspnet/core/razor-pages/',
+    appType: 'Traditional web',
+    framework: '.NET Core (Razor Pages)',
+  },
 ];
 
 /**
