@@ -11,7 +11,7 @@
 import Link from '@docusaurus/Link';
 import { FooterLinkItem } from '@docusaurus/theme-common';
 import useBaseUrl from '@docusaurus/useBaseUrl';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 
 type Props = {
   className?: string;

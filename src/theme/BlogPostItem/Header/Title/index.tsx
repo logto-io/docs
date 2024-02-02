@@ -3,7 +3,7 @@ import Link from '@docusaurus/Link';
 import { useBlogPost } from '@docusaurus/theme-common/internal';
 import Admonition from '@theme/Admonition';
 import type { Props } from '@theme/BlogPostItem/Header/Title';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
 import { useCallback, useEffect } from 'react';
 
 import styles from './styles.module.css';
