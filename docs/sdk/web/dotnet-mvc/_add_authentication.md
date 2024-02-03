@@ -1,4 +1,4 @@
-Open `Startup.cs` (or `Program.cs`) and add the following code to register Logto authentication middleware:
+Open `Startup.cs` (or `Program.cs`) and add the following code to register Logto authentication services:
 
 ```csharp
 using Logto.AspNetCore.Authentication;
@@ -11,8 +11,6 @@ builder.Services.AddLogtoAuthentication(options =>
   options.AppId = builder.Configuration["Logto:AppId"]!;
   options.AppSecret = builder.Configuration["Logto:AppSecret"];
 });
-
-app.UseAuthentication();
 ```
 
 The `AddLogtoAuthentication` method will do the following things:

@@ -4,16 +4,15 @@ Add the following URI to the `Post sign-out redirect URIs` list in the Logto app
 http://<your-web-app-uri>/SignedOutCallback
 ```
 
-To sign-out with Logto, you can use the `SignOutAsync` method:
+Note this is different from the redirect URI we'll use later in `AuthenticationProperties`:
 
 ```csharp
-await HttpContext.SignOutAsync(new AuthenticationProperties
+// Just for reference, we will demonstrate how to use it later
+new AuthenticationProperties
 {
   RedirectUri = "/"
-});
+};
 ```
-
-The `SignOutAsync` method will clear the authentication cookie and redirect the user to the Logto sign-out page.
 
 The `RedirectUri` property is used to redirect the user back to your web application after sign-out. Note it is different from the post sign-out redirect URI you configured in the Logto application details page:
 
@@ -27,6 +26,7 @@ The **Logto post sign-out redirect URI** has a default value of `/SignedOutCallb
 ```csharp
 builder.Services.AddLogtoAuthentication(options =>
 {
+  // Other configurations...
   options.SignedOutCallbackPath = "/SomeOtherSignedOutCallbackPath";
 });
 ```
