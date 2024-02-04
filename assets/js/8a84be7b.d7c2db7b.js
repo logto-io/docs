@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[61401],{91566:function(e){e.exports=JSON.parse('{"permalink":"/tutorial/page/13","page":13,"postsPerPage":10,"totalPages":14,"totalCount":140,"previousPage":"/tutorial/page/12","nextPage":"/tutorial/page/14","blogDescription":"Blog","blogTitle":"Blog"}')}}]);
