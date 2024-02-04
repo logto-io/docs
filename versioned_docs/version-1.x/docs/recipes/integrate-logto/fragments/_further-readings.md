@@ -1,3 +1,0 @@
-- [Customize sign-in experience](/docs/recipes/customize-sie/)
-- [Configure connectors](/docs/recipes/configure-connectors/)
-- [Configure client to use RBAC](/docs/recipes/rbac/protect-resource/#client)

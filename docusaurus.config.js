@@ -122,11 +122,6 @@ const config = {
             label: 'API',
           },
           {
-            type: 'docsVersionDropdown',
-            position: 'right',
-            dropdownActiveClassDisabled: true,
-          },
-          {
             href: 'https://github.com/logto-io/logto',
             label: 'GitHub',
             position: 'right',
