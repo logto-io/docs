@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[42629],{18749:function(t){t.exports=JSON.parse('{"label":"c#","permalink":"/tutorial/tags/c","allTagsPath":"/tutorial/tags","count":28,"unlisted":false}')}}]);
