@@ -6,10 +6,12 @@ import styles from './index.module.scss';
 type Category = {
   label: string;
   description?: string;
-  items: Array<{ label: string; href: string }>;
+  items: Array<{ label: string; href: string; logoFilename?: string }>;
 };
 
 const sdkPath = '/sdk/';
+
+const stringIfTruthy = (value: unknown) => (value ? String(value) : undefined);
 
 /**
  * A component that shows the gallery of SDKs.
@@ -33,13 +35,11 @@ const SdkGallery = () => {
     }
 
     if (item.href === '#') {
-      const description = item.customProps?.description;
-
       return [
         ...data,
         {
           label: item.label,
-          description: description ? String(description) : undefined,
+          description: stringIfTruthy(item.customProps?.description),
           items: [],
         },
       ];
@@ -59,7 +59,10 @@ const SdkGallery = () => {
       ...data.slice(0, -1),
       {
         ...lastCategory,
-        items: [...lastCategory.items, { label: item.label, href: item.href }],
+        items: [
+          ...lastCategory.items,
+          { label: item.label, href: item.href, logoFilename: stringIfTruthy(item.customProps?.logoFilename) }
+        ],
       },
     ];
   }, []);
@@ -76,7 +79,7 @@ const SdkGallery = () => {
                 <img
                   className={styles.logo}
                   title="Logo"
-                  src={`/img/logo/${item.href.slice(sdkPath.length)}.png`}
+                  src={`/img/logo/${item.logoFilename || `${item.href.slice(sdkPath.length)}.svg`}`}
                   onError={({ currentTarget }) => {
                     // eslint-disable-next-line @silverhand/fp/no-mutation
                     currentTarget.src = fallbackImage;
