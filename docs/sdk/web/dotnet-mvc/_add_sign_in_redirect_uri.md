@@ -4,16 +4,15 @@ Add the following URI to the `Redirect URIs` list in the Logto application detai
 http://<your-web-app-uri>/Callback
 ```
 
-To sign-in with Logto, you can use the `ChallengeAsync` method:
+Note this is different from the redirect URI we'll use later in `AuthenticationProperties`:
 
 ```csharp
-await HttpContext.ChallengeAsync(new AuthenticationProperties
+// Just for reference, we will demonstrate how to use it later
+new AuthenticationProperties
 {
   RedirectUri = "/"
-});
+};
 ```
-
-The `ChallengeAsync` method will redirect the user to the Logto sign-in page.
 
 The `RedirectUri` property is used to redirect the user back to your web application after authentication. Note it is different from the redirect URI you configured in the Logto application details page:
 
@@ -27,6 +26,7 @@ The **Logto redirect URI** has a default value of `/Callback`, which you can lea
 ```csharp
 builder.Services.AddLogtoAuthentication(options =>
 {
+  // Other configurations...
   options.CallbackPath = "/SomeOtherCallbackPath";
 });
 ```
