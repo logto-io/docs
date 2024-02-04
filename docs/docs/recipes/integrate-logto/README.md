@@ -32,7 +32,7 @@ An app that renders and updates pages by the web server alone. E.g., server-side
 
 - [Traditional web general guide](../../../sdk/web/traditional/README.mdx)
 - [Next.js](../../../sdk/js/next/README.mdx)
-- [Next.js 13 App Router](../../../sdk/js/next-app-router/README.mdx)
+- [Next.js App Router](../../../sdk/js/next-app-router/README.mdx)
 - [Express](../../../sdk/js/express/README.mdx)
 - [Go](../../../sdk/web/go/README.mdx)
 - [Python](../../../sdk/web/python/README.mdx)
