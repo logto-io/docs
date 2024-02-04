@@ -10,6 +10,7 @@ Logto provides a low-code configuration for the most popular email delivery serv
 You can refer to the specific doc for detailed instructions on registering each email service provider. Supported email service providers:
 
 - [AWS direct mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aws-ses)
+- [Mailgun mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-mailgun)
 - [SendGrid mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-sendgrid-email)
 - [SMTP connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-smtp)
 - [Aliyun direct mail connector](https://github.com/logto-io/logto/tree/master/packages/connectors/connector-aliyun-dm)
