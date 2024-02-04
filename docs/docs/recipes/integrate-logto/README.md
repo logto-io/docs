@@ -6,45 +6,11 @@ sidebar_position: 1
 
 We provide a bunch of SDKs to let you integrate Logto with your clients with ease. If the list doesn't cover your desired platform / framework, please file a feature request or contribute a new SDK.
 
-## Native app
+## Integration guides
 
-An app that runs in a native environment.
+We provide a collection of guides for different platforms and frameworks in the [SDK](/sdk) section.
 
-- [iOS](../../../sdk/native/swift/README.mdx)
-- [Android](../../../sdk/native/android/README.mdx)
-- [Flutter](../../../sdk/native/flutter/README.mdx)
-
-Usually, Native apps need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
-
-## Single page app
-
-An app that runs in a web browser and dynamically updates data in place.
-
-- [Vanilla JS](../../../sdk/spa/vanilla-js/README.mdx)
-- [React](../../../sdk/spa/react/README.mdx)
-- [Vue](../../../sdk/spa/vue/README.mdx)
-
-Usually, SPAs need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
-
-## Traditional web
-
-An app that renders and updates pages by the web server alone. E.g., server-side rending.
-
-- [Traditional web general guide](../../../sdk/web/traditional/README.mdx)
-- [Next.js](../../../sdk/web/next/README.mdx)
-- [Next.js App Router](../../../sdk/web/next-app-router/README.mdx)
-- [Express](../../../sdk/web/express/README.mdx)
-- [Go](../../../sdk/web/go/README.mdx)
-- [Python](../../../sdk/web/python/README.mdx)
-- [PHP](../../../sdk/web/php/README.mdx)
-
-## Machine-to-machine
-
-An app (usually without UI) that directly talks to resources.
-
-- [Machine-to-machine](../../../sdk/machine-to-machine/general/README.mdx)
-
-## Configuration steps
+## Create an application
 
 Follow these steps to create the application:
 
