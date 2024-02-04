@@ -20,9 +20,9 @@ Usually, Native apps need to talk to an API (resource). Please refer to [Protect
 
 An app that runs in a web browser and dynamically updates data in place.
 
-- [Vanilla JS](../../../sdk/js/vanilla-js/README.mdx)
-- [React](../../../sdk/js/react/README.mdx)
-- [Vue](../../../sdk/js/vue/README.mdx)
+- [Vanilla JS](../../../sdk/spa/vanilla-js/README.mdx)
+- [React](../../../sdk/spa/react/README.mdx)
+- [Vue](../../../sdk/spa/vue/README.mdx)
 
 Usually, SPAs need to talk to an API (resource). Please refer to [Protect your API](../protect-your-api/README.mdx) for authenticating in your API.
 
@@ -31,9 +31,9 @@ Usually, SPAs need to talk to an API (resource). Please refer to [Protect your A
 An app that renders and updates pages by the web server alone. E.g., server-side rending.
 
 - [Traditional web general guide](../../../sdk/web/traditional/README.mdx)
-- [Next.js](../../../sdk/js/next/README.mdx)
-- [Next.js App Router](../../../sdk/js/next-app-router/README.mdx)
-- [Express](../../../sdk/js/express/README.mdx)
+- [Next.js](../../../sdk/web/next/README.mdx)
+- [Next.js App Router](../../../sdk/web/next-app-router/README.mdx)
+- [Express](../../../sdk/web/express/README.mdx)
 - [Go](../../../sdk/web/go/README.mdx)
 - [Python](../../../sdk/web/python/README.mdx)
 - [PHP](../../../sdk/web/php/README.mdx)
