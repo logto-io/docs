@@ -29,14 +29,14 @@ const sdks = [
     name: 'React',
     language: 'js',
     officialLink: 'https://reactjs.org/',
-    appType: 'Single Page App',
+    appType: 'Single page app',
     framework: 'React',
   },
   {
     name: 'Vanilla JS',
     language: 'js',
     officialLink: 'https://en.wikipedia.org/wiki/ECMAScript',
-    appType: 'Single Page App',
+    appType: 'Single page app',
     framework: 'Vanilla JS',
   },
   {
@@ -102,6 +102,20 @@ const sdks = [
     officialLink: 'https://learn.microsoft.com/aspnet/core/razor-pages/',
     appType: 'Traditional web',
     framework: '.NET Core (Razor Pages)',
+  },
+  {
+    name: '.NET Core (Blazor Server)',
+    language: 'c#',
+    officialLink: 'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-server',
+    appType: 'Traditional web',
+    framework: '.NET Core (Blazor Server)',
+  },
+  {
+    name: '.NET Core (Blazor WebAssembly)',
+    language: 'c#',
+    officialLink: 'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-webassembly',
+    appType: 'Single page app',
+    framework: '.NET Core (Blazor WebAssembly)',
   },
 ];
 
