@@ -1,12 +1,12 @@
-import { FooterLogo, FooterLinkItem } from '@docusaurus/theme-common';
+import { type FooterLogo, type FooterLinkItem } from '@docusaurus/theme-common';
 
 import LinkItem from './LinkItem';
 import styles from './index.module.scss';
 
 type Props = {
-  links: FooterLinkItem[];
-  logo?: FooterLogo;
-  copyright?: string;
+  readonly links: FooterLinkItem[];
+  readonly logo?: FooterLogo;
+  readonly copyright?: string;
 };
 
 const FooterLayout = ({ links, logo, copyright }: Props) => {

@@ -43,7 +43,7 @@ const Content = ({ className }: Props): JSX.Element => {
     // Remove all canonical tags before inserting
     for (const element of document.head.querySelectorAll('link')) {
       if (['canonical', 'alternate'].includes(element.getAttribute('rel') ?? '')) {
-        element.parentNode?.removeChild(element);
+        element.remove();
       }
     }
 

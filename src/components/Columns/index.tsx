@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 import styles from './index.module.scss';
 
@@ -8,8 +8,8 @@ export type Column = {
 };
 
 type Props = {
-  columns: Column[];
-  justifyContent?: string;
+  readonly columns: Column[];
+  readonly justifyContent?: string;
 };
 
 const Columns = ({ columns, justifyContent = 'flex-start' }: Props) => {

@@ -49,7 +49,7 @@ const SdkGallery = () => {
       return data;
     }
 
-    const lastCategory = data[data.length - 1];
+    const lastCategory = data.at(-1);
 
     if (!lastCategory) {
       return data;
@@ -82,7 +82,7 @@ const SdkGallery = () => {
               <a key={item.href} href={item.href} className={styles.link}>
                 <img
                   className={styles.logo}
-                  title="Logo"
+                  alt="Logo"
                   src={`/img/logo/${item.logoFilename || `${item.href.slice(sdkPath.length)}.svg`}`}
                   onError={({ currentTarget }) => {
                     // eslint-disable-next-line @silverhand/fp/no-mutation
