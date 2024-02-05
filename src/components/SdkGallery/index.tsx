@@ -61,7 +61,11 @@ const SdkGallery = () => {
         ...lastCategory,
         items: [
           ...lastCategory.items,
-          { label: item.label, href: item.href, logoFilename: stringIfTruthy(item.customProps?.logoFilename) }
+          {
+            label: item.label,
+            href: item.href,
+            logoFilename: stringIfTruthy(item.customProps?.logoFilename),
+          },
         ],
       },
     ];
