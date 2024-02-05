@@ -9,13 +9,13 @@
  */
 
 import Link from '@docusaurus/Link';
-import { FooterLinkItem } from '@docusaurus/theme-common';
+import { type FooterLinkItem } from '@docusaurus/theme-common';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import { clsx } from 'clsx';
 
 type Props = {
-  className?: string;
-  item: FooterLinkItem;
+  readonly className?: string;
+  readonly item: FooterLinkItem;
 };
 
 const LinkItem = ({ item, className }: Props) => {

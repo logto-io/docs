@@ -11,12 +11,12 @@ type ComingSoon = 'comingSoon';
 
 type Props = {
   /** Whether the feature is available in Logto Cloud. */
-  cloud: boolean | ComingSoon;
+  readonly cloud: boolean | ComingSoon;
   /**
    * Whether the feature is available in Logto OSS. If it is a `MinorVersion`,
    * it means the feature is available in Logto OSS since the specified version.
    */
-  oss: boolean | ComingSoon | MinorVersion;
+  readonly oss: boolean | ComingSoon | MinorVersion;
 };
 
 const getDisplayText = (status: boolean | ComingSoon | MinorVersion) => {
