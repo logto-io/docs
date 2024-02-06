@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[20573],{62273:o=>{o.exports=JSON.parse('{"permalink":"/tutorial/tags/dotnet-core-razor-pages","page":1,"postsPerPage":10,"totalPages":2,"totalCount":14,"nextPage":"/tutorial/tags/dotnet-core-razor-pages/page/2","blogDescription":"Blog","blogTitle":"Blog"}')}}]);
