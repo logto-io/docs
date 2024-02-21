@@ -19,7 +19,7 @@ Using Logto eliminates the need for a user table.
 Forget the user table, store user info in Logto. Here is a common practice:
 
 1. Create a `user_id` column in other tables and save the user's user.id value from Logto. You can refer to the previous chapter on [Identify User](#identify-user) for more information.
-2. Use [Logto's Management API](./management-api.md) f for CRUD operations, such as creating and updating users, getting user details, and listing users.
+2. Use [Logto's Management API](./management-api.md) for CRUD operations, such as creating and updating users, getting user details, and listing users.
 3. Store any additional user information in custom data. You can refer to the [User Custom Data](../../references/users/custom-data.md) for more information.
 
 By utilizing these methods, Logto essentially takes on the role of a "user table".
