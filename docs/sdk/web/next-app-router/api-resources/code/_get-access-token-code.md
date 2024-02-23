@@ -1,8 +1,11 @@
 ```tsx
-import { getLogtoContext } from '../libraries/logto';
+import { getLogtoContext } from '@logto/next/server-actions';
+import { logtoConfig } from './logto';
 
 export default async function Home() {
-  const { isAuthenticated, claims, accessToken } = await getLogtoContext({ getAccessToken: true });
+  const { isAuthenticated, claims, accessToken } = await getLogtoContext(logtoConfig, {
+    getAccessToken: true,
+  });
   // ...
 }
 ```
