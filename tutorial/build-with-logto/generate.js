@@ -33,6 +33,13 @@ const sdks = [
     framework: 'React',
   },
   {
+    name: 'Vue',
+    language: 'js',
+    officialLink: 'https://vuejs.org/',
+    appType: 'Single page app',
+    framework: 'Vue',
+  },
+  {
     name: 'Vanilla JS',
     language: 'js',
     officialLink: 'https://en.wikipedia.org/wiki/ECMAScript',
@@ -106,14 +113,16 @@ const sdks = [
   {
     name: '.NET Core (Blazor Server)',
     language: 'c#',
-    officialLink: 'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-server',
+    officialLink:
+      'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-server',
     appType: 'Traditional web',
     framework: '.NET Core (Blazor Server)',
   },
   {
     name: '.NET Core (Blazor WebAssembly)',
     language: 'c#',
-    officialLink: 'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-webassembly',
+    officialLink:
+      'https://learn.microsoft.com/en-us/aspnet/core/blazor/hosting-models#blazor-webassembly',
     appType: 'Single page app',
     framework: '.NET Core (Blazor WebAssembly)',
   },
