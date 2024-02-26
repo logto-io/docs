@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[67573],{60398:e=>{e.exports=JSON.parse('{"permalink":"/tutorial/tags/vue/page/2","page":2,"postsPerPage":10,"totalPages":2,"totalCount":14,"previousPage":"/tutorial/tags/vue","blogDescription":"Blog","blogTitle":"Blog"}')}}]);
