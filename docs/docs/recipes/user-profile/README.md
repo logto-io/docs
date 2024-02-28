@@ -49,19 +49,16 @@ graph LR
 
   subgraph Logto
     direction LR
-    OE(OIDC Endpoint)
     MA(Management APIs)
 
     LD[(Logto DB)]
 
     MA <---> LD
-    OE <---> LD
   end
 
   UPP <---> S1
   UPP ---> S2
   M2 <---> DB
-  M1 <--->|Logto SDK| OE
   M1 <--->|Machine To Machine| MA
 ```
 
