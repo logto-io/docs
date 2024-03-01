@@ -84,3 +84,11 @@ There are 2 optional query parameters:
 
 - `page`: indicates the page number, starts from 1, the default value is 1.
 - `page_size`: indicates the number of items per page, the default value is 20.
+
+## Rate limit
+
+:::note
+This is only for Logto Cloud.
+:::
+
+To ensure the reliability and security of our services for all users, we employ a general firewall that monitors and manages traffic to our website. While we do not enforce a strict rate limit, we recommend that users limit their activity to approximately 200 requests every 10 seconds to avoid triggering our protective measures.
