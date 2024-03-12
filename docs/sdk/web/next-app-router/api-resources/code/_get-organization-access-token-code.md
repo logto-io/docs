@@ -1,32 +1,10 @@
-```ts
-// libraries/logto.ts
-// ...
-export const getOrganizationTokens = async () => {
-  const { isAuthenticated } = await getLogtoContext();
-
-  if (!isAuthenticated) {
-    return [];
-  }
-
-  const { nodeClient } = await logtoClient.createNodeClientFromHeaders(getCookie());
-
-  const { organizations = [] } = await nodeClient.getIdTokenClaims();
-
-  return await Promise.all(
-    organizations.map(async (organizationId) => ({
-      id: organizationId,
-      token: await nodeClient.getOrganizationToken(organizationId),
-    }))
-  );
-};
-```
-
 ```tsx
-import { getLogtoContext, getOrganizationTokens } from '../libraries/logto';
+import { getOrganizationTokens } from '@logto/next/server-actions';
+import { logtoConfig } from './logto';
 
 export default async function Home() {
   // ...
-  const organizations = await getOrganizationTokens();
+  const organizations = await getOrganizationTokens(logtoConfig);
 
   return (
     <main>

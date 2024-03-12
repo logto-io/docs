@@ -1,7 +1,7 @@
 ```ts
 import { UserScope } from '@logto/next';
 
-const config = {
+export const logtoConfig = {
   // ...other configs
   scopes: [UserScope.Organizations],
 };
