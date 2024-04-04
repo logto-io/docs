@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[82589],{85985:s=>{s.exports=JSON.parse('{"label":"passwordless-sign-in","permalink":"/tutorial/tags/passwordless-sign-in","allTagsPath":"/tutorial/tags","count":48,"unlisted":false}')}}]);

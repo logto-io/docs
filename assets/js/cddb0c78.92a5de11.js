@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[84080],{73006:e=>{e.exports=JSON.parse('{"permalink":"/tutorial/tags/sendgrid/page/2","page":2,"postsPerPage":10,"totalPages":2,"totalCount":16,"previousPage":"/tutorial/tags/sendgrid","blogDescription":"Blog","blogTitle":"Blog"}')}}]);
