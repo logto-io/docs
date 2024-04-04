@@ -33,6 +33,13 @@ const sdks = [
     framework: 'React',
   },
   {
+    name: 'Expo (React Native)',
+    language: 'js',
+    officialLink: 'https://expo.dev/',
+    appType: 'Native app',
+    framework: 'Expo',
+  },
+  {
     name: 'Vue',
     language: 'js',
     officialLink: 'https://vuejs.org/',
