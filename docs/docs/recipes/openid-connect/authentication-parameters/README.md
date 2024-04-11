@@ -20,7 +20,7 @@ curl --location \
   --request GET 'https://[tenant-id].logto.app/oidc/auth?client_id=1234567890&...&first_screen=register'
 ```
 
-:::note
+:::info
 When `first_screen` is set, the legacy `interaction_mode` parameter is ignored.
 :::
 
@@ -33,7 +33,9 @@ logtoClient.signIn({
 });
 ```
 
+:::note
 We are gradually adding support for the `first_screen` parameter to all Logto SDKs. If you don't see it in your SDK, please open an issue or contact us.
+:::
 
 ## Direct sign-in
 
@@ -44,7 +46,7 @@ This parameter allows you to skip the first screen and invoke the sign-in proces
 - `social:<idp-name>` (Use a social connector with the specified IdP name, e.g. `social:google`)
 - `sso:<connector-id>` (Use the specified enterprise SSO connector, e.g. `sso:123456`)
 
-:::note
+:::info
 The specified sign-in method must be enabled in the sign-in experience to work properly.
 :::
 
@@ -82,4 +84,6 @@ logtoClient.signIn({
 });
 ```
 
+:::note
 We are gradually adding support for the `direct_sign_in` parameter to all Logto SDKs. If you don't see it in your SDK, please open an issue or contact us.
+:::
