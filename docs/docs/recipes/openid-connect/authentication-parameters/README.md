@@ -1,0 +1,85 @@
+import Availability from '@components/Availability';
+
+# Authentication parameters
+
+In addition to the parameters required by the [OpenID Connect Core specification](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest), Logto supports the following parameters in the authentication request for better customization:
+
+- `first_screen`: The first screen to show for the authentication process.
+- `direct_sign_in`: Whether to skip the first screen and invoke the sign-in process directly.
+
+## First screen
+
+<Availability cloud oss={{ major: 1, minor: 15 }} />
+
+This parameter allows you to customize the first screen that users see when they start the authentication process. The value can be `signIn` or `register`. If omitted, the default value is `signIn`.
+
+Here's a non-normative example of the authentication request with the `first_screen` parameter:
+
+```bash
+curl --location \
+  --request GET 'https://[tenant-id].logto.app/oidc/auth?client_id=1234567890&...&first_screen=register'
+```
+
+:::note
+When `first_screen` is set, the legacy `interaction_mode` parameter is ignored.
+:::
+
+In supported Logto SDKs, you can set the `firstScreen` property when calling the `signIn` method:
+
+```ts title="JavaScript"
+logtoClient.signIn({
+  redirectUri: 'https://your-app.com/callback',
+  firstScreen: 'register',
+});
+```
+
+We are gradually adding support for the `first_screen` parameter to all Logto SDKs. If you don't see it in your SDK, please open an issue or contact us.
+
+## Direct sign-in
+
+<Availability cloud oss={{ major: 1, minor: 15 }} />
+
+This parameter allows you to skip the first screen and invoke the sign-in process directly. A specific sign-in method needs to be specified in the request. The current supported formats are:
+
+- `social:<idp-name>` (Use a social connector with the specified IdP name, e.g. `social:google`)
+- `sso:<connector-id>` (Use the specified enterprise SSO connector, e.g. `sso:123456`)
+
+:::note
+The specified sign-in method must be enabled in the sign-in experience to work properly.
+:::
+
+### How to find the connector IdP name
+
+In the Logto Console, navigate to the "Connectors" page and click on the connector you want to use. The identity provider name (IdP name) is displayed at the top of the connector settings.
+
+![Connector IdP name](./assets/idp-name.webp)
+
+### How to find the enterprise SSO connector ID
+
+In the Logto Console, navigate to the "Enterprise SSO" page and click on the connector you want to use. The connector ID is displayed in the top section of the connector details.
+
+![Enterprise SSO connector ID](./assets/enterprise-sso.webp)
+
+### Fall back to the first screen
+
+If the direct sign-in method fails, the user will be redirected to the first screen specified by the `first_screen` parameter.
+
+### Examples
+
+Here's a non-normative example of the authentication request with the `direct_sign_in` parameter:
+
+```bash
+curl --location \
+  --request GET 'https://[tenant-id].logto.app/oidc/auth?client_id=1234567890&...&direct_sign_in=sso:123456'
+```
+
+In supported Logto SDKs, you can set the `directSignIn` property when calling the `signIn` method:
+
+```ts title="JavaScript"
+logtoClient.signIn({
+  redirectUri: 'https://your-app.com/callback',
+  directSignIn: 'sso:123456',
+});
+```
+
+We are gradually adding support for the `direct_sign_in` parameter to all Logto SDKs. If you don't see it in your SDK, please open an issue or contact us.
