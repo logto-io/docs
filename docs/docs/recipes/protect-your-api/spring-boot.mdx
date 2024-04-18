@@ -128,8 +128,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
 
-    private final OAuth2Error oAuth2Error = new OAuth2Error("invalid_token", "Required audience not found", null);
-
     private final String audience;
 
     public AudienceValidator(String audience) {
@@ -139,17 +137,20 @@ public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
     @Override
     public OAuth2TokenValidatorResult validate(Jwt jwt) {
         if (!jwt.getAudience().contains(audience)) {
-            return OAuth2TokenValidatorResult.failure(oAuth2Error);
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Required audience not found", null));
         }
+
+      // Optional: For RBAC validate the scopes of the JWT.
+      String scopes = jwt.getClaimAsString("scope");
+      if (scopes == null || !scopes.contains("read:profile")) {
+          return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Insufficient permission", null));
+      }
+
 
         return OAuth2TokenValidatorResult.success();
     }
 }
 ```
-
-:::note
-For [🔐 RBAC](/docs/recipes/rbac), scope validation is also required.
-:::
 
 ## Configure Spring Security
 
@@ -173,18 +174,19 @@ import com.nimbusds.jose.proc.SecurityContext;
 import io.logto.springboot.sample.validator.AudienceValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.DefaultSecurityFilterChain;
 
+@Configuration
 @EnableWebSecurity
 public class SecurityConfiguration {
 
@@ -216,15 +218,17 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt).cors().and()
-                .authorizeRequests(customizer -> customizer
-                        // Only authenticated requests can access your protected APIs
-                        // e.g. `http://localhost:3000/` and `http://localhost:3000/profile`.
-                        .mvcMatchers("/", "/secret").authenticated()
-                        // Anyone can access the public profile.
-                        .mvcMatchers("/profile").permitAll()
-                );
+    public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+         http
+          .securityMatcher("/api/**")
+          .oauth2ResourceServer(oauth2 -> oauth2
+              .jwt(Customizer.withDefaults()))
+          .authorizeHttpRequests(requests -> requests
+              // Allow all requests to the public APIs.
+              .requestMatchers("/api/.wellknown/**").permitAll()
+              // Require jwt token validation for the protected APIs.
+              .anyRequest().authenticated());
+
         return http.build();
     }
 }
@@ -247,20 +251,14 @@ import org.springframework.web.bind.annotation.RestController;
 @CrossOrigin(origins = "*")
 @RestController
 public class ProtectedController {
-
-    @GetMapping("/")
-    public String protectedRoot() {
-        return "Protected root.";
+    @GetMapping("/api/profile")
+    public String protectedProfile() {
+        return "Protected profile.";
     }
 
-    @GetMapping("/secret")
-    public String protectedSecret() {
-        return "Protected secret.";
-    }
-
-    @GetMapping("/profile")
-    public String publicProfile() {
-        return "Public profile.";
+    @GetMapping("/api/.wellknown/config.json")
+    public String publicConfig() {
+        return "Public config.";
     }
 }
 ```
@@ -297,7 +295,7 @@ Request your protected API with the Access Token as the Bearer token in the Auth
 e.g. execute the `curl` command.
 
 ```bash
-curl --include 'http://localhost:3000/secret' \
+curl --include 'http://localhost:3000/api/profile' \
 --header 'Authorization: Bearer <your-access-token>'
 ```
 
