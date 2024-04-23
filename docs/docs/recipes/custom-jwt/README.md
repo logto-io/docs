@@ -8,7 +8,7 @@ import CustomJwtLanding from './assets/custom-jwt-landing.webp';
 import CustomJwtDetails from './assets/custom-jwt-details.webp';
 import TestResult from './assets/test-result.webp';
 
-# Custom JWT claims
+# 🎫 Custom JWT claims
 
 <Availability cloud oss={false} />
 
