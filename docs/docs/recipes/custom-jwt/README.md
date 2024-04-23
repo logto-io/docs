@@ -6,6 +6,7 @@ import Availability from '@components/Availability';
 
 import CustomJwtLanding from './assets/custom-jwt-landing.webp';
 import CustomJwtDetails from './assets/custom-jwt-details.webp';
+import TestResult from './assets/test-result.webp';
 
 # Custom JWT claims
 
@@ -166,3 +167,9 @@ Be aware, any external data fetching may introduce latency to the token issuing 
 Make sure to test your script before saving it. Click on the `Test Context` tab on the right side of the page to modify the mock token payload and user data context for testing.
 
 Click on the `Run test` on the right-top corner of the editor to run the script with the mock data. The output of the script will be displayed in the `Test Result` drawer.
+
+<center>
+  <img src={TestResult} alt="test result" width={800} />
+</center>
+
+Click on the **Create** button to save the script. The custom JWT claims script will be saved and applied to the access token issuing process.
