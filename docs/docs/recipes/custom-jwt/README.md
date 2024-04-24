@@ -10,7 +10,7 @@ import TestResult from './assets/test-result.webp';
 
 # 🎫 Custom JWT claims
 
-<Availability cloud oss={false} />
+<Availability cloud oss="comingSoon" />
 
 ## Introduction
 
@@ -58,9 +58,7 @@ To add custom claims to the JWT access token, you need to provide a script that 
 
 Visit the **Logto Console** and click on the **Custom JWT** navigation item in the left sidebar.
 
-<center>
-  <img src={CustomJwtLanding} alt="custom jwt landing" width={800} />
-</center>
+![Custom JWT landing](./assets/custom-jwt-landing.webp)
 
 There are two different types of access tokens that you can customize the JWT claims for:
 
@@ -75,9 +73,7 @@ Pick any type of access token you want to customize the JWT claims for, and clic
 
 In the `Custom JWT` details page, you may find the script editor to write your custom JWT claims script. The script should be a `JavaScript` function that returns an object of custom claims.
 
-<center>
-  <img src={CustomJwtDetails} alt="custom jwt details" width={800} />
-</center>
+![Custom JWT details](./assets/custom-jwt-details.webp)
 
 ### Edit the script
 
@@ -168,8 +164,6 @@ Make sure to test your script before saving it. Click on the `Test Context` tab 
 
 Click on the `Run test` on the right-top corner of the editor to run the script with the mock data. The output of the script will be displayed in the `Test Result` drawer.
 
-<center>
-  <img src={TestResult} alt="test result" width={800} />
-</center>
+![Test result](./assets/test-result.webp)
 
 Click on the **Create** button to save the script. The custom JWT claims script will be saved and applied to the access token issuing process.
