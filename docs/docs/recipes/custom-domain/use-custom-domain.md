@@ -38,9 +38,3 @@ https://auth.example.com/oidc/.well-known/openid-configuration
 The social connector's callback URI will be updated automatically if your users are using the custom domain. You need to go to the social provider's developer console to update the callback URI.
 
 When your users are using the custom domain, the social connector's callback URI will be using the new domain. Therefore, you need to navigate to the social provider's developer console to manually update the callback URI.
-
-## Troubleshooting SSL Certificate Issues
-
-If you encounter SSL certificate issues when setting up your custom domain, it may be related to CAA records in your DNS configuration. CAA records specify which Certificate Authorities (CAs) are authorized to issue certificates for your domain.
-
-To troubleshoot and resolve SSL certificate issues related to CAA records, refer to [Cloudflare's documentation](https://developers.cloudflare.com/ssl/edge-certificates/caa-records/) on CAA Records.
