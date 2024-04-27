@@ -28,7 +28,7 @@ const injectPlausiblePlugin = () => ({
         attributes: {
           src: 'https://plausible.io/js/plausible.js',
           defer: true,
-          'data-domain': 'docs.logto.io',
+          'data-domain': 'logto.io',
         },
       },
       {
