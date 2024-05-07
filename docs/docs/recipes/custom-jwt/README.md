@@ -156,14 +156,19 @@ Be aware, any external data fetching may introduce latency to the token issuing 
 
 - Handle the error and timeout properly in your script to avoid the token issuing process being blocked.
 - Use proper authorization headers to protect your external API from unauthorized access.
+
   :::
 
 ### Test the script
 
-Make sure to test your script before saving it. Click on the `Test Context` tab on the right side of the page to modify the mock token payload and user data context for testing.
+Make sure to test your script before saving it. Click on the `Test context` tab on the right side of the page to modify the mock token payload and user data context for testing.
 
 Click on the `Run test` on the right-top corner of the editor to run the script with the mock data. The output of the script will be displayed in the `Test Result` drawer.
 
 ![Test result](./assets/test-result.webp)
+
+:::note
+The test result is the output of the `getCustomJwtClaims` function with the mock data you set ("extra JWT claims" got after completing the step 3 in [the sequence diagram](#how-does-it-work)). The real token payload and user data context will be different when the script is executed in the token issuing process.
+:::
 
 Click on the **Create** button to save the script. The custom JWT claims script will be saved and applied to the access token issuing process.
