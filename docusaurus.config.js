@@ -19,17 +19,26 @@ const addAliasPlugin = () => ({
 });
 
 /** @type {import('@docusaurus/types').PluginConfig} */
-const injectPlausiblePlugin = () => ({
-  name: 'inject-plausible-plugin',
+const injectHeadTagsPlugin = () => ({
+  name: 'inject-head-tags-plugin',
   injectHtmlTags: () => ({
     headTags: [
       {
         tagName: 'script',
         attributes: {
-          src: 'https://plausible.io/js/plausible.js',
+          src: 'https://plausible.io/js/script.js',
           defer: true,
           'data-domain': 'logto.io',
         },
+      },
+      {
+        tagName: 'script',
+        innerHTML: `
+          window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+          window.addEventListener('load', function() {
+            plausible('AnyPageView', { props: { source: 'Docs' } });
+          });
+        `,
       },
       {
         tagName: 'meta',
@@ -181,7 +190,7 @@ const config = {
     }),
   plugins: [
     addAliasPlugin,
-    injectPlausiblePlugin,
+    injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
     [
       '@docusaurus/plugin-content-blog',
