@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[75740],{87235:e=>{e.exports=JSON.parse('{"label":"dotnet-core-blazor-server","permalink":"/tutorial/tags/dotnet-core-blazor-server","allTagsPath":"/tutorial/tags","count":14,"unlisted":false}')}}]);

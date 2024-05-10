@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[13113],{10177:e=>{e.exports=JSON.parse('{"label":"dotnet-core-blazor-webassembly","permalink":"/tutorial/tags/dotnet-core-blazor-webassembly","allTagsPath":"/tutorial/tags","count":14,"unlisted":false}')}}]);
