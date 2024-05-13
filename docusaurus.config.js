@@ -125,6 +125,12 @@ const config = {
             label: 'Framework quick start',
           },
           {
+            type: 'doc',
+            docId: 'integrations/README',
+            position: 'left',
+            label: 'Integrations',
+          },
+          {
             to: 'https://openapi.logto.io/',
             position: 'left',
             label: 'API',
