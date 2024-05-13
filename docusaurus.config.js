@@ -120,9 +120,9 @@ const config = {
           },
           {
             type: 'doc',
-            docId: 'sdk/README',
+            docId: 'quick-start/README',
             position: 'left',
-            label: 'SDK',
+            label: 'Framework quick start',
           },
           {
             to: 'https://openapi.logto.io/',
