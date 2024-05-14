@@ -120,9 +120,9 @@ const config = {
           },
           {
             type: 'doc',
-            docId: 'quick-start/README',
+            docId: 'quick-starts/README',
             position: 'left',
-            label: 'Framework quick start',
+            label: 'Quick starts',
           },
           // {
           //   type: 'doc',
@@ -243,9 +243,9 @@ const config = {
       '@docusaurus/plugin-client-redirects',
       {
         createRedirects(existingPath) {
-          if (existingPath.includes('/quick-start')) {
-            // Redirect from /sdk/foo to /quick-start/foo
-            return existingPath.replace('/quick-start', '/sdk');
+          if (existingPath.includes('/quick-starts')) {
+            // Redirect from /sdk/foo to /quick-starts/foo
+            return existingPath.replace('/quick-starts', '/sdk');
           }
           // eslint-disable-next-line unicorn/no-useless-undefined
           return undefined; // Return a falsy value: no redirect created

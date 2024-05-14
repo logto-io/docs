@@ -12,13 +12,13 @@ type Category = {
 const stringIfTruthy = (value: unknown) => (value ? String(value) : undefined);
 
 type Props = {
-  readonly path: 'quick-start' | 'integrations';
+  readonly path: 'quick-starts' | 'integrations';
 };
 
 /**
- * A component that shows the gallery of quick start guides.
+ * A component that shows a gallery of guide items.
  *
- * Note: This component is only available in the "Framework quick start" tab of the documentation.
+ * Note: This component is only available in the "Quick starts" and "Integrations" tabs of the documentation.
  */
 const Gallery = ({ path }: Props) => {
   const guideItemPath = `/${path}/`;
