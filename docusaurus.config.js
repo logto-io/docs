@@ -233,6 +233,19 @@ const config = {
         feedOptions: {},
       },
     ],
+    [
+      '@docusaurus/plugin-client-redirects',
+      {
+        createRedirects(existingPath) {
+          if (existingPath.includes('/sdk/')) {
+            // Redirect from /sdk/foo to /quick-start/foo
+            return [existingPath.replace('/sdk/', '/quick-start/')];
+          }
+          // eslint-disable-next-line unicorn/no-useless-undefined
+          return undefined; // Return a falsy value: no redirect created
+        },
+      },
+    ],
   ],
   themes: ['@docusaurus/theme-mermaid'],
 };
