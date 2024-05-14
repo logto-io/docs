@@ -8,7 +8,7 @@ We provide a bunch of SDKs to let you integrate Logto with your clients with eas
 
 ## Integration guides
 
-We provide a collection of guides for different platforms and frameworks in the [SDK](/sdk) section.
+We provide a collection of guides for different platforms and frameworks in the [Framework quick start](/quick-start) section.
 
 ## Create an application
 
