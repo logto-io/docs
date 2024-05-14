@@ -237,9 +237,9 @@ const config = {
       '@docusaurus/plugin-client-redirects',
       {
         createRedirects(existingPath) {
-          if (existingPath.includes('/sdk/')) {
+          if (existingPath.includes('/quick-start')) {
             // Redirect from /sdk/foo to /quick-start/foo
-            return [existingPath.replace('/sdk/', '/quick-start/')];
+            return existingPath.replace('/quick-start', '/sdk');
           }
           // eslint-disable-next-line unicorn/no-useless-undefined
           return undefined; // Return a falsy value: no redirect created
