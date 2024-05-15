@@ -10,7 +10,7 @@ import TestResult from './assets/test-result.webp';
 
 # 🎫 Custom JWT claims
 
-<Availability cloud oss="comingSoon" />
+<Availability cloud oss={{ major: 1, minor: 16 }} />
 
 ## Introduction
 
