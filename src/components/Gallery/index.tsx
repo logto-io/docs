@@ -41,7 +41,11 @@ const Gallery = ({ path }: Props) => {
       return [
         ...data,
         {
-          label: item.label,
+          label:
+            item.label +
+            (item.customProps?.additionalLabel
+              ? ` ${String(item.customProps.additionalLabel)}`
+              : ''),
           description: stringIfTruthy(item.customProps?.description),
           items: [],
         },

@@ -5,6 +5,8 @@ const path = require('path');
 
 const { dracula: darkCodeTheme, github: lightCodeTheme } = require('prism-react-renderer').themes;
 
+const { generateConnectorGuides } = require('./docs/integrations/generate');
+
 /** @type {import('@docusaurus/types').PluginConfig} */
 const addAliasPlugin = () => ({
   name: 'add-alias-plugin',
@@ -124,12 +126,12 @@ const config = {
             position: 'left',
             label: 'Quick starts',
           },
-          // {
-          //   type: 'doc',
-          //   docId: 'integrations/README',
-          //   position: 'left',
-          //   label: 'Integrations',
-          // },
+          {
+            type: 'doc',
+            docId: 'integrations/README',
+            position: 'left',
+            label: 'Integrations',
+          },
           {
             to: 'https://openapi.logto.io/',
             position: 'left',
@@ -198,6 +200,7 @@ const config = {
     addAliasPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
+    ...generateConnectorGuides(),
     [
       '@docusaurus/plugin-content-blog',
       {
