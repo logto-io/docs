@@ -1,3 +1,28 @@
+/*
+This script generates connector guides in the `docs/integrations` directory.
+
+For example:
+
+```ts
+const connectors = [{ name: 'GitHub', ... }, { name: 'Google', ... }, { name: 'Twilio SMS', ... }];
+```
+
+will generate the following connector guides:
+
+- `docs/integrations/social/github/README.mdx`
+- `docs/integrations/social/google/README.mdx`
+- `docs/integrations/sms/twilio-sms/README.mdx`
+...
+
+The content is pulled from the `connector-${id}/README.md` in the corresponding connector GitHub repo,
+using the `docusaurus-plugin-remote-content` plugin.
+*/
+
+/**
+ * Connectors metadata for the guide generation.
+ *
+ * @type Array<{ id: string; name: string; description: string; category: 'social' | 'sms' | 'email'; logoFilename?: string; }>
+ */
 const connectors = [
   {
     id: 'google',
@@ -176,6 +201,10 @@ const connectors = [
   },
 ];
 
+/**
+ * Generates the `docusaurus-plugin-remote-content` plugin configs for the connector guides, which allows
+ * the plugin to pull the README.md content from the connector GitHub repo and generates a MDX guide.
+ */
 const generatePullRemotePluginConfigs = ({ id, name, description, category, logoFilename }) => [
   'docusaurus-plugin-remote-content',
   {
@@ -208,6 +237,9 @@ ${content
   },
 ];
 
+/**
+ * This function will be called by the `docusaurus.config.js` when building the Docs site.
+ */
 export const generateConnectorGuides = () => {
   return connectors.map((connector) => generatePullRemotePluginConfigs(connector));
 };
