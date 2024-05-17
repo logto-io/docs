@@ -152,6 +152,7 @@ const socialConnectors = [
   { name: 'OIDC', configName: 'Standard OIDC app' },
   { name: 'SAML', configName: 'Standard SAML app' },
   { name: 'OAuth2', configName: 'Standard OAuth 2.0 app' },
+  { name: 'Hugging Face', configName: 'Hugging Face OAuth app' },
 ];
 
 const emailConnectors = [
