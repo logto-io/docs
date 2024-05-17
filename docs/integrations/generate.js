@@ -209,7 +209,7 @@ const generatePullRemotePluginConfigs = ({ id, name, description, category, logo
   'docusaurus-plugin-remote-content',
   {
     id,
-    name: 'connector-readme',
+    name: 'connector-readme-' + id,
     performCleanup: false,
     noRuntimeDownloads: true,
     sourceBaseUrl: `https://raw.githubusercontent.com/logto-io/logto/master/packages/connectors/connector-${id}/`,
