@@ -11,6 +11,8 @@ import endpoints from './assets/entra_id_oidc_endpoints.webp';
 
 # Configure Microsoft Entra ID (Azure AD) OIDC SSO
 
+With minimal configuration efforts, this connector allows integration with Microsoft Entra ID (formerly Azure AD) for enterprise SSO.
+
 ## Step 1: Create an Microsoft EntraID OIDC application
 
 1. Go to the [Microsoft Entra admin center](https://entra.microsoft.com/) and sign in as an administrator.
