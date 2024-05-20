@@ -1,9 +1,9 @@
 ---
-sidebar_label: Microsoft Entra ID
+sidebar_label: Microsoft Entra ID (SAML)
 sidebar_position: 3
 ---
 
-# Configure Microsoft Entra ID (Azure AD) SSO
+# Configure Microsoft Entra ID (Azure AD) SAML SSO
 
 With minimal configuration efforts, this connector allows integration with Microsoft Entra ID (formerly Azure AD) for enterprise SSO.
 
@@ -29,7 +29,7 @@ Initiate the Azure AD SSO integration by creating an SSO application on the Azur
 - **Audience URI(SP Entity ID)**: It represents as a globally unique identifier for your Logto service, functioning as the EntityId for SP during authentication requests to the IdP. This identifier is pivotal for the secure exchange of SAML assertions and other authentication-related data between the IdP and Logto.
 - **ACS URL**: The Assertion Consumer Service (ACS) URL is the location where the SAML assertion is sent with a POST request. This URL is used by the IdP to send the SAML assertion to Logto. It acts as a callback URL where Logto expects to receive and consume the SAML response containing the user's identity information.
 
-Click] `Save` to continue.
+Click `Save` to continue.
 
 ## Step 2: Configure SAML SSO at Logto
 
