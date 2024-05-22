@@ -8,7 +8,7 @@ import Availability from '@components/Availability';
 
 <Availability cloud oss={{ major: 1, minor: 5 }} />
 
-Logto Webhook enables you to effortlessly receive real-time updates regarding specific events, such as user registration, sign-in, or password reset. You no longer need to continuously poll for updates.
+Logto Webhooks provide real-time notifications for various events, including changes to user account, role, permission, organization, organization role, organization permission, and user interaction.
 
 When an event is triggered, Logto sends an HTTP request to the Endpoint URL you provide, containing detailed information about the event, such as user ID, username, email, and other relevant details (for more about the data included in the payload and header, refer to [Webhook request](./webhook-request.md)). Your application can process this request and take customized actions, like sending an email or updating a database.
 
@@ -30,7 +30,7 @@ Here are some examples of common usage scenarios for CIAM:
 
 | Item    | Description                                                                                                                                                                                                                                                |
 | :------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Event   | When a specific action is done, it will trigger a hook event with a specific type. E.g., Logto will emit a PostSignUp hook event when the user finished the sign-up process and created a new account.                                                     |
+| Event   | When a specific action is done, it will trigger a hook event with a specific type. E.g., Logto will emit a PostRegister hook event when the user finished the sign-up process and created a new account.                                                   |
 | Hook    | A single or series of actions that hook to a specific event. Action can be calling API, executing code snippets, etc.                                                                                                                                      |
 | Webhook | A subtype of hook that indicates calling an API with the event payload.<br/>Say a developer wants to send a notification when user signs in via a new device, the developer can add a webhook that calls his security service API to the PostSignIn event. |
 
