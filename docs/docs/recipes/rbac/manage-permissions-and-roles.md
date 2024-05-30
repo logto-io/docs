@@ -1,7 +1,7 @@
 # Manage permissions and roles
 
 :::info
-This page is for managing permissions and roles via Admin Console. For managing them via Logto Management API, please refer to [API references](https://openapi.logto.io/) and [🚝 Interact with Management API](../interact-with-management-api/README.md).
+This page is for managing permissions and roles via Admin Console. For managing them via Logto Management API, please refer to [API references](https://openapi.logto.io/) and [🚝 Interact with Management API](/docs/recipes/interact-with-management-api/README.md).
 :::
 
 ## Manage API resource permissions
@@ -12,11 +12,9 @@ The Logto Management API resource is immutable. A new API Resource is needed if 
 
 Permissions are set **in the API resource level**. Navigate to the "API resources" tab, click the API resource you want to manage, and then go to the "Permissions" tab.
 
-To create a new permission, click the "Create permission" button in the top right corner. It's important to provide a name and details for the permission, as it will make it easier to identify and manage permissions.
+To create a new permission, click the "Create permission" button in the top right corner. It's important to provide a name and details for the permission, as it will make it easier to identify and manage permissions. After the creation, you will be directed to the detail page. To delete or edit a permission, click the three dot icon in the very right of the row.
 
 ![Manage permissions](./assets/manage-permissions.webp)
-
-To delete a permission, click the trash bin icon in the very right of the row.
 
 ## Manage roles
 
@@ -29,9 +27,11 @@ To create a new role, click the "Create Role" button in the top right corner. A 
 1. Keep in mind that while it is technically possible to create a role _without_ permissions or users assigned, it is not recommended to create too many empty roles. This will disrupt the harmony of role management and render the RBAC system ineffective.
 2. Permissions are grouped by API in the selector, allowing you to add them in bulk or select them individually. The selected permissions will be displayed on the right side.
 3. A new role has two available types: "User role" or "Machine-to-machine app role".
+   1. **User role**: User role is a type of role only assignable to users. It can include permissions from your own API resources.
+   2. **Machine-to-machine role**: M2M role is a type of role only assignable to machine-to-machine apps. It can include both your own API permissions and Logto Management API permissions. Machine-to-machine role is usually used to protect your machine-to-machine authentication. Such as accessing Logto management API or your own API resources.
 
 :::note
-Machine-to-machine app roles are available from Logto v1.10.0.
+Machine-to-machine app roles are available since Logto v1.10.0.
 :::
 
 ![Create role](assets/create-role.webp)
@@ -47,6 +47,8 @@ Depending the type of role you choose, you will be able to assign users or machi
 
 After completing the role creation and assignment process or click a role name in the roles list, you will be directed to the role details page. The layout and controls on this page are consistent with other entities. To delete the role, click the three dots button.
 
+![Role details](./assets/manage-role-permissions.webp)
+
 You can also edit the role name and description, inspect and manage the permissions and users assigned to the role at any time.
 
 :::danger
@@ -59,6 +61,8 @@ Depending on the type of role you choose, you will be able to assign or remove u
 
 Click the "Users" or "Machine-to-machine apps" tab to view the users or apps assigned to the role. To add user(s) or app(s) to the role, click the "Assign users" or "Assign applications" button in the top right corner.
 
+![Manage role users](./assets/manage-role-users.webp)
+
 To remove a user or app from the role, click the trash bin icon in the very right of the row.
 
 ### Manage role permissions
@@ -69,7 +73,7 @@ If you need to change the capabilities of a role, you can easily do so by assign
 - To remove existing permissions, click on the trash bin icon in the very right of the row.
 
 :::caution
-If a permission is deleted, users with this role will lose the access granted by this permission.
+If a permission is deleted, users or apps with this role will lose the access granted by this permission.
 :::
 
 ![Manage role permissions](./assets/manage-role-permissions.webp)
