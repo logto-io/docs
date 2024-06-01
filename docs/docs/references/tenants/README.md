@@ -106,7 +106,9 @@ Logto leverages the global edge network to deliver the best performance and avai
 
 ## Tenant types
 
-There are two types of tenants in Logto Cloud.
+There are two types of tenants in Logto Cloud: development and production. With this tenant differentiation, you can better manage your projects across different environments for efficiency and, at the same time, enjoy the full value of Logto.
+
+Please be aware that you can only specify your tenant types during creation; the tenant type cannot be edited once it's created.
 
 ### Development
 
@@ -114,13 +116,11 @@ The development tenant (dev tenant) is primarily intended for testing purposes a
 
 ### Production
 
-The production tenant is where end-users access the live app and you might need a paid subscription. You can subscribe to the free, or pro plan to create a production tenant.
+The production tenant is where end-users access the live app and you might need a paid subscription. You can subscribe to the Free plan or Pro plan to create a production tenant.
 
 :::note
-Please be aware that you can only specify your tenant types during creation; it is not possible to modify the tenant type once it has been created.
+Each Logto Cloud account can join up to 10 Free plan tenants.
 :::
-
-With this tenant differentiation, you can better manage your projects across different environments for efficiency and, at the same time, enjoy the full value of Logto.
 
 ## Limitations of development tenants
 
