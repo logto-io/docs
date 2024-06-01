@@ -55,7 +55,7 @@ To automatically assign users to the correct organization, you can use [webhooks
 
 > We are planning to provide the "just-in-time provisioning" feature to automatically assign users to the correct organization based on the enterprise connector. Upvote this feature on our [roadmap](https://logto.productlane.com/roadmap) if you are interested.
 
-### I would like build a SaaS application with multi-tenancy
+### I would like to build a SaaS application with multi-tenancy
 
 If you are building a SaaS application with the concept of "workspace" or "organization" for each customer, you can use [organizations](/docs/recipes/organizations/) to manage each customer's workspace within a single tenant.
 
