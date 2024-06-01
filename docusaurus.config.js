@@ -1,7 +1,7 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const path = require('path');
+const path = require('node:path');
 
 const { dracula: darkCodeTheme, github: lightCodeTheme } = require('prism-react-renderer').themes;
 
@@ -245,14 +245,20 @@ const config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
+        redirects: [
+          {
+            to: '/docs/references/tenants/#tenant-type',
+            from: ['/docs/recipes/tenant-type', '/docs/references/tenant-type'],
+          },
+        ],
         // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath) {
           if (existingPath.includes('/quick-starts')) {
             return existingPath.replace('/quick-starts', '/sdk');
           }
 
-          if (['/references/openid-connect', '/references/tenant-type'].some((path) => existingPath.includes(path))) {
-            return existingPath.replace('/references/', '/recipes/');
+          if (existingPath.includes('/references/openid-connect')) {
+            return existingPath.replace('/references/openid-connect', '/recipes/openid-connect');
           }
 
           // eslint-disable-next-line unicorn/no-useless-undefined
