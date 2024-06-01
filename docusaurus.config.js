@@ -245,11 +245,16 @@ const config = {
     [
       '@docusaurus/plugin-client-redirects',
       {
+        // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath) {
           if (existingPath.includes('/quick-starts')) {
-            // Redirect from /sdk/foo to /quick-starts/foo
             return existingPath.replace('/quick-starts', '/sdk');
           }
+
+          if (['/references/openid-connect', '/references/tenant-type'].some((path) => existingPath.includes(path))) {
+            return existingPath.replace('/references/', '/recipes/');
+          }
+
           // eslint-disable-next-line unicorn/no-useless-undefined
           return undefined; // Return a falsy value: no redirect created
         },
