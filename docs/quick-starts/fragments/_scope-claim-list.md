@@ -36,9 +36,10 @@ Here's the list of supported scopes and the corresponding claims:
 
 **`identities`**
 
-| Claim name | Type     | Description                       | Needs userinfo? |
-| ---------- | -------- | --------------------------------- | --------------- |
-| identities | `object` | The linked identities of the user | Yes             |
+| Claim name     | Type     | Description                           | Needs userinfo? |
+| -------------- | -------- | ------------------------------------- | --------------- |
+| identities     | `object` | The linked identities of the user     | Yes             |
+| sso_identities | `array`  | The linked SSO identities of the user | Yes             |
 
 **`urn:logto:scope:organizations`**
 
