@@ -250,6 +250,10 @@ const config = {
             to: '/docs/references/tenants/#tenant-type',
             from: ['/docs/recipes/tenant-type', '/docs/references/tenant-type'],
           },
+          {
+            to: '/docs/recipes/multi-factor-auth/configure-mfa',
+            from: '/docs/recipes/multi-factor-auth/config-mfa',
+          },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath) {
