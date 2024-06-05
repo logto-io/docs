@@ -2,11 +2,27 @@
 sidebar_position: 6
 ---
 
+import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.png';
+import logtoManagementApiDetailsSrc from './assets/logto-management-api-details.png';
+
+import BasicsAboutAccessTokenRequest from '../../../quick-starts/generic/machine-to-machine/fragments/\_basics-about-access-token-request.mdx';
+import FetchAccessTokenForLogtoManagementApi from '../../../quick-starts/generic/machine-to-machine/fragments/\_fetch-access-token-for-logto-management-api.mdx';
+import AccessTokenUsage from '../../../quick-starts/generic/machine-to-machine/fragments/\_access-token-usage.mdx';
+import AccessLogtoManagementApiUsingAccessToken from '../../../quick-starts/generic/machine-to-machine/fragments/\_access-logto-management-api-using-access-token.mdx';
+import M2mAccessTokenNote from '../../../quick-starts/generic/machine-to-machine/fragments/\_m2m-access-token-sub-note.mdx';
+import M2mRoleAssignment from '../../../quick-starts/generic/machine-to-machine/fragments/\_m2m-role-assignment.mdx';
+
 # 🚝 Interact with Management API
 
 ## What is Logto Management API
 
-The Logto Management API is a comprehensive collection of APIs that empower administrators to manage identity-related tasks, enforce security policies, and comply with regulations and standards.
+The Logto Management API is a comprehensive set of APIs that gives developers full control over their implementation to suit their product needs and tech stack. It is pre-built, listed in the API resource list in the Logto Console, and cannot be deleted or modified.
+
+Its identifier is in the pattern of `https://[tenant-id].logto.app/api`
+
+<img alt="Logto Management API Resource" src={logtoManagementApiResourceSrc} />
+
+<img alt="Logto Management API Details" src={logtoManagementApiDetailsSrc} />
 
 With the Logto Management API, you can access Logto's robust backend services, which are highly scalable and can be utilized in a multitude of scenarios. It goes beyond what's possible with the Admin Console's low-code capabilities.
 
@@ -21,39 +37,72 @@ Some frequently used APIs are listed below:
 
 To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
-Wondering what you can do with the Logto Management API? Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the Management API.
+## How to access Logto management API
 
-## Some typical scenarios
+### Create an M2M app
 
-Our Management API can be leveraged in several scenarios. For instance,
+On the "Applications" page, select the M2M app type and start the creation process.
+
+<M2mRoleAssignment />
+
+In the role assignment module, you can see all M2M roles are included, and roles indicated by a Logto icon means that these roles include Logto management API permissions.
+
+Now assign M2M roles include Logto management API permissions for your M2M app.
+
+### Fetch an access token
+
+#### Basics about access token request
+
+<BasicsAboutAccessTokenRequest />
+
+#### Fetch access token for Logto Management API
+
+<FetchAccessTokenForLogtoManagementApi />
+
+#### Access token response
+
+A successful access response body would be like:
+
+```json
+{
+  "access_token": "eyJhbG...2g", // Use this token for accessing the Logto Management API
+  "expires_in": 3600, // Token expiration in seconds
+  "token_type": "Bearer", // Auth type for your request when using the access token
+  "scope": "all" // scope `all` for Logto Management API
+}
+```
+
+<M2mAccessTokenNote />
+
+### Access Logto Management API using access token
+
+<AccessTokenUsage />
+
+<AccessLogtoManagementApiUsingAccessToken />
+
+## Typical scenarios for using management API
+
+Our developers have implemented many additional features using our Management API. We believe that our API is highly scalable and can support a wide range of your needs. Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the Management API.
 
 ### Implement user profile on your own
 
-Logto currently does not provide a pre-built UI solution for user profiles. We recognize that user profiles are closely tied to business and product attributes, which raises questions about the value of offering pre-built solutions, particularly from Logto's perspective. While we work on determining the best approach, we suggest using our APIs to create your own solution. For instance, you can utilize our interaction API, profile API, and verification code API to develop a custom solution that meets your needs.
-
-Check out [User Profile](../user-profile/README.md) for more information.
+Logto currently does not provide a pre-built UI solution for user profiles. We recognize that user profiles are closely tied to business and product attributes. While we work on determining the best approach, we suggest using our APIs to create your own solution. For instance, you can utilize our interaction API, profile API, and verification code API to develop a custom solution that meets your needs. We’ve prepared a dedicated page [User Profile](/docs/recipes/user-profile/README.md) for tutorials and guides.
 
 ### Advanced user search
 
-You can certainly use Logto's user management feature in the console for some tasks, our Management API offers additional functions that support more advanced user search scenarios. Check out [Advanced User Search](../manage-users/advanced-user-search/) for more information.
+The Logto Admin Console supports basic search and filtering functions. For advanced search options like fuzzy search, exact match, and case sensitivity, check out our [Advanced User Search](/docs/recipes/manage-users/advanced-user-search/) tutorials and guides.
 
-Our developers have implemented many additional features using our Management API. We believe that our API is highly scalable and can support a wide range of your needs. Additionally, we have continued distilling some use cases and incorporated them into our low-code platform to boost productivity and enhance the developer experience.
+### Implement organization management on your own
 
-## How to?
+If you’re using the [organization](/docs/recipes/organizations/) feature to build your multi-tenant app, you might need the Logto management API for tasks like org invitations and member management. For your SaaS product, where you have both admins and members in the tenant, the Logto management API can help you create a custom admin portal tailored to your business needs. Check out [this](/docs/recipes/organizations/configuration/#configure-via-management-api) for more detail.
 
-1. Create a machine-to-machine app in Admin Console.
-2. Follow the guide [Machine-to-machine: Auth with Logto](../../../quick-starts/generic/machine-to-machine/README.mdx) to fetch an Access Token for the API identifier `https://[your-tenant-id].logto.app/api` (indicates Management API) and scope `all` (all permissions).
-3. Interact with Management API with Bearer authorization using the Access Token.
+## Tips for using Logto’s Management API
 
-:::note
-Usually the Access Token has a short expiration. If you have a local cache, remember to check and fetch a new Access Token if needed before sending requests.
-:::
-
-## Using pagination
+### Managing paginated API responses
 
 Some of the API responses may include many results, the results will be paginated. Logto provides 2 kinds of pagination info.
 
-### Using link headers
+#### Using link headers
 
 A paginated response header will be like:
 
@@ -68,7 +117,7 @@ The link header provides the URL for the previous, next, first, and last page of
 - The URL for the last page is followed by rel="last".
 - The URL for the first page is followed by rel="first".
 
-### Using total-number header
+#### Using total-number header
 
 In addition to the standard link headers, Logto will also add a `Total-Number` header:
 
@@ -78,14 +127,14 @@ Total-Number: 216
 
 That would be very convenient and useful to show page numbers.
 
-### Changing page number and page size
+#### Changing page number and page size
 
 There are 2 optional query parameters:
 
 - `page`: indicates the page number, starts from 1, the default value is 1.
 - `page_size`: indicates the number of items per page, the default value is 20.
 
-## Rate limit
+### Rate limit
 
 :::note
 This is only for Logto Cloud.
