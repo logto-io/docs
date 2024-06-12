@@ -37,7 +37,7 @@ Some frequently used APIs are listed below:
 
 To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
-## How to access Logto management API
+## How to access Logto Management API
 
 ### Create an M2M app
 
@@ -45,9 +45,9 @@ On the "Applications" page, select the M2M app type and start the creation proce
 
 <M2mRoleAssignment />
 
-In the role assignment module, you can see all M2M roles are included, and roles indicated by a Logto icon means that these roles include Logto management API permissions.
+In the role assignment module, you can see all M2M roles are included, and roles indicated by a Logto icon means that these roles include Logto Management API permissions.
 
-Now assign M2M roles include Logto management API permissions for your M2M app.
+Now assign M2M roles include Logto Management API permissions for your M2M app.
 
 ### Fetch an access token
 
@@ -80,9 +80,9 @@ A successful access response body would be like:
 
 <AccessLogtoManagementApiUsingAccessToken />
 
-## Typical scenarios for using management API
+## Typical scenarios for using Logto Management API
 
-Our developers have implemented many additional features using our Management API. We believe that our API is highly scalable and can support a wide range of your needs. Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the Management API.
+Our developers have implemented many additional features using Logto Management API. We believe that our API is highly scalable and can support a wide range of your needs. Here are a few examples of scenarios that are not possible with the Logto Admin Console but can be achieved through the Logto Management API.
 
 ### Implement user profile on your own
 
@@ -94,9 +94,9 @@ The Logto Admin Console supports basic search and filtering functions. For advan
 
 ### Implement organization management on your own
 
-If you’re using the [organization](/docs/recipes/organizations/) feature to build your multi-tenant app, you might need the Logto management API for tasks like org invitations and member management. For your SaaS product, where you have both admins and members in the tenant, the Logto management API can help you create a custom admin portal tailored to your business needs. Check out [this](/docs/recipes/organizations/configuration/#configure-via-management-api) for more detail.
+If you’re using the [organization](/docs/recipes/organizations/) feature to build your multi-tenant app, you might need the Logto Management API for tasks like org invitations and member management. For your SaaS product, where you have both admins and members in the tenant, the Logto Management API can help you create a custom admin portal tailored to your business needs. Check out [this](/docs/recipes/organizations/configuration/#configure-via-management-api) for more detail.
 
-## Tips for using Logto’s Management API
+## Tips for using Logto Management API
 
 ### Managing paginated API responses
 
