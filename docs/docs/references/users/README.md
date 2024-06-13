@@ -93,7 +93,47 @@ Its max length is 128.
 _avatar_ is the URL pointing to the user's avatar image.
 Its max length is 2048.
 
-If the user registers with a social connector like Facebook and WeChat, its value may be retrieved from the social user info.
+If the user registers with a social connector like Google and Facebook, its value may be retrieved from the social user info.
+
+:::note
+This property is mapped to the `picture` claim in the [OpenID Connect](https://openid.net/connect/) standard.
+:::
+
+### profile
+
+_profile_ stores additional OpenID Connect [standard claims](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) that are not included in user's properties.
+
+Its type definition can be found at [this file](https://github.com/logto-io/logto/blob/HEAD/packages/schemas/src/foundations/jsonb-types/users.ts#L6). Here's a copy of the type definition:
+
+```ts
+type UserProfile = Partial<{
+  familyName: string;
+  givenName: string;
+  middleName: string;
+  nickname: string;
+  preferredUsername: string;
+  profile: string;
+  website: string;
+  gender: string;
+  birthdate: string;
+  zoneinfo: string;
+  locale: string;
+  address: Partial<{
+    formatted: string;
+    streetAddress: string;
+    locality: string;
+    region: string;
+    postalCode: string;
+    country: string;
+  }>;
+}>;
+```
+
+:::note
+`Partial` means that all properties are optional.
+:::
+
+A difference compared to the other standard claims is that the properties in `profile` will only be included in the ID token or userinfo endpoint response when their values are not empty, while other standard claims will return `null` if the values are empty.
 
 ### application_id
 
