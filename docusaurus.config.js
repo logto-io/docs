@@ -185,6 +185,8 @@ const config = {
           'cshtml',
           'json5',
           'dart',
+          'ruby',
+          'erb',
         ],
       },
       colorMode: {
