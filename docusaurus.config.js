@@ -256,6 +256,10 @@ const config = {
             to: '/docs/recipes/multi-factor-auth/configure-mfa',
             from: '/docs/recipes/multi-factor-auth/config-mfa',
           },
+          {
+            to: '/docs/recipes/configure-connectors',
+            from: '/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors',
+          },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath) {
