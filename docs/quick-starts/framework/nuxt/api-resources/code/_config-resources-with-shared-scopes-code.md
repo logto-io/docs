@@ -1,4 +1,4 @@
-```ts
+```ts title="nuxt.config.ts"
 export default defineNuxtConfig({
   logto: {
     scopes: ['read', 'write'],
