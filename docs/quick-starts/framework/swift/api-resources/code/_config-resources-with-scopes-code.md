@@ -1,4 +1,4 @@
-```swift
+```swift title="SwiftUI Demo/ContentView.swift"
 let config = try? LogtoConfig(
   endpoint: "<your-logto-endpoint>",
   appId: "<your-app-id>",
