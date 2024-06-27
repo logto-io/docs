@@ -1,4 +1,4 @@
-```dart
+```dart title="lib/main.dart"
 // LogtoConfig
 final logtoConfig = const LogtoConfig(
   endpoint: "<your-logto-endpoint>",
