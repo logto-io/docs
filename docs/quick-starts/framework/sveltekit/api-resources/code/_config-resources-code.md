@@ -1,4 +1,4 @@
-```ts
+```ts title="hooks.server.ts"
 export const handle = handleLogto(
   {
     // ...other configs
