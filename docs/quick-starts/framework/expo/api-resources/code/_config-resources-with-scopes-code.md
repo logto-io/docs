@@ -1,4 +1,4 @@
-```tsx
+```tsx title="App.tsx"
 import { LogtoConfig } from '@logto/rn';
 
 const config: LogtoConfig = {

@@ -1,4 +1,4 @@
-```tsx
+```tsx title="Organizations.tsx"
 import { useLogto } from '@logto/rn';
 import { useEffect, useState } from 'react';
 

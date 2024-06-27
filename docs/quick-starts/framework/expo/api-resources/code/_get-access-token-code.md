@@ -1,7 +1,7 @@
-```tsx
+```tsx title="AccessToken.tsx"
 import { useLogto } from '@logto/rn';
 
-const Home = () => {
+const AccessToken = () => {
   const { isAuthenticated, getAccessToken } = useLogto();
   const [accessToken, setAccessToken] = useState('');
 
