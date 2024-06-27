@@ -1,4 +1,4 @@
-```ts
+```ts title="nuxt.config.ts"
 import { UserScope } from '@logto/nuxt';
 
 export default defineNuxtConfig({
