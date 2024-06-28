@@ -34,4 +34,4 @@ classDiagram
 The "sub" claim means "subject", which is the unique identifier of the user (i.e. user ID).
 :::
 
-By default, Logto SDK will always request three scopes: `openid`, `profile`, and `offline_access`.
+Logto SDK will always request three scopes: `openid`, `profile`, and `offline_access`.
