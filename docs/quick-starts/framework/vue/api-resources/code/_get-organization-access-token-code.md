@@ -1,4 +1,4 @@
-```tsx
+```ts title="views/OrganizationsView.vue"
 import { useLogto } from '@logto/vue';
 import { onMounted, ref } from 'vue';
 
@@ -12,7 +12,7 @@ onMounted(async () => {
   organizationIds.value = claims?.organizations;
 });
 
-const onClickFetchOrgToken = async (organizationId: string) => {
+const onClickFetchOrganizationToken = async (organizationId: string) => {
   console.log('raw token', await getOrganizationToken(organizationId));
   console.log('claims', await getOrganizationTokenClaims(organizationId));
 };
@@ -23,7 +23,7 @@ const onClickFetchOrgToken = async (organizationId: string) => {
   <ul>
     <li v-for="organizationId of organizationIds" v-bind:key="organizationId">
       <span>{{ organizationId }}</span>
-      <button type="button" @click="onClickFetchOrgToken(organizationId)">
+      <button type="button" @click="onClickFetchOrganizationToken(organizationId)">
         fetch token (see console)
       </button>
     </li>

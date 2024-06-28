@@ -1,4 +1,4 @@
-```tsx
+```ts title="views/HomeView.vue"
 import { useLogto, type UserInfoResponse } from '@logto/vue';
 
 const { isAuthenticated, getAccessToken } = useLogto();
