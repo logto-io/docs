@@ -28,7 +28,7 @@ To create a new role, click the "Create Role" button in the top right corner. A 
 2. Permissions are grouped by API in the selector, allowing you to add them in bulk or select them individually. The selected permissions will be displayed on the right side.
 3. A new role has two available types: "User role" or "Machine-to-machine app role".
    1. **User role**: User role is a type of role only assignable to users. It can include permissions from your own API resources.
-   2. **Machine-to-machine role**: M2M role is a type of role only assignable to machine-to-machine apps. It can include both your own API permissions and Logto Management API permissions. Machine-to-machine role is usually used to protect your machine-to-machine authentication. Such as accessing Logto management API or your own API resources.
+   2. **Machine-to-machine role**: M2M role is a type of role only assignable to machine-to-machine apps. It can include both your own API permissions and Logto Management API permissions. Machine-to-machine role is usually used to protect your machine-to-machine authentication. Such as accessing Logto Management API or your own API resources.
 
 :::note
 Machine-to-machine app roles are available since Logto v1.10.0.

@@ -96,7 +96,7 @@ Available events: `User.Created`, `User.Data.Updated`,
 
 ### Management API context body fields
 
-Data mutation hook events that are triggered by management API calls.
+Data mutation hook events that are triggered by Management API calls.
 
 | Field        | Type     | Optional | Notes                                                                                                                  |
 | ------------ | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
