@@ -1,4 +1,4 @@
-```ts
+```ts title="libraries/logto.ts"
 export const logtoClient = new LogtoClient({
   // ...other configs
   scopes: ['shopping:read', 'shopping:write', 'store:read', 'store:write'],

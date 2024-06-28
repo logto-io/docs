@@ -1,4 +1,4 @@
-```ts
+```ts title="pages/api/organizations.ts"
 import { logtoClient } from '../../../libraries/logto';
 
 export default logtoClient.withLogtoApiRoute(async (request, response) => {

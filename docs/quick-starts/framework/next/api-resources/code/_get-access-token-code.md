@@ -1,4 +1,4 @@
-```ts
+```ts title="pages/api/get-access-token.ts"
 import { logtoClient } from '../../../libraries/logto';
 
 export default logtoClient.withLogtoApiRoute(

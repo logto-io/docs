@@ -1,4 +1,4 @@
-```tsx
+```tsx title="app/page.tsx"
 import { getOrganizationTokens } from '@logto/next/server-actions';
 import { logtoConfig } from './logto';
 
