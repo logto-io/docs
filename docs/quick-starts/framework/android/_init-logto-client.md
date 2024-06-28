@@ -1,6 +1,6 @@
 Create a `LogtoViewModel.kt` and init `LogtoClient` in this view model:
 
-```kotlin
+```kotlin title="LogtoViewModel.kt"
 //...with other imports
 import io.logto.sdk.android.LogtoClient
 import io.logto.sdk.android.type.LogtoConfig
@@ -34,7 +34,7 @@ class LogtoViewModel(application: Application) : AndroidViewModel(application) {
 
 then, create a `LogtoViewModel` for your `MainActivity.kt`:
 
-```kotlin
+```kotlin title="MainActivity.kt"
 //...with other imports
 class MainActivity : AppCompatActivity() {
     private val logtoViewModel: LogtoViewModel by viewModels { LogtoViewModel.Factory }
