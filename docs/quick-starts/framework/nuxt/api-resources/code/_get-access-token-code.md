@@ -16,6 +16,7 @@
     }
 
     try {
+      // highlight-next-line
       accessToken.value = await client.getAccessToken('https://shopping.your-app.com/api');
     } catch (error) {
       console.error('Failed to get access token', error);
