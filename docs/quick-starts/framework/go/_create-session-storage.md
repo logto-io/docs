@@ -9,8 +9,7 @@ In this example, we use memory-based sessions. You can use Redis, MongoDB, and o
 
 The `Storage` type in the Logto SDK is as follows:
 
-```go
-// github.com/logto-io/client/storage.go
+```go title="github.com/logto-io/client/storage.go"
 package client
 
 type Storage interface {
@@ -23,7 +22,7 @@ We use [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions
 
 Apply the middleware to the application, so that we can get the user session by the user request context in the route handler:
 
-```go
+```go title="main.go"
 package main
 
 import (
@@ -46,14 +45,13 @@ func main() {
 		// ...
 		ctx.String(200, "Hello Logto!")
 	})
-	router.Run(":8080")
+	router.Run(":3000")
 }
 ```
 
 Create a `session_storage.go` file, define a `SessionStorage` and implement the Logto SDK's `Storage` interfaces:
 
-```go
-// session_storage.go
+```go title="session_storage.go"
 package main
 
 import (

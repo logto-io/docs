@@ -6,7 +6,7 @@ go get github.com/logto-io/go
 
 Add the `github.com/logto-io/go/client` package to your application code:
 
-```go
+```go title="main.go"
 // main.go
 package main
 
@@ -21,6 +21,6 @@ func main() {
 	router.GET("/", func(c *gin.Context) {
 		c.String(200, "Hello Logto!")
 	})
-	router.Run(":8080")
+	router.Run(":3000")
 }
 ```
