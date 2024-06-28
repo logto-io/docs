@@ -28,7 +28,9 @@ const Organizations = () => {
               <button
                 type="button"
                 onClick={async () => {
+                  // highlight-start
                   console.log('raw token', await getOrganizationToken(organizationId));
+                  // highlight-end
                 }}
               >
                 fetch token (see console)

@@ -8,7 +8,9 @@ const AccessToken = () => {
   useEffect(() => {
     (async () => {
       if (isAuthenticated) {
+        // highlight-start
         const token = await getAccessToken('https://shopping.your-app.com/api');
+        // highlight-end
         setAccessToken(token);
       }
     })();
