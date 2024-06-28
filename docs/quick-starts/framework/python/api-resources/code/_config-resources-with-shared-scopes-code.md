@@ -1,4 +1,4 @@
-```python
+```python title="client.py"
 client = LogtoClient(
     LogtoConfig(
         # ...other configs
