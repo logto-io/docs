@@ -1,4 +1,4 @@
-```ts
+```ts title="app.ts"
 app.get(
   '/fetch-access-token',
   withLogto({
