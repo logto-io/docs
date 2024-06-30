@@ -1,4 +1,4 @@
-```tsx
+```tsx title="pages/Home/index.tsx"
 import { useLogto } from '@logto/react';
 
 const Home = () => {

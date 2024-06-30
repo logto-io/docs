@@ -1,9 +1,9 @@
-```tsx
+```tsx title="App.tsx"
 import { LogtoConfig } from '@logto/react';
 
 const config: LogtoConfig = {
-  appId: '<your-application-id>',
-  endpoint: '<your-logto-endpoint>',
+  // ...other configs
+  // highlight-next-line
   resources: ['https://shopping.your-app.com/api', 'https://store.your-app.com/api'], // Add API resources
 };
 ```
