@@ -80,6 +80,6 @@ If a permission is deleted, users or apps with this role will lose the access gr
 
 ## Manage roles from the details page of a user or app
 
-You can find a "roles" tab in the details page of a user or app. Click the tab to view and manage the roles assigned to the user or app.
+You can find a "Roles" tab in the details page of a user or app. Click the tab to view and manage the roles assigned to the user or app.
 
 ![Application roles](./assets/app-roles.webp)

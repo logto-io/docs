@@ -21,7 +21,7 @@ Firstly, create a webhook endpoint that will be called by the Logto Agent. This 
 
 To create a new webhook in the Logto Console, follow these steps:
 
-1. Navigate to the "Webhook" tab and click on the "Create Webhook" button.
+1. Navigate to the "Webhooks" tab and click on the "Create webhook" button.
 2. **Name**
    Provide a name for the webhook. This name is for your own reference to define the usage scenario.
 3. **Endpoint URL**

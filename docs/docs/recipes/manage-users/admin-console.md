@@ -7,7 +7,7 @@ sidebar_position: 1
 
 ## Browse and search users
 
-To access the user management functionality in the Admin Console, navigate to the "User Management" tab on the left-hand side of the screen. Once there, you will see a table view of all the users on the right-hand side of the screen.
+To access the user management functionality in the Admin Console, navigate to the "User management" tab on the left-hand side of the screen. Once there, you will see a table view of all the users on the right-hand side of the screen.
 
 The table consists of three columns:
 
@@ -23,12 +23,12 @@ After clicking the "Search" button, the table will display all users matching th
 
 ## Add user
 
-Using the Admin Console, administrators can create new accounts for end-users. To do so, click on the "+ Add User" button in the screen's upper right corner. A modal window will appear, where you can enter the username and full name of the new user. Once you've filled out the required fields, click on the "Add User" button to confirm.
+Using the Admin Console, administrators can create new accounts for end-users. To do so, click on the "+ Add user" button in the screen's upper right corner. A modal window will appear, where you can enter the username and full name of the new user. Once you've filled out the required fields, click on the "Add user" button to confirm.
 
 After the new user has been created, you can copy their **username** and **initial password** to send to them. This will allow them to log in to the system and start using it.
 
 :::caution
-If you fail to retain the password after closing the "Add User" modal, you will not be able to view it again. If you forget to keep it, you can [reset the password](#reset-user-password).
+If you fail to retain the password after closing the "Add user" modal, you will not be able to view it again. If you forget to keep it, you can [reset the password](#reset-user-password).
 :::
 
 ## View and update user profile
@@ -55,15 +55,15 @@ Click the table row to see more details in the user log, e.g., IP address, user 
 
 ## Suspend user
 
-On the "User details" page, click "Three Dots" -> "Suspend User" button.
+On the "User details" page, click "Three dots" -> "Suspend User" button.
 
 Once a user is suspended, the user will be unable to sign in to your app and won't be able to obtain a new access token after the current one expires. Additionally, any API requests made by this user will fail.
 
-If you want to reactive this user, you can do so by clicking "Three Dots" -> "Reactivate User" button.
+If you want to reactive this user, you can do so by clicking "Three dots" -> "Reactivate User" button.
 
 ## Delete user
 
-On the "User details" page, click "Three Dots" -> "Delete" button.
+On the "User details" page, click "Three dots" -> "Delete" button.
 
 :::danger
 Be careful! The user data deletion CANNOT be undone.
@@ -71,7 +71,7 @@ Be careful! The user data deletion CANNOT be undone.
 
 ## Reset user password
 
-On the "User details" page, click "Three Dots" -> "Reset password" button.
+On the "User details" page, click "Three dots" -> "Reset password" button.
 
 After you reset the password, copy and send it to the end-user.
 
