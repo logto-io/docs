@@ -4,11 +4,12 @@ import { logtoConfig } from './logto';
 
 export default async function Home() {
   // ...
+  // highlight-next-line
   const organizations = await getOrganizationTokens(logtoConfig);
 
   return (
     <main>
-      /* ... */
+      {/* ... */}
       {organizations.length > 0 ? (
         <div>
           <h2>Organizations</h2>
@@ -19,7 +20,7 @@ export default async function Home() {
           </ul>
         </div>
       ) : null}
-      /* ... */
+      {/* ... */}
     </main>
   );
 }

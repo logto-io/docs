@@ -14,8 +14,10 @@ export default logtoClient.withLogtoApiRoute(
     response.json(request.user);
   },
   {
+    // highlight-start
     getAccessToken: true,
     resource: 'https://shopping.your-app.com/api',
+    // highlight-end
   }
 );
 ```

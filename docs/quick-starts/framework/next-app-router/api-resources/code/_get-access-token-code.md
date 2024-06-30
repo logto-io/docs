@@ -4,6 +4,7 @@ import { logtoConfig } from './logto';
 
 export default async function Home() {
   const { isAuthenticated, claims, accessToken } = await getLogtoContext(logtoConfig, {
+    // highlight-next-line
     getAccessToken: true,
   });
   // ...
