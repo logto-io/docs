@@ -12,7 +12,7 @@ In most cases, a single sign-in experience is good enough. But you may need some
 
 Logto covers the tedious part, so you can have fun with customization to define the unique experience for your users.
 
-In Admin Console, click the "Sign-in Experience" tab on the left, and you'll see a two-column page.
+In Admin Console, click the "Sign-in experience" tab on the left, and you'll see a two-column page.
 
 The left column is the customization section with three tabs: **Branding**, **Sign-in and sign-up**, **Content**, and **Password policy**.
 
