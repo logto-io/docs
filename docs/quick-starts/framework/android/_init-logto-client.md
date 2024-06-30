@@ -7,7 +7,7 @@ import io.logto.sdk.android.type.LogtoConfig
 
 class LogtoViewModel(application: Application) : AndroidViewModel(application) {
     private val logtoConfig = LogtoConfig(
-          endpoint = "<your-logto-endpoint>",  // E.g. http://localhost:3001
+          endpoint = "<your-logto-endpoint>",
           appId = "<your-app-id>",
           scopes = null,
           resources = null,
