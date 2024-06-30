@@ -1,8 +1,8 @@
-```js
+```js title="index.js"
 // Get organizationIds from the userInfo
 
-const userInfo = await logtoClient.fetchUserInfo();
-const organizationIds = userInfo.organizations;
+const claims = await logtoClient.getIdTokenClaims();
+const organizationIds = claims.organizations;
 
 /**
  * Or from the ID token claims
