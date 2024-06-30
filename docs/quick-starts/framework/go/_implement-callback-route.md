@@ -1,14 +1,13 @@
 When the user signs in successfully on the Logto sign-in page, Logto will redirect the user to the Redirect URI.
 
-Since the Redirect URI is `http://localhost:8080/sign-in-callback`, we add the `/sign-in-callback` route to handle the callback after signing in.
+Since the redirect URI is `http://localhost:3000/callback`, we add the `/callback` route to handle the callback after signing in.
 
-```go
-// main.go
+```go title="main.go"
 func main() {
 	// ...
 
 	// Add a route for handling sign-in callback requests
-	router.GET("/sign-in-callback", func(ctx *gin.Context) {
+	router.GET("/callback", func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		logtoClient := client.NewLogtoClient(
 			logtoConfig,
