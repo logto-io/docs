@@ -1,4 +1,4 @@
-```ts
+```ts title="pages/api/get-access-token.ts"
 import { logtoClient } from '../../../libraries/logto';
 
 export default logtoClient.withLogtoApiRoute(
@@ -14,8 +14,10 @@ export default logtoClient.withLogtoApiRoute(
     response.json(request.user);
   },
   {
+    // highlight-start
     getAccessToken: true,
     resource: 'https://shopping.your-app.com/api',
+    // highlight-end
   }
 );
 ```

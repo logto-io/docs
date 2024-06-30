@@ -1,4 +1,4 @@
-```ts
+```ts title="pages/api/organizations.ts"
 import { logtoClient } from '../../../libraries/logto';
 
 export default logtoClient.withLogtoApiRoute(async (request, response) => {
@@ -10,6 +10,7 @@ export default logtoClient.withLogtoApiRoute(async (request, response) => {
 
   const client = await logtoClient.createNodeClientFromNextApi(request, response);
 
+  // Organization IDs are stored in the user's ID token claims
   const { organizations = [] } = await client.getIdTokenClaims();
 
   const organizationTokens = await Promise.all(
@@ -20,8 +21,7 @@ export default logtoClient.withLogtoApiRoute(async (request, response) => {
     organizations.map(async (organizationId) => client.getOrganizationTokenClaims(organizationId))
   );
 
-  console.log(organizationTokens);
-  console.log(organizationClaims);
+  // Do things with the organization token and / or claims
 
   response.json({
     organizations,
