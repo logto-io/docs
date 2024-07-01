@@ -1,9 +1,9 @@
-```js
-const resources = ['http://localhost:3001/api/test']; // Replace with your own resource indicators registered in Logto dashboard
+```js title="index.js"
+import LogtoClient from '@logto/browser';
 
 const logtoClient = new LogtoClient({
-  endpoint,
-  appId,
-  resources: resourceIndicators,
+  // ...other configs
+  // highlight-next-line
+  resources: ['https://shopping.your-app.com/api', 'https://store.your-app.com/api'], // Add API resources
 });
 ```
