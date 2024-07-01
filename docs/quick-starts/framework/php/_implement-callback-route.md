@@ -1,7 +1,7 @@
-After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/sign-in-callback` as the callback URL:
+After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/callback` as the callback URL:
 
 ```php
-Route::get('/sign-in-callback', function () {
+Route::get('/callback', function () {
   try {
     $client->handleSignInCallback(); // Handle a lot of stuff
   } catch (\Throwable $exception) {
