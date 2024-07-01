@@ -1,10 +1,11 @@
-```tsx
+```ts title="main.ts"
 import { createLogto } from '@logto/vue';
 
 app.use(createLogto, {
-  endpoint: '<your-logto-endpoint>',
-  appId: '<your-application-id>',
+  // ...other configs
+  // highlight-start
   scopes: ['read', 'write'],
   resources: ['https://shopping.your-app.com/api', 'https://store.your-app.com/api'],
+  // highlight-end
 });
 ```
