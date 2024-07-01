@@ -1,7 +1,7 @@
-After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/sign-in-callback` as the callback URL:
+After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/callback` as the callback URL:
 
 ```python
-@app.route("/sign-in-callback")
+@app.route("/callback")
 async def callback():
     try:
         await client.handleSignInCallback(request.url) # Handle a lot of stuff
