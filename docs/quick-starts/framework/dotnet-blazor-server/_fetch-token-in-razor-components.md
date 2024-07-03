@@ -1,6 +1,6 @@
 Since we cannot directly access `HttpContext` in Razor components, we need to inject the `HttpContextAccessor` to the component and use it to fetch the tokens. The following code demonstrates how to fetch the access token for the API resource in a Razor component:
 
-```cshtml
+```cshtml title="Components/Pages/Index.razor"
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using Logto.AspNetCore.Authentication

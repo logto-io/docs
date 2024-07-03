@@ -1,6 +1,6 @@
 Open `Startup.cs` (or `Program.cs`) and add the following code to register Logto authentication services:
 
-```csharp
+```csharp title="Program.cs"
 using Logto.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);

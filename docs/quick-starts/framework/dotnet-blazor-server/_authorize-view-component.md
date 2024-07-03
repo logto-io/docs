@@ -2,7 +2,7 @@ Alternatively, you can use the `AuthorizeView` component to conditionally render
 
 In your Razor component, add the following code:
 
-```cshtml
+```cshtml title="Components/Pages/Index.razor"
 @using Microsoft.AspNetCore.Components.Authorization
 
 @* ... *@
@@ -22,7 +22,7 @@ In your Razor component, add the following code:
 
 The `AuthorizeView` component requires a cascading parameter of type `Task<AuthenticationState>`. A direct way to get this parameter is to add the `<CascadingAuthenticationState>` component. However, due to the nature of Blazor Server, we cannot simply add the component to the layout or the root component (it may not work as expected). Instead, we can add the following code to the builder (`Program.cs` or `Startup.cs`) to provide the cascading parameter:
 
-```csharp
+```csharp title="Program.cs"
 builder.Services.AddCascadingAuthenticationState();
 ```
 

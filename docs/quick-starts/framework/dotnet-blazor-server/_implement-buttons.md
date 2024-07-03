@@ -1,6 +1,6 @@
 In the Razor component, add the following code:
 
-```cshtml
+```cshtml title="Components/Pages/Index.razor"
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @inject AuthenticationStateProvider AuthenticationStateProvider

@@ -9,4 +9,4 @@ var claims = User.Claims;
 var userId = claims.FirstOrDefault(c => c.Type == LogtoParameters.Claims.Subject)?.Value;
 ```
 
-See [`LogtoParameters.Claims`](https://github.com/logto-io/csharp/tree/master/src/Logto.AspNetCore.Authentication/docs/api/Logto/AspNetCore/Authentication/LogtoParameters/Claims/index.md) for the list of claim names and their meanings.
+See [`LogtoParameters.Claims`](https://github.com/logto-io/csharp/blob/master/src/Logto.AspNetCore.Authentication/LogtoParameters.cs) for the list of claim names and their meanings.
