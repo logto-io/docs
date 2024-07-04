@@ -1,6 +1,6 @@
 First, add the handler methods to your `PageModel`, for example:
 
-```csharp
+```csharp title="Pages/Index.cshtml.cs"
 public class IndexModel : PageModel
 {
   public async Task OnPostSignInAsync()
@@ -23,7 +23,7 @@ public class IndexModel : PageModel
 
 Then, add the buttons to your Razor page:
 
-```cshtml
+```cshtml title="Pages/Index.cshtml"
 <p>Is authenticated: @User.Identity?.IsAuthenticated</p>
 <form method="post">
   @if (User.Identity?.IsAuthenticated == true) {

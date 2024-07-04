@@ -2,7 +2,7 @@ Since Blazor Server uses SignalR to communicate between the server and the clien
 
 To make it right, we need to explicitly add two endpoints for sign-in and sign-out redirects:
 
-```csharp
+```csharp title="Program.cs"
 app.MapGet("/SignIn", async context =>
 {
     if (!(context.User?.Identity?.IsAuthenticated ?? false))

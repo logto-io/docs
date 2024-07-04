@@ -1,6 +1,6 @@
 First, add actions methods to your `Controller`, for example:
 
-```csharp
+```csharp title="Controllers/HomeController.cs"
 public class HomeController : Controller
 {
   public IActionResult SignIn()
@@ -21,7 +21,7 @@ public class HomeController : Controller
 
 Then, add the links to your View:
 
-```cshtml
+```cshtml title="Views/Home/Index.cshtml"
 <p>Is authenticated: @User.Identity?.IsAuthenticated</p>
 @if (User.Identity?.IsAuthenticated == true) {
   <a asp-controller="Home" asp-action="SignOut">Sign out</a>
