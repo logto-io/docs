@@ -1,2 +1,2 @@
-- A [Logto Cloud](https://cloud.logto.io) account or a self-hosted Logto (Check out the [⚡ Get started](../../../docs/tutorials/get-started/) guide to create one if you don't have).
+- A [Logto Cloud](https://cloud.logto.io) account or a self-hosted Logto (Check out the [⚡ Get started](../../../docs/get-started/) guide to create one if you don't have).
 - A Logto traditional web application created.
