@@ -250,15 +250,27 @@ const config = {
         redirects: [
           {
             to: '/docs/references/tenants/#tenant-type',
-            from: ['/docs/recipes/tenant-type', '/docs/references/tenant-type'],
+            from: ['/docs/recipes/tenant-type/', '/docs/references/tenant-type/'],
           },
           {
-            to: '/docs/recipes/multi-factor-auth/configure-mfa',
-            from: '/docs/recipes/multi-factor-auth/config-mfa',
+            to: '/docs/recipes/multi-factor-auth/configure-mfa/',
+            from: '/docs/recipes/multi-factor-auth/config-mfa/',
           },
           {
-            to: '/docs/recipes/configure-connectors',
-            from: '/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors',
+            to: '/docs/recipes/configure-connectors/',
+            from: '/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors/',
+          },
+          {
+            to: '/docs/get-started/',
+            from: '/docs/tutorials/get-started/',
+          },
+          {
+            to: '/docs/get-started/welcome/',
+            from: '/docs/tutorials/get-started/introduction/',
+          },
+          {
+            to: '/docs/concepts/sign-in-experience/',
+            from: '/docs/tutorials/get-started/sign-in-experience/',
           },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
