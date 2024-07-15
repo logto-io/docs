@@ -37,9 +37,6 @@ const injectHeadTagsPlugin = () => ({
         tagName: 'script',
         innerHTML: `
           window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
-          window.addEventListener('load', function() {
-            plausible('AnyPageView', { props: { source: 'Docs' } });
-          });
         `,
       },
       {
