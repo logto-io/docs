@@ -184,6 +184,7 @@ const config = {
           'dart',
           'ruby',
           'erb',
+          'http',
         ],
       },
       colorMode: {
