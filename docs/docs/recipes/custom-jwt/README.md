@@ -125,6 +125,10 @@ You may find the detailed type definition of the token payload object and user d
 
 For user access token, Logto provides additional user data context for you to access. The user data object contains all the user profile data and organization membership data you may need to set up the custom claims. Please check [Users](../../references/users/README.md) and [Organizations](../../recipes/organizations/README.mdx) for more details.
 
+**Grant data object:**
+
+For user access token granted by token exchange, Logto provides additional grant data context for you to access. The grant data object contains the custom context from the subject token. Please check [Impersonation](../impersonation/#customizing-jwt-claims) for more details.
+
 **Environment variables:**
 
 Use the **Set environment variables** section on the right to set up the environment variables for your script. You may use these variables to store sensitive information or configuration data that you don't want to hardcode in the script. e.g. API keys, secrets, or URLs.
