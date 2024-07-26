@@ -28,8 +28,9 @@ const injectHeadTagsPlugin = () => ({
       {
         tagName: 'script',
         attributes: {
-          src: 'https://plausible.io/js/script.js',
+          src: 'https://akasha.logto.io/placebo/sabaean.js',
           defer: true,
+          'data-api': 'https://akasha.logto.io/placebo/eagan',
           'data-domain': 'logto.io',
         },
       },
