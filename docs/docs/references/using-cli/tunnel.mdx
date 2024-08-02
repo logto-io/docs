@@ -1,0 +1,159 @@
+import Availability from '@components/Availability';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# Set up a local tunnel for custom UI development
+
+<Availability cloud oss={{ major: 1, minor: 20 }} />
+
+For Logto Cloud users, We've made it easy to let you "Bring your own UI" to Logto. Cloud users can now upload a zip file containing the custom UI assets in Logto Console -> Sign-in experience -> Custom UI. (Check out the [Bring your UI](/docs/recipes/customize-sie/bring-your-ui) page for more details.)
+
+However, when developing such custom UI pages, users want to test and debug the code locally, before uploading to Logto Cloud. This CLI command helps you set up a local tunnel and connect the following 3 entities together:
+your Logto cloud auth endpoint, your application, and your custom sign-in UI.
+
+## Why do I need this?
+
+By default, when you click the "sign-in" button in your application, you will be navigated to the sign-in page configured at Logto endpoint. A successful sign-in flow can be illustrated as follows:
+
+```mermaid
+sequenceDiagram
+    box Local machine
+    participant A as Your application
+    end
+    box Logto Cloud
+    participant B as Logto Cloud auth endpoint
+    participant C as Logto sign-in page
+    end
+    A ->> B: User initiates "sign-in" action and request auth
+    B -->> A: Return auth response and tell the client<br/>to redirect to the Logto sign-in page
+    A ->> C: Redirect to the Logto sign-in page
+    C ->> B: Submit the sign-in form and<br/>request experience API to authenticate
+    B -->> C: Respond the sign-in request and<br/>tell the client to redirect to your application
+    C -->> A: Redirect to your application
+    A --> A: Handle the sign-in callback and<br/>the user is now authenticated
+```
+
+But now since you are developing your own custom sign-in UI, you need a way to navigate to the custom sign-in UI pages running on your local machine instead.
+This requires a local tunnel service to intercept the outgoing requests from your application and redirect them to your custom sign-in UI pages.
+
+Additionally, you need to interact with Logto's experience API to authenticate users and manage sessions.
+This service will also help forward these experience API requests to Logto Cloud in order to avoid CORS issues.
+
+The sequence diagram below illustrates how a successful "sign-in" flow works with your custom UI and the tunnel service in place:
+
+```mermaid
+sequenceDiagram
+    box Local machine
+    participant A as Your application
+    participant B as Your custom sign-in UI
+    participant C as Tunnel
+    end
+    box Logto Cloud
+    participant D as Logto Cloud auth endpoint
+    participant E as Logto sign-in page
+    end
+    A ->> C: User initiates "sign-in" action and request auth
+    C ->> D: Forward auth request to Logto Cloud endpoint
+    D -->> C: Return auth response and tell the client<br/>to redirect to the Logto sign-in page
+    C ->> B: Intercept the redirect and<br/>redirect to your custom sign-in page
+    B ->> C: Submit the sign-in form and<br/>request experience API to authenticate
+    C ->> D: Forward the experience API requests to Logto Cloud
+    D -->> C: Authenticate sign-in request and<br/>tell the client to redirect to your application
+    C -->> A: Redirect to your application
+    A --> A: Handle the sign-in callback and<br/>the user is now authenticated
+```
+
+With the tunnel service in place, you can now develop and test your custom sign-in UI locally, without needing to upload the assets to Logto Cloud every time you make a change.
+
+## Instructions
+
+### Step 1: Execute the command
+
+Assuming your Cloud tenant ID is `foobar`, and you have a custom sign-in page running on your local dev server at `http://localhost:4000`, then you can execute the command this way:
+
+<Tabs groupId="cmd">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto tunnel -p 9000 --experience-uri http://localhost:4000/ --endpoint https://foobar.logto.app/
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli tunnel -p 9000 --experience-uri http://localhost:4000/ --endpoint https://foobar.logto.app/
+```
+
+  </TabItem>
+
+</Tabs>
+
+It also works if you have custom domain configured in Logto:
+
+<Tabs groupId="cmd">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto tunnel -p 9000 --experience-uri http://localhost:4000/ --endpoint https://your.custom.domain/
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli tunnel -p 9000 --experience-uri http://localhost:4000/ --endpoint https://your.custom.domain/
+```
+
+  </TabItem>
+
+</Tabs>
+
+Alternatively, the command also supports static html assets without needing to run it first on a dev server. Just make sure there's a `index.html` in the path you specified.
+
+<Tabs groupId="cmd">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto tunnel -p 9000 --experience-path /path/to/your/static/files --endpoint https://foobar.logto.app/
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli tunnel -p 9000 --experience-path /path/to/your/static/files --endpoint https://foobar.logto.app/
+```
+
+  </TabItem>
+
+</Tabs>
+
+### Step 2: Update endpoint URI in your application
+
+Finally, run your application and set its Logto endpoint to the tunnel service address `http://localhost:9000/` instead.
+
+Let's take a React application as an example:
+
+```tsx title=App.tsx
+import { LogtoProvider, LogtoConfig } from '@logto/react';
+
+const config: LogtoConfig = {
+  // endpoint: 'https://foobar.logto.app/', // original Logto Cloud endpoint
+  endpoint: 'http://localhost:9000/', // tunnel service address
+  appId: '<your-application-id>',
+};
+
+const App = () => (
+  <LogtoProvider config={config}>
+    <YourAppContent />
+  </LogtoProvider>
+);
+```
+
+If all set up correctly, when you click the "sign-in" button in your application, you should be navigated to your custom sign-in page instead of Logto's built-in UI, along with valid session (cookies) that allows you to further interact with Logto experience API.
+
+Happy coding!
