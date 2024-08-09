@@ -9,7 +9,7 @@ Logto continually enhances the user sign-in experience and has added a brand col
 
 ## Custom CSS in Logto Console
 
-Go to "Sign-in Experience > Branding > Custom CSS" in the Logto Console.
+Go to "Sign-in Experience > Branding > Custom UI > Custom CSS" in the Logto Console.
 
 Editing CSS code in the left editor, it will render lively in the right preview modal immediately. Please note, the code editor only supports the CSS code so far. Not HTML or Javascript.
 
