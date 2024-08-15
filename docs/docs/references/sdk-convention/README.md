@@ -1,3 +1,7 @@
+---
+sidebar_position: 8
+---
+
 # 📃 SDK convention
 
 This section demonstrates SDK functionalities provided by Logto and the convention between various languages and platforms.

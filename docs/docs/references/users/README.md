@@ -1,3 +1,7 @@
+---
+sidebar_position: 9
+---
+
 # 👨‍👩‍👧‍👦 Users
 
 The _users_ are the main entities of the identity service.
