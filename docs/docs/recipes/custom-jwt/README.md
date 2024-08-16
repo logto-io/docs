@@ -127,7 +127,7 @@ For user access token, Logto provides additional user data context for you to ac
 
 **Grant data object:**
 
-For user access token granted by token exchange, Logto provides additional grant data context for you to access. The grant data object contains the custom context from the subject token. Please check [Impersonation](../impersonation/#customizing-jwt-claims) for more details.
+For user access token granted by impersonation token exchange, Logto provides additional grant data context for you to access. The grant data object contains the custom context from the subject token. Please check [Impersonation](../impersonation/#customizing-jwt-claims) for more details.
 
 **Environment variables:**
 
