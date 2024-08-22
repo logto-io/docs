@@ -1,3 +1,7 @@
+---
+sidebar_position: 7
+---
+
 import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
 # 📁 API Resource
