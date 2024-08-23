@@ -57,7 +57,11 @@ Moreover, we are working on providing more simplified and scenario-based sample 
 
 When developing your custom UI pages, you can interact with Logto's experience API to perform various actions such as sign-in, sign-up, password reset, binding social accounts, enabling MFA, and more. Refer to [Logto experience API documentation](https://openapi.logto.io/group/endpoint-interaction) for more details.
 
+We've also provided a CLI tool to help you proxy the experience API requests from your local dev machine to the Logto Cloud endpoint. Refer to [Logto Tunnel CLI documentation](/docs/references/using-cli/tunnel/) for more details.
+
 Other sign-in experience configurations, such as branding colors, company logo, favicon, password policy, localized language phrases, even custom CSS, can still be fetched from the [sign-in experience API endpoint](https://openapi.logto.io/operation/operation-getsigninexperienceconfig).
+
+We are continuously working on providing more scenario-based custom UI samples and best practices to help you get started quickly. Stay tuned for our future updates!
 
 ## Restore to Logto built-in sign-in experience
 
