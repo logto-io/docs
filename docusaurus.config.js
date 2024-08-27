@@ -134,6 +134,16 @@ const config = {
             to: 'https://openapi.logto.io/',
             position: 'left',
             label: 'API',
+            items: [
+              {
+                to: 'https://bump.sh/logto/doc/logto-experience-api',
+                label: 'Experience API',
+              },
+              {
+                to: 'https://bump.sh/logto/doc/logto-management-api',
+                label: 'Management API',
+              },
+            ],
           },
           {
             href: 'https://github.com/logto-io/logto',
