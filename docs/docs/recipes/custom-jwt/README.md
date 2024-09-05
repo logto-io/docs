@@ -14,7 +14,7 @@ import TestResult from './assets/test-result.webp';
 
 ## Introduction
 
-Access tokens play a critical role in the authentication and authorization process, carrying the subject's identity information and permissions between the your client applications and the Logto server.
+Access tokens play a critical role in the authentication and authorization process, carrying the subject's identity information and permissions between the client applications and the Logto server.
 
 Token claims are the key-value pairs that provide information about an entity or the token itself. The claims may include user information, token expiration time, permissions, and other metadata that are relevant to the authentication and authorization process.
 
@@ -22,7 +22,7 @@ There are two forms of access tokens in Logto:
 
 JSON Web Token (JWT) is a popular format that encodes claims in a way that is both secure and readable by clients. Common claims like `sub`, `iss`, `aud`, `exp`, `iat`, and `jti` are used in line with the OAuth 2.0 protocol (See [RFC7519](https://datatracker.ietf.org/doc/html/rfc7519) for more details). JWT tokens allow clients to directly access claims without needing an additional validation step. In Logto, access tokens are issued in JWT format when a client requests authorization for a specific resource or organization.
 
-On the other hand, opaque tokens are tokens that are not self-contained and require an additional validation step via the token introspection endpoint. Despite the non-transparent format, opaque tokens can also be used to carry claims securely between partied. Token claims are securely stored in the Logto server and accessed by the client applications via the token introspection endpoint. Access tokens are issued in opaque format when no specific resource or organization is included in the authorization request. These tokens are primarily used for accessing the OIDC `userinfo` endpoint and other general purposes.
+On the other hand, opaque tokens are tokens that are not self-contained and require an additional validation step via the token introspection endpoint. Despite the non-transparent format, opaque tokens can also be used to carry claims securely between parties. Token claims are securely stored in the Logto server and accessed by the client applications via the token introspection endpoint. Access tokens are issued in opaque format when no specific resource or organization is included in the authorization request. These tokens are primarily used for accessing the OIDC `userinfo` endpoint and other general purposes.
 
 In many cases, standard claims are not enough to meet the specific needs of your applications, whether you're using JWT or opaque tokens. To address this, Logto provides the flexibility to customize the claims within access tokens. With this feature, you can include any additional information necessary for your business logic, all securely transmitted in the tokens and retrievable via introspection in the case of opaque tokens.
 
