@@ -4,7 +4,7 @@ import Availability from '@components/Availability';
 
 <Availability cloud oss={{ major: 1, minor: 18 }} />
 
-Logto supports the backchannel logout mechanism as defined in the [OpenID Connect Back-Channel Logout 1.0](https://openid.net/specs/openid-connect-backchannel-1_0.html) specification. This mechanism allows the RP to receive logout notifications from the OP when a user logs out from the OP.
+Logto supports the backchannel logout mechanism as defined in the [OpenID Connect Back-Channel Logout 1.0](https://openid.net/specs/openid-connect-backchannel-1_0.html) specification. This mechanism allows the RP (Relying Party) to receive logout notifications from the OP (OpenID Provider) when a user logs out from the OP.
 
 ## How it works
 
