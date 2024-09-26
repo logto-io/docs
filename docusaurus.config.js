@@ -20,11 +20,23 @@ const addAliasPlugin = () => ({
   }),
 });
 
+export const gtagAwTrackingId = 'AW-11124811245';
+
 /** @type {import('@docusaurus/types').PluginConfig} */
 const injectHeadTagsPlugin = () => ({
   name: 'inject-head-tags-plugin',
   injectHtmlTags: () => ({
     headTags: [
+      {
+        tagName: 'script',
+        innerHTML: `
+          var shouldTrack =
+            window.location.hostname === 'logto.io' || window.location.hostname.endsWith('logto.io');
+          if (!shouldTrack) {
+            console.warn('Not tracking because the hostname is not logto.io');
+          }
+        `,
+      },
       {
         tagName: 'script',
         attributes: {
@@ -37,7 +49,40 @@ const injectHeadTagsPlugin = () => ({
       {
         tagName: 'script',
         innerHTML: `
-          window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+          if (shouldTrack) {
+            window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
+          }
+        `,
+      },
+      {
+        tagName: 'script',
+        attributes: {
+          async: true,
+          crossorigin: 'anonymous',
+          src: `https://www.googletagmanager.com/gtag/js?id=${gtagAwTrackingId}`,
+        },
+      },
+      {
+        tagName: 'script',
+        innerHTML: `
+          if (shouldTrack) {
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${gtagAwTrackingId}');
+          }
+        `,
+      },
+      {
+        tagName: 'script',
+        innerHTML: `
+          if (shouldTrack) {
+            (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+            })(window, document, "clarity", "script", "o96ufwq738");
+          }
         `,
       },
       {
