@@ -1,8 +1,8 @@
 import Availability from '@components/Availability';
 
-# IdP-initiated SSO (SAML only)
+<Availability cloud="comingSoon" oss={false} />
 
-<Availability cloud="comingSoon" />
+# IdP-initiated SSO (SAML only)
 
 IdP-initiated SSO is a single sign-on process where the Identity Provider (IdP) primarily controls the authentication flow. This process begins when a user logs into the IdP's platform, such as a company portal or a centralized identity dashboard. Once authenticated, the IdP generates an SAML assertion and directs the user to the Service Provider (SP) to access the application or service.
 
@@ -18,7 +18,7 @@ This lack of user-initiated authentication can lead to unauthorized access if pr
 
 Therefore, it is highly recommended to use SP-initiated SSO, which provides a more secure and controlled authentication flow, ensuring that users explicitly request access to services.
 
-## Connect IdP-initiated SSO with Logto
+## Connect IdP-initiated SSO with Logto OIDC applications
 
 Logto as an OpenID Connect (OIDC) provider does not support IdP-initiated SSO. However, you can configure Logto as a SP to support IdP-initiated SSO with your enterprise IdP using SAML. This setup allows you to leverage Logto's authentication capabilities while maintaining the IdP's control over the authentication flow.
 
@@ -48,13 +48,15 @@ Unlike SP-initiated SSO, where the authentication flow starts from the SP, IdP-i
 
 Only `Traditional Web App` and `Single Page App` applications are supported for IdP-initiated SSO. Make sure to select the appropriate application type based on your use case.
 
+:::note
 On you IdP's side, leave the `RelayState` parameter to **EMPTY** for the IdP-initiated SSO flow to work correctly. Logto will handle the redirection based on the default SP application selected.
+:::
 
-### Configure IdP-initiated authentication flow
+## Configure IdP-initiated authentication flow
 
 In order to connect IdP-initiated SAML SSO with OIDC, Logto provides two configuration options to handle the authentication request.
 
-#### Option A: Redirect to the default SP application (Recommended)
+### Option A: Redirect to the default SP application (Recommended)
 
 When the IdP initiates the SSO flow, and sends the SAML assertion to Logto, an IdP-initiated SSO assertion session will be created. Logto will redirect the user to the default SP application to initiate a standard OIDC authentication request at the client side.
 
@@ -79,15 +81,15 @@ sequenceDiagram
     SP->>User: Authenticate user
 ```
 
-To configure this option, select the `Redirect to client for SP-initiated authentication` option in the `IdP-initiated SSO` tab of the SAML connector settings.
+To setup this option, select the `Redirect to client for SP-initiated authentication` card in the `IdP-initiated SSO` tab of the SAML connector settings.
 
 ![SP-initiated SSO flow](./assets/sp-initiated-sso-flow.webp)
 
-1. Provide a `Client redirect URL` to redirect the user to the default SP application after the IdP-initiated SSO flow. Logto will redirect the user to this URL with the `?ssoConnectorId={connectorId}` query parameter appended to the URL. The client application should handle the redirection and initiate the OIDC authentication request. (We recommend using a dedicated route or page in your client application to handle the OIDC authentication request.)
+1. Provide a `Client redirect URL` to redirect the user to the default SP application after the IdP-initiated SSO flow. Logto will redirect the user to this URL with the `?ssoConnectorId={connectorId}` query parameter appended to the URL. The client application should handle the redirection and initiate the OIDC authentication request. (We recommend using a dedicated route or page in your client application to handle the IdP-initiated SSO authentication request.)
 
 2. Handle the OIDC authentication request at the client side using the `ssoConnectorId` query parameter to identify the SAML connector that initiated the IdP-initiated SSO authentication flow.
 
-3. Pass the [direct sign-in](https://docs.logto.io/docs/references/openid-connect/authentication-parameters/#direct-sign-in authentication parameter in the OIDC authentication request to Logto to complete the SSO authentication flow.
+3. Pass the [direct sign-in](https://docs.logto.io/docs/references/openid-connect/authentication-parameters/#direct-sign-in) authentication parameter in the sign-in request to Logto to complete the SSO authentication flow.
 
 ```typescript
 // React example
@@ -115,7 +117,7 @@ const SsoDirectSignIn = () => {
 };
 ```
 
-- `redirectUri`: The URL to redirect the user after the OIDC authentication flow is completed.
+- `redirectUri`: The `redirect_uri` to redirect the user after the OIDC authentication flow is completed.
 - `prompt=login`: Forces the user to log in using the IdP-initiated SSO identity.
 - `directSignIn=sso:{connectorId}`: Specifies the direct sign-in method as `sso` and the target SAML connector ID. This parameter will trigger the SSO authentication flow directly without showing the login page. User will be automatically authenticated using the preserved IdP-initiated SSO assertion session if the connector ID matches and the session is valid.
 
@@ -125,7 +127,7 @@ This method ensures that the authentication flow is secure and follows the stand
 This method is available for both `Traditional Web App` and `Single Page App` applications. And it is recommended for all the use cases.
 :::
 
-#### Option B: Directly authenticate the user with IdP-initiated SSO
+### Option B: Directly authenticate the user with IdP-initiated SSO
 
 For certain circumstances, SP may not be able to handle the IdP-initiated SSO callback and initiate the OIDC authentication request. In this case, Logto provides an alternative option to directly authenticate the user with the IdP-initiated SSO assertion session.
 
@@ -163,16 +165,16 @@ To configure this option, select the `Directly sign-in using IdP-initiated SSO` 
 1. Select the `Post sign-in redirect URI` to redirect the user back to the client application after successful authentication. This URL will be used as the `redirect_uri` in the OIDC authentication request. The URI must be one of the allowed redirect URIs registered in the client application.
 
    :::note
-   A IdP-initiated SSO dedicated redirect URI is recommended to handle the authentication response securely. Since the authentication request is unsolicited, the client app should handle the response exclusively, apart from the standard SP-initiated authentication flow.
+   It is highly recommended to use a dedicated `redirect URI` for IdP-initiated SSO. Given that the authentication request is unsolicited, the client application should manage the response independently, separate from the standard SP-initiated authentication flow.
    :::
 
-2. Customize the authorization request parameters if needed using the `Additional authentication parameters` json editor (`Map<string,string>`).
+2. Customize the authorization request parameters if needed using the `Additional authentication parameters` json editor (following the type `Map<string,string>`).
 
    E.g. By default Logto only requests the `openid` and `profile` scopes. You can add additional scopes or parameters to the authentication request.
 
    ```json
    {
-     "scope": "openid profile email offline_access"
+     "scope": "email offline_access"
    }
    ```
 
@@ -187,4 +189,4 @@ To configure this option, select the `Directly sign-in using IdP-initiated SSO` 
    }
    ```
 
-   The client app should validate the `state` parameter in the authentication response to ensure the response is secure.
+   The client app should validate the `state` parameter in the authorization code response to ensure the authentication request is valid.
