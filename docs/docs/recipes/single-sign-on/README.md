@@ -26,7 +26,7 @@ SSO allows users to access multiple services or applications with a single set o
 
 - **IdP-Initiated SSO**: In IdP-initiated SSO, the Identity Provider (IdP) primarily controls the single sign-on process. This process begins when a user logs into the IdP's platform, such as a company portal or a centralized identity dashboard. Once authenticated, the IdP generates an authentication token or assertion, which is then used to seamlessly grant the user access to multiple connected services or applications (SPs) without requiring additional logins.
 
-![IdP-initated SSO.webp](./assets/idp-initated-sso.webp)
+![IdP-initated SSO.webp](./assets/idp-initiated-sso.webp)
 
 - **SP-Initiated SSO**: In SP-initiated SSO, the Service Provider (SP) takes the lead in initiating and managing the single sign-on process, often preferred in B2B scenarios. This scenario occurs when a user attempts to access a specific service or application (the SP) and is redirected to their IdP for authentication. Upon successful login at the IdP, an authentication token is sent back to the SP, granting the user access. Logto supports SP-initiated SSO for your B2B services.
 
