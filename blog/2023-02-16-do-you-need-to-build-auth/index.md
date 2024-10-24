@@ -14,7 +14,7 @@ I would like to point out this first for a better reading experience.
 
 I’ve seen a lot of developers asking questions like “Should I build my own auth for my app?”. While the answer cannot be a simple "Yes" or "No", I’d like to write an article to breakdown the implementation and demonstrate the pros and cons to help you decide.
 
-<!--truncate-->
+{/* truncate */}
 
 > **TL;DR** If you're still learning, auth will be a good challenge. If you want full control, it's worth building your own auth system. Otherwise, it's necessary to find an existing solution that fits your needs.
 

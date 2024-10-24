@@ -14,7 +14,7 @@ Hi there,
 
 I’m Gao, one of the creators of Logto. I remember feeling nervous last July - that’s the date we launched the first beta version of Logto OSS.
 
-<!-- truncate -->
+{/* truncate */}
 
 To our surprise, we had some deep conversations with the community from the outset. We talked about the terrible developer experience of building authentication, even with existing products, and the dramatic costs of current industry leaders. As developers ourselves, we feel you and that's why we started building Logto.
 
