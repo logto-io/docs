@@ -12,7 +12,7 @@ I always had a dream of monorepo.
 
 I saw the monorepo approach while working for Airbnb, but it was for the frontend only. With a deep love of the JavaScript ecosystem and the “happy” TypeScript developing experience, I started to align frontend and backend code in the same language from ~three years ago. It was great (for hiring) but not that great for developing since our projects were still scattered across multiple repos.
 
-<!--truncate-->
+{/* truncate */}
 
 :::info FYI
 There are quotes around the word “happy” since TypeScript did bring me a lot of fun and a-ha moments, but it also let me think “how could this doesn’t work” sometimes.

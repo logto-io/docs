@@ -1,4 +1,4 @@
-import { useDocsSidebar } from '@docusaurus/theme-common/internal';
+import { useDocsSidebar } from '@docusaurus/plugin-content-docs/client';
 
 import fallbackImage from './fallback.png';
 import styles from './index.module.scss';

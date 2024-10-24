@@ -17,7 +17,7 @@ will generate four blog posts:
 
 */
 
-const fs = require('fs/promises');
+import fs from 'node:fs/promises';
 
 /**
  * SDKs to read. You should keep the name in original cases such as "React" to provide a better reading experience.
@@ -169,8 +169,8 @@ const generator = async (sdks, connectors, template, type) => {
         const connectorPath = connector.name.replaceAll(' ', '-').toLowerCase();
         const sdkPath = sdk.name
           .replaceAll(' ', '-')
-          .replaceAll(/[\(\)]/g, '')
-          .replaceAll(/\./g, 'dot')
+          .replaceAll(/[()]/g, '')
+          .replaceAll('.', 'dot')
           .toLowerCase();
 
         const post = template
@@ -208,4 +208,4 @@ const run = async () => {
   await generator(sdks, smsConnectors, passwordlessTemplate, 'SMS');
 };
 
-run();
+await run();
