@@ -125,7 +125,7 @@ const config: Config = {
       {
         docs: {
           routeBasePath: '/',
-          breadcrumbs: false,
+          breadcrumbs: true,
           sidebarPath: './src/sidebars.ts',
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
