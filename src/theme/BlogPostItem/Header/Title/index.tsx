@@ -1,6 +1,6 @@
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import Link from '@docusaurus/Link';
-import { useBlogPost } from '@docusaurus/theme-common/internal';
+import { useBlogPost } from '@docusaurus/plugin-content-blog/client';
 import Admonition from '@theme/Admonition';
 import type { Props } from '@theme/BlogPostItem/Header/Title';
 import { clsx } from 'clsx';
