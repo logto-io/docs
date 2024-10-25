@@ -15,7 +15,7 @@ In the previous piece, we discussed the development of the Sign-in Experience, a
 
 In this article, we'll answer these questions and show you how the Logto Admin Console can help.
 
-<!--truncate-->
+{/* truncate */}
 
 ## Make Admin Console thoughtful and educational
 

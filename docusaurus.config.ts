@@ -1,14 +1,17 @@
-// @ts-check
-// Note: type annotations allow type checking and IDEs autocompletion
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const path = require('node:path');
+import type { ThemeConfig, Options } from '@docusaurus/preset-classic';
+import type { Config, PluginConfig } from '@docusaurus/types';
+import { themes } from 'prism-react-renderer';
 
-const { dracula: darkCodeTheme, github: lightCodeTheme } = require('prism-react-renderer').themes;
+import { generateConnectorGuides } from './docs/integrations/generate';
 
-const { generateConnectorGuides } = require('./docs/integrations/generate');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** @type {import('@docusaurus/types').PluginConfig} */
-const addAliasPlugin = () => ({
+const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
+
+const addAliasPlugin: PluginConfig = () => ({
   name: 'add-alias-plugin',
   configureWebpack: () => ({
     resolve: {
@@ -20,10 +23,9 @@ const addAliasPlugin = () => ({
   }),
 });
 
-export const gtagAwTrackingId = 'AW-11124811245';
+const gtagAwTrackingId = 'AW-11124811245';
 
-/** @type {import('@docusaurus/types').PluginConfig} */
-const injectHeadTagsPlugin = () => ({
+const injectHeadTagsPlugin: PluginConfig = () => ({
   name: 'inject-head-tags-plugin',
   injectHtmlTags: () => ({
     headTags: [
@@ -96,14 +98,13 @@ const injectHeadTagsPlugin = () => ({
   }),
 });
 
-/** @type {import('@docusaurus/types').Config} */
-const config = {
+const config: Config = {
   title: 'Logto docs',
   url: 'https://docs.logto.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.ico',
+  favicon: '/img/favicon.ico',
   organizationName: 'logto-io', // Usually your GitHub org/user name.
   projectName: 'docs', // Usually your repo name.
 
@@ -121,12 +122,11 @@ const config = {
   presets: [
     [
       'classic',
-      /** @type {import('@docusaurus/preset-classic').Options} */
-      ({
+      {
         docs: {
           routeBasePath: '/',
           breadcrumbs: false,
-          sidebarPath: require.resolve('./sidebars.js'),
+          sidebarPath: './src/sidebars.ts',
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
         },
@@ -135,123 +135,120 @@ const config = {
           blogSidebarCount: 0,
         },
         theme: {
-          customCss: require.resolve('./src/scss/custom.scss'),
+          customCss: './src/scss/custom.scss',
         },
-      }),
+      } satisfies Options,
     ],
   ],
-
-  themeConfig:
-    /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
-    ({
-      navbar: {
-        logo: {
-          alt: 'Silverhand Logo',
-          src: 'img/logto.svg',
-          srcDark: 'img/logto_dark.svg',
-          href: 'https://logto.io',
+  themeConfig: {
+    navbar: {
+      logo: {
+        alt: 'Silverhand Logo',
+        src: 'img/logto.svg',
+        srcDark: 'img/logto_dark.svg',
+        href: 'https://logto.io',
+      },
+      items: [
+        {
+          type: 'doc',
+          docId: 'docs/README',
+          position: 'left',
+          label: 'Docs',
         },
-        items: [
-          {
-            type: 'doc',
-            docId: 'docs/README',
-            position: 'left',
-            label: 'Docs',
-          },
-          {
-            href: 'https://blog.logto.io/',
-            position: 'left',
-            label: 'Blog',
-          },
-          {
-            type: 'doc',
-            docId: 'quick-starts/README',
-            position: 'left',
-            label: 'Quick starts',
-          },
-          {
-            type: 'doc',
-            docId: 'integrations/README',
-            position: 'left',
-            label: 'Integrations',
-          },
-          {
-            to: 'https://openapi.logto.io/',
-            position: 'left',
-            label: 'API',
-            items: [
-              {
-                to: 'https://bump.sh/logto/doc/logto-experience-api',
-                label: 'Experience API',
-              },
-              {
-                to: 'https://bump.sh/logto/doc/logto-management-api',
-                label: 'Management API',
-              },
-            ],
-          },
-          {
-            href: 'https://github.com/logto-io/logto',
-            label: 'GitHub',
-            position: 'right',
-          },
-        ],
-      },
-      footer: {
-        logo: {
-          alt: 'Logo',
-          src: '/img/silverhand.svg',
+        {
+          href: 'https://blog.logto.io/',
+          position: 'left',
+          label: 'Blog',
         },
-        style: 'dark',
-        links: [
-          {
-            label: 'Docs',
-            to: '/',
-          },
-          {
-            label: 'GitHub',
-            href: 'https://github.com/logto-io/logto',
-          },
-          {
-            label: 'About Us',
-            href: 'https://logto.io/about',
-          },
-          {
-            label: 'Contact Us',
-            href: 'mailto: contact@logto.io',
-          },
-        ],
-        copyright: `Copyright © ${new Date().getFullYear()} Silverhand Inc. Built with Docusaurus.`,
+        {
+          type: 'doc',
+          docId: 'quick-starts/README',
+          position: 'left',
+          label: 'Quick starts',
+        },
+        {
+          type: 'doc',
+          docId: 'integrations/README',
+          position: 'left',
+          label: 'Integrations',
+        },
+        {
+          to: 'https://openapi.logto.io/',
+          position: 'left',
+          label: 'API',
+          items: [
+            {
+              to: 'https://bump.sh/logto/doc/logto-experience-api',
+              label: 'Experience API',
+            },
+            {
+              to: 'https://bump.sh/logto/doc/logto-management-api',
+              label: 'Management API',
+            },
+          ],
+        },
+        {
+          href: 'https://github.com/logto-io/logto',
+          label: 'GitHub',
+          position: 'right',
+        },
+      ],
+    },
+    footer: {
+      logo: {
+        alt: 'Logo',
+        src: '/img/silverhand.svg',
       },
-      prism: {
-        theme: lightCodeTheme,
-        darkTheme: darkCodeTheme,
-        additionalLanguages: [
-          'swift',
-          'kotlin',
-          'groovy',
-          'java',
-          'php',
-          'json',
-          'bash',
-          'csharp',
-          'cshtml',
-          'json5',
-          'dart',
-          'ruby',
-          'erb',
-          'http',
-        ],
-      },
-      colorMode: {
-        respectPrefersColorScheme: true,
-      },
-      algolia: {
-        appId: 'DE7QZWOVO6',
-        apiKey: '4c64ad7f3b8622f59d8121dbac801337',
-        indexName: 'logto',
-      },
-    }),
+      style: 'dark',
+      links: [
+        {
+          label: 'Docs',
+          to: '/',
+        },
+        {
+          label: 'GitHub',
+          href: 'https://github.com/logto-io/logto',
+        },
+        {
+          label: 'About Us',
+          href: 'https://logto.io/about',
+        },
+        {
+          label: 'Contact Us',
+          href: 'mailto: contact@logto.io',
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} Silverhand Inc. Built with Docusaurus.`,
+    },
+    prism: {
+      theme: lightCodeTheme,
+      darkTheme: darkCodeTheme,
+      additionalLanguages: [
+        'swift',
+        'kotlin',
+        'groovy',
+        'java',
+        'php',
+        'json',
+        'bash',
+        'csharp',
+        'cshtml',
+        'json5',
+        'dart',
+        'ruby',
+        'erb',
+        'http',
+      ],
+    },
+    colorMode: {
+      respectPrefersColorScheme: true,
+    },
+    algolia: {
+      appId: 'DE7QZWOVO6',
+      apiKey: '4c64ad7f3b8622f59d8121dbac801337',
+      indexName: 'logto',
+    },
+  } satisfies ThemeConfig,
   plugins: [
     addAliasPlugin,
     injectHeadTagsPlugin,
@@ -328,7 +325,7 @@ const config = {
           },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
-        createRedirects(existingPath) {
+        createRedirects(existingPath: string) {
           if (existingPath.includes('/quick-starts')) {
             return existingPath.replace('/quick-starts', '/sdk');
           }
@@ -346,4 +343,4 @@ const config = {
   themes: ['@docusaurus/theme-mermaid'],
 };
 
-module.exports = config;
+export default config;

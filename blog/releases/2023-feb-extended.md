@@ -19,7 +19,7 @@ Notable updates include:
 
 Let's take a look at what's inside!
 
-<!-- truncate -->
+{/* truncate */}
 
 ## 💥 BREAKING CHANGES 💥
 

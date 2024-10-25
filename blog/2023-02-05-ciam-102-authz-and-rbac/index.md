@@ -12,7 +12,7 @@ In the [previous article](../2022-11-28-ciam-101-authn-identity-sso/index.mdx), 
 
 Organization and Tenant are great for grouping Identities, but they lead to an absolute democracy: everyone can do anything in this system. While utopia is still a mystery, let’s take a look at the governance of access: Authorization (AuthZ).
 
-<!--truncate-->
+{/* truncate */}
 
 ### Why do we need authorization?
 
