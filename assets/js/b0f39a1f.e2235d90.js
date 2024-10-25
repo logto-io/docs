@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[88314],{33401:s=>{s.exports=JSON.parse('{"title":"Recent posts","items":[]}')}}]);

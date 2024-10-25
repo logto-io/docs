@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunk_logto_docs=self.webpackChunk_logto_docs||[]).push([[7912],{7912:(s,o,c)=>{c.r(o)}}]);
