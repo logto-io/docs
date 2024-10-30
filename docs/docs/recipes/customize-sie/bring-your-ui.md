@@ -51,7 +51,11 @@ pnpm install && pnpm start
 
 Note: The whole Logto project is a [pnpm monorepo](https://pnpm.io/workspaces), and you can find workspace protocol dependencies in package.json. Replace it with regular semver if you are not using pnpm, and want to run it as a standalone project.
 
-Moreover, we are working on providing more simplified and scenario-based sample projects to cover the most common use cases. Stay tuned for our future updates!
+### Sample projects
+
+Here's a collection of sample projects to help you get started quickly. Please check out the [Logto Experience project](https://github.com/logto-io/experience-samples) GitHub repo for details.
+
+Moreover, we'll continue working on providing more simplified and scenario-based sample projects to cover the most common use cases. Stay tuned for our future updates!
 
 ## Interact with Logto Experience API
 
