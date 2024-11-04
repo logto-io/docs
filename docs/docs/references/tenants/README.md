@@ -95,8 +95,9 @@ With Logto, you can manage multiple applications within a single tenant regardle
 
 When you create a tenant, you can choose the region where the tenant data is stored. It cannot be changed after the tenant is created. Here are the available regions:
 
-- EU (Amsterdam, Netherlands)
-- US (Arizona, United States)
+- EU (Netherlands)
+- US (West US)
+- AU (East Australia)
 
 Usually, you should choose the region closest to your customers to minimize latency and improve performance.
 
