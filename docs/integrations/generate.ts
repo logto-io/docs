@@ -18,12 +18,20 @@ The content is pulled from the `connector-${id}/README.md` in the corresponding 
 using the `docusaurus-plugin-remote-content` plugin.
 */
 
+type Connector = {
+  id: string;
+  name: string;
+  description: string;
+  category: 'social' | 'sms' | 'email';
+  logoFilename?: string;
+};
+
 /**
  * Connectors metadata for the guide generation.
  *
  * @type Array<{ id: string; name: string; description: string; category: 'social' | 'sms' | 'email'; logoFilename?: string; }>
  */
-const connectors = [
+const connectors: Connector[] = [
   {
     id: 'google',
     name: 'Google',
@@ -205,7 +213,13 @@ const connectors = [
  * Generates the `docusaurus-plugin-remote-content` plugin configs for the connector guides, which allows
  * the plugin to pull the README.md content from the connector GitHub repo and generates a MDX guide.
  */
-const generatePullRemotePluginConfigs = ({ id, name, description, category, logoFilename }) => [
+const generatePullRemotePluginConfigs = ({
+  id,
+  name,
+  description,
+  category,
+  logoFilename,
+}: Connector) => [
   'docusaurus-plugin-remote-content',
   {
     id,
@@ -215,7 +229,7 @@ const generatePullRemotePluginConfigs = ({ id, name, description, category, logo
     sourceBaseUrl: `https://raw.githubusercontent.com/logto-io/logto/master/packages/connectors/connector-${id}/`,
     outDir: `docs/integrations/${category}/${id}`,
     documents: ['README.md'],
-    modifyContent: (filename, content) => ({
+    modifyContent: (filename: string, content: string) => ({
       filename: 'README.mdx',
       content: `---
 slug: /integrations/${id}
