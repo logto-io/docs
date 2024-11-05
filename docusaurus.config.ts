@@ -323,6 +323,10 @@ const config: Config = {
             to: '/docs/concepts/sign-in-experience/',
             from: '/docs/tutorials/get-started/sign-in-experience/',
           },
+          {
+            to: '/docs/recipes/manage-users/personal-access-token/',
+            from: '/docs/recipes/manage-users/management-api/personal-access-token/',
+          },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath: string) {
