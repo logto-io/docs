@@ -14,6 +14,7 @@ const configs = [
   {
     rules: {
       'sql/no-unsafe-query': 'off',
+      'unicorn/prevent-abbreviations': 'off',
     },
   },
   {
@@ -46,12 +47,6 @@ const configs = [
     },
   },
   {
-    files: ['src/pages/**/*'],
-    rules: {
-      'consistent-default-export-name/default-export-match-filename': 'off',
-    },
-  },
-  {
     files: ['**/*.mdx', '**/*.md'],
     rules: {
       camelcase: 'off',
@@ -69,6 +64,22 @@ const configs = [
     files: ['**/generate.mjs', '**/generate.js'],
     rules: {
       'no-template-curly-in-string': 'off',
+    },
+  },
+  {
+    files: ['**/pages/**/*.tsx'],
+    rules: {
+      'consistent-default-export-name/default-export-match-filename': 'off',
+    },
+  },
+  {
+    files: ['src/theme/**/*'],
+    rules: {
+      'consistent-default-export-name/default-export-match-filename': 'off',
+      'react/function-component-definition': 'off',
+      'unicorn/prevent-abbreviations': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      'react/boolean-prop-naming': 'off',
     },
   },
 ];
