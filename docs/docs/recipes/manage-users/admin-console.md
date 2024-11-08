@@ -80,7 +80,7 @@ Once the "Reset password" modal is closed, you can no longer view the password.
 If you forget to keep it, you can reset it again.
 :::
 
-## Mange roles of users
+## Manage roles of users
 
 In the "Roles" tab of the user details page, you can easily assign or remove roles to meet your desired outcome. Check RBAC - Manage a user's roles to learn more
 
