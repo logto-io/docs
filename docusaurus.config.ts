@@ -17,6 +17,7 @@ const addAliasPlugin: PluginConfig = () => ({
     resolve: {
       alias: {
         '@components': path.resolve(__dirname, './src/components'),
+        '@mdx-components': path.resolve(__dirname, './src/mdx-components'),
         '@scss': path.resolve(__dirname, './src/scss'),
       },
     },
