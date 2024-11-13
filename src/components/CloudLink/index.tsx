@@ -1,5 +1,9 @@
+import Link from '@docusaurus/Link';
 import { joinPath } from '@silverhand/essentials';
+import IconExternalLink from '@theme/Icon/ExternalLink';
 import { type PropsWithChildren } from 'react';
+
+import styles from './index.module.scss';
 
 type Props = PropsWithChildren<{
   /**
@@ -44,9 +48,10 @@ const CloudLink = ({ to, children }: Props) => {
   const link = getCloudConsoleUrl(to);
 
   return (
-    <a href={link} target="_blank" rel="noopener">
+    <Link className={styles.link} href={link} target="_blank" rel="noopener">
       {children || toTitleCaseLabel(to)}
-    </a>
+      <IconExternalLink />
+    </Link>
   );
 };
 
