@@ -50,7 +50,9 @@ const configs = [
     files: ['**/*.mdx', '**/*.md'],
     rules: {
       camelcase: 'off',
+      'no-warning-comments': 'off',
       'no-undef': 'off',
+      'react/jsx-no-undef': 'off',
       'max-lines': 'off',
     },
   },

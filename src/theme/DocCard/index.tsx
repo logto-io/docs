@@ -99,7 +99,6 @@ function CardLink({
 }): JSX.Element {
   const icon = isInternalUrl(item.href) ? '📄️' : '🔗';
   const doc = useDocById(item.docId ?? undefined);
-  console.log('custom icon', item.customProps?.icon);
   return (
     <CardLayout
       href={item.href}
