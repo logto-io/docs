@@ -212,7 +212,7 @@ export default function DocSidebarItemCategory({
 
       <Collapsible lazy as="ul" className="menu__list" collapsed={collapsed}>
         <DocSidebarItems
-          items={items}
+          items={items.filter((item) => 'href' in item && item.href !== href)}
           tabIndex={collapsed ? -1 : 0}
           activePath={activePath}
           level={level + 1}
