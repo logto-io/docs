@@ -112,7 +112,6 @@ export default function DocSidebarItemCategory({
   ...props
 }: Props): JSX.Element {
   const { items, label, collapsible, className, href, customProps } = item;
-  console.log('category item:', item);
   const Icon = typeof customProps?.id === 'string' ? icons[customProps.id] : undefined;
   const {
     docs: {
