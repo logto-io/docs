@@ -24,14 +24,17 @@ const isDocLink = (href?: string) =>
 export type Props = ComponentProps<'a'> & {
   readonly hasIcon?: boolean;
   readonly type?: 'block' | 'inline';
+  readonly wrapperClassName?: string;
 };
 
 const Url = (props: Props): JSX.Element => {
-  const { className, children, hasIcon = true, type = 'block', ...rest } = props;
+  const { className, wrapperClassName, children, hasIcon = true, type = 'block', ...rest } = props;
   const isInternal = isInternalUrl(props.href);
 
   return (
-    <span className={clsx(styles.linkWrapper, type === 'inline' && styles.inline)}>
+    <span
+      className={clsx(wrapperClassName, styles.linkWrapper, type === 'inline' && styles.inline)}
+    >
       <Link className={clsx(className, styles.link)} {...rest}>
         {hasIcon && isApiDocLink(props.href) && <ApiIcon className={styles.flexWidth} />}
         {hasIcon && isVideoLink(props.href) && <VideoIcon />}
