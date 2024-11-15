@@ -1,0 +1,295 @@
+---
+id: platform-sdk-convention
+title: Platform SDK convention
+sidebar_label: Platform SDK convention
+sidebar_position: 4
+---
+
+# Platform SDK convention
+
+Platform SDK provides a standard way to integrate the client with Logto service in the specific platform and accelerates the integration process.
+
+- Platform SDK encapsulates [the core](../core-sdk-convention) with platform-specific implementation.
+- Platform SDK should provide basic types that make SDK easier to use.
+- Platform SDK should be exported as a class named `LogtoClient`.
+
+## Basic types
+
+<details>
+  <summary>LogtoConfig</summary>
+
+| Name                | Type       | Required | Default Value                       | Notes                                                                         |
+| ------------------- | ---------- | -------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| endpoint            | `string`   | ✅       |                                     | The OIDC service endpoint.                                                    |
+| appId               | `string`   | ✅       |                                     | The application id comes from the application we registered in Logto Service. |
+| scopes              | `string[]` |          | `[openid, offline_access, profile]` | This field always contains `openid`, `offline_access` and `profile`.          |
+| resources           | `string[]` |          |                                     | The protected resource indicators we want to use.                             |
+| prompt              | `string`   |          | `consent`                           | The prompt value used in `generateSignInUri`.                                 |
+| usingPersistStorage | `boolean`  |          | `true`                              | Decide to store credentials on the local machine or not.                      |
+
+**\*Notes**
+
+- You can extend this `LogtoConfig` if you need to.
+- `usingPersistStorage` is only provided in client SDKs. E.g., iOS, Android, and SPA.
+
+</details>
+
+<details>
+  <summary>AccessToken</summary>
+
+| Name      | Type     | Notes                |
+| --------- | -------- | -------------------- |
+| token     | `string` |                      |
+| scope     | `string` |                      |
+| expiresAt | `number` | Timestamp in seconds |
+
+</details>
+
+## LogtoClient
+
+### Properties
+
+<details>
+  <summary>logtoConfig</summary>
+
+**Type**
+
+`LogtoConfig`
+
+</details>
+
+<details>
+  <summary>oidcConfig</summary>
+
+**Type**
+
+`OidcConfigResponse?`
+
+</details>
+
+<details>
+  <summary>accessTokenMap</summary>
+
+**Type**
+
+`Map<string, AccessToken>`
+
+**Key**
+
+- The key should be constructed with `scope` and `resource`.
+- The values in `scope` should be sorted alphabetically and joined with space.
+- The key should be constructed in the pattern: `${scope}@${resource}`.
+- If the `scope` or `resource` is null or empty, their value should be treated as empty.
+
+E.g., `"offline_access openid read:usr@https://logto.dev/api"`, `"@https://logto.dev/api"`, `"openid@"`, `"@"`.
+
+**Value**
+
+- `AccessToken`, which uses `expiresAt` property to indicate the exact time when an access token is expired.
+
+**Notes**
+
+- The `scope` will always be a null value for we don’t support custom scopes in Logto V1.
+- When building the access token key to store an access token:
+  - `scope` will always be a null value.
+  - if the access token is not a jwt, treat the `resource` as a null value.
+  - if the access token is a jwt, decode the access token and use the payload’s `aud` claim value as the `resource` part of the access token key.
+
+</details>
+
+<details>
+  <summary>refreshToken</summary>
+
+**Type**
+
+`string?`
+
+**Notes**
+
+`refreshToken` will be set or updated under circumstances below:
+
+- Load `refreshToken` from the storage.
+- The server returns a `refreshToken` in the response on fetch token successfully.
+- Sign out (will be set to `null`).
+
+</details>
+
+<details>
+  <summary>idToken</summary>
+
+**Type**
+
+`string?`
+
+**Notes**
+
+- `idToken` should be verified if it comes from the backend.
+- `idToken` will be set or updated under circumstances below:
+  - Load `idToken` from the storage.
+  - The server returns an `idToken` in the response on fetch token successfully.
+  - Sign out (will be set to `null`).
+
+</details>
+
+### Methods
+
+<details>
+  <summary>constructor</summary>
+
+**Parameters**
+
+| Parameter   | Type          |
+| ----------- | ------------- |
+| logtoConfig | `LogtoConfig` |
+
+**Return Type**
+
+`LogtoClient`
+
+**Notes**
+
+- You can add extra parameters if you need to.
+- If the usePersistStorage is enabled in logtoConfig, the platform SDK will provide the following functionalities:
+  - Store persistent data with a unique key based on `clientId`.
+  - Load `refreshToken` and `idToken` from the local machine on initialization.
+  - Store `refreshToken` and `idToken` locally on `Core.fetchTokenByAuthorizationCode` and `Core.fetchTokenByRefreshToken`.
+
+</details>
+
+<details>
+  <summary>isAuthenticated</summary>
+
+To know if a user is authenticated or not.  
+This can be defined as a getter as well.
+
+A user is treated as authenticated when:
+
+- We have gained an ID token successfully.
+- We have loaded an ID token from the local machine.
+
+**Parameters**
+
+None.
+
+**Return Type**
+
+`boolean`
+
+</details>
+
+<details>
+  <summary>SignIn</summary>
+
+This method should start a sign-in flow and the platform SDK should take care of all steps an authorization needs to complete including the sign-in redirect process.
+
+The user will be authenticated after this method has been called successfully.
+
+The sign-in process will reply on the Core SDK Functions:
+
+- `generateSignInUri`
+- `verifyAndParseCodeFromCallbackUri`
+- `fetchTokenByAuthorizationCode`
+
+Notes:
+
+- Because generateSignInUri includes the resources we need, we don’t need to pass resource to fetchTokenByAuthorizationCode function.
+
+**Parameters**
+
+| Parameter   | Type     |
+| ----------- | -------- |
+| redirectUri | `string` |
+
+**Return Type**
+
+`void`
+
+**Throws**
+
+- Any error that occurs during this sign-in process.
+
+</details>
+
+<details>
+  <summary>SignOut</summary>
+
+The sign-out process should follow the steps:
+
+1. Clear local storage, cookies, persistent data, or something else.
+2. Revoke the obtained refresh token via `Core.revoke` (the Logto service will revoke all related tokens if the refresh token is revoked).
+3. Redirect the user to Logto's sign-out endpoint unless step 1 clears the session of the sign-in page.
+
+Notes:
+
+- In step 2, `Core.revoke` is an async call and will not block the sign-out process even if it fails.
+- Step 3 is relying on `Core.generateSignOutUri` to generate the Logto's sign-out endpoint.
+
+**Parameters**
+
+| Parameter             | Type     | Required | Default Value |
+| --------------------- | -------- | -------- | ------------- |
+| postLogoutRedirectUri | `string` |          | `null`        |
+
+**Return Type**
+
+`void`
+
+**Throws**
+
+- Any error that occurs during this sign-out process.
+
+</details>
+
+<details>
+  <summary>getAccessToken</summary>
+
+`getAccessToken` retrieves an `AccessToken` by `resource` and `scope` from `accessTokenMap` then returns the `token` value of that `AccessToken`.
+
+We set the `scope` to `null` when building the key of the `accessTokenMap` for we don't support custom scopes in Logto V1.
+
+**Notes**
+
+- If cannot find a corresponding `AccessToken` then perform a `Core.fetchTokenByRefreshToken` action to fetch the token needed.
+- If the `accessToken` is not expired, then return the `token` value inside.
+- If the `accessToken` is expired, then perform a `Core.fetchTokenByRefreshToken` action to retrieve a new `accessToken` , update the local `accessTokenMap` and return the new `token` value inside.
+- If `Core.fetchTokenByRefreshToken` failed, then informs that the user with the exception occurred.
+- If cannot find the refreshToken, then informs the user of an unauthorized exception.
+- Only by obtaining a `refreshToken` after signing in can we perform a `Core.fetchTokenByRefreshToken` action.
+
+**Parameters**
+
+| Parameter | Type     | Required | Default value |
+| --------- | -------- | -------- | ------------- |
+| resource  | `string` |          | `null`        |
+
+**Return Type**
+
+`string`
+
+**Throws**
+
+- The user is not authenticated.
+- The input `resource` is not set in the `logtoConfig`.
+- No refresh token found before `Core.fetchTokenByRefreshToken`.
+- `Core.fetchTokenByRefreshToken` failed.
+
+</details>
+
+<details>
+  <summary>getIdTokenClaims</summary>
+
+`getIdTokenClaims` return an object that carries the claims of the `idToken` property.
+
+**Parameters**
+
+None.
+
+**Return Type**
+
+`IdTokenClaims`
+
+**Throws**
+
+- The user is not authenticated.
+
+</details>
