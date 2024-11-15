@@ -157,11 +157,6 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://blog.logto.io/',
-          position: 'left',
-          label: 'Blog',
-        },
-        {
           type: 'doc',
           docId: 'quick-starts/README',
           position: 'left',
@@ -171,7 +166,7 @@ const config: Config = {
           type: 'doc',
           docId: 'integrations/README',
           position: 'left',
-          label: 'Integrations',
+          label: 'Connectors',
         },
         {
           to: 'https://openapi.logto.io/',
