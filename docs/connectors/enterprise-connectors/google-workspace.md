@@ -58,7 +58,7 @@ After successfully creating the OAuth credential, you will receive a prompt moda
 
 ![Google Workspace client credentials.webp](./assets/google_workspace_client_credentials.webp)
 
-Copy the `Client ID` and `Client secret` and fill in the corresponding fields on Logto’s SSO connector `Connection` tab.
+Copy the `Client ID` and `Client secret` and fill in the corresponding fields on Logto's SSO connector `Connection` tab.
 
 Now you have successfully configured a Google Workspace SSO connector on Logto.
 
@@ -70,7 +70,7 @@ Regardless of the custom scope settings, Logto will always send the `openid`, `p
 
 ## Step 6: Set email domains and enable the SSO connector
 
-Provide the `email domains` of your organization on Logto’s connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
+Provide the `email domains` of your organization on Logto's connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
 
 Users with email addresses in the specified domains will be redirected to use your SSO connector as their only authentication method.
 

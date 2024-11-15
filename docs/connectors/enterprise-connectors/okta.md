@@ -56,7 +56,7 @@ Regardless of the custom scope settings, Logto will always send the `openid`, `p
 
 ## Step 5: Set email domains and enable the SSO connector
 
-Provide the `email domains` of your organization on Logto’s connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
+Provide the `email domains` of your organization on Logto's connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
 
 Users with email addresses in the specified domains will be redirected to use your SSO connector as their only authentication method.
 
