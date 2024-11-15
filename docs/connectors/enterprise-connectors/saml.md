@@ -42,6 +42,6 @@ The user attributes returned from IdP may vary depending on the IdP configuratio
 
 ## Step4: Set email domains and enable the SSO connector
 
-Provide the `email domains` of your organization in Logto’s connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
+Provide the `email domains` of your organization in Logto's connector `SSO experience` tab. This will enable the SSO connector as an authentication method for those users.
 
 Users with email addresses in the specified domains will be redirected to use the SAML SSO connector as their only authentication method.

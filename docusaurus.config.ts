@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import type { ThemeConfig, Options } from '@docusaurus/preset-classic';
 import type { Config, PluginConfig } from '@docusaurus/types';
 import { themes } from 'prism-react-renderer';
+import rehypeKatex from 'rehype-katex';
+import remarkMath from 'remark-math';
 
 import { generateConnectorGuides } from './docs/integrations/generate';
 
@@ -130,6 +132,10 @@ const config: Config = {
           sidebarPath: './src/sidebar/index.ts',
           editUrl: 'https://github.com/logto-io/docs/tree/feature/docs-v2',
           editLocalizedFiles: true,
+          // To enabled math formula rendering
+          // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
+          remarkPlugins: [remarkMath],
+          rehypePlugins: [rehypeKatex],
         },
         blog: {
           path: 'blog',
@@ -140,6 +146,15 @@ const config: Config = {
         },
       } satisfies Options,
     ],
+  ],
+  // To enabled math formula rendering
+  // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
+  stylesheets: [
+    {
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
+      type: 'text/css',
+      crossorigin: 'anonymous',
+    },
   ],
   themeConfig: {
     navbar: {
