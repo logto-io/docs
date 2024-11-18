@@ -55,7 +55,7 @@ function CardLayout({
 }): JSX.Element {
   return (
     <CardContainer href={href}>
-      <div className={styles.cardIcon}>{icon}</div>
+      {icon}
       <Heading as="h2" className={clsx('text--truncate', styles.cardTitle)} title={title}>
         {title}
       </Heading>

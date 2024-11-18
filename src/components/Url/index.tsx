@@ -28,13 +28,11 @@ export type Props = ComponentProps<'a'> & {
 };
 
 const Url = (props: Props): JSX.Element => {
-  const { className, wrapperClassName, children, hasIcon = true, type = 'block', ...rest } = props;
+  const { className, wrapperClassName, children, hasIcon = true, type, ...rest } = props;
   const isInternal = isInternalUrl(props.href);
 
   return (
-    <span
-      className={clsx(wrapperClassName, styles.linkWrapper, type === 'inline' && styles.inline)}
-    >
+    <span className={clsx(wrapperClassName, styles.linkWrapper, type && styles[type])}>
       <Link className={clsx(className, styles.link)} {...rest}>
         {hasIcon && isApiDocLink(props.href) && <ApiIcon className={styles.flexWidth} />}
         {hasIcon && isVideoLink(props.href) && <VideoIcon />}
