@@ -25,6 +25,7 @@ export type Props = ComponentProps<'a'> & {
   readonly hasIcon?: boolean;
   readonly type?: 'block' | 'inline';
   readonly wrapperClassName?: string;
+  readonly style?: React.CSSProperties;
 };
 
 const Url = (props: Props): JSX.Element => {
