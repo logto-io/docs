@@ -38,7 +38,7 @@ const Url = (props: Props): JSX.Element => {
         {hasIcon && isApiDocLink(props.href) && <ApiIcon className={styles.flexWidth} />}
         {hasIcon && isVideoLink(props.href) && <VideoIcon />}
         {hasIcon && isDocLink(props.href) && <DocumentIcon />}
-        {children}
+        {children ?? props.href}
         {!isInternal && <ExternalLinkIcon className={styles.externalLink} />}
       </Link>
     </span>
