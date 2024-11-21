@@ -208,23 +208,31 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          label: 'Docs',
-          to: '/',
+          title: 'Developers',
+          items: [
+            { label: 'Docs', to: '/' },
+            { label: 'Quick starts', to: '/quick-starts' },
+            { label: 'Integrations', to: '/integrations' },
+            {
+              label: 'Experience API',
+              to: 'https://bump.sh/logto/doc/logto-experience-api',
+            },
+            { label: 'Management API', to: 'https://bump.sh/logto/doc/logto-management-api' },
+          ],
         },
         {
-          label: 'GitHub',
-          href: 'https://github.com/logto-io/logto',
-        },
-        {
-          label: 'About Us',
-          href: 'https://logto.io/about',
-        },
-        {
-          label: 'Contact Us',
-          href: 'mailto: contact@logto.io',
+          title: 'Resources',
+          items: [
+            { label: 'Pricing', href: 'https://logto.io/pricing' },
+            { label: 'Blogs', href: 'https://blog.logto.io' },
+            { label: 'Auth Wiki', href: 'https://auth.wiki' },
+            { label: "What's new", href: 'https://blog.logto.io/categories/changelogs/#all' },
+            { label: 'YouTube', href: 'https://youtube.com/@logto-io' },
+            { label: 'GitHub', href: 'https://github.com/logto-io/logto' },
+          ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Silverhand Inc. Built with Docusaurus.`,
+      copyright: `Designed by © Silverhand Inc.`,
     },
     prism: {
       theme: lightCodeTheme,
