@@ -198,11 +198,6 @@ const config: Config = {
             },
           ],
         },
-        {
-          href: 'https://github.com/logto-io/logto',
-          label: 'GitHub',
-          position: 'right',
-        },
       ],
     },
     footer: {
