@@ -45,7 +45,11 @@ const toTitleCaseLabel = (path: string) => {
 const CloudLink = ({ to, children }: Props) => {
   const link = getCloudConsoleUrl(to);
 
-  return <Url href={link}>{children || toTitleCaseLabel(to)}</Url>;
+  return (
+    <Url hasIcon={false} type="inline" href={link}>
+      {children || toTitleCaseLabel(to)}
+    </Url>
+  );
 };
 
 export default CloudLink;

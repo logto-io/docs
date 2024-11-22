@@ -2,10 +2,11 @@ import Link from '@docusaurus/Link';
 import isInternalUrl from '@docusaurus/isInternalUrl';
 import ExternalLinkIcon from '@theme/Icon/ExternalLink';
 import clsx from 'clsx';
-import { type ComponentProps } from 'react';
+import { useMemo, type ComponentProps } from 'react';
 
 import ApiIcon from '@site/src/assets/api.svg';
 import DocumentIcon from '@site/src/assets/document.svg';
+import LinkIcon from '@site/src/assets/link.svg';
 import VideoIcon from '@site/src/assets/video.svg';
 
 import styles from './index.module.scss';
@@ -32,12 +33,26 @@ const Url = (props: Props): JSX.Element => {
   const { className, wrapperClassName, children, hasIcon = true, type = 'block', ...rest } = props;
   const isInternal = isInternalUrl(props.href);
 
+  const IconComponent = useMemo(() => {
+    if (!hasIcon) {
+      return null;
+    }
+    if (isApiDocLink(props.href)) {
+      return ApiIcon;
+    }
+    if (isVideoLink(props.href)) {
+      return VideoIcon;
+    }
+    if (isDocLink(props.href)) {
+      return DocumentIcon;
+    }
+    return LinkIcon;
+  }, [hasIcon, props.href]);
+
   return (
     <span className={clsx(wrapperClassName, styles.linkWrapper, styles[type])}>
       <Link className={clsx(className, styles.link)} {...rest}>
-        {hasIcon && isApiDocLink(props.href) && <ApiIcon className={styles.flexWidth} />}
-        {hasIcon && isVideoLink(props.href) && <VideoIcon />}
-        {hasIcon && isDocLink(props.href) && <DocumentIcon />}
+        {IconComponent && <IconComponent />}
         {children ?? props.href}
         {!isInternal && <ExternalLinkIcon className={styles.externalLink} />}
       </Link>
