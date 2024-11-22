@@ -10,7 +10,7 @@ type FooterLinkItemProps = {
 };
 
 export default function FooterLinkItem({ item }: FooterLinkItemProps): JSX.Element {
-  const { to, href, label, prependBaseUrlToHref, ...props } = item;
+  const { to, href, label, prependBaseUrlToHref, hideExternalLinkIcon, icon, ...props } = item;
   const toUrl = useBaseUrl(to);
   const normalizedHref = useBaseUrl(href, { forcePrependBaseUrl: true });
 
@@ -26,9 +26,9 @@ export default function FooterLinkItem({ item }: FooterLinkItemProps): JSX.Eleme
           })}
       {...props}
     >
-      {item.icon}
+      {icon}
       <span>{label}</span>
-      {href && !isInternalUrl(href) && !item.hideExternalLinkIcon && <IconExternalLink />}
+      {href && !isInternalUrl(href) && !hideExternalLinkIcon && <IconExternalLink />}
     </Link>
   );
 }
