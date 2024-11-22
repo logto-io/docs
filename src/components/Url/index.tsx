@@ -6,6 +6,7 @@ import { useMemo, type ComponentProps } from 'react';
 
 import ApiIcon from '@site/src/assets/api.svg';
 import DocumentIcon from '@site/src/assets/document.svg';
+import GitHubIcon from '@site/src/assets/github.svg';
 import LinkIcon from '@site/src/assets/link.svg';
 import VideoIcon from '@site/src/assets/video.svg';
 
@@ -16,6 +17,8 @@ const isApiDocLink = (href?: string) =>
 
 const isVideoLink = (href?: string) =>
   href?.startsWith('https://www.youtube.com/') || href?.startsWith('https://youtu.be/');
+
+const isGitHubLink = (href?: string) => href?.startsWith('https://github.com/');
 
 const isDocLink = (href?: string) =>
   href?.startsWith('https://blog.logto.io/') ||
@@ -39,6 +42,9 @@ const Url = (props: Props): JSX.Element => {
     }
     if (isApiDocLink(props.href)) {
       return ApiIcon;
+    }
+    if (isGitHubLink(props.href)) {
+      return GitHubIcon;
     }
     if (isVideoLink(props.href)) {
       return VideoIcon;
