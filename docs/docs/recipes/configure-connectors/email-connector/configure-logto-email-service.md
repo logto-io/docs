@@ -44,12 +44,14 @@ Customization Options:
 
 Logto email service uses unified email templates tailored for specific authentication scenarios:
 
-| Usage          | Scenario                                                                                                                                                          |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Register       | Users create an account using their email and verify by entering the verification code.                                                                           |
-| SignIn         | Users sign in using their email and verify by entering verification code instead of entering a password.                                                          |
-| ForgotPassword | If users forget their password during sign-in, they can choose to verify their identity using their email.                                                        |
-| Generic        | This template can be used as a generic backup option for various scenarios, including linking an email to an existing account or testing connector configuration… |
+| Usage                    | Scenario                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register                 | Users create an account using their email and verify by entering the verification code.                                                                           |
+| SignIn                   | Users sign in using their email and verify by entering verification code instead of entering a password.                                                          |
+| ForgotPassword           | If users forget their password during sign-in, they can choose to verify their identity using their email.                                                        |
+| Generic                  | This template can be used as a generic backup option for various scenarios, including linking an email to an existing account or testing connector configuration… |
+| UserPermissionValidation | Users request permission validation in [Account API](../../interact-with-account-api/README.mdx) by verify the email verification code.                           |
+| BindNewIdentifier        | Users request to bind a new email in [Account API](../../interact-with-account-api/README.mdx) by verify the email verification code.                             |
 
 An example of email templates for the “Register” usage type with custom brand information:
 
