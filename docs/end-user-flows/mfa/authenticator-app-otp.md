@@ -19,7 +19,7 @@ Popular examples of software tokens include Google Authenticator, Microsoft Auth
 3. **Dynamic one-time password**: The authenticator app displays a six-digit code that refreshes every 1-2 minutes for the added account.
 4. **Complete MFA setup**: Users enter this code within its validity into the MFA setup page, completing the setup of Authenticator App OTP for MFA.
 
-![OTP set up flow](./assets/otp-set-up-flow.webp)
+![OTP set up flow](./assets/otp-set-up-flow.png)
 
 **Verification flows**
 
@@ -28,4 +28,4 @@ Popular examples of software tokens include Google Authenticator, Microsoft Auth
 3. **Enter OTP**: Users enter the OTP displayed in the app within its validity into the 2-step verification page.
 4. **Authentication**: The system verifies the OTP, granting access upon successful validation.
 
-![OTP verification flow](./assets/otp-verification-flow.webp)
+![OTP verification flow](./assets/otp-verification-flow.png)

@@ -34,8 +34,8 @@ The Passkeys specification requires users to actively click the button on the cu
 
 - **Setup flows**
 
-![WebAuthn setup flow](./assets/webauthn-setup-flow.webp)
+![WebAuthn setup flow](./assets/webauthn-setup-flow.png)
 
 - **Verification flows**
 
-![WebAuthn verification flow](./assets/webauthn-verification-flow.webp)
+![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
