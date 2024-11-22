@@ -49,13 +49,15 @@ Notice that:
 - The verification code is valid for 10 minutes by default.
 - The verification code number sent to users uses the variate of `{{code}}`.
 
-| Usage                  | Scenario                                                                                                                                                          |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Register               | Users create an account using their email and verify by entering the verification code.                                                                           |
-| SignIn                 | Users sign in using their email and verify by entering verification code instead of entering a password.                                                          |
-| ForgotPassword         | If users forget their password during sign-in, they can choose to verify their identity using their email.                                                        |
-| Generic                | This template can be used as a generic backup option for various scenarios, including linking an email to an existing account or testing connector configuration… |
-| OrganizationInvitation | This template is used to invite users to join an organization.                                                                                                    |
+| Usage                    | Scenario                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register                 | Users create an account using their email and verify by entering the verification code.                                                                           |
+| SignIn                   | Users sign in using their email and verify by entering verification code instead of entering a password.                                                          |
+| ForgotPassword           | If users forget their password during sign-in, they can choose to verify their identity using their email.                                                        |
+| Generic                  | This template can be used as a generic backup option for various scenarios, including linking an email to an existing account or testing connector configuration… |
+| OrganizationInvitation   | This template is used to invite users to join an organization.                                                                                                    |
+| UserPermissionValidation | Users request permission validation in [Account API](../../interact-with-account-api/README.mdx) by verify the email verification code.                           |
+| BindNewIdentifier        | Users request to bind a new email in [Account API](../../interact-with-account-api/README.mdx) by verify the email verification code.                             |
 
 There is a template example just for reference:
 
