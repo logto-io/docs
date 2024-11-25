@@ -39,7 +39,7 @@ With minimal configuration efforts, this connector allows integration with Micro
 
 ## Step 2: Configure Microsoft Entra ID OIDC SSO at Logto
 
-After successfully creating an Microsoft Entra OIDC application, you will need to provide the IdP configurations back to Logto. Navigate to the `Connection` tab at Logto console, and fill in the following configurations:
+After successfully creating an Microsoft Entra OIDC application, you will need to provide the IdP configurations back to Logto. Navigate to the `Connection` tab at Logto Console, and fill in the following configurations:
 
 1. **Client ID**: A unique identifier assigned to your OIDC application by the Microsoft Entra. This identifier is used by Logto to identify and authenticate the application during the OIDC flow. You can find it in the application overview page as `Application (client) ID`.
 

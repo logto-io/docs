@@ -25,7 +25,7 @@ const supportColumn: ColumnType = {
       hideExternalLinkIcon: true,
     },
     {
-      label: 'Feature request',
+      label: 'Request a new feature',
       href: 'https://logto.productlane.com/roadmap',
       icon: <RoadmapIcon />,
       hideExternalLinkIcon: true,

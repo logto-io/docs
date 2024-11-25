@@ -4,11 +4,11 @@ sidebar_position: 1
 
 # Configure SSO
 
-Enable Single Sign-On (SSO) to streamline access across your services for enterprise users. This guide outlines the steps for setting up SSO using the Logto console.
+Enable Single Sign-On (SSO) to streamline access across your services for enterprise users. This guide outlines the steps for setting up SSO using the Logto Console.
 
 ## Enabling SSO in sign-in experience
 
-1. **Enable enterprise SSO**: Go to the Logto console, and navigate to “Sign-in experience > Sign-in and Sign-up”. Here, locate and enable the “Enterprise SSO” toggle. This action will display a “Use Single Sign-On” button in the right preview.
+1. **Enable enterprise SSO**: Go to the Logto Console, and navigate to “Sign-in experience > Sign-in and Sign-up”. Here, locate and enable the “Enterprise SSO” toggle. This action will display a “Use Single Sign-On” button in the right preview.
 
    Once enabled, enterprise users with SSO-enabled email domains can access your services using their enterprise identity providers (IdPs). This is achieved through email domain redirection. Read the next doc to learn more about the SSO experience.
 
