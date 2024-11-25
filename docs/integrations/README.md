@@ -1,10 +1,10 @@
 ---
-sidebar_label: Integrations
+sidebar_label: Introduction
 ---
 
-# Integrations
+# Introduction
 
-Welcome to Logto integrations documentation. This documentation contains useful guides for integrating a third-party auth service with Logto, via Logto connectors.
+Welcome to Logto connectors documentation. This documentation contains useful guides for integrating a third-party auth service with Logto, via Logto connectors.
 
 ---
 
