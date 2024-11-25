@@ -1,3 +1,3 @@
-- [Customize sign-in experience](/docs/recipes/customize-sie/)
-- [Configure connectors](/docs/recipes/configure-connectors/)
-- [Protect your API](/docs/recipes/protect-your-api/)
+<Url href="/end-user-flows"> End-user flows: authentication flows, account flows, and organization flows </Url>
+<Url href="/connectors"> Configure connectors </Url>
+<Url href="/authorization/api-resources/protect-your-api"> Protect your API </Url>
