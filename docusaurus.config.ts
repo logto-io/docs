@@ -184,19 +184,9 @@ const config: Config = {
           label: 'Connectors',
         },
         {
-          to: 'https://openapi.logto.io/',
+          to: 'https://openapi.logto.io',
           position: 'left',
           label: 'API',
-          items: [
-            {
-              to: 'https://bump.sh/logto/doc/logto-experience-api',
-              label: 'Experience API',
-            },
-            {
-              to: 'https://bump.sh/logto/doc/logto-management-api',
-              label: 'Management API',
-            },
-          ],
         },
       ],
     },
@@ -214,10 +204,14 @@ const config: Config = {
             { label: 'Quick starts', to: '/quick-starts' },
             { label: 'Integrations', to: '/integrations' },
             {
-              label: 'Experience API',
-              to: 'https://bump.sh/logto/doc/logto-experience-api',
+              label: 'Account API',
+              to: 'https://openapi.logto.io/group/endpoint-account-center',
             },
-            { label: 'Management API', to: 'https://bump.sh/logto/doc/logto-management-api' },
+            {
+              label: 'Experience API',
+              to: 'https://openapi.logto.io/group/endpoint-experience',
+            },
+            { label: 'Management API', to: 'https://openapi.logto.io' },
           ],
         },
         {
