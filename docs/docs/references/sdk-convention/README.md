@@ -3,7 +3,7 @@ sidebar_position: 8
 ---
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/developer/sdk-conventions/" />
+  <link rel="canonical" href="https://docs.logto.io/developers/sdk-conventions/" />
 </head>
 
 # 📃 SDK convention

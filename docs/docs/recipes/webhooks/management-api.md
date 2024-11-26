@@ -4,7 +4,7 @@ sidebar_position: 2
 ---
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/configure-webhooks/" />
+  <link rel="canonical" href="https://docs.logto.io/developers/webhooks/configure-webhooks/" />
 </head>
 
 import Availability from '@components/Availability';

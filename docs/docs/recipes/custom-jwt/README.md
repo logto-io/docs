@@ -9,7 +9,7 @@ import CustomJwtDetails from './assets/custom-jwt-details.webp';
 import TestResult from './assets/test-result.webp';
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/developer/custom-token-claims/" />
+  <link rel="canonical" href="https://docs.logto.io/developers/custom-token-claims/" />
 </head>
 
 # 🎫 Custom token claims

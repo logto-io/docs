@@ -1,7 +1,7 @@
 import Availability from '@components/Availability';
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/end-user-flows/sign-in-flow-parameters/" />
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/authentication-parameters/" />
 </head>
 
 # Authentication parameters

@@ -3,7 +3,7 @@ sidebar_position: 1.1
 ---
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/developer/sdk-conventions/design-strategy/" />
+  <link rel="canonical" href="https://docs.logto.io/developers/sdk-conventions/design-strategy/" />
 </head>
 
 # Design strategy

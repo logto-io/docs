@@ -6,7 +6,7 @@ sidebar_position: 1
 import Availability from '@components/Availability';
 
 <head>
-  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/configure-webhooks/" />
+  <link rel="canonical" href="https://docs.logto.io/developers/webhooks/configure-webhooks/" />
 </head>
 
 # Configure webhooks in Console
