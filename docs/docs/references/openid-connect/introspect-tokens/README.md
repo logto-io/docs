@@ -1,3 +1,7 @@
+<head>
+  <link rel="canonical" href="https://docs.logto.io/concepts/opaque-token/" />
+</head>
+
 # Introspect tokens
 
 During the authentication process, if no resource is specified, Logto will issue an opaque access token instead of a JWT. The opaque token is a random string and it's much shorter than a JWT:

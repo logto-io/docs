@@ -4,6 +4,10 @@ sidebar_position: 3
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/webhooks-events/" />
+</head>
+
 # Webhook events
 
 This guide list the different Logto webhook events and explains when each event occurs.

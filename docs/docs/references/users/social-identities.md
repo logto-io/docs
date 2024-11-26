@@ -3,6 +3,10 @@ sidebar_label: Social identities
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/user-data/#social-identities" />
+</head>
+
 # Social identities
 
 _identities_ contains the user info retrieved from social sign-in

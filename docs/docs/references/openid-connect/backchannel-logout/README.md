@@ -1,5 +1,9 @@
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/sign-out/#federated-sign-out-back-channel-logout" />
+</head>
+
 # Backchannel logout
 
 <Availability cloud oss={{ major: 1, minor: 18 }} />

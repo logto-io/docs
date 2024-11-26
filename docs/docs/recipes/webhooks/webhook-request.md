@@ -4,6 +4,10 @@ sidebar_position: 4
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/webhooks-request/" />
+</head>
+
 # Webhook request
 
 Once a valid hook event is emitted, Logto will find corresponding webhooks and send a POST request per hook config.

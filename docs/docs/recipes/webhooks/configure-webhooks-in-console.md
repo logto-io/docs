@@ -5,6 +5,10 @@ sidebar_position: 1
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/configure-webhooks/" />
+</head>
+
 # Configure webhooks in Console
 
 <Availability cloud oss={{ major: 1, minor: 5 }} />

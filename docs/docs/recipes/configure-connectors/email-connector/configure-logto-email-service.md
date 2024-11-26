@@ -3,6 +3,10 @@ sidebar_label: Configure Logto email service
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/email-connectors/built-in-email-service/" />
+</head>
+
 # Configure Logto email service
 
 Logto provides built-in email service for your convenient usage in the following scenarios:

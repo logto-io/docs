@@ -9,6 +9,10 @@ import applicationDetails from './assets/entra_id_oidc_application_details.webp'
 import createSecret from './assets/entra_id_oidc_create_secret.webp';
 import endpoints from './assets/entra_id_oidc_endpoints.webp';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/entra-id-oidc/" />
+</head>
+
 # Configure Microsoft Entra ID (Azure AD) OIDC SSO
 
 With minimal configuration efforts, this connector allows integration with Microsoft Entra ID (formerly Azure AD) for enterprise SSO.

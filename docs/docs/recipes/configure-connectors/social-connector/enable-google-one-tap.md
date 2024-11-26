@@ -3,6 +3,10 @@ sidebar_label: Enable Google One Tap
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/sign-up-and-sign-in/social-sign-in/#google-one-tap" />
+</head>
+
 import Availability from '@components/Availability';
 
 # Enable Google One Tap

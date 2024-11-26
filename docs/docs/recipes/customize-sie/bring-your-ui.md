@@ -5,6 +5,10 @@ sidebar_position: 6
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/customization/bring-your-ui/" />
+</head>
+
 # Bring your own Sign-in Experience UI
 
 <Availability cloud oss={false} />

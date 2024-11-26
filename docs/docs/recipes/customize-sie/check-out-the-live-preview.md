@@ -3,6 +3,10 @@ sidebar_label: Check out the live preview
 sidebar_position: 7
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/customization/live-preview/" />
+</head>
+
 # Check out the live preview
 
 You can use the live preview feature for convenient testing of your sign-in experience configurations.

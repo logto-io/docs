@@ -3,6 +3,10 @@ sidebar_label: Manage via Management API
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/manage-users/#manage-via-logto-management-api" />
+</head>
+
 # Manage users using Management API
 
 [Management API](../../../docs/references/core/README.mdx#management-api) is a collection of APIs that provide access to the Logto backend service. As previously mentioned, the user API is a critical component of this service and can support a wide range of scenarios.

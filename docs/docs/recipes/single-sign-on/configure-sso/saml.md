@@ -3,6 +3,10 @@ sidebar_label: SAML
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/saml-sso/" />
+</head>
+
 # Configure SAML SSO
 
 With minimal configuration efforts, this connector allows integration with any SAML-based Identity Provider (IdP).

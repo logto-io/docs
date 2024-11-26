@@ -3,6 +3,10 @@ sidebar_label: Enable social sign-in
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/social-connectors/#enable-social-sign-in" />
+</head>
+
 # Enable social sign-in
 
 Once configured a social connector successfully, you can enable it as a Social Sign-in button in Sign-in Experience.

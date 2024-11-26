@@ -2,6 +2,10 @@
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/" />
+</head>
+
 # 🎨 Customize sign-in experience
 
 Sign-in experience is the core flow for end-users, including sign-in and sign-up. It provides a unified experience across apps, devices, and platforms.

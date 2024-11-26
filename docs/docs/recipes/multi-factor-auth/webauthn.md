@@ -2,6 +2,10 @@
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/mfa/webauthn/" />
+</head>
+
 # WebAuthn (Passkeys)
 
 WebAuthn provides a more secure and user-friendly alternative to traditional passwords. By using public-key cryptography, WebAuthn enhances security by linking the user's device, the service domain, and the user ID, effectively countering phishing and password attacks. Compatible with various devices or browsers, and allows users to employ biometrics and hardware security features for convenient authentication. Logto now supports WebAuthn for Multi-Factor Authentication (MFA).

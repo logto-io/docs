@@ -3,6 +3,10 @@ sidebar_label: Microsoft Entra ID (SAML)
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/entra-id-saml/" />
+</head>
+
 # Configure Microsoft Entra ID (Azure AD) SAML SSO
 
 With minimal configuration efforts, this connector allows integration with Microsoft Entra ID (formerly Azure AD) for enterprise SSO.

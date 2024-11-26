@@ -2,6 +2,10 @@
 sidebar_position: 7.1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/account-settings/" />
+</head>
+
 # 👤 User profiles
 
 In previous sections, we demonstrated how to manage your users [using Console](/docs/recipes/manage-users/admin-console), or through [Management API](/docs/recipes/manage-users/management-api). This is a straightforward process for those in the role of administrator. However, it is also important for the regular users to update their profiles on their own.

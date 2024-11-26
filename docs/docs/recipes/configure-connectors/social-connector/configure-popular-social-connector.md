@@ -3,6 +3,10 @@ sidebar_label: Configure popular social connector
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/social-connectors/#popular-social-connectors" />
+</head>
+
 # Configure popular social connector
 
 We have provided lots of universal third-party social platforms preinstalled by Logto Console.

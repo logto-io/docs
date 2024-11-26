@@ -3,6 +3,10 @@ sidebar_position: 1
 sidebar_label: Email connector
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/email-connectors/" />
+</head>
+
 # Configure email connector
 
 Configuring an Email connector allows you to send a one-time password (OTP) to the user's email address ( Magic link will be supported in the future ). Email connector usage is similar to SMS connector, which can be utilized in various scenarios, including sign-up, sign-in, forgot password, and link-account processes, to validate the user's identity.

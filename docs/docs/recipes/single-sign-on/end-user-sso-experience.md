@@ -3,6 +3,10 @@ sidebar_position: 2
 sidebar_label: End-user SSO experience
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/enterprise-sso/sp-initiated-sso/#sp-initiated-sso-experience" />
+</head>
+
 # End-user SSO experience
 
 Logto offers an integrated Single Sign-On (SSO) experience, seamlessly aligning with your existing sign-in configurations.

@@ -12,6 +12,13 @@ import AccessLogtoManagementApiUsingAccessToken from '../../../quick-starts/gene
 import M2mAccessTokenNote from '../../../quick-starts/generic/machine-to-machine/fragments/\_m2m-access-token-sub-note.mdx';
 import M2mRoleAssignment from '../../../quick-starts/generic/machine-to-machine/fragments/\_m2m-role-assignment.mdx';
 
+<head>
+  <link
+    rel="canonical"
+    href="https://docs.logto.io/integrate-logto/interact-with-management-api/"
+  />
+</head>
+
 # 🚝 Interact with Management API
 
 ## What is Logto Management API

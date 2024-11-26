@@ -2,6 +2,10 @@
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-cloud/custom-domain/#configure-custom-domain-in-console" />
+</head>
+
 # Configure custom domain in Console
 
 To add a new custom domain in the Logto Console, follow these steps:

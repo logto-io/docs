@@ -1,5 +1,9 @@
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/sign-in-flow-parameters/" />
+</head>
+
 # Authentication parameters
 
 In addition to the parameters required by the [OpenID Connect Core specification](https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest), Logto supports the following parameters in the authentication request for better customization:

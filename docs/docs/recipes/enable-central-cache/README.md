@@ -4,6 +4,10 @@ sidebar_position: 11
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-oss/central-cache/" />
+</head>
+
 # 🗄️ Enable central cache
 
 <Availability cloud oss={{ major: 1, minor: 2 }} />

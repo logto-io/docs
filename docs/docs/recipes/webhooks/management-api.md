@@ -3,6 +3,10 @@ sidebar_label: Configure via Management API
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/webhooks/configure-webhooks/" />
+</head>
+
 import Availability from '@components/Availability';
 
 # Configure webhooks via Management API

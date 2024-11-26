@@ -2,6 +2,10 @@
 sidebar_position: 8
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/sdk-conventions/" />
+</head>
+
 # 📃 SDK convention
 
 This section demonstrates SDK functionalities provided by Logto and the convention between various languages and platforms.

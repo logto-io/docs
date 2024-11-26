@@ -3,6 +3,12 @@ sidebar_label: Configure SMS service
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/sms-connectors/#configuration-steps" />
+</head>
+
+# Configure SMS connector
+
 ## Configure steps
 
 Navigate to “Connector > Email and SMS connectors” in Logto Console.

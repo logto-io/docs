@@ -2,6 +2,10 @@
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/mfa/configure-mfa/" />
+</head>
+
 # Configure MFA
 
 ## Configure MFA in Logto

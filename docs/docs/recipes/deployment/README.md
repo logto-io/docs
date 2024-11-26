@@ -2,6 +2,10 @@
 sidebar_position: 9
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-oss/deployment-and-configuration/" />
+</head>
+
 # 🚀 Deployment
 
 ## Environment Variables

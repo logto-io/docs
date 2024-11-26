@@ -2,6 +2,10 @@
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-cloud/custom-domain/#use-custom-domain" />
+</head>
+
 # Use custom domain
 
 Once you've configured your settings, both your custom domain name and the default Logto domain name will be available for your tenant. However, certain configurations are required to activate your custom domain name.

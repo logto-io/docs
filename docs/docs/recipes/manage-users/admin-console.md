@@ -3,6 +3,10 @@ sidebar_label: Manage in Console
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/manage-users/#manage-via-logto-console" />
+</head>
+
 # Manage users in Console
 
 ## Browse and search users

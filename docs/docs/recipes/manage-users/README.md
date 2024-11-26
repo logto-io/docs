@@ -2,6 +2,10 @@
 sidebar_position: 7
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/" />
+</head>
+
 # 🧑‍🚀 Manage users
 
 User management is a significant area of focus for Logto. You can access your user data and manage them using either the Admin Console or the Management API, both of which are effective. With these tools, you can perform tasks such as

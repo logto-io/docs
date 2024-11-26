@@ -3,6 +3,10 @@ sidebar_label: Enable SMS sign-in
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/sms-connectors/#enable-phone-number-sign-up-or-sign-in" />
+</head>
+
 # Enable SMS connector in sign-in experience
 
 Once you've successfully configured your Email connector, you can make it available as a sign-up or sign-in option according to your business needs.

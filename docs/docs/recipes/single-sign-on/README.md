@@ -4,6 +4,10 @@ sidebar_position: 7.1
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/enterprise-sso/" />
+</head>
+
 # ☁️ Enterprise SSO (SAML & OIDC)
 
 <Availability cloud oss />

@@ -4,6 +4,10 @@ sidebar_position: 7
 
 import APIResourceSchema from './fragments/\_api_resource_schema.mdx';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/authorization/api-resources/" />
+</head>
+
 # 📁 API Resource
 
 ## Introduction

@@ -2,6 +2,10 @@
 sidebar_position: 1.1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/sdk-conventions/design-strategy/" />
+</head>
+
 # Design strategy
 
 - Every programming language should have an isolated git repository named `${language}`.

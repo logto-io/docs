@@ -3,6 +3,10 @@ sidebar_label: Google Workspace
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/google-workspace/" />
+</head>
+
 # Configure Google Workspace SSO
 
 With minimal configuration efforts, this connector allows integration with Microsoft Entra ID for enterprise SSO.

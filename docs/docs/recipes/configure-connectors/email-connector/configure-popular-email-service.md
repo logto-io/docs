@@ -3,6 +3,10 @@ sidebar_label: Configure popular email service
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/email-connectors/#popular-email-providers" />
+</head>
+
 # Configure popular email service
 
 Logto provides a low-code configuration for the most popular email delivery service providers. They are using similar configuration steps so you can get started quickly.

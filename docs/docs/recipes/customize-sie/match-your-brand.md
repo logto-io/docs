@@ -5,6 +5,10 @@ sidebar_position: 2
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/customization/match-your-brand/" />
+</head>
+
 # Match your brand
 
 To customize the sign-in page for the core brand element, go to "Sign-in Experience > Brand > Brand Area" in the Logto Console. This section is straightforward. Change something to see what happens.

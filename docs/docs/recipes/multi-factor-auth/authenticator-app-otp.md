@@ -2,6 +2,10 @@
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/mfa/authenticator-app-otp/" />
+</head>
+
 # Authenticator app OTP
 
 ## Concepts

@@ -2,6 +2,10 @@
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/advanced-user-search/" />
+</head>
+
 # Advanced user search
 
 Directly using Management API to leverage advanced user search conditions.

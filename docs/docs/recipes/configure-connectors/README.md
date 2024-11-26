@@ -2,6 +2,10 @@
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/" />
+</head>
+
 # 🪛 Configure connectors
 
 _Connectors_ are the bridge between Logto and other third-party vendors who provide short message service (SMS), email service, or user information on wildly accepted social media.

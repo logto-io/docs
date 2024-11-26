@@ -2,6 +2,10 @@
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/mfa/backup-codes/" />
+</head>
+
 # Backup codes
 
 ## Concepts

@@ -3,6 +3,10 @@ sidebar_label: Create your connector
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-oss/develop-your-connector/" />
+</head>
+
 # 🧑‍🔬 Create your connector
 
 Currently, Logto has provided many widely used social sign-in connectors such as WeChat, Alipay, Google, Facebook, etc., and SMS/Email connectors such as AliCloud, SendGrid, and Twilio.

@@ -2,6 +2,10 @@
 sidebar_position: 10
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-oss/file-storage-provider/" />
+</head>
+
 # 💾 File storage provider
 
 By default, Logto Console uses a text input for static file URLs such as avatars. To enable a more intuitive file upload experience with drag and drop, you need to configure a storage provider.

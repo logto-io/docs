@@ -1,3 +1,7 @@
+<head>
+  <link rel="canonical" href="https://docs.logto.io/concepts/core-service/configuration/" />
+</head>
+
 # Configuration
 
 ## Environment variables

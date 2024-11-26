@@ -3,6 +3,10 @@ sidebar_label: Set your terms
 sidebar_position: 4
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/sign-up-and-sign-in/terms-and-privacy/" />
+</head>
+
 # Set your terms
 
 When building an app, it's important to have a Terms of Use and Privacy Policy. These documents protect both the app developer and the user. The Terms of Use outline the rules and regulations for using the app, while the Privacy Policy explains how personal data is collected, stored, and used.

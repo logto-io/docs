@@ -3,6 +3,10 @@ sidebar_label: Okta
 sidebar_position: 5
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/okta/" />
+</head>
+
 # Configure Okta SSO
 
 With minimal configuration efforts, this connector allows integration with Okta for enterprise SSO.

@@ -3,6 +3,10 @@ sidebar_label: Social connectors
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/connectors/social-connectors/" />
+</head>
+
 # Configure social connectors
 
 Configuring social connectors allows users to easily sign in using their existing social media accounts, without entering a password or basic profile information. This can help increase the registration conversion rate for your website or app. At Logto, we're constantly improving our social connector's capabilities to support new platforms and enhance the user experience.

@@ -3,6 +3,10 @@ sidebar_label: Localized language
 sidebar_position: 5
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/customization/localized-languages/" />
+</head>
+
 # Localized language
 
 The Sign-in Experience i18n is a powerful tool that allows you to create and manage your own unique set of language options.

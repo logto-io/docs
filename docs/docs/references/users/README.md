@@ -2,6 +2,10 @@
 sidebar_position: 9
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/user-data/" />
+</head>
+
 # 👨‍👩‍👧‍👦 Users
 
 The _users_ are the main entities of the identity service.

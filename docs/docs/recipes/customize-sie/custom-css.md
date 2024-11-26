@@ -3,6 +3,10 @@ sidebar_label: Custom CSS
 sidebar_position: 3
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/customization/custom-css/" />
+</head>
+
 # Custom CSS
 
 Logto continually enhances the user sign-in experience and has added a brand color option to the UI. However, we know that fine-tuning UI requirements can be unpredictable. While Logto is still exploring the best options for customization, we want to provide a programmatic method to unblock your development.

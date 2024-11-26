@@ -4,6 +4,10 @@ sidebar_position: 1
 
 import Availability from '@components/Availability';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/logto-cloud/tenant-settings/#production" />
+</head>
+
 # 🗂️ Tenants
 
 <Availability cloud oss={false} />

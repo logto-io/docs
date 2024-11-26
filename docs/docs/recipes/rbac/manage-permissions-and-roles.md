@@ -1,3 +1,7 @@
+<head>
+  <link rel="canonical" href="https://docs.logto.io/authorization/role-based-access-control/configure-permissions/" />
+</head>
+
 # Manage permissions and roles
 
 :::info

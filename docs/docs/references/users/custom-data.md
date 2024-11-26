@@ -3,6 +3,10 @@ sidebar_label: Custom data
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/user-management/user-sdata/#custom-data" />
+</head>
+
 # Custom data
 
 _custom_data_ stores additional user info not listed in the pre-defined user properties.

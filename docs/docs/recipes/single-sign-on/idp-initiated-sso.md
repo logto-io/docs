@@ -2,6 +2,10 @@ import Availability from '@components/Availability';
 
 <Availability cloud="comingSoon" oss={false} />
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/enterprise-sso/idp-initiated-sso/" />
+</head>
+
 # IdP-initiated SSO (SAML only)
 
 IdP-initiated SSO is a single sign-on process where the Identity Provider (IdP) primarily controls the authentication flow. This process begins when a user logs into the IdP's platform, such as a company portal or a centralized identity dashboard. Once authenticated, the IdP generates an SAML assertion and directs the user to the Service Provider (SP) to access the application or service.

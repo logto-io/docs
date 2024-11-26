@@ -8,6 +8,10 @@ import CustomJwtLanding from './assets/custom-jwt-landing.webp';
 import CustomJwtDetails from './assets/custom-jwt-details.webp';
 import TestResult from './assets/test-result.webp';
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/developer/custom-token-claims/" />
+</head>
+
 # 🎫 Custom token claims
 
 <Availability cloud oss={{ major: 1, minor: 16 }} />

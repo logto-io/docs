@@ -3,6 +3,10 @@ sidebar_label: OIDC
 sidebar_position: 2
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/integrations/oidc-sso/" />
+</head>
+
 # Configure OIDC SSO
 
 With minimal configuration efforts, this connector allows integration with any OIDC-based Identity Provider (IdP).

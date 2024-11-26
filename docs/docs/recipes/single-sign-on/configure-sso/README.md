@@ -2,6 +2,10 @@
 sidebar_position: 1
 ---
 
+<head>
+  <link rel="canonical" href="https://docs.logto.io/end-user-flows/enterprise-sso/sp-initiated-sso/#set-up-sp-initiated-sso" />
+</head>
+
 # Configure SSO
 
 Enable Single Sign-On (SSO) to streamline access across your services for enterprise users. This guide outlines the steps for setting up SSO using the Logto console.
