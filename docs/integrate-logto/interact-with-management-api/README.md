@@ -1,6 +1,5 @@
 ---
-description: This section covers how to interact with Logto Management API.
-sidebar_position: 2
+sidebar_position: 4
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -35,12 +34,17 @@ Some frequently used APIs are listed below:
 - Roles
 - Resources
 - Connectors
+- Organizations
 
 To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
 ## How to access Logto Management API
 
 ### Create an M2M app
+
+:::note
+If you're not familiar with M2M (Machine-to-Machine) authentication flow, we recommend reading [Understanding authentication flow](/integrate-logto/integrate-logto-into-your-application/understanding-authentication-flow/#machine-to-machine-authentication-flow) first to understand the basic concepts.
+:::
 
 Go to <CloudLink to="/applications">Console > Applications</CloudLink>, select the M2M app type and start the creation process.
 
