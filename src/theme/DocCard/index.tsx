@@ -5,7 +5,6 @@ import type { PropSidebarItemCategory, PropSidebarItemLink } from '@docusaurus/p
 import { useDocById, findFirstSidebarItemLink } from '@docusaurus/plugin-content-docs/client';
 import { usePluralForm } from '@docusaurus/theme-common';
 import type { Props } from '@theme/DocCard';
-import Heading from '@theme/Heading';
 import clsx from 'clsx';
 import { type ReactNode } from 'react';
 
@@ -56,9 +55,9 @@ function CardLayout({
   return (
     <CardContainer href={href}>
       {icon}
-      <Heading as="h2" className={clsx('text--truncate', styles.cardTitle)} title={title}>
+      <label className={clsx('text--truncate', styles.cardTitle)} title={title}>
         {title}
-      </Heading>
+      </label>
       {description && (
         <p className={styles.cardDescription} title={description}>
           {description}
