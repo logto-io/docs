@@ -30,7 +30,7 @@ const icons: IconMap = Object.freeze({
   authorization: Authorization,
   'user-management': UserManagement,
   organizations: Organization,
-  developer: Developer,
+  developers: Developer,
   'logto-cloud': Cloud,
   'logto-oss': OpenSource,
   concepts: Concepts,
