@@ -120,7 +120,7 @@ const config: Config = {
     mermaid: true,
   },
 
-  trailingSlash: true,
+  trailingSlash: false,
 
   presets: [
     [
@@ -130,7 +130,7 @@ const config: Config = {
           routeBasePath: '/',
           breadcrumbs: true,
           sidebarPath: './src/sidebar/index.ts',
-          editUrl: 'https://github.com/logto-io/docs/tree/feature/docs-v2',
+          editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
           // To enabled math formula rendering
           // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
