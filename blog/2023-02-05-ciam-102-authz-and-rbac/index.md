@@ -12,7 +12,7 @@ In the [previous article](../2022-11-28-ciam-101-authn-identity-sso/index.mdx), 
 
 Organization and Tenant are great for grouping Identities, but they lead to an absolute democracy: everyone can do anything in this system. While utopia is still a mystery, let’s take a look at the governance of access: Authorization (AuthZ).
 
-{/* truncate */}
+<!--truncate-->
 
 ### Why do we need authorization?
 
@@ -163,7 +163,7 @@ Beside the theory, we still have heavy technical works to complete in order to m
 - Security and open-standard compliance
 - Role, permission, resource management and assignment
 
-Don’t panic. We've taken this into account and added out-of-the-box support to cover all of the above. Check out the [🔐 RBAC recipe](/docs/recipes/rbac/) to learn how to use RBAC in Logto.
+Don’t panic. We've taken this into account and added out-of-the-box support to cover all of the above. Check out the [RBAC recipe](/authorization/role-based-access-control) to learn how to use RBAC in Logto.
 
 ## Closing notes
 

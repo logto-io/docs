@@ -308,42 +308,87 @@ const config: Config = {
       {
         redirects: [
           {
-            to: '/docs/references/tenants/#tenant-type',
+            to: '/logto-cloud/tenant-settings/#tenant-types-dev-vs-prod',
             from: ['/docs/recipes/tenant-type/', '/docs/references/tenant-type/'],
           },
           {
-            to: '/docs/recipes/multi-factor-auth/configure-mfa/',
-            from: '/docs/recipes/multi-factor-auth/config-mfa/',
+            to: '/logto-cloud/tenant-settings',
+            from: '/docs/references/tenants/',
           },
           {
-            to: '/docs/recipes/configure-connectors/',
-            from: '/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors/',
+            to: '/end-user-flows/mfa/configure-mfa',
+            from: [
+              '/docs/recipes/multi-factor-auth/config-mfa/',
+              '/docs/recipes/multi-factor-auth/configure-mfa/',
+            ],
           },
           {
-            to: '/docs/get-started/',
-            from: '/docs/tutorials/get-started/',
+            to: '/connectors',
+            from: [
+              '/docs/tutorials/get-started/passwordless-sign-in-by-adding-connectors/',
+              '/docs/recipes/configure-connectors/',
+            ],
           },
           {
-            to: '/docs/get-started/welcome/',
-            from: '/docs/tutorials/get-started/introduction/',
+            to: '/introduction',
+            from: [
+              '/docs/tutorials/get-started/',
+              '/docs/get-started/',
+              '/docs/tutorials/get-started/introduction/',
+              '/docs/get-started/welcome/',
+            ],
           },
           {
-            to: '/docs/concepts/sign-in-experience/',
-            from: '/docs/tutorials/get-started/sign-in-experience/',
+            to: '/concepts/sign-in-experience',
+            from: [
+              '/docs/tutorials/get-started/sign-in-experience/',
+              '/docs/concepts/sign-in-experience/',
+            ],
           },
           {
-            to: '/docs/recipes/manage-users/personal-access-token/',
-            from: '/docs/recipes/manage-users/management-api/personal-access-token/',
+            to: '/user-management/personal-access-token',
+            from: [
+              '/docs/recipes/manage-users/management-api/personal-access-token/',
+              '/docs/recipes/manage-users/personal-access-token/',
+            ],
+          },
+          {
+            to: '/end-user-flows/sign-up-and-sign-in',
+            from: ['/docs/references/openid-connect', '/docs/recipes/openid-connect'],
+          },
+          {
+            to: '/end-user-flows/authentication-parameters',
+            from: [
+              '/docs/references/openid-connect/authentication-parameters',
+              '/docs/recipes/openid-connect/authentication-parameters',
+            ],
+          },
+          {
+            to: '/end-user-flows/sign-out/#federated-sign-out-back-channel-logout',
+            from: [
+              '/docs/references/openid-connect/backchannel-logout',
+              '/docs/recipes/openid-connect/backchannel-logout',
+            ],
+          },
+          {
+            to: '/concepts/opaque-token',
+            from: [
+              '/docs/references/openid-connect/introspect-tokens',
+              '/docs/recipes/openid-connect/introspect-tokens',
+            ],
+          },
+          {
+            to: '/developers/signing-keys',
+            from: [
+              '/docs/references/openid-connect/signing-keys-rotation',
+              '/docs/recipes/openid-connect/signing-keys-rotation',
+            ],
           },
         ],
         // `existingPath` is the path `to`, the return value is the path `from`.
         createRedirects(existingPath: string) {
           if (existingPath.includes('/quick-starts')) {
             return existingPath.replace('/quick-starts', '/sdk');
-          }
-
-          if (existingPath.includes('/references/openid-connect')) {
-            return existingPath.replace('/references/openid-connect', '/recipes/openid-connect');
           }
 
           // eslint-disable-next-line unicorn/no-useless-undefined
