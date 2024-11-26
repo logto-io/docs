@@ -167,7 +167,7 @@ const config: Config = {
       items: [
         {
           type: 'doc',
-          docId: 'docs/README',
+          docId: 'introduction/README',
           position: 'left',
           label: 'Docs',
         },

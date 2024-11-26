@@ -99,7 +99,7 @@ The Logto Admin Console supports basic search and filtering functions. For advan
 
 ### Implement organization management on your own
 
-If you’re using the [organizations](/organizations) feature to build your multi-tenant app, you might need the Logto Management API for tasks like organization invitations and member management. For your SaaS product, where you have both admins and members in the tenant, the Logto Management API can help you create a custom admin portal tailored to your business needs. Check out [this](/organizations/organization-management/#manage-via-logto-management-api) for more detail.
+If you’re using the [organizations](/organizations) feature to build your multi-tenant app, you might need the Logto Management API for tasks like organization invitations and member management. For your SaaS product, where you have both admins and members in the tenant, the Logto Management API can help you create a custom admin portal tailored to your business needs. Check out [this](/end-user-flows/organization-experience/) for more detail.
 
 ## Tips for using Logto Management API
 
