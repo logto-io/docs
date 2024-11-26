@@ -26,7 +26,7 @@ By default, this feature is not enabled in Logto. If you need IdP-initiated SSO 
 
 ### Prerequisites
 
-Before configuring IdP-initiated SSO, you need to create a SAML connector first. Navigate to the `Enterprise SSO` section in the Logto console and follow the step-by-step [guide](https://docs.logto.io/docs/recipes/single-sign-on/configure-sso/) to set up a [SAML](https://docs.logto.io/docs/recipes/single-sign-on/configure-sso/saml/) connector with your IdP.
+Before configuring IdP-initiated SSO, you need to create a SAML connector first. Navigate to the `Enterprise SSO` section in the Logto Console and follow the step-by-step [guide](https://docs.logto.io/docs/recipes/single-sign-on/configure-sso/) to set up a [SAML](https://docs.logto.io/docs/recipes/single-sign-on/configure-sso/saml/) connector with your IdP.
 
 Once the SAML connector is set up, you can enable the SSO sign-in method in the `Sign-in experience` section, and test the SP-initiated SSO flow to ensure that the configuration is correct. Make sure the SP-initiated SSO is working as expected before proceeding with IdP-initiated SSO.
 
