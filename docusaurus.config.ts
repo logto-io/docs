@@ -15,7 +15,7 @@ const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
 
 const addAliasPlugin: PluginConfig = () => ({
   name: 'add-alias-plugin',
-  configureWebpack: () => ({
+  configureWebpack: (config) => ({
     resolve: {
       alias: {
         '@components': path.resolve(__dirname, './src/components'),
@@ -24,6 +24,44 @@ const addAliasPlugin: PluginConfig = () => ({
       },
     },
   }),
+});
+
+/**
+ * A workaround to override the docusaurus svgo config. By default docusaurus
+ * does not prefix the svg ids, which can cause conflicts when multiple svgs
+ * are used on the same page.
+ * https://github.com/facebook/docusaurus/issues/8297
+ *
+ * TODO: @charles - Remove this once docusaurus 3.7 is released
+ */
+// @ts-expect-error - No return value is expected
+const prefixSvgIdsPlugin: PluginConfig = () => ({
+  name: 'prefix-svg-ids',
+  configureWebpack(config) {
+    const svgRule = config.module?.rules?.find(
+      (
+        rule
+      ): rule is {
+        test: RegExp;
+        oneOf: Array<{ use: Array<{ options: { svgoConfig: { plugins: unknown[] } } }> }>;
+      } =>
+        rule !== null &&
+        typeof rule === 'object' &&
+        'test' in rule &&
+        rule.test instanceof RegExp &&
+        rule.test.source === '\\.svg$'
+    );
+
+    if (svgRule) {
+      const useRule = svgRule.oneOf[0]?.use?.[0];
+      const svgoConfig = useRule?.options.svgoConfig;
+
+      if (svgoConfig && Array.isArray(svgoConfig.plugins)) {
+        // eslint-disable-next-line @silverhand/fp/no-mutation
+        svgoConfig.plugins = [...svgoConfig.plugins, 'prefixIds'];
+      }
+    }
+  },
 });
 
 const gtagAwTrackingId = 'AW-11124811245';
@@ -259,6 +297,7 @@ const config: Config = {
   } satisfies ThemeConfig,
   plugins: [
     addAliasPlugin,
+    prefixSvgIdsPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
     ...generateConnectorGuides(),
