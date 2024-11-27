@@ -18,16 +18,18 @@ export const log = (...args) => {
  * @param terms {Record<string, string>} The terms with their fixed translations.
  */
 const buildInstructions = (asIsTerms, terms) => [
-  'Keep all frontmatter keys in their original language; translate values, except for the `slug` key.',
-  'Do not translate JSON keys, inline code, component names and keys, urls, and file paths.',
-  'For mermaid diagrams, translate the text inside the diagram, but keep the diagram type and structure.',
+  'Keep frontmatter keys unchanged. Translate values, except for the `slug` value.',
+  'Do not translate JSON keys, inline code, component names, keys, URLs, or file paths.',
   `Do not translate the following terms, including their plural forms: ${asIsTerms.join(', ')}.`,
-  'For the following terms with any capitalization and casing, use the specified translation (matching the casing if applicable):',
-  JSON.stringify(terms) + '`.',
-  'Prefer using "你" instead of "您" in Chinese.',
-  'Make sure there is a space between the CJK and non-CJK characters.',
-  'Make sure there are spaces around the `/` character and links.',
-  'Respond with the translated content only.',
+  'For all the keys in the following JSON object (case-insensitive matching), use the values as translations and append the original key in parentheses. For example, if the JSON object is `{ "Logto": "日志", "Log": "日志" }`, then translate "Logto" to "日志 (Logto)" and "Log" to "日志 (Log)". The JSON object is `' +
+    JSON.stringify(terms) +
+    '`.',
+  'For mermaid diagrams, translate only the text within the diagram, keeping the diagram type and structure unchanged.',
+  'Prefer "你" over "您" when translating into Chinese.',
+  'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',
+  'Add spaces around the `/` character in the translated content.',
+  'Include spaces around links and email addresses in the translated content, e.g., `访问 [Logto](https://logto.io) 网站`.',
+  "Respond with only the translated content, don't wrap it in any other text or code blocks.",
 ];
 
 export class OpenAiTranslate {
@@ -50,7 +52,7 @@ export class OpenAiTranslate {
     }
 
     this.instructions = buildInstructions(asIsTerms, terms[locale])
-      .map((instruction) => `- ${instruction}`)
+      .map((instruction, index) => `${index + 1}. ${instruction}`)
       .join('\n');
 
     log(`Instructions for locale "${locale}":\n${this.instructions}`);
