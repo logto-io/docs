@@ -1,0 +1,89 @@
+---
+sidebar_position: 3
+---
+
+# 使用基于角色的访问控制 (RBAC) 保护 API 资源
+
+除了通过确保存在有效的 JSON Web Token 来保护资源的 [保护你的 API](/authorization/api-resources/protect-your-api) 之外，还可以应用基于角色的访问控制 (RBAC)。
+
+在本文中，我们将重点介绍 RBAC 如何影响你的认证流程中的权限 (Scope) 委托和验证。
+
+## 授权流程图
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: 认证 & 令牌请求
+    Client->>Logto: GET /oidc/auth & POST /oidc/token
+    Note right of Client: 包含资源和请求的权限 (Scopes)
+
+    Note over Logto: 根据用户的 RBAC 策略过滤请求的权限 (Scopes)
+    Logto-->>Client: 返回 JWT 访问令牌
+    Note left of Logto: 令牌包含：<br/>- 标准 JWT 声明 (Claims)<br/>- 授予的权限 (Scopes)（由 RBAC 过滤）
+
+    Note over Client,API: API 请求
+    Client->>API: 使用 Bearer 令牌请求
+
+    Note over API: 验证 JWT 令牌：<br/>- 标准 JWT 验证<br/>- 检查授予的权限 (Scopes)
+
+    alt 令牌无效
+        API-->>Client: 401 未授权
+    else 令牌有效
+        alt 所需权限不在授予的权限中
+            API-->>Client: 403 禁止访问
+        else 拥有所需权限
+            API-->>Client: 受保护的资源
+        end
+    end
+```
+
+如图所示，与基本 API 保护的主要区别在于权限 (Scopes) 的处理。Logto 不再直接授予所有请求的权限，而是根据用户的 RBAC 策略进行过滤。JWT 令牌将仅包含用户通过其角色授予的权限。在 API 端，在验证令牌的真实性后，还有一个额外的检查，以确保令牌包含请求资源所需的权限。
+
+## 可选：处理用户权限变更
+
+用户权限可能会在会话期间发生变化——例如，他们可能被分配新的角色或现有角色权限被修改。在这些情况下，可能需要检测这些变化并更新应用程序 UI。
+
+当用户权限发生变化时会发生什么？有两种情况。
+
+### 系统中没有引入新权限
+
+当前的访问令牌将在用户权限更改后仍然有效，直到它们过期。然而，新权限将在后续的访问令牌中反映出来，任何被撤销的权限将被省略。
+
+以下是一些**推荐的操作**：
+
+**选项 1：使用短期访问令牌过期时间**
+
+短期访问令牌可确保更频繁地更新用户权限。在控制台的 [API 资源](/authorization/api-resources/#logto-api-resource-schema) 设置中配置令牌过期设置。缺点是这会增加你的令牌使用量。
+
+**选项 2：动态检查权限**
+
+定期调用 [Logto Management API](/integrate-logto/interact-with-management-api) 端点（例如，SWR）或使用 WebSocket 等技术实现长连接以动态获取用户权限。在检测到变化时，清除现有的访问令牌，新颁发的令牌将自动反映权限范围的变化。- API：用户角色 - API：角色权限
+
+当检测到权限变化时，首先从存储中清除访问令牌，然后调用 SDK 方法 `getAccessToken()` 获取新的令牌。新颁发的访问令牌应反映权限变化。
+
+### 系统中引入新权限并分配给用户
+
+当你的系统中引入新权限时会发生这种情况。在这种情况下，你需要首先在初始化 Logto 客户端时包含新引入的权限范围。例如：
+
+```tsx
+new LogtoClient({
+  appId: 'your-app-id',
+  redirectUrl: 'your-redirect-url',
+  resources: ['your-api-resource'],
+  scopes: [
+    // ... 你现有的权限范围,
+    'new-scope',
+  ],
+});
+```
+
+其次，你的每个客户端应用程序需要重新授权或重新登录用户，以接收新的权限变化。然后，新权限范围将在新的访问令牌中反映出来。
+
+重新授权的代码示例：
+
+```tsx
+signIn({ redirectUrl: 'your-redirect-url', prompt: 'consent' });
+```

@@ -113,7 +113,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'zh-CN'],
   },
 
   markdown: {
@@ -226,7 +226,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Designed by © Silverhand Inc.`,
+      copyright: `Designed by Silverhand Inc.`,
     },
     prism: {
       theme: lightCodeTheme,

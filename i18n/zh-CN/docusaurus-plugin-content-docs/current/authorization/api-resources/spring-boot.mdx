@@ -1,0 +1,284 @@
+---
+sidebar_position: 4
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# 指南：Spring Boot
+
+在本教程中，我们假设客户端已经获得了一个有效的 `access_token` 并将其附加到请求头中作为 `Authorization: Bearer <access_token>`
+
+你的 Web 应用程序可能使用 Spring Boot 框架在服务器端运行。目前，你需要在 Spring Boot 中手动集成 Logto。本文将指导你如何一步步完成它。我们使用 Gradle、Java 和 Spring Security 来作为示例。
+
+## 启动一个 Spring Boot 项目
+
+使用 [Spring Initializr](https://start.spring.io/)，你可以快速启动一个 Spring Boot 项目。使用以下选项：
+
+- Gradle Project
+- Language: Java
+- Spring Boot: 2.7.2
+
+生成并打开项目。
+
+## 添加依赖
+
+将依赖项添加到你的 Gradle 项目构建文件 `build.gradle` 中：
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+}
+```
+
+:::note
+
+由于 Spring Boot 和 Spring Security 对 OAuth2 资源服务器和 JWT 验证都有内置支持，你不需要添加来自 Logto 的额外库来进行集成。
+
+查看 [Spring Security OAuth 2.0 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html) 和 [Spring Security Architecture](https://spring.io/guides/topicals/spring-security-architecture) 以获取更多详细信息。
+
+:::
+
+## 获取发行者和 JWKS URI
+
+所有令牌都由 [发行者](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 发行，并使用 [JWK](https://datatracker.ietf.org/doc/html/rfc7517) 签名（参见 [JWS](https://datatracker.ietf.org/doc/html/rfc7515) 以获取更多详细信息）。
+
+在继续之前，你需要获取一个发行者和一个 JWKS URI 来验证发行者和 Bearer Token (`access_token`) 的签名。
+
+默认情况下，你的 Logto 的发行者和 JWKS URI 是 `https://<your-logto-domain>/oidc` 和 `https://<your-logto-domain>/oidc/jwks`
+
+所有最新的 Logto 授权服务器配置可以通过 `https://<your-logto-domain>/oidc/.well-known/openid-configuration` 找到，包括 **issuer**、**jwks_uri** 和其他授权配置。例如：
+
+```json
+{
+  // ...
+  "issuer": "https://<your-logto-domain>/oidc",
+  "jwks_uri": "https://<your-logto-domain>/oidc/jwks"
+  // ...
+}
+```
+
+## 配置应用程序
+
+使用 `application.yml` 文件（而不是默认的 `application.properties`）来配置服务器端口、受众和 OAuth2 资源服务器。
+
+```yaml
+# path/to/project/src/main/resources/application.yaml
+server:
+  port: 3000
+
+logto:
+  audience: http://localhost:3000/
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: <your-logto-issuer-uri>
+          jwk-set-uri: <your-logto-jwks-uri>
+```
+
+- `audience`: 你的受保护 API 资源的唯一 API 标识符（即 API 指示器）。
+- `spring.security.oauth2.resourceserver.jwt.issuer-uri`: Logto 发行的 JWT 中的 `iss` 声明值和发行者 URI。填写上一节中的 `issuer` 值。
+- `spring.security.oauth2.resourceserver.jwt.jwk-set-uri`: Spring Security 使用此 URI 获取授权服务器的公钥以验证 JWT 签名。填写上一节中的 `jwks_uri` 值。
+
+## 提供受众验证器
+
+提供你自己的 `AudienceValidator` 类，该类实现 `OAuth2TokenValidator` 接口，以验证 JWT 中是否存在所需的受众。
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/validator/AudienceValidator.java
+package io.logto.springboot.sample.validator;
+
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
+
+    private final String audience;
+
+    public AudienceValidator(String audience) {
+        this.audience = audience;
+    }
+
+    @Override
+    public OAuth2TokenValidatorResult validate(Jwt jwt) {
+        if (!jwt.getAudience().contains(audience)) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Required audience not found", null));
+        }
+
+	      // 可选：对于 RBAC 验证 JWT 的权限。
+	      String scopes = jwt.getClaimAsString("scope");
+	      if (scopes == null || !scopes.contains("read:profile")) {
+	          return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Insufficient permission", null));
+	      }
+
+        return OAuth2TokenValidatorResult.success();
+    }
+}
+```
+
+## 配置 Spring Security
+
+Spring Security 使得将你的应用程序配置为资源服务器并验证请求头中的 Bearer Token 的 JWT 变得简单。
+
+你需要提供 `JwtDecoder` 和 `SecurityFilterChain` 的实例（作为 Spring bean），并添加 `@EnableWebSecurity` 注解。
+
+:::note
+
+Logto 默认使用 `ES384` 算法来签署 JWT。要解码 JWT，你需要将 `jwsAlgorithm` 显式设置为 `ES384`。如果你更喜欢使用 `RSA`，可以在 Logto 管理控制台中自由旋转签名算法。请参考 [Signing keys](/developers/signing-keys) 以获取更多详细信息。
+
+:::
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/configuration/SecurityConfiguration.java
+package io.logto.springboot.sample.configuration;
+
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
+import com.nimbusds.jose.proc.SecurityContext;
+import io.logto.springboot.sample.validator.AudienceValidator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfiguration {
+
+    @Value("${logto.audience}")
+    private String audience;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuer;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
+    private String jwksUri;
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                // Logto 默认使用 ES384 算法来签署 JWT。
+                .jwsAlgorithm(ES384)
+                // 解码器应支持令牌类型：访问令牌 + JWT。
+                .jwtProcessorCustomizer(customizer -> customizer.setJWSTypeVerifier(
+                        new DefaultJOSEObjectTypeVerifier<SecurityContext>(new JOSEObjectType("at+jwt"))))
+                .build();
+
+        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new AudienceValidator(audience),
+                new JwtIssuerValidator(issuer),
+                new JwtTimestampValidator()));
+
+        return jwtDecoder;
+    }
+
+    @Bean
+    public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+         http
+          .securityMatcher("/api/**")
+          .oauth2ResourceServer(oauth2 -> oauth2
+              .jwt(Customizer.withDefaults()))
+          .authorizeHttpRequests(requests -> requests
+              // 允许所有对公共 API 的请求。
+              .requestMatchers("/api/.wellknown/**").permitAll()
+              // 对受保护的 API 需要 jwt 令牌验证。
+              .anyRequest().authenticated());
+
+        return http.build();
+    }
+}
+```
+
+## 添加 API
+
+添加一个控制器来提供受保护和公共 API：
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/controller/ProtectedController.java
+package io.logto.springboot.sample.controller;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+// 仅允许所有来源用于示例。
+// （生产应用程序应仔细配置 CORS。）
+@CrossOrigin(origins = "*")
+@RestController
+public class ProtectedController {
+    @GetMapping("/api/profile")
+    public String protectedProfile() {
+        return "Protected profile.";
+    }
+
+    @GetMapping("/api/.wellknown/config.json")
+    public String publicConfig() {
+        return "Public config.";
+    }
+}
+
+```
+
+## 访问受保护的 API
+
+构建并运行你的 Spring Boot Web 应用程序，例如执行 `bootRun` Gradle 任务。
+
+<Tabs>
+<TabItem value="linux-or-macos" label="Linux 或 macOS">
+
+```bash
+./gradlew bootRun
+```
+
+</TabItem>
+<TabItem value="windows" label="Windows">
+
+```bash
+gradlew.bat bootRun
+```
+
+</TabItem>
+</Tabs>
+
+:::note
+
+本教程假设你在发出请求之前已经拥有一个 API 资源 `http://localhost:3000/` 的访问令牌。如果你还没有准备好，请在继续之前 [阅读此内容](/authorization/api-resources/protect-your-api)。
+
+:::
+
+使用访问令牌作为 Authorization 头中的 Bearer 令牌请求你的受保护 API，例如执行 `curl` 命令。
+
+```bash
+curl --include 'http://localhost:3000/api/profile' --header 'Authorization: Bearer <your-access-token>'
+```
+
+如果成功，你将收到一个状态为 200 的响应：
+
+```bash
+HTTP/1.1 200
+...
+```
+
+否则，你将收到一个状态为 401 的响应，如下所示：
+
+```
+HTTP/1.1 401
+...
+WWW-Authenticate: Bearer error="invalid_token", error_description="An error occurred while attempting to decode the Jwt: Signed JWT rejected: Invalid signature", error_uri="https://tools.ietf.org/html/rfc6750#section-3.1"
+...
+```

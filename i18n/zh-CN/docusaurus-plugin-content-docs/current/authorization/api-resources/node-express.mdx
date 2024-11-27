@@ -1,0 +1,104 @@
+---
+sidebar_position: 3
+---
+
+# 指南：Node (Express)
+
+## 第一步：从请求头中提取 Bearer Token
+
+一个经过授权的请求应该包含一个 `Authorization` 头，其内容为 `Bearer <access_token>`。从请求头中提取 认证 Token：
+
+```tsx
+// auth_middleware.ts
+
+import { IncomingHttpHeaders } from 'http';
+
+const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+```
+
+## 第二步：令牌验证
+
+为了演示，我们使用 [jose](https://github.com/panva/jose) 包来验证令牌的签名、过期状态和所需的声明 (Claims)。
+
+### 安装 `jose` 作为你的依赖
+
+```bash
+npm i jose --save
+```
+
+### 获取 Logto 的 OIDC 配置
+
+你将需要一个 JWK 公钥集和令牌发行者 (Issuer) 来验证接收到的 JWS 令牌的签名和来源。所有最新的 Logto 授权配置可以在 `https://<your-logto-domain>/oidc/.well-known/openid-configuration` 找到。
+
+例如，调用 `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`。并在响应体中找到以下两个字段：
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### 添加认证中间件
+
+Jose 的 `jwtVerify` 方法可以帮助你验证令牌的 JWS 格式、令牌签名、发行者 (Issuer)、受众 (Audience) 和过期状态。如果验证失败，将抛出异常。
+
+:::warning
+
+如果你使用 [基于角色的访问控制 (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac)，还需要进行权限 (Scope) 验证。
+
+:::
+
+```tsx
+// auth-middleware.ts
+
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (req, res, next) => {
+  // 提取令牌
+  const token = extractBearerTokenFromHeaders(req.headers);
+
+  const { payload } = await jwtVerify(
+    token, // 从请求头中提取的原始 Bearer Token
+    createRemoteJWKSet(new URL('https://<your-logto-domain>/oidc/jwks')), // 使用从 Logto 服务器查询的 jwks_uri 生成一个 jwks
+    {
+      // 令牌的预期发行者 (Issuer)，应该由 Logto 服务器发行
+      issuer: 'https://<your-logto-domain>/oidc',
+      // 预期的受众 (Audience) 令牌，应该是当前 API 的资源指示符
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // 如果你使用 RBAC
+  assert(payload.scope.includes('some_scope'));
+
+  // 自定义 payload 逻辑
+  userId = payload.sub;
+
+  return next();
+};
+```
+
+## 将中间件应用到你的 API
+
+```tsx
+import { verifyAuthFromRequest } from '/middleware/auth-middleware.ts';
+
+app.get('/user/:id', verifyAuthFromRequest, (req, res, next) => {
+  // 自定义代码
+});
+```
