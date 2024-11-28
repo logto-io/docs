@@ -219,7 +219,7 @@ if (files.length > 1) {
 }
 
 const openAiTranslate = new OpenAiTranslate(locale);
-const listr = new Listr([], { concurrent: 4 });
+const listr = new Listr([], { concurrent: 2 });
 
 for (const file of files) {
   listr.add({
@@ -235,7 +235,6 @@ for (const file of files) {
       task.title = `Done: ${targetFile}`;
     },
     retry: 1,
-    exitOnError: false,
   });
 }
 

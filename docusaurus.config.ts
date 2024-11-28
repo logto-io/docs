@@ -166,8 +166,17 @@ const config: Config = {
       {
         sitemap: {
           changefreq: 'weekly',
-          // Tutorial pages are not translated. Ignore them.
-          ignorePatterns: ['blog/**', 'tutorial/tags/**', '*/tutorial/**'],
+          ignorePatterns: [
+            '/blog/**',
+            '/tutorial/tags/**',
+            // Some pages are not translated. Ignore them.
+            '/*/tutorial',
+            '/*/tutorial/**',
+            '/*/terms',
+            '/*/terms/**',
+            '/*/about',
+            '/*/about/**',
+          ],
         },
         docs: {
           routeBasePath: '/',

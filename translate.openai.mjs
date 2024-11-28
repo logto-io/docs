@@ -22,13 +22,13 @@ const buildInstructions = (asIsTerms, terms, patterns) => [
   'Keep frontmatter keys unchanged. Translate values, except for the `slug` value.',
   'Do not translate JSON keys, inline code, component names, keys, URLs, or file paths.',
   `Do not translate the following terms, including their plural forms: ${asIsTerms.join(', ')}.`,
-  'For all the keys in the following JSON object (case-insensitive matching), use the values as translations and append the original key in parentheses. For example, if the JSON object is `{ "Logto": "日志", "Log": "日志" }`, then translate "Logto" to "日志 (Logto)" and "Log" to "日志 (Log)". The JSON object is `' +
+  'For all the keys in the following JSON object (case-insensitive matching), use the values as translations and append the untranslated content in parentheses. For example, if the JSON object is `{ "Logto": "日志", "Log": "日志" }`, then translate "Logto" to "日志 (Logto)" and "Log" to "日志 (Log)". The JSON object is `' +
     JSON.stringify(terms) +
     '`.',
   'For all the patterns in the keys of the following JSON object (case-insensitive matching), use the values as translations. For example, if the JSON object is `{ "Set up {product}": "安装 {product}" }`, then translate "Set up Logto" to "安装 Logto". The JSON object is `' +
     JSON.stringify(patterns) +
     '`.',
-  'Keep import statements unchanged, including the package names and paths.',
+  'Ensure all import statements are not translated and copied as-is.',
   'For mermaid diagrams, translate only the text within the diagram, keeping the diagram type and structure unchanged.',
   'Prefer "你" over "您" when translating into Chinese.',
   'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',
@@ -80,7 +80,7 @@ export class OpenAiTranslate {
         {
           role: 'system',
           content: [
-            `You are a assistant translator and will receive a MDX file. Translate it to locale "${target}". Detailed instructions are as follows:`,
+            `You are a assistant translator and will receive a MDX content. Translate it to locale "${target}". Detailed instructions are as follows:`,
           ]
             .concat(this.instructions)
             .join('\n'),

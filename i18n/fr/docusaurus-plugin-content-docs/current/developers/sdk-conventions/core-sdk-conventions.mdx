@@ -1,0 +1,476 @@
+---
+id: core-sdk-convention
+title: Convention du SDK Core
+sidebar_label: Convention du SDK Core
+sidebar_position: 3
+---
+
+# Convention du SDK Core
+
+## Conventions de base
+
+- Le core ne doit contenir que des fonctions indépendantes de la plateforme.
+- Le core doit être nommé `{$language}` et placé sous le répertoire racine du dépôt. Par exemple, `logto/js/js`, `logto/kotlin/kotlin`.
+- Le package core doit être nommé `{$language}` sous la portée de Logto. Par exemple, `@logto/js`, `io.logto.sdk:kotlin`.
+
+## Exigences de base
+
+Tout SDK core doit contenir :
+
+- Types
+- Fonctions utilitaires
+- Fonctions core
+
+### Types
+
+<details>
+  <summary>OidcConfigResponse</summary>
+
+La configuration du fournisseur d’identité (Identity provider), qui peut être récupérée via l'API `/oidc/.well-known/openid-configuration`.
+
+**Propriétés**
+
+| Nom                   | Type     |
+| --------------------- | -------- |
+| authorizationEndpoint | `string` |
+| tokenEndpoint         | `string` |
+| endSessionEndpoint    | `string` |
+| revocationEndpoint    | `string` |
+| jwksUri               | `string` |
+| issuer                | `string` |
+
+</details>
+
+<details>
+  <summary>CodeTokenResponse</summary>
+
+Les données de réponse de `/oidc/token` (par jeton d’autorisation).
+
+**Propriétés**
+
+| Nom          | Type     | Requis |
+| ------------ | -------- | ------ |
+| accessToken  | `string` | ✅     |
+| refreshToken | `string` |        |
+| idToken      | `string` | ✅     |
+| scope        | `string` | ✅     |
+| expiresIn    | `number` | ✅     |
+
+</details>
+
+<details>
+  <summary>RefreshTokenResponse</summary>
+
+Les données de réponse de `/oidc/token` (par jeton de rafraîchissement) lors du rafraîchissement des jetons par un jeton de rafraîchissement.
+
+**Propriétés**
+
+| Nom          | Type     | Requis |
+| ------------ | -------- | ------ |
+| accessToken  | `string` | ✅     |
+| refreshToken | `string` | ✅     |
+| idToken      | `string` |        |
+| scope        | `string` | ✅     |
+| expiresIn    | `number` | ✅     |
+
+</details>
+
+<details>
+  <summary>IdTokenClaims</summary>
+
+Revendications (Claims) portées par le jeton d’identifiant.
+
+**Propriétés**
+
+| Nom      | Type     | Requis |
+| -------- | -------- | ------ |
+| sub      | `string` | ✅     |
+| aud      | `string` | ✅     |
+| exp      | `number` | ✅     |
+| iat      | `number` | ✅     |
+| iss      | `string` | ✅     |
+| atHash   | `string` |        |
+| username | `string` |        |
+| name     | `string` |        |
+| avatar   | `string` |        |
+
+</details>
+
+### Fonctions utilitaires
+
+<details>
+  <summary>generateCodeVerifier</summary>
+
+Générer un vérificateur de code.  
+La longueur du vérificateur de code est codée en dur à 64.  
+La valeur de retour DOIT être chiffrée en une chaîne de format base64 sûre pour les URL.
+
+**Référence**
+
+- [PKCE](https://oauth.net/2/pkce/)
+
+**Paramètres**
+
+Aucun.
+
+**Type de retour**
+
+`string`
+
+</details>
+
+<details id="generatecodeverifier">
+  <summary>generateCodeChallenge</summary>
+
+Générer un défi de code basé sur un vérificateur de code.  
+Cette méthode chiffre le vérificateur de code et renvoie le résultat dans un format Base64 sûr pour les URL.  
+Nous codons en dur l'algorithme de chiffrement en tant que `SHA-256` dans Logto V1.
+
+**Référence**
+
+- [PKCE](https://oauth.net/2/pkce/)
+
+**Paramètres**
+
+| Nom          | Type     | Remarques                       |
+| ------------ | -------- | ------------------------------- |
+| codeVerifier | `string` | Généré par generateCodeVerifier |
+
+**Type de retour**
+
+`string`
+
+</details>
+
+<details>
+  <summary>generateState</summary>
+
+"State" est utilisé pour prévenir l'attaque CSRF.  
+La longueur du "state" est codée en dur à 64.  
+La chaîne de résultat à retourner DOIT être chiffrée en une chaîne de format base64 sûre pour les URL.
+
+**Référence**
+
+- [CSRF](https://datatracker.ietf.org/doc/html/rfc6749#section-10.12)
+
+**Paramètres**
+
+Aucun.
+
+**Type de retour**
+
+`string`
+
+</details>
+
+<details>
+  <summary>decodeIdToken</summary>
+
+Décoder un jeton d’identifiant sans vérification secrète.  
+Retourne un `IdTokenClaims` qui porte toutes les revendications de jeton dans la section de charge utile.
+
+**Paramètres**
+
+| Nom   | Type     |
+| ----- | -------- |
+| token | `string` |
+
+**Type de retour**
+
+`IdTokenClaims`
+
+**Exceptions**
+
+- Le `token` n'est pas un JWT valide.
+
+</details>
+
+<details>
+  <summary>verifyIdToken</summary>
+
+Vérifier si un jeton d’identifiant est légal.
+
+**Vérifier la clé de signature**
+
+OIDC prend en charge le JSON Web Key Set.  
+Cette fonction accepte un objet `JsonWebKeySet` d'une bibliothèque tierce (jose) pour la vérification.
+
+```json
+// Exemple de JsonWebKeySet
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "use": "sig",
+      "kid": "xxxx",
+      "e": "xxxx",
+      "n": "xxxx"
+    }
+  ]
+}
+```
+
+**Vérifier les revendications**
+
+- Vérifier que le `iss` dans le jeton d’identifiant correspond à l'émetteur de ce jeton.
+- Vérifier que la revendication `aud` (Audience) est égale à l'ID client.
+- Vérifier que l'heure actuelle est avant l'heure d'expiration.
+- Vérifier que l'heure d'émission (`iat`) n'est pas supérieure à +/- 1 minute par rapport à l'heure actuelle.
+
+**Référence**
+
+- [OpenID connect core - Validation du jeton d’identifiant](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)
+
+**Paramètres**
+
+| Nom      | Type            |
+| -------- | --------------- |
+| idToken  | `string`        |
+| clientId | `string`        |
+| issuer   | `string`        |
+| jwks     | `JsonWebKeySet` |
+
+**Type de retour**
+
+`void`
+
+**Exceptions**
+
+- Échec de la vérification de la clé de signature
+- Échec de la vérification des revendications
+
+</details>
+
+<details>
+  <summary>verifyAndParseCodeFromCallbackUri</summary>
+
+Vérifier que le callbackUri de connexion est légal et retourner le `code` extrait de callbackUri.
+
+**Vérifier l'URI de rappel**
+
+- Vérifier que le `callbackUri` doit commencer par `redirectUri`
+- Vérifier qu'il n'y a pas d'`error` dans le `callbackUri` (se référer à [Réponse d'erreur](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1) dans l'URI de redirection).
+- Vérifier que le `callbackUri` contient `state`, qui doit être égal à la valeur `state` que vous avez spécifiée dans `generateSignInUri`.
+- Vérifier que le `callbackUri` contient la valeur du paramètre `code`, que vous utiliserez lors de la requête à `/oidc/token` (par jeton de rafraîchissement).
+
+**Paramètres**
+
+| Nom         | Type     |
+| ----------- | -------- |
+| callbackUri | `string` |
+| redirectUri | `string` |
+| state       | `string` |
+
+**Type de retour**
+
+`string`
+
+**Exceptions**
+
+- Échecs de vérification
+
+</details>
+
+### Fonctions core
+
+<details>
+  <summary>fetchOidcConfig</summary>
+
+Retourner `OidcConfigResponse` en faisant une requête à `/oidc/.well-known/openid-configuration`.
+
+**Paramètres**
+
+| Nom      | Type     | Remarques                |
+| -------- | -------- | ------------------------ |
+| endpoint | `string` | Le point de service OIDC |
+
+**Type de retour**
+
+`OidcConfigResponse`
+
+**Exceptions**
+
+- Échec de la récupération
+
+</details>
+
+<details>
+  <summary>generateSignInUri</summary>
+
+**Paramètres**
+
+| Nom                   | Type       | Requis | Remarques                                                         |
+| --------------------- | ---------- | ------ | ----------------------------------------------------------------- |
+| authorizationEndpoint | `string`   | ✅     |                                                                   |
+| clientId              | `string`   | ✅     |                                                                   |
+| redirectUri           | `string`   | ✅     |                                                                   |
+| codeChallenge         | `string`   | ✅     |                                                                   |
+| state                 | `string`   | ✅     |                                                                   |
+| scopes                | `string[]` |        | L'implémentation peut varier selon les spécifications du langage. |
+| resources             | `string[]` |        | L'implémentation peut varier selon les spécifications du langage. |
+| prompt                | `string`   |        | Par défaut : `consent`.                                           |
+
+L'URL sera générée en fonction de `authorizationEndpoint` et contiendra les paramètres de requête suivants :
+
+**Paramètres de requête de l'URL de connexion**
+
+| Clé de requête        | Requis | Remarques                                                                                                                       |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| client_id             | ✅     |                                                                                                                                 |
+| redirect_uri          | ✅     |                                                                                                                                 |
+| code_challenge        | ✅     |                                                                                                                                 |
+| code_challenge_method | ✅     | Codé en dur en tant que S256.                                                                                                   |
+| state                 | ✅     |                                                                                                                                 |
+| scope                 | ✅     | scope contient toujours openid et offline_access, même si la portée d'entrée fournit une valeur de portée nulle ou vide.        |
+| resource              |        | Nous pouvons ajouter la ressource à l'uri plus d'une fois, le backend les convertira en une liste. e.g. `resource=a&resource=b` |
+| response_type         | ✅     | Codé en dur en tant que code.                                                                                                   |
+| prompt                | ✅     |                                                                                                                                 |
+
+**Type de retour**
+
+`string`
+
+</details>
+
+<details>
+  <summary>generateSignOutUri</summary>
+
+**Paramètres**
+
+| Nom                   | Type     | Requis |
+| --------------------- | -------- | ------ |
+| endSessionEndpoint    | `string` | ✅     |
+| idToken               | `string` | ✅     |
+| postLogoutRedirectUri | `string` |        |
+
+L'URL à générer sera basée sur `endSessionEndpoint` et contiendra les paramètres de requête suivants :
+
+**Paramètres de requête de l'URL de déconnexion**
+
+| Clé de requête           | Requis | Remarques                                  |
+| ------------------------ | ------ | ------------------------------------------ |
+| id_token_hint            | ✅     | le paramètre `idToken` saisi               |
+| post_logout_redirect_uri |        | le paramètre `postLogoutRedirectUri` saisi |
+
+**Type de retour**
+
+`string`
+
+</details>
+
+<details>
+  <summary>fetchTokenByAuthorizationCode</summary>
+
+Récupérer un jeton (`CodeTokenResponse`) en faisant une requête à `/oidc/token` (par jeton d’autorisation).
+
+**Paramètres**
+
+| Nom           | Type     | Requis |
+| ------------- | -------- | ------ |
+| tokenEndpoint | `string` | ✅     |
+| code          | `string` | ✅     |
+| codeVerifier  | `string` | ✅     |
+| clientId      | `string` | ✅     |
+| redirectUri   | `string` | ✅     |
+| resource      | `string` |        |
+
+**Requête HTTP**
+
+- Endpoint : `/oidc/token`
+- Méthode : `POST`
+- Content-Type : `application/x-www-form-urlencoded`
+- Charge utile :
+
+| Clé de requête | Type                           | Requis |
+| -------------- | ------------------------------ | ------ |
+| grant_type     | `string: 'authorization_code'` | ✅     |
+| code           | `string`                       | ✅     |
+| code_verifier  | `string`                       | ✅     |
+| client_id      | `string`                       | ✅     |
+| redirect_uri   | `string`                       | ✅     |
+| resource       | `string`                       |        |
+
+**Type de retour**
+
+`CodeTokenResponse`
+
+**Exceptions**
+
+- Échec de la récupération
+
+</details>
+
+<details>
+  <summary>fetchTokenByRefreshToken</summary>
+
+Récupérer un jeton (`RefreshTokenTokenResponse`) via `/oidc/token` (par jeton de rafraîchissement).
+
+**Paramètres**
+
+| Nom           | Type       | Requis |
+| ------------- | ---------- | ------ |
+| tokenEndpoint | `string`   | ✅     |
+| clientId      | `string`   | ✅     |
+| refreshToken  | `string`   | ✅     |
+| resource      | `string`   |        |
+| scopes        | `string[]` |        |
+
+**Requête HTTP**
+
+- Endpoint : `/oidc/token`
+- Méthode : `POST`
+- Content-Type : `application/x-www-form-urlencoded`
+- Charge utile :
+
+| Clé de requête | Type                      | Requis | Remarques                                                                              |
+| -------------- | ------------------------- | ------ | -------------------------------------------------------------------------------------- |
+| grant_type     | `string: 'refresh_token'` | ✅     |                                                                                        |
+| refresh_token  | `string`                  | ✅     |                                                                                        |
+| client_id      | `string`                  | ✅     |                                                                                        |
+| resource       | `string`                  |        |                                                                                        |
+| scope          | `string`                  |        | nous joignons les valeurs `scopes` avec un espace pour construire cette chaîne `scope` |
+
+**Type de retour**
+
+`RefreshTokenTokenResponse`
+
+**Exceptions**
+
+- Échec de la récupération
+
+</details>
+
+<details>
+  <summary>revoke</summary>
+
+Faire une requête à l'API `/oidc/token/revocation` pour notifier au serveur d’autorisation qu'un jeton de rafraîchissement ou d’accès précédemment obtenu n'est plus nécessaire.
+
+**Paramètres**
+
+| Nom                | Type     | Remarques        |
+| ------------------ | -------- | ---------------- |
+| revocationEndpoint | `string` |                  |
+| clientId           | `string` |                  |
+| token              | `string` | jeton à révoquer |
+
+**Requête HTTP**
+
+- Endpoint : `/oidc/token/revocation`
+- Méthode : `POST`
+- Content-Type : `application/x-www-form-urlencoded`
+- Charge utile :
+
+| Clé de requête | Type     |
+| -------------- | -------- |
+| client_id      | `string` |
+| token          | `string` |
+
+**Type de retour**
+
+`void`
+
+**Exceptions**
+
+- Échec de la révocation
+
+</details>
