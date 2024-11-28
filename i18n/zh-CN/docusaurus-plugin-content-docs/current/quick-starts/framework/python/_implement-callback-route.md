@@ -1,4 +1,4 @@
-用户登录后，日志 (Logto) 会将用户重定向到你在 Logto Console 中设置的回调 URL。在这个例子中，我们使用 `/callback` 作为回调 URL：
+用户登录后，Logto 会将用户重定向到你在 Logto Console 中设置的回调 URL。在这个例子中，我们使用 `/callback` 作为回调 URL：
 
 ```python
 @app.route("/callback")

@@ -34,4 +34,4 @@ classDiagram
 “sub” 声明（Claim）表示“主体（Subject）”，即用户的唯一标识符（例如用户 ID）。
 :::
 
-日志 (Logto) SDK 将始终请求三个权限（Scope）：`openid`、`profile` 和 `offline_access`。
+Logto SDK 将始终请求三个权限（Scope）：`openid`、`profile` 和 `offline_access`。

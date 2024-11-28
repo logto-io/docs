@@ -4,7 +4,7 @@
 
 ### 用法
 
-日志 (Logto) 按以下顺序处理环境变量：
+Logto 按以下顺序处理环境变量：
 
 - 系统环境变量
 - 项目根目录中的 `.env` 文件，符合 [dotenv](https://github.com/motdotla/dotenv#readme) 格式
@@ -21,11 +21,11 @@
 
 | Key                     | Default Value                        | Type                                                     | Description                                                                                                                                                       |
 | ----------------------- | ------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NODE_ENV                | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | 日志 (Logto) 运行的环境类型。                                                                                                                                     |
-| PORT                    | `3001`                               | `number`                                                 | 日志 (Logto) 监听的本地端口。                                                                                                                                     |
-| ADMIN_PORT              | `3002`                               | `number`                                                 | 日志 (Logto) 管理控制台监听的本地端口。                                                                                                                           |
+| NODE_ENV                | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | Logto 运行的环境类型。                                                                                                                                            |
+| PORT                    | `3001`                               | `number`                                                 | Logto 监听的本地端口。                                                                                                                                            |
+| ADMIN_PORT              | `3002`                               | `number`                                                 | Logto 管理控制台监听的本地端口。                                                                                                                                  |
 | ADMIN_DISABLE_LOCALHOST | N/A                                  | <code>string &#124; boolean &#124; number</code>         | 将其设置为 `1` 或 `true` 以禁用管理控制台的端口。如果未设置 `ADMIN_ENDPOINT`，它将完全禁用管理控制台。                                                            |
-| DB_URL                  | N/A                                  | `string`                                                 | 日志 (Logto) 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                      |
+| DB_URL                  | N/A                                  | `string`                                                 | Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                             |
 | HTTPS_CERT_PATH         | `undefined`                          | <code>string &#124; undefined</code>                     | 详情请参见 [启用 HTTPS](#enabling-https)。                                                                                                                        |
 | HTTPS_KEY_PATH          | `undefined`                          | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                            |
 | TRUST_PROXY_HEADER      | `false`                              | `boolean`                                                | 同上。                                                                                                                                                            |
@@ -45,7 +45,7 @@ Node 原生支持 HTTPS。提供 **BOTH** `HTTPS_CERT_PATH` 和 `HTTPS_KEY_PATH`
 
 另一种常见做法是在 Node 前面设置一个 HTTPS 代理（例如 Nginx）。
 
-在这种情况下，你可能希望将 `TRUST_PROXY_HEADER` 设置为 `true`，这表示是否应信任代理头字段。日志 (Logto) 将把该值传递给 [Koa 应用程序设置](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings)。
+在这种情况下，你可能希望将 `TRUST_PROXY_HEADER` 设置为 `true`，这表示是否应信任代理头字段。 Logto 将把该值传递给 [Koa 应用程序设置](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings)。
 
 有关何时配置此字段的信息，请参见 [信任 TLS 卸载代理](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies)。
 
