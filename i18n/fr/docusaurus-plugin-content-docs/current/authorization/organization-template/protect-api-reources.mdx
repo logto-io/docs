@@ -1,0 +1,60 @@
+---
+sidebar_position: 3
+---
+
+# Protéger la ressource API avec le modèle d'organisation
+
+En plus de [Protéger votre API](/authorization/api-resources/protect-your-api) qui sécurise les ressources en s'assurant qu'un JWT valide est présent, les rôles d'Organisation peuvent également être appliqués pour filtrer les Portées. Dans cet article, nous nous concentrerons sur la façon dont le Rôle d'Organisation affecte la délégation et la validation des Portées dans votre flux d'Authentification.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: Requête de jeton
+    Client->>Logto: POST /oidc/token
+    Note right of Client: avec ressource, organization_id,<br/>et Portées demandées
+
+    Note over Logto: Vérifier que l'utilisateur appartient à<br/>l'Organisation spécifiée
+    Logto-->>Client: Retourne le jeton d’accès JWT
+    Note left of Logto: Le jeton contient :<br/>- Revendications JWT standard<br/>- organization_id<br/>- Portées filtrées par Rôle d'Organisation
+
+    Note over Client,API: Requête API
+    Client->>API: Requête avec jeton Bearer
+
+    Note over API: Valider le jeton JWT :<br/>1. Validation JWT standard<br/>2. Vérifier organization_id<br/>3. Vérifier les Portées
+
+    alt Jeton invalide
+        API-->>Client: 401 Non autorisé
+    else Jeton valide
+        alt organization_id et Portée valides
+            API-->>Client: Ressource protégée
+        else Sinon
+            API-->>Client: 403 Interdit
+        end
+    end
+```
+
+## Le paramètre supplémentaire `organization_id`
+
+En plus de la requête de jeton d’accès normale, dans le diagramme, nous ajoutons un paramètre supplémentaire `organization_id`, cela indique à Logto de restreindre les Portées aux Rôles d'une Organisation spécifique.
+
+## Configuration du client
+
+Si vous utilisez le SDK de Logto, vous pouvez ajouter `organization_id` comme deuxième paramètre de la méthode `getAccessToken`.
+
+```tsx
+const accessToken = await logto.getAccessToken('https://my-resource.com/api', 'org_1');
+
+// Ou obtenir directement les Revendications
+const accessTokenClaims = await logto.getAccessTokenClaims('https://my-resource.com/api', 'org_1');
+console.log(accessTokenClaims.organization_id); // 'org_1'
+console.log(accessTokenClaims.aud); // 'https://my-resource.com/api'
+```
+
+Ensuite, seules les Portées héritées des Rôles de cette Organisation seront incluses dans le jeton d’accès, ainsi qu'une Revendication supplémentaire `organization_id`.
+
+## Validation du serveur API
+
+En plus de la validation normale du jeton d’accès JWT, vous devrez ajouter un niveau supplémentaire pour vérifier si `organization_id` est présent et valide.

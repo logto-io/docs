@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# Recherche avancée d'utilisateur
+
+Utilisation directe de l'API de gestion pour tirer parti des conditions de recherche avancées des utilisateurs.
+
+## Effectuer une requête de recherche
+
+Utilisez `GET /api/users` pour rechercher des utilisateurs. Notez qu'il s'agit d'une API de gestion qui nécessite une authentification comme les autres. Voir [Interagir avec Management API](/integrate-logto/interact-with-management-api) pour la recette d'interaction.
+
+### Exemple
+
+**Requête**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**Réponse**
+
+Un tableau d'entités `User`.
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### Paramètres
+
+Une requête de recherche se compose des clés de paramètres suivantes :
+
+- Mots-clés de recherche : `search`, `search.*`
+- Mode de recherche pour les champs : `mode`, `mode.*` (valeur par défaut `'like'`, disponibles `['exact', 'like', 'similar_to', 'posix']`)
+- Mode de jointure : `joint` ou `jointMode` (valeur par défaut `'or'`, disponibles `['or', 'and']`)
+- Sensibilité à la casse : `isCaseSensitive` (valeur par défaut `false`)
+
+Cette API a la [pagination](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses) activée.
+
+Passons-les en revue à travers quelques exemples. Tous les paramètres de recherche seront formatés comme un constructeur de `URLSearchParams`.
+
+:::warning
+
+Le mode de recherche est défini par défaut sur `like`, qui utilise la [correspondance approximative de chaînes](https://en.wikipedia.org/wiki/Approximate_string_matching) ("recherche floue").
+
+:::
+
+:::note
+
+Tous les modes de recherche floue ne prennent en charge la correspondance qu'avec une seule valeur par champ. Si vous devez faire correspondre plusieurs valeurs pour un seul champ, vous devez utiliser le mode "exact". Voir [Correspondance exacte et sensibilité à la casse](./#exact-match-and-case-sensitivity) pour plus de détails.
+
+:::
+
+### Recherche floue de base
+
+Si vous souhaitez effectuer une recherche floue sur tous les champs disponibles, fournissez simplement une valeur pour la clé `search`. Il utilisera [l'opérateur `like`](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) en interne :
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+Cette recherche itérera sur tous les champs disponibles dans une recherche utilisateur, c'est-à-dire `id`, `primaryEmail`, `primaryPhone`, `username`, `name`.
+
+### Spécifier les champs
+
+Que faire si vous souhaitez limiter la recherche au champ `name` uniquement ? Pour rechercher quelqu'un qui inclut `foo` dans son nom, utilisez simplement le symbole `.` pour spécifier le champ :
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+Rappelez-vous que les champs imbriqués ne sont pas pris en charge, par exemple `search.name.first` entraînera une erreur.
+
+Vous pouvez également spécifier plusieurs champs en même temps :
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+Cela signifie rechercher des utilisateurs qui ont `foo` dans le nom **OU** dont l'email se termine par `@gmail.com`.
+
+### Changer le mode de jointure
+
+Si vous souhaitez que l'API ne retourne que le résultat qui satisfait TOUTES les conditions, définissez le mode de jointure sur `and` :
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+Cela signifie rechercher des utilisateurs qui ont `foo` dans le nom **ET** dont l'email se termine par `@gmail.com`.
+
+### Correspondance exacte et sensibilité à la casse
+
+Disons que vous voulez rechercher dont le nom est exactement "Alice". Vous pouvez définir `mode.name` pour utiliser la correspondance exacte.
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Vous pouvez constater qu'il a le même effet lors de l'utilisation du mode `like` (par défaut) par rapport à la spécification `exact`. Une différence est que le mode `exact` utilise `=` pour comparer tandis que `like` utilise `like` ou `ilike`. Théoriquement, `=` devrait avoir de meilleures performances.
+
+De plus, en mode `exact`, vous pouvez passer plusieurs valeurs pour la correspondance, et elles seront connectées avec `or` :
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Cela correspondra aux utilisateurs avec le nom "Alice" **OU** "Bob".
+
+Par défaut, la recherche n'est pas sensible à la casse. Pour être plus précis, définissez la recherche comme sensible à la casse :
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+Notez que `isCaseSensitive` est une configuration globale. Ainsi, CHAQUE champ la suivra.
+
+### Expression régulière (RegEx)
+
+PostgreSQL prend en charge deux types d'expressions régulières, [similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) et [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP). Définissez `mode` sur `similar_to` ou `posix` pour rechercher par expressions régulières :
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> Notez que le mode similar_to ne fonctionne que dans les recherches sensibles à la casse.
+
+### Remplacement du mode de correspondance
+
+Par défaut, tous les mots-clés hériteront du mode de correspondance de la recherche générale :
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Mode Posix
+  ['joint', 'and'],
+]);
+```
+
+Pour remplacer pour un champ spécifique :
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Mode Like
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Mode Posix
+  ['joint', 'and'],
+]);
+```

@@ -1,0 +1,190 @@
+---
+slug: /quick-starts/python
+sidebar_label: Python
+sidebar_custom_props:
+  description: Intégrez Logto dans votre application web Python, telle que Django et Flask.
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import ClaimsNeedNetworkRequest from '../../fragments/_claims-need-network-request.mdx';
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import PythonGuideTip from './_guide-tip.md';
+import HandleAuthenticationStatus from './_handle-authentication-status.md';
+import ImplementSignInAndSignOutRoutes from './_implement-sign-in-and-sign-out.mdx';
+import InitLogtoClient from './_init-logto-client.mdx';
+import Installation from './_installation.md';
+import ConfigApiResources from './api-resources/_config-api-resources.mdx';
+import FetchAccessTokenForApiResources from './api-resources/_fetch-access-token-for-api-resources.mdx';
+import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-token-for-user.mdx';
+
+# Ajoutez l’authentification à votre application web Python
+
+Ce guide vous montrera comment intégrer Logto dans votre application web Python.
+
+<PythonGuideTip />
+
+## Prérequis
+
+- Un compte [Logto Cloud](https://cloud.logto.io) ou un [Logto auto-hébergé](/introduction/set-up-logto-oss).
+- Une application web traditionnelle Logto créée.
+
+## Installation
+
+<Installation />
+
+## Intégration
+
+### Init LogtoClient
+
+<InitLogtoClient />
+
+### Configurer les URIs de redirection
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Implémenter les routes de connexion et de déconnexion
+
+<ImplementSignInAndSignOutRoutes />
+
+### Gérer le statut d'authentification
+
+<HandleAuthenticationStatus />
+
+<Checkpoint />
+
+## Obtenir des informations sur l'utilisateur
+
+### Afficher les informations de l'utilisateur
+
+Pour afficher les informations de l'utilisateur, vous pouvez utiliser soit la méthode `getIdTokenClaims`, soit la méthode `fetchUserInfo` pour obtenir les informations de l'utilisateur. Alors que `getIdTokenClaims` renvoie les informations de l'utilisateur contenues dans le jeton d’identifiant, `fetchUserInfo` récupère les informations de l'utilisateur à partir du point de terminaison userinfo.
+
+Comme vous pouvez le voir, nous utilisons le décorateur `@authenticated` pour apporter le contexte des informations de l'utilisateur aux APIs de l'application Flask.
+
+<CodeBlock title="authenticated.py" language="python">
+  {`from functools import wraps
+from flask import g, jsonify, redirect
+from samples.client import client
+def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if client.isAuthenticated() is False:
+                if shouldRedirect:
+                    return redirect("/sign-in")
+                return jsonify({"error": "Not authenticated"}), 401
+            # Store user info in Flask application context
+            g.user = (
+                await client.fetchUserInfo()
+                if fetchUserInfo
+                else client.getIdTokenClaims()
+            )
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+`}
+</CodeBlock>
+
+Par exemple, pour afficher les informations de l'utilisateur dans une API, vous pouvez utiliser le code suivant :
+
+<CodeBlock title="flask.py" language="python">
+  {`@app.route("/protected/userinfo")
+@authenticated(shouldRedirect=True, fetchUserInfo=True)
+async def protectedUserinfo():
+    try:
+        return (
+            "<h2>User info</h2>"
+            + g.user.model_dump_json(indent=2, exclude_unset=True).replace("\\n", "<br>")
+            + navigationHtml
+        )
+    except LogtoException as e:
+        return "<h2>Error</h2>" + str(e) + "<br>" + navigationHtml
+`}
+</CodeBlock>
+
+Nos modèles de données sont basés sur [pydantic](https://docs.pydantic.dev/), vous pouvez donc utiliser `model_dump_json` pour exporter le modèle de données en JSON.
+
+Ajouter `exclude_unset=True` exclura les champs non définis de la sortie JSON, ce qui rend la sortie plus précise.
+
+Par exemple, si nous n'avons pas demandé la portée `email` lors de la connexion, le champ `email` sera exclu de la sortie JSON. Cependant, si nous avons demandé la portée `email`, mais que l'utilisateur n'a pas d'adresse e-mail, le champ `email` sera inclus dans la sortie JSON avec une valeur `null`.
+
+Pour en savoir plus sur les portées et les revendications, voir [Obtenir des informations sur l'utilisateur](#get-user-information).
+
+### Demander des revendications supplémentaires
+
+<FindUserInfoMissing method="client.getIdTokenClaims()" />
+
+<ScopesAndClaimsIntroduction />
+
+Pour demander des portées supplémentaires, vous pouvez passer les portées à l'objet `LogtoConfig`. Par exemple :
+
+```python title="client.py"
+# highlight-next-line
+from logto import UserInfoScope
+
+client = LogtoClient(
+    LogtoConfig(
+        # ...other configurations
+        # highlight-start
+        scopes = [
+            UserInfoScope.email,
+            UserInfoScope.phone,
+        ],
+        # highlight-end
+    ),
+    storage=SessionStorage(),
+)
+```
+
+Ensuite, vous pouvez accéder aux revendications supplémentaires dans la valeur de retour de `client.getIdTokenClaims()` :
+
+```python
+idTokenClaims = await client.getIdTokenClaims();
+```
+
+<ClaimsNeedNetworkRequest
+  type="method"
+  method="client.fetchUserInfo()"
+  codeSnippet={
+    <CodeBlock language="python" title="flask.py">
+      (await client.fetchUserInfo()).custom_data
+    </CodeBlock>
+  }
+/>
+
+### Portées et revendications
+
+<ScopesAndClaims />
+
+## Ressources API et organisations
+
+<ApiResourcesDescription />
+
+### Configurer le client Logto
+
+<ConfigApiResources />
+
+### Récupérer le jeton d’accès pour la ressource API
+
+<FetchAccessTokenForApiResources />
+
+### Récupérer les jetons d’organisation
+
+<FetchOrganizationTokenForUser />
+
+## Lectures complémentaires
+
+<FurtherReadings />
