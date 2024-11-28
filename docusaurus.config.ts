@@ -175,10 +175,6 @@ const config: Config = {
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
-        blog: {
-          path: 'blog',
-          blogSidebarCount: 0,
-        },
         theme: {
           customCss: './src/scss/custom.scss',
         },
