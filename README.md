@@ -8,7 +8,7 @@
 
 # Logto docs
 
-Logto docs is the official documentation for Logto. Here, you will find comprehensive guides, API references, and tutorials to help you integrate and use Logto effectively.
+This is the official documentation repository for Logto. Here, you will find complete guides, API references, and tutorials to help you integrate and use Logto effectively.
 
 ## Running the project locally
 
