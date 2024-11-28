@@ -1,0 +1,190 @@
+---
+slug: /quick-starts/python
+sidebar_label: Python
+sidebar_custom_props:
+  description: 将 Logto 集成到你的 Python Web 应用中，例如 Django 和 Flask。
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import ClaimsNeedNetworkRequest from '../../fragments/_claims-need-network-request.mdx';
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import PythonGuideTip from './_guide-tip.md';
+import HandleAuthenticationStatus from './_handle-authentication-status.md';
+import ImplementSignInAndSignOutRoutes from './_implement-sign-in-and-sign-out.mdx';
+import InitLogtoClient from './_init-logto-client.mdx';
+import Installation from './_installation.md';
+import ConfigApiResources from './api-resources/_config-api-resources.mdx';
+import FetchAccessTokenForApiResources from './api-resources/_fetch-access-token-for-api-resources.mdx';
+import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-token-for-user.mdx';
+
+# 为你的 Python Web 应用添加认证 (Authentication)
+
+本指南将向你展示如何将 Logto 集成到你的 Python Web 应用中。
+
+<PythonGuideTip />
+
+## 前提条件
+
+- 一个 [Logto Cloud](https://cloud.logto.io) 账户或一个 [自托管 Logto](/introduction/set-up-logto-oss)。
+- 一个已创建的 Logto 传统 Web 应用。
+
+## 安装
+
+<Installation />
+
+## 集成
+
+### 初始化 LogtoClient
+
+<InitLogtoClient />
+
+### 配置重定向 URI
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### 实现登录和注销路由
+
+<ImplementSignInAndSignOutRoutes />
+
+### 处理认证 (Authentication) 状态
+
+<HandleAuthenticationStatus />
+
+<Checkpoint />
+
+## 获取用户信息
+
+### 显示用户信息
+
+要显示用户的信息，你可以使用 `getIdTokenClaims` 方法或 `fetchUserInfo` 方法来获取用户信息。`getIdTokenClaims` 返回包含在 ID 令牌中的用户信息，而 `fetchUserInfo` 从 userinfo 端点获取用户信息。
+
+如你所见，我们使用 `@authenticated` 装饰器将用户信息上下文带到 Flask 应用的 API 中。
+
+<CodeBlock title="authenticated.py" language="python">
+  {`from functools import wraps
+from flask import g, jsonify, redirect
+from samples.client import client
+def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if client.isAuthenticated() is False:
+                if shouldRedirect:
+                    return redirect("/sign-in")
+                return jsonify({"error": "Not authenticated"}), 401
+            # Store user info in Flask application context
+            g.user = (
+                await client.fetchUserInfo()
+                if fetchUserInfo
+                else client.getIdTokenClaims()
+            )
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+`}
+</CodeBlock>
+
+例如，要在 API 中显示用户的信息，你可以使用以下代码：
+
+<CodeBlock title="flask.py" language="python">
+  {`@app.route("/protected/userinfo")
+@authenticated(shouldRedirect=True, fetchUserInfo=True)
+async def protectedUserinfo():
+    try:
+        return (
+            "<h2>User info</h2>"
+            + g.user.model_dump_json(indent=2, exclude_unset=True).replace("\\n", "<br>")
+            + navigationHtml
+        )
+    except LogtoException as e:
+        return "<h2>Error</h2>" + str(e) + "<br>" + navigationHtml
+`}
+</CodeBlock>
+
+我们的数据模型基于 [pydantic](https://docs.pydantic.dev/)，因此你可以使用 `model_dump_json` 将数据模型导出为 JSON。
+
+添加 `exclude_unset=True` 将从 JSON 输出中排除未设置的字段，使输出更精确。
+
+例如，如果我们在登录时没有请求 `email` 权限 (Scope)，则 `email` 字段将从 JSON 输出中排除。然而，如果我们请求了 `email` 权限，但用户没有电子邮件地址，则 `email` 字段将在 JSON 输出中包含一个 `null` 值。
+
+要了解更多关于权限 (Scopes) 和声明 (Claims) 的信息，请参阅 [获取用户信息](#get-user-information)。
+
+### 请求额外的声明 (Claims)
+
+<FindUserInfoMissing method="client.getIdTokenClaims()" />
+
+<ScopesAndClaimsIntroduction />
+
+要请求额外的权限 (Scopes)，你可以将权限传递给 `LogtoConfig` 对象。例如：
+
+```python title="client.py"
+# highlight-next-line
+from logto import UserInfoScope
+
+client = LogtoClient(
+    LogtoConfig(
+        # ...other configurations
+        # highlight-start
+        scopes = [
+            UserInfoScope.email,
+            UserInfoScope.phone,
+        ],
+        # highlight-end
+    ),
+    storage=SessionStorage(),
+)
+```
+
+然后你可以在 `client.getIdTokenClaims()` 的返回值中访问额外的声明 (Claims)：
+
+```python
+idTokenClaims = await client.getIdTokenClaims();
+```
+
+<ClaimsNeedNetworkRequest
+  type="method"
+  method="client.fetchUserInfo()"
+  codeSnippet={
+    <CodeBlock language="python" title="flask.py">
+      (await client.fetchUserInfo()).custom_data
+    </CodeBlock>
+  }
+/>
+
+### 权限 (Scopes) 和声明 (Claims)
+
+<ScopesAndClaims />
+
+## API 资源和组织
+
+<ApiResourcesDescription />
+
+### 配置 Logto 客户端
+
+<ConfigApiResources />
+
+### 为 API 资源获取访问令牌
+
+<FetchAccessTokenForApiResources />
+
+### 获取组织令牌
+
+<FetchOrganizationTokenForUser />
+
+## 延伸阅读
+
+<FurtherReadings />

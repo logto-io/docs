@@ -151,7 +151,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'zh-CN'],
   },
 
   markdown: {
@@ -164,6 +164,11 @@ const config: Config = {
     [
       'classic',
       {
+        sitemap: {
+          changefreq: 'weekly',
+          // Tutorial pages are not translated. Ignore them.
+          ignorePatterns: ['blog/**', 'tutorial/tags/**', '*/tutorial/**'],
+        },
         docs: {
           routeBasePath: '/',
           breadcrumbs: true,
@@ -260,7 +265,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Designed by © Silverhand Inc.`,
+      copyright: `Designed by Silverhand Inc.`,
     },
     prism: {
       theme: lightCodeTheme,

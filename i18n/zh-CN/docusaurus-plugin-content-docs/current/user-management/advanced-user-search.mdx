@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# 高级用户搜索
+
+直接使用 Management API 利用高级用户搜索条件。
+
+## 执行搜索请求
+
+使用 `GET /api/users` 搜索用户。请注意，它是一个需要认证的 Management API。请参阅 [与 Management API 交互](/integrate-logto/interact-with-management-api) 以获取交互方法。
+
+### 示例
+
+**请求**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**响应**
+
+一个 `User` 实体的数组。
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### 参数
+
+一个搜索请求由以下参数键组成：
+
+- 搜索关键词：`search`, `search.*`
+- 字段的搜索模式：`mode`, `mode.*`（默认值 `'like'`，可用 `['exact', 'like', 'similar_to', 'posix']`）
+- 联合模式：`joint` 或 `jointMode`（默认值 `'or'`，可用 `['or', 'and']`）
+- 是否区分大小写：`isCaseSensitive`（默认值 `false`）
+
+此 API 启用了 [分页](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses)。
+
+让我们通过一些例子来了解它们。所有搜索参数将被格式化为 `URLSearchParams` 的构造函数。
+
+:::warning
+
+搜索模式默认设置为 `like`，使用 [近似字符串匹配](https://en.wikipedia.org/wiki/Approximate_string_matching)（“模糊搜索”）。
+
+:::
+
+:::note
+
+所有模糊搜索模式仅支持每个字段匹配一个值。如果需要为单个字段匹配多个值，应使用“exact”模式。详情请参阅 [精确匹配和大小写敏感性](./#exact-match-and-case-sensitivity)。
+
+:::
+
+### 基本模糊搜索
+
+如果你想对所有可用字段进行模糊搜索，只需为键 `search` 提供一个值。它将在底层使用 [the `like` operator](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE)：
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+此搜索将遍历用户搜索中的所有可用字段，即 `id`, `primaryEmail`, `primaryPhone`, `username`, `name`。
+
+### 指定字段
+
+如果你只想限制在 `name` 中搜索呢？要搜索名字中包含 `foo` 的人，只需使用 `.` 符号指定字段：
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+请记住，不支持嵌套字段，例如 `search.name.first` 将导致错误。
+
+你还可以同时指定多个字段：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+意味着搜索名字中有 `foo` **或** 邮箱以 `@gmail.com` 结尾的用户。
+
+### 更改联合模式
+
+如果你希望 API 仅返回满足所有条件的结果，请将联合模式设置为 `and`：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+意味着搜索名字中有 `foo` **且** 邮箱以 `@gmail.com` 结尾的用户。
+
+### 精确匹配和大小写敏感性
+
+假设你想搜索名字精确为 "Alice" 的人。你可以设置 `mode.name` 使用精确匹配。
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+你可能会发现使用 `like` 模式（默认）与指定 `exact` 时效果相同。一个区别是 `exact` 模式使用 `=` 进行比较，而 `like` 使用 `like` 或 `ilike`。理论上 `=` 应该有更好的性能。
+
+此外，在 `exact` 模式下，你可以传递多个值进行匹配，它们将用 `or` 连接：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+它将匹配名字为 "Alice" **或** "Bob" 的用户。
+
+默认情况下，搜索是不区分大小写的。为了更精确，可以将搜索设置为区分大小写：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+注意 `isCaseSensitive` 是一个全局配置。因此每个字段都将遵循它。
+
+### 正则表达式 (RegEx)
+
+PostgreSQL 支持两种类型的正则表达式，[similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) 和 [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP)。设置 `mode` 为 `similar_to` 或 `posix` 以通过正则表达式进行搜索：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> 注意 模式 similar_to 仅在区分大小写的搜索中有效。
+
+### 匹配模式覆盖
+
+默认情况下，所有关键词将继承一般搜索的匹配模式：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Posix 模式
+  ['joint', 'and'],
+]);
+```
+
+为特定字段覆盖：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Like 模式
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Posix 模式
+  ['joint', 'and'],
+]);
+```

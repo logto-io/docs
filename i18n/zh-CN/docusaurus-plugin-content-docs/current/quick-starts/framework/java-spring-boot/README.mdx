@@ -1,0 +1,352 @@
+---
+slug: /quick-start/java-spring-boot
+sidebar_label: Java Spring Boot
+sidebar_custom_props:
+  description: Spring Boot 是一个 Java 的 Web 框架，使开发人员能够使用 Java 编程语言构建安全、快速和可扩展的服务器应用程序。
+  logoFilename: 'spring-boot.svg'
+---
+
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ScopesAndClaims from './_scopes-and-claims.mdx';
+
+# 为你的 Java Spring Boot 应用程序添加认证
+
+本指南将向你展示如何将 Logto 集成到你的 Java Spring Boot 应用程序中。
+
+:::tip
+
+- 你可以在我们的 [spring-boot-sample](https://github.com/logto-io/spring-boot-sample) github 仓库中找到本指南的示例代码。
+- 将 Logto 集成到你的 Java Spring Boot 应用程序中不需要官方 SDK。我们将使用 [Spring Security](https://spring.io/projects/spring-security) 和 [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2) 库来处理与 Logto 的 OIDC 认证流程。
+
+:::
+
+## 前提条件
+
+- 一个 [Logto Cloud](https://cloud.logto.io) 账户或一个 [自托管 Logto](/introduction/set-up-logto-oss)。
+- 我们的示例代码是使用 Spring Boot [securing web starter](https://spring.io/guides/gs/securing-web) 创建的。如果你还没有，请按照说明引导一个新的 Web 应用程序。
+- 在本指南中，我们将使用 [Spring Security](https://spring.io/projects/spring-security) 和 [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2) 库来处理与 Logto 的 OIDC 认证流程。请确保阅读官方文档以了解相关概念。
+
+## 配置你的 Java Spring Boot 应用程序
+
+### 添加依赖项
+
+对于 [gradle](https://spring.io/guides/gs/gradle) 用户，将以下依赖项添加到你的 `build.gradle` 文件中：
+
+```groovy title="build.gradle"
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+}
+```
+
+对于 [maven](https://spring.io/guides/gs/maven) 用户，将以下依赖项添加到你的 `pom.xml` 文件中：
+
+```xml title="pom.xml"
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+```
+
+### OAuth2 客户端配置
+
+在 Logto Console 中注册一个新的 `Java Spring Boot` 应用程序，并获取你的 Web 应用程序的客户端凭据和 IdP 配置。
+
+将以下配置添加到你的 `application.properties` 文件中：
+
+```properties title="application.properties"
+spring.security.oauth2.client.registration.logto.client-name=logto
+spring.security.oauth2.client.registration.logto.client-id={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.client-secret={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.logto.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access
+spring.security.oauth2.client.registration.logto.provider=logto
+
+spring.security.oauth2.client.provider.logto.issuer-uri={{LOGTO_ENDPOINT}}/oidc
+spring.security.oauth2.client.provider.logto.authorization-uri={{LOGTO_ENDPOINT}}/oidc/auth
+spring.security.oauth2.client.provider.logto.jwk-set-uri={{LOGTO_ENDPOINT}}/oidc/jwks
+```
+
+## 实现
+
+<SignInFlowSummary />
+
+为了在用户登录后将其重定向回你的应用程序，你需要在上一步中使用 `client.registration.logto.redirect-uri` 属性设置重定向 URI。
+
+<WebConfigureRedirectUris />
+
+### 实现 WebSecurityConfig
+
+#### 在你的项目中创建一个新的类 `WebSecurityConfig`
+
+`WebSecurityConfig` 类将用于配置你的应用程序的安全设置。它是处理认证和授权流程的关键类。请查看 [Spring Security 文档](https://spring.io/guides/topicals/spring-security-architecture) 以获取更多详细信息。
+
+```java title="WebSecurityConfig.java"
+package com.example.securingweb;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+@Configuration
+@EnableWebSecurity
+
+public class WebSecurityConfig {
+ // ...
+}
+```
+
+#### 创建一个 `idTokenDecoderFactory` bean
+
+这是必需的，因为 Logto 使用 `ES384` 作为默认算法，我们需要覆盖默认的 `OidcIdTokenDecoderFactory` 以使用相同的算法。
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory() {
+    OidcIdTokenDecoderFactory idTokenDecoderFactory = new OidcIdTokenDecoderFactory();
+    idTokenDecoderFactory.setJwsAlgorithmResolver(clientRegistration -> SignatureAlgorithm.ES384);
+    return idTokenDecoderFactory;
+  }
+}
+```
+
+#### 创建一个 LoginSuccessHandler 类来处理登录成功事件
+
+我们将在成功登录后将用户重定向到 `/user` 页面。
+
+```java title="CustomSuccessHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class CustomSuccessHandler implements AuthenticationSuccessHandler {
+  @Override
+  public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+      Authentication authentication) throws IOException, ServletException {
+    response.sendRedirect("/user");
+  }
+}
+```
+
+#### 创建一个 LogoutSuccessHandler 类来处理注销成功事件
+
+清除会话并将用户重定向到主页。
+
+```java title="CustomLogoutHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+public class CustomLogoutHandler implements LogoutSuccessHandler {
+  @Override
+  public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+      throws IOException, ServletException {
+    HttpSession session = request.getSession();
+
+    if (session != null) {
+      session.invalidate();
+    }
+
+    response.sendRedirect("/home");
+  }
+}
+```
+
+#### 使用 `securityFilterChain` 更新 `WebSecurityConfig` 类
+
+[securityFilterChain](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/DefaultSecurityFilterChain.html) 是负责处理传入请求和响应的过滤器链。
+
+我们将配置 `securityFilterChain` 以允许访问主页，并要求对所有其他请求进行认证。使用 `CustomSuccessHandler` 和 `CustomLogoutHandler` 来处理登录和注销事件。
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+      .authorizeRequests(authorizeRequests ->
+        authorizeRequests
+          .antMatchers("/", "/home").permitAll() // 允许访问主页
+          .anyRequest().authenticated() // 所有其他请求需要认证
+      )
+      .oauth2Login(oauth2Login ->
+        oauth2Login
+          .successHandler(new CustomSuccessHandler())
+      )
+      .logout(logout ->
+        logout
+          .logoutSuccessHandler(new CustomLogoutHandler())
+      );
+    return http.build();
+  }
+}
+```
+
+### 创建主页
+
+（如果你的项目中已经有主页，你可以跳过此步骤）
+
+```java title="HomeController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+  @GetMapping({ "/", "/home" })
+  public String home(Principal principal) {
+    return principal != null ? "redirect:/user" : "home";
+  }
+}
+```
+
+此控制器将在用户认证后将其重定向到用户页面，否则将显示主页。在主页上添加一个登录链接。
+
+```html title="resources/templates/home.html"
+<body>
+  <h1>欢迎！</h1>
+
+  <p><a th:href="@{/oauth2/authorization/logto}">使用 Logto 登录</a></p>
+</body>
+```
+
+### 创建用户页面
+
+创建一个新的控制器来处理用户页面：
+
+```java title="UserController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+import java.util.Map;
+
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/user")
+public class UserController {
+
+  @GetMapping
+  public String user(Model model, Principal principal) {
+    if (principal instanceof OAuth2AuthenticationToken) {
+      OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) principal;
+      OAuth2User oauth2User = token.getPrincipal();
+      Map<String, Object> attributes = oauth2User.getAttributes();
+
+      model.addAttribute("username", attributes.get("username"));
+      model.addAttribute("email", attributes.get("email"));
+      model.addAttribute("sub", attributes.get("sub"));
+    }
+
+    return "user";
+  }
+}
+```
+
+一旦用户被认证，我们将从认证的主体对象中检索 `OAuth2User` 数据。请参考 [OAuth2AuthenticationToken](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/client/authentication/OAuth2AuthenticationToken.html) 和 [OAuth2User](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/core/user/OAuth2User.html) 以获取更多详细信息。
+
+读取用户数据并将其传递给 `user.html` 模板。
+
+```html title="resources/templates/user.html"
+<body>
+  <h1>用户详情</h1>
+  <div>
+    <p>
+    <div><strong>姓名：</strong> <span th:text="${username}"></span></div>
+    <div><strong>邮箱：</strong> <span th:text="${email}"></span></div>
+    <div><strong>id：</strong> <span th:text="${sub}"></span></div>
+    </p>
+  </div>
+
+  <form th:action="@{/logout}" method="post">
+    <input type="submit" value="注销" />
+  </form>
+</body>
+```
+
+#### 请求额外的声明
+
+<FindUserInfoMissing method="principal (OAuth2AuthenticationToken)" />
+
+<ScopesAndClaimsIntroduction />
+
+要检索额外的用户信息，你可以在 `application.properties` 文件中添加额外的权限。例如，要请求 `email`、`phone` 和 `urn:logto:scope:organizations` 权限，请在 `application.properties` 文件中添加以下行：
+
+```properties title="application.properties"
+  spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access,email,phone,urn:logto:scope:organizations
+```
+
+然后你可以在 `OAuth2User` 对象中访问额外的声明。
+
+### 运行并测试应用程序
+
+运行应用程序并导航到 `http://localhost:8080`。
+
+- 你将看到带有登录链接的主页。
+- 点击链接使用 Logto 登录。
+- 成功认证后，你将被重定向到包含你的用户详细信息的用户页面。
+- 点击注销按钮以退出登录。你将被重定向回主页。
+
+## 权限和声明
+
+<ScopesAndClaims />
+
+## 进一步阅读
+
+<FurtherReadings />

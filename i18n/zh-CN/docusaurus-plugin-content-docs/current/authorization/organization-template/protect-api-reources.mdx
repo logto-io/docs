@@ -1,0 +1,60 @@
+---
+sidebar_position: 3
+---
+
+# 使用组织模板保护 API 资源
+
+除了通过确保存在有效的 JWT 来保护资源的 [保护你的 API](/authorization/api-resources/protect-your-api) 之外，还可以应用组织角色来过滤权限。在本文中，我们将重点介绍组织角色如何影响认证流程中的权限委托和验证。
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: 令牌请求 (Token Request)
+    Client->>Logto: POST /oidc/token
+    Note right of Client: 包含资源，organization_id，<br/>和请求的权限
+
+    Note over Logto: 验证用户是否属于<br/>指定的组织
+    Logto-->>Client: 返回 JWT 访问令牌
+    Note left of Logto: 令牌包含：<br/>- 标准 JWT 声明<br/>- organization_id<br/>- 由组织角色过滤的权限
+
+    Note over Client,API: API 请求 (API Request)
+    Client->>API: 使用 Bearer 令牌请求
+
+    Note over API: 验证 JWT 令牌：<br/>1. 标准 JWT 验证<br/>2. 验证 organization_id<br/>3. 验证权限
+
+    alt 令牌无效
+        API-->>Client: 401 未授权
+    else 令牌有效
+        alt 有效的 organization_id 和权限
+            API-->>Client: 受保护的资源
+        else 否则
+            API-->>Client: 403 禁止访问
+        end
+    end
+```
+
+## 额外的 `organization_id` 参数
+
+除了正常的访问令牌授予请求外，在图中我们添加了一个额外的 `organization_id` 参数，这告诉 Logto 将权限缩小到特定组织的角色。
+
+## 客户端设置
+
+如果你使用 Logto 的 SDK，你可以将 `organization_id` 作为 `getAccessToken` 方法的第二个参数添加。
+
+```tsx
+const accessToken = await logto.getAccessToken('https://my-resource.com/api', 'org_1');
+
+// 或直接获取声明
+const accessTokenClaims = await logto.getAccessTokenClaims('https://my-resource.com/api', 'org_1');
+console.log(accessTokenClaims.organization_id); // 'org_1'
+console.log(accessTokenClaims.aud); // 'https://my-resource.com/api'
+```
+
+然后，只有从该组织的角色继承的权限将包含在访问令牌中，以及一个额外的声明 `organization_id` 。
+
+## API 服务器验证
+
+除了正常的 JWT 访问令牌验证之外，你还需要添加额外的级别来检查 `organization_id` 是否存在且有效。

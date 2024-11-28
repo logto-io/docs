@@ -1,0 +1,295 @@
+---
+id: platform-sdk-convention
+title: 平台 SDK 约定
+sidebar_label: 平台 SDK 约定
+sidebar_position: 4
+---
+
+# 平台 SDK 约定
+
+平台 SDK 提供了一种在特定平台上与 Logto 服务集成的标准方式，并加速集成过程。
+
+- 平台 SDK 封装了 [核心](/developers/sdk-conventions/core-sdk-convention) 的平台特定实现。
+- 平台 SDK 应提供使 SDK 更易于使用的基本类型。
+- 平台 SDK 应作为名为 `LogtoClient` 的类导出。
+
+## 基本类型
+
+<details>
+  <summary>LogtoConfig</summary>
+
+| 名称                | 类型       | 必需 | 默认值                              | 备注                                                     |
+| ------------------- | ---------- | ---- | ----------------------------------- | -------------------------------------------------------- |
+| endpoint            | `string`   | ✅   |                                     | OIDC 服务端点。                                          |
+| appId               | `string`   | ✅   |                                     | 应用程序 ID 来自我们在 Logto 服务中注册的应用程序。      |
+| scopes              | `string[]` |      | `[openid, offline_access, profile]` | 此字段始终包含 `openid`、`offline_access` 和 `profile`。 |
+| resources           | `string[]` |      |                                     | 我们想要使用的受保护资源指示器。                         |
+| prompt              | `string`   |      | `consent`                           | 在 `generateSignInUri` 中使用的 prompt 值。              |
+| usingPersistStorage | `boolean`  |      | `true`                              | 决定是否在本地机器上存储凭据。                           |
+
+**\*备注**
+
+- 如果需要，可以扩展此 `LogtoConfig`。
+- `usingPersistStorage` 仅在客户端 SDK 中提供。例如，iOS、Android 和 SPA。
+
+</details>
+
+<details>
+  <summary>AccessToken</summary>
+
+| 名称      | 类型     | 备注         |
+| --------- | -------- | ------------ |
+| token     | `string` |              |
+| scope     | `string` |              |
+| expiresAt | `number` | 时间戳（秒） |
+
+</details>
+
+## LogtoClient
+
+### 属性
+
+<details>
+  <summary>logtoConfig</summary>
+
+**类型**
+
+`LogtoConfig`
+
+</details>
+
+<details>
+  <summary>oidcConfig</summary>
+
+**类型**
+
+`OidcConfigResponse?`
+
+</details>
+
+<details>
+  <summary>accessTokenMap</summary>
+
+**类型**
+
+`Map<string, AccessToken>`
+
+**键**
+
+- 键应由 `scope` 和 `resource` 构成。
+- `scope` 中的值应按字母顺序排序并用空格连接。
+- 键应按模式构建：`${scope}@${resource}`。
+- 如果 `scope` 或 `resource` 为 null 或为空，则其值应视为空。
+
+例如，`"offline_access openid read:usr@https://logto.dev/api"`，`"@https://logto.dev/api"`，`"openid@"`，`"@"`。
+
+**值**
+
+- `AccessToken`，使用 `expiresAt` 属性指示访问令牌过期的确切时间。
+
+**备注**
+
+- `scope` 将始终为 null 值，因为我们在 Logto V1 中不支持自定义权限。
+- 在构建访问令牌键以存储访问令牌时：
+  - `scope` 将始终为 null 值。
+  - 如果访问令牌不是 JWT，请将 `resource` 视为 null 值。
+  - 如果访问令牌是 JWT，请解码访问令牌并使用有效负载的 `aud` 声明值作为访问令牌键的 `resource` 部分。
+
+</details>
+
+<details>
+  <summary>refreshToken</summary>
+
+**类型**
+
+`string?`
+
+**备注**
+
+`refreshToken` 将在以下情况下设置或更新：
+
+- 从存储中加载 `refreshToken`。
+- 服务器在成功获取令牌的响应中返回 `refreshToken`。
+- 注销（将设置为 `null`）。
+
+</details>
+
+<details>
+  <summary>idToken</summary>
+
+**类型**
+
+`string?`
+
+**备注**
+
+- 如果 `idToken` 来自后端，则应进行验证。
+- `idToken` 将在以下情况下设置或更新：
+  - 从存储中加载 `idToken`。
+  - 服务器在成功获取令牌的响应中返回 `idToken`。
+  - 注销（将设置为 `null`）。
+
+</details>
+
+### 方法
+
+<details>
+  <summary>constructor</summary>
+
+**参数**
+
+| 参数        | 类型          |
+| ----------- | ------------- |
+| logtoConfig | `LogtoConfig` |
+
+**返回类型**
+
+`LogtoClient`
+
+**备注**
+
+- 如果需要，可以添加额外的参数。
+- 如果在 logtoConfig 中启用了 usePersistStorage，平台 SDK 将提供以下功能：
+  - 使用基于 `clientId` 的唯一键存储持久数据。
+  - 在初始化时从本地机器加载 `refreshToken` 和 `idToken`。
+  - 在 `Core.fetchTokenByAuthorizationCode` 和 `Core.fetchTokenByRefreshToken` 上本地存储 `refreshToken` 和 `idToken`。
+
+</details>
+
+<details>
+  <summary>isAuthenticated</summary>
+
+用于判断用户是否已认证。  
+这也可以定义为一个 getter。
+
+当满足以下条件时，用户被视为已认证：
+
+- 我们已成功获取 ID 令牌。
+- 我们已从本地机器加载 ID 令牌。
+
+**参数**
+
+无。
+
+**返回类型**
+
+`boolean`
+
+</details>
+
+<details>
+  <summary>SignIn</summary>
+
+此方法应启动登录流程，平台 SDK 应处理授权需要完成的所有步骤，包括登录重定向过程。
+
+在此方法成功调用后，用户将被认证。
+
+登录过程将依赖于核心 SDK 功能：
+
+- `generateSignInUri`
+- `verifyAndParseCodeFromCallbackUri`
+- `fetchTokenByAuthorizationCode`
+
+备注：
+
+- 因为 generateSignInUri 包含了我们需要的资源，所以我们不需要将资源传递给 fetchTokenByAuthorizationCode 函数。
+
+**参数**
+
+| 参数        | 类型     |
+| ----------- | -------- |
+| redirectUri | `string` |
+
+**返回类型**
+
+`void`
+
+**抛出**
+
+- 在此登录过程中发生的任何错误。
+
+</details>
+
+<details>
+  <summary>SignOut</summary>
+
+注销过程应遵循以下步骤：
+
+1. 清除本地存储、cookies、持久数据或其他内容。
+2. 通过 `Core.revoke` 撤销获取的刷新令牌（如果刷新令牌被撤销，Logto 服务将撤销所有相关令牌）。
+3. 将用户重定向到 Logto 的注销端点，除非第 1 步清除了登录页面的会话。
+
+备注：
+
+- 在步骤 2 中，`Core.revoke` 是一个异步调用，即使失败也不会阻止注销过程。
+- 第 3 步依赖于 `Core.generateSignOutUri` 生成 Logto 的注销端点。
+
+**参数**
+
+| 参数                  | 类型     | 必需 | 默认值 |
+| --------------------- | -------- | ---- | ------ |
+| postLogoutRedirectUri | `string` |      | `null` |
+
+**返回类型**
+
+`void`
+
+**抛出**
+
+- 在此注销过程中发生的任何错误。
+
+</details>
+
+<details>
+  <summary>getAccessToken</summary>
+
+`getAccessToken` 通过 `resource` 和 `scope` 从 `accessTokenMap` 中检索一个 `AccessToken`，然后返回该 `AccessToken` 的 `token` 值。
+
+在构建 `accessTokenMap` 的键时，我们将 `scope` 设置为 `null`，因为我们在 Logto V1 中不支持自定义权限。
+
+**备注**
+
+- 如果找不到相应的 `AccessToken`，则执行 `Core.fetchTokenByRefreshToken` 操作以获取所需的令牌。
+- 如果 `accessToken` 未过期，则返回其中的 `token` 值。
+- 如果 `accessToken` 已过期，则执行 `Core.fetchTokenByRefreshToken` 操作以检索新的 `accessToken`，更新本地 `accessTokenMap` 并返回新的 `token` 值。
+- 如果 `Core.fetchTokenByRefreshToken` 失败，则通知用户发生的异常。
+- 如果找不到 refreshToken，则通知用户未授权的异常。
+- 只有在登录后获取到 `refreshToken` 后，我们才能执行 `Core.fetchTokenByRefreshToken` 操作。
+
+**参数**
+
+| 参数     | 类型     | 必需 | 默认值 |
+| -------- | -------- | ---- | ------ |
+| resource | `string` |      | `null` |
+
+**返回类型**
+
+`string`
+
+**抛出**
+
+- 用户未认证。
+- 输入的 `resource` 未在 `logtoConfig` 中设置。
+- 在 `Core.fetchTokenByRefreshToken` 之前找不到刷新令牌。
+- `Core.fetchTokenByRefreshToken` 失败。
+
+</details>
+
+<details>
+  <summary>getIdTokenClaims</summary>
+
+`getIdTokenClaims` 返回一个携带 `idToken` 属性声明的对象。
+
+**参数**
+
+无。
+
+**返回类型**
+
+`IdTokenClaims`
+
+**抛出**
+
+- 用户未认证。
+
+</details>

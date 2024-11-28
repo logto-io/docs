@@ -1,0 +1,368 @@
+---
+slug: /quick-starts/traditional-web
+sidebar_label: 传统 Web
+sidebar_custom_props:
+  description: 将 Logto 集成到在服务器上运行的传统 Web 应用中。
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import redirectUriFigure from '../../assets/web-redirect-uri.png';
+import AppNote from '../../fragments/_app-note.mdx';
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+# 为你的传统 Web 应用添加认证 (Authentication)
+
+<AppNote type="Traditional web" />
+
+你的应用可能运行在服务器端而不是浏览器中，使用像 Django、Laravel 等框架。这被称为传统 Web 应用。如果你在此页面找不到合适的 SDK，你可能需要手动集成。
+
+本文将指导你一步步完成它。我们以 Node.js 中的 Express 为例。
+
+:::tip
+
+本文不仅适用于 Express，如果你使用其他框架甚至其他语言，你可以将 `@logto/js` 替换为其他语言的核心 SDK，然后调整一些步骤。
+
+:::
+
+## 获取源代码
+
+你可以访问 [GitHub](https://github.com/logto-io/express-example) 获取本指南的最终代码。
+
+## 启动一个 Express 项目
+
+使用 `express-generator`，你可以快速启动一个 Express 项目。
+
+```bash
+mkdir express-logto
+cd express-logto
+npx express-generator
+```
+
+## 安装依赖
+
+示例应用需要 4 个依赖：
+
+1. **@logto/js**: Logto 的 JavaScript 核心 SDK。
+2. **node-fetch**: 在 Node.js 运行时中提供与 `window.fetch` 兼容的 API 的最小代码。
+3. **express-session**: 一个会话中间件，我们将使用会话来存储用户令牌。
+4. **js-base64**: 另一个 Base64 转码器。
+
+<Tabs>
+
+<TabItem value="npm" label="npm">
+
+```bash
+npm i @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="yarn" label="Yarn">
+
+```bash
+yarn add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+
+</Tabs>
+
+## 使用会话
+
+当用户登录时，他们将获得一组令牌（访问令牌 (Access Token)、ID 令牌 (ID Token)、刷新令牌 (Refresh Token)）和交互数据，会话是存储它们的理想位置。
+
+我们在上一步中已经安装了 [express-session](https://github.com/expressjs/session)，现在让我们简单地添加以下代码来设置它：
+
+```js
+// app.js
+
+const session = require('express-session');
+
+app.use(
+  session({
+    secret: 'keyboard cat', // 更改为你自己的密钥
+    cookie: { maxAge: 86400 },
+  })
+);
+```
+
+## 实现用户认证功能
+
+:::tip
+
+在以下代码片段中，我们假设应用运行在 `http://localhost:3000`。
+
+:::
+
+在这一步中，我们需要实现以下认证 (Authentication) 功能：
+
+1. `getSignInUrl`: 构建并返回 Logto 授权服务器的完整 URL，用户将被重定向到该 URL。
+2. `handleSignIn`: 解析认证过程完成后的回调 URL，获取代码查询参数，然后获取令牌（访问令牌、刷新令牌和 ID 令牌）以完成登录过程。
+3. `refreshTokens`: 使用刷新令牌交换新的访问令牌。
+
+<GetAppSecret />
+
+```js
+// logto.js
+
+const {
+  withReservedScopes,
+  fetchOidcConfig,
+  discoveryPath,
+  generateSignInUri,
+  verifyAndParseCodeFromCallbackUri,
+  fetchTokenByAuthorizationCode,
+  fetchTokenByRefreshToken,
+} = require('@logto/js');
+const fetch = require('node-fetch');
+const { randomFillSync, createHash } = require('crypto');
+const { fromUint8Array } = require('js-base64');
+
+const config = {
+  endpoint: 'https://logto.dev',
+  appId: 'foo',
+  appSecret: '<your-app-secret-copied-from-console>',
+  redirectUri: 'http://localhost:3000/callback', // 你可能需要将其替换为你的应用的生产地址
+  scopes: withReservedScopes().split(' '),
+};
+
+const requester = (input, init) => {
+  const { appId, appSecret } = config;
+
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`, 'utf8').toString('base64')}`,
+    },
+  });
+};
+
+const generateRandomString = (length = 64) => {
+  return fromUint8Array(randomFillSync(new Uint8Array(length)), true);
+};
+
+const generateCodeChallenge = async (codeVerifier) => {
+  const encodedCodeVerifier = new TextEncoder().encode(codeVerifier);
+  const hash = createHash('sha256');
+  hash.update(encodedCodeVerifier);
+  const codeChallenge = hash.digest();
+  return fromUint8Array(codeChallenge, true);
+};
+
+const getOidcConfig = async () => {
+  return fetchOidcConfig(new URL(discoveryPath, config.endpoint).toString(), requester);
+};
+
+exports.getSignInUrl = async () => {
+  const { authorizationEndpoint } = await getOidcConfig();
+  const codeVerifier = generateRandomString();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateRandomString();
+
+  const { redirectUri, scopes, appId: clientId } = config;
+
+  const signInUri = generateSignInUri({
+    authorizationEndpoint,
+    clientId,
+    redirectUri: redirectUri,
+    codeChallenge,
+    state,
+    scopes,
+  });
+
+  return { redirectUri, codeVerifier, state, signInUri };
+};
+
+exports.handleSignIn = async (signInSession, callbackUri) => {
+  const { redirectUri, state, codeVerifier } = signInSession;
+  const code = verifyAndParseCodeFromCallbackUri(callbackUri, redirectUri, state);
+
+  const { appId: clientId } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const codeTokenResponse = await fetchTokenByAuthorizationCode(
+    {
+      clientId,
+      tokenEndpoint,
+      redirectUri,
+      codeVerifier,
+      code,
+    },
+    requester
+  );
+
+  return codeTokenResponse;
+};
+
+exports.refreshTokens = async (refreshToken) => {
+  const { appId: clientId, scopes } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const tokenResponse = await fetchTokenByRefreshToken(
+    {
+      clientId,
+      tokenEndpoint,
+      refreshToken,
+      scopes,
+    },
+    requester
+  );
+
+  return tokenResponse;
+};
+```
+
+## 登录
+
+<SignInFlowSummary />
+
+### 配置重定向 URI
+
+<ConfigureRedirectUri figureSrc={redirectUriFigure} redirectUri="http://localhost:3000/callback" />
+
+### 实现登录路由
+
+<SignInNote calling="getSignInUrl()" />
+
+在 Express 中创建一个登录路由：
+
+```js
+const { getSignInUrl } = require('./logto');
+
+app.get('/sign-in', async (req, res) => {
+  const { redirectUri, codeVerifier, state, signInUri } = await getSignInUrl();
+  req.session.signIn = { codeVerifier, state, redirectUri };
+  res.redirect(signInUri);
+});
+```
+
+以及一个处理回调的路由：
+
+```js
+app.get('/callback', async (req, res) => {
+  if (!req.session.signIn) {
+    res.send('Bad request.');
+    return;
+  }
+
+  const response = await handleSignIn(
+    req.session.signIn,
+    `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  );
+  req.session.tokens = {
+    ...response,
+    expiresAt: response.expiresIn + Date.now(),
+    idToken: decodeIdToken(response.idToken),
+  };
+  req.session.signIn = null;
+
+  res.redirect('/');
+});
+```
+
+## 登出
+
+TODO: 链接到用户参考中的“会话 & cookies”章节。
+
+你可以清除会话中的令牌以使用户从此应用中登出。查看此链接以了解更多关于“登出”的信息。
+
+```js
+app.get('/sign-out', (req, res) => {
+  req.session.tokens = null;
+  res.send('Sign out successful');
+});
+```
+
+## 访问受保护的资源
+
+创建一个名为 `withAuth` 的中间件，将 `auth` 对象附加到 `req`，并验证用户是否已登录。
+
+```js
+// auth.js
+
+const { decodeIdToken } = require('@logto/js');
+const { refreshTokens } = require('./logto');
+
+const withAuth =
+  ({ requireAuth } = { requireAuth: true }) =>
+  async (req, res, next) => {
+    if (requireAuth && !req.session.tokens) {
+      res.redirect('/sign-in');
+      return;
+    }
+
+    if (req.session.tokens) {
+      if (req.session.tokens.expiresAt >= Date.now()) {
+        // 访问令牌过期，刷新以获取新令牌
+        try {
+          const response = await refreshTokens(req.session.tokens.refreshToken);
+          req.session.tokens = {
+            ...response,
+            expiresAt: response.expiresIn + Date.now(),
+            idToken: decodeIdToken(response.idToken),
+          };
+        } catch {
+          // 交换失败，重定向到登录
+          res.redirect('/sign-in');
+          return;
+        }
+      }
+
+      req.auth = req.session.tokens.idToken.sub;
+    }
+
+    next();
+  };
+
+module.exports = withAuth;
+```
+
+创建 `index` 页面，为访客显示登录链接，为已登录用户显示前往个人资料的链接：
+
+```js
+router.get('/', withAuth({ requireAuth: false }), function (req, res, next) {
+  res.render('index', { auth: Boolean(req.auth) });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  if auth
+    p: a(href="/user") Go to profile
+  else
+    p: a(href="/sign-in") Click here to sign in
+```
+
+创建 `user` 页面，显示 `userId`（`主体 (Subject)`）：
+
+```js
+app.get('/user', withAuth(), (req, res, next) => {
+  res.render('user', { userId: req.auth });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  p userId: #{userId}
+```
+
+## 进一步阅读
+
+<FurtherReadings />
