@@ -29,16 +29,61 @@ const args = arg({
   '--locale': String,
 });
 
-/** @type {string[]} */
+/**
+ * The list of files to translate from the `--file` argument. File paths are relative to the
+ * `docs` directory. It can be a single file or a directory.
+ *
+ * - This option is mutually exclusive with `--all`.
+ *
+ * @type {string[]}
+ */
 const inputFiles = args['--file'];
-/** @type {boolean} */
+/**
+ * Whether to translate all files in the `docs` directory.
+ *
+ * - This option is mutually exclusive with `--file`.
+ *
+ * @type {boolean}
+ */
 const all = args['--all'];
-/** @type {boolean} */
+/**
+ * Whether to filter out files that are already translated in the target locale. This option
+ * uses Git commit timestamps to compare the source and target files.
+ *
+ * - This option should be used in conjunction with `--file` or `--all`.
+ * - This option is mutually exclusive with `--check`.
+ *
+ * @type {boolean}
+ */
 const sync = args['--sync'];
-/** @type {boolean} */
+/**
+ * Whether to check if files are outdated and need to be translated. If any file is outdated, the
+ * script will exit with a non-zero status code; otherwise, it will exit with a zero status code.
+ *
+ * - This option should be used in conjunction with `--file` or `--all`.
+ * - This option is mutually exclusive with `--sync`.
+ *
+ * Note: This option does not translate any files.
+ *
+ * @type {boolean}
+ */
 const check = args['--check'];
-/** @type {string} */
+/**
+ * The target locale to translate the files to. Note that the locale must exist in the `i18n`
+ * directory. It's recommended to run the Docusaurus write translation command before running this
+ * script.
+ *
+ * @type {string}
+ */
 const locale = args['--locale'];
+
+if (sync && check) {
+  exit('Cannot use --sync and --check together.');
+}
+
+if (all && inputFiles?.length) {
+  exit('Cannot use --all and --file together.');
+}
 
 const validExtensions = ['.mdx', '.md'];
 const docsBaseDir = 'docs';
@@ -112,7 +157,7 @@ const getFiles = async () => {
  * @type {(files: string[]) => Promise<string[]>}
  */
 const filterFiles = async (files) => {
-  if (!sync) {
+  if (!sync && !check) {
     return files;
   }
 
@@ -128,6 +173,23 @@ const filterFiles = async (files) => {
       return sourceTimestamp.stdout > targetTimestamp.stdout ? file : null;
     })
   );
+
+  if (check) {
+    const outdatedFiles = result.filter(Boolean);
+    if (outdatedFiles.length > 0) {
+      log(
+        picocolors.red(
+          `The following files are outdated and need to be translated:\n${outdatedFiles
+            .map((file) => `  - ${file}`)
+            .join('\n')}`
+        )
+      );
+      exit(1);
+    }
+
+    log(picocolors.green('All files are up to date.'));
+    exit();
+  }
 
   return result.filter(Boolean);
 };
