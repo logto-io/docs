@@ -4,9 +4,9 @@ import Availability from '@components/Availability';
 const token = await client.getOrganizationToken(organizationId);
 ```
 
-#### Organization API resources
+#### 组织 API 资源
 
-To fetch an access token for an API resource in an organization, you can use the `getAccessToken` method with both the API resource and organization ID as parameters:
+要获取组织中 API 资源的访问令牌 (Access token)，你可以使用 `getAccessToken` 方法，并将 API 资源和组织 ID 作为参数：
 
 ```ts title="index.vue"
 const accessToken = await client.getAccessToken(

@@ -1,5 +1,5 @@
 :::tip
 
-- The following demonstration is built on Capacitor JS 5.0.6.
+- 以下演示基于 Capacitor JS 5.0.6。
 
 :::

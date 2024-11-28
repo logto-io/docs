@@ -1,12 +1,12 @@
-When the user signs in successfully on the Logto sign-in page, Logto will redirect the user to the Redirect URI.
+当用户在 Logto 登录页面成功登录后，日志 (Logto) 将把用户重定向到重定向 URI。
 
-Since the redirect URI is `http://localhost:3000/callback`, we add the `/callback` route to handle the callback after signing in.
+由于重定向 URI 是 `http://localhost:3000/callback`，我们添加 `/callback` 路由来处理登录后的回调。
 
 ```go title="main.go"
 func main() {
 	// ...
 
-	// Add a route for handling sign-in callback requests
+	// 添加一个路由来处理登录回调请求
 	router.GET("/callback", func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
 		logtoClient := client.NewLogtoClient(
@@ -14,15 +14,15 @@ func main() {
 			&SessionStorage{session: session},
 		)
 
-		// The sign-in callback request is handled by Logto
+		// 登录回调请求由日志 (Logto) 处理
 		err := logtoClient.HandleSignInCallback(ctx.Request)
 		if err != nil {
 			ctx.String(http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		// Jump to the page specified by the developer.
-		// This example takes the user back to the home page.
+		// 跳转到开发者指定的页面。
+		// 本例将用户带回主页。
 		ctx.Redirect(http.StatusTemporaryRedirect, "/")
 	})
 

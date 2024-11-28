@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import arg from 'arg';
 import dotenv from 'dotenv';
+import { execa } from 'execa';
 import { Listr } from 'listr2';
 import picocolors from 'picocolors';
 
@@ -23,6 +24,8 @@ const exit = (message) => {
 const args = arg({
   '--file': [String],
   '--all': Boolean,
+  '--sync': Boolean,
+  '--check': Boolean,
   '--locale': String,
 });
 
@@ -30,6 +33,10 @@ const args = arg({
 const inputFiles = args['--file'];
 /** @type {boolean} */
 const all = args['--all'];
+/** @type {boolean} */
+const sync = args['--sync'];
+/** @type {boolean} */
+const check = args['--check'];
 /** @type {string} */
 const locale = args['--locale'];
 
@@ -100,12 +107,43 @@ const getFiles = async () => {
   return [];
 };
 
-const files = await getFiles();
+/**
+ * Given a list of files, filter out if the target locale file has a newer timestamp in Git.
+ * @type {(files: string[]) => Promise<string[]>}
+ */
+const filterFiles = async (files) => {
+  if (!sync) {
+    return files;
+  }
+
+  log('Checking for files that need to be translated by comparing timestamps in Git...');
+  const result = await Promise.all(
+    files.map(async (file) => {
+      const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
+      const [sourceTimestamp, targetTimestamp] = await Promise.all([
+        execa`git log -1 --format=%cd --date=iso-local -- ${file}`,
+        execa`git log -1 --format=%cd --date=iso-local -- ${targetFile}`,
+      ]);
+
+      return sourceTimestamp.stdout > targetTimestamp.stdout ? file : null;
+    })
+  );
+
+  return result.filter(Boolean);
+};
+
+const files = await filterFiles(await getFiles());
 
 if (files.length === 0) {
   exit(
     'No files found to translate. Provide a list of files with --file or use --all to translate all files.'
   );
+}
+
+const sortedFiles = files.slice().sort();
+log(`The following files will be translated:`);
+for (const slug of sortedFiles) {
+  log(`  - ${picocolors.blue(slug)}`);
 }
 
 if (files.length > 1) {
@@ -119,12 +157,6 @@ if (files.length > 1) {
   if (confirmation.toLowerCase() !== 'y') {
     exit('Translation cancelled.');
   }
-}
-
-const sortedFiles = files.slice().sort();
-log(`The following files will be translated:`);
-for (const slug of sortedFiles) {
-  log(`  - ${picocolors.blue(slug)}`);
 }
 
 const openAiTranslate = new OpenAiTranslate(locale);

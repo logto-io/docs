@@ -1,6 +1,6 @@
 :::tip
 
-- The following demonstration is built on Expo ~50.0.6.
-- The sample project is available on our [SDK repository](https://github.com/logto-io/react-native/tree/master/packages/rn-sample).
+- 以下演示基于 Expo ~50.0.6。
+- 示例项目可在我们的 [SDK 仓库](https://github.com/logto-io/react-native/tree/master/packages/rn-sample) 中找到。
 
 :::

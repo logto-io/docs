@@ -1,3 +1,3 @@
 ```ruby
-token = @client.access_token(resource: "https://shopping.your-app.com/api")
+token = @client.访问令牌 (access token)(resource: "https://shopping.your-app.com/api")
 ```

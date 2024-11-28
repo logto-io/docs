@@ -1,16 +1,16 @@
 <details>
   <summary>flutter_web_auth</summary>
 
-[flutter_web_auth](https://pub.dev/packages/flutter_web_auth) is used behind Logto's flutter SDK. We rely on its webview-based interaction interface to open Logto's authorization pages.
+[flutter_web_auth](https://pub.dev/packages/flutter_web_auth) 在 Logto 的 flutter SDK 中使用。我们依赖其基于 webview 的交互界面来打开 Logto 的授权页面。
 
 :::note
-This plugin uses ASWebAuthenticationSession on iOS 12+ and macOS 10.15+, SFAuthenticationSession on iOS 11, Chrome Custom Tabs on Android and opens a new window on Web.
-You can build it with iOS 8+, but it is currently only supported by iOS 11 or higher.
+这个插件在 iOS 12+ 和 macOS 10.15+ 上使用 ASWebAuthenticationSession，在 iOS 11 上使用 SFAuthenticationSession，在 Android 上使用 Chrome Custom Tabs，并在 Web 上打开一个新窗口。
+你可以在 iOS 8+ 上构建它，但目前仅支持 iOS 11 或更高版本。
 :::
 
-### Register the callback url on Android
+### 在 Android 上注册回调 url
 
-In order to capture the callback url from Logto's sign-in web page, you will need to register your sign-in redirectUri to the AndroidManifest.xml.
+为了从 Logto 的登录网页捕获回调 url，你需要将你的登录 redirectUri 注册到 AndroidManifest.xml 中。
 
 ```xml
 <activity android:name="com.linusu.flutter_web_auth.CallbackActivity" android:exported="true">

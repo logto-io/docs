@@ -13,7 +13,7 @@ class _MyHomePageState extends State<MyHomePage> {
         print(userInfo);
         // highlight-end
       },
-      child: const Text('Get user info'),
+      child: const Text('获取用户信息'),
     );
 
     return Scaffold(
@@ -24,7 +24,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            SelectableText('My Demo App'),
+            SelectableText('我的演示应用'),
             isAuthenticated == true ? signOutButton : signInButton,
             isAuthenticated == true ? getUserInfoButton : const SizedBox.shrink(),
           ],

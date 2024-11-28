@@ -1,7 +1,7 @@
 :::tip
 
-- The example uses [Flask](https://flask.palletsprojects.com/en/2.3.x/), but the concepts are the same for other frameworks.
-- The Python sample project is available on our [Python SDK repo](https://github.com/logto-io/python/tree/master/samples).
-- Logto SDK leverages coroutines, remember to use `await` when calling async functions.
+- 示例使用 [Flask](https://flask.palletsprojects.com/en/2.3.x/)，但概念对于其他框架是相同的。
+- Python 示例项目可在我们的 [Python SDK 仓库](https://github.com/logto-io/python/tree/master/samples) 中找到。
+- 日志 (Logto) SDK 利用协程，调用异步函数时请记得使用 `await`。
 
 :::

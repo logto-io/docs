@@ -13,7 +13,7 @@ const Organizations = () => {
       }
       const claims = await getIdTokenClaims();
 
-      console.log('ID token claims', claims);
+      console.log('ID 令牌声明', claims);
       setOrganizationIds(claims?.organizations);
     })();
   }, [isAuthenticated, getIdTokenClaims]);
@@ -29,11 +29,11 @@ const Organizations = () => {
                 type="button"
                 onClick={async () => {
                   // highlight-start
-                  console.log('raw token', await getOrganizationToken(organizationId));
+                  console.log('原始令牌', await getOrganizationToken(organizationId));
                   // highlight-end
                 }}
               >
-                fetch token (see console)
+                获取令牌（查看控制台）
               </button>
             </li>
           );

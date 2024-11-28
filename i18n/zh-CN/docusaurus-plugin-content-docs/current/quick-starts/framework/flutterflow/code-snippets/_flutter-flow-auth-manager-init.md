@@ -25,7 +25,7 @@ class CustomAuthManager {
 
   FlutterFlowAuthAuthUser? _updateCurrentUser(
       {bool loggedIn = false, String? uid, OpenIdClaims? idToken}) {
-    // Update the current user stream.
+    // 更新当前用户流。
     final updatedUser = FlutterFlowAuthAuthUser(
       loggedIn: loggedIn,
       uid: uid,
@@ -46,7 +46,7 @@ class CustomAuthManager {
       idToken = await logtoClient.idTokenClaims;
     } catch (e) {
       if (kDebugMode) {
-        print('Error initializing auth: $e');
+        print('初始化认证时出错: $e');
       }
     }
 

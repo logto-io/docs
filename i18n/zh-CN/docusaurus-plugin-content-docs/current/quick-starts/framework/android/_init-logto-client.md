@@ -1,4 +1,4 @@
-Create a `LogtoViewModel.kt` and init `LogtoClient` in this view model:
+创建一个 `LogtoViewModel.kt` 并在此视图模型中初始化 `LogtoClient`：
 
 ```kotlin title="LogtoViewModel.kt"
 //...with other imports
@@ -23,7 +23,7 @@ class LogtoViewModel(application: Application) : AndroidViewModel(application) {
                 modelClass: Class<T>,
                 extras: CreationExtras
             ): T {
-                // Get the Application object from extras
+                // 从 extras 中获取 Application 对象
                 val application = checkNotNull(extras[APPLICATION_KEY])
                 return LogtoViewModel(application) as T
             }
@@ -32,7 +32,7 @@ class LogtoViewModel(application: Application) : AndroidViewModel(application) {
 }
 ```
 
-then, create a `LogtoViewModel` for your `MainActivity.kt`:
+然后，为你的 `MainActivity.kt` 创建一个 `LogtoViewModel`：
 
 ```kotlin title="MainActivity.kt"
 //...with other imports

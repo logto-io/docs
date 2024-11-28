@@ -10,7 +10,7 @@ export default logtoClient.withLogtoApiRoute(async (request, response) => {
 
   const client = await logtoClient.createNodeClientFromNextApi(request, response);
 
-  // Organization IDs are stored in the user's ID token claims
+  // 组织 ID 存储在用户的 ID 令牌声明中
   const { organizations = [] } = await client.getIdTokenClaims();
 
   const organizationTokens = await Promise.all(
@@ -21,7 +21,7 @@ export default logtoClient.withLogtoApiRoute(async (request, response) => {
     organizations.map(async (organizationId) => client.getOrganizationTokenClaims(organizationId))
   );
 
-  // Do things with the organization token and / or claims
+  // 使用组织令牌和 / 或声明进行操作
 
   response.json({
     organizations,

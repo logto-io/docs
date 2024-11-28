@@ -1,10 +1,10 @@
-By default, limited claims are returned. If you need more information, you can request additional scopes to access more claims.
+默认情况下，返回的声明（Claim）是有限的。如果你需要更多信息，可以请求额外的权限（Scope）以访问更多的声明（Claim）。
 
 :::info
-A "claim" is an assertion made about a subject; a "scope" is a group of claims. In the current case, a claim is a piece of information about the user.
+“声明（Claim）”是关于主体的断言；“权限（Scope）”是一组声明。在当前情况下，声明是关于用户的一条信息。
 :::
 
-Here's a non-normative example the scope - claim relationship:
+以下是权限（Scope）与声明（Claim）关系的非规范性示例：
 
 ```mermaid
 classDiagram
@@ -31,7 +31,7 @@ classDiagram
 ```
 
 :::tip
-The "sub" claim means "subject", which is the unique identifier of the user (i.e. user ID).
+“sub” 声明（Claim）表示“主体（Subject）”，即用户的唯一标识符（例如用户 ID）。
 :::
 
-Logto SDK will always request three scopes: `openid`, `profile`, and `offline_access`.
+日志 (Logto) SDK 将始终请求三个权限（Scope）：`openid`、`profile` 和 `offline_access`。

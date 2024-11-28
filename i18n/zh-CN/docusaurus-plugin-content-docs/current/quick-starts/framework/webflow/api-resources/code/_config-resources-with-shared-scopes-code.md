@@ -1,6 +1,6 @@
 ```html
 <script type="module">
-  // Import \`@logto/browser\` SDK from the jsdelivr CDN
+  // 从 jsdelivr CDN 导入 `@logto/browser` SDK
   import LogtoClient from 'https://esm.run/@logto/browser';
 
   window.logtoClient = new LogtoClient({

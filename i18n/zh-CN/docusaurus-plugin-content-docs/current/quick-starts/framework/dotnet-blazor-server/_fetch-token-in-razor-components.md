@@ -1,4 +1,4 @@
-Since we cannot directly access `HttpContext` in Razor components, we need to inject the `HttpContextAccessor` to the component and use it to fetch the tokens. The following code demonstrates how to fetch the access token for the API resource in a Razor component:
+由于我们无法在 Razor 组件中直接访问 `HttpContext`，需要将 `HttpContextAccessor` 注入到组件中，并使用它来获取令牌。以下代码演示了如何在 Razor 组件中获取 API 资源的访问令牌：
 
 ```cshtml title="Components/Pages/Index.razor"
 @using Microsoft.AspNetCore.Components.Authorization
@@ -10,8 +10,8 @@ Since we cannot directly access `HttpContext` in Razor components, we need to in
 
 @* ... *@
 
-<p><b>Resource:</b> @(Resource ?? "(null)")</p>
-<p><b>Access Token:</b> @(AccessToken ?? "(null)")</p>
+<p><b>资源：</b> @(Resource ?? "(null)")</p>
+<p><b>访问令牌：</b> @(AccessToken ?? "(null)")</p>
 
 @* ... *@
 
@@ -41,7 +41,7 @@ Since we cannot directly access `HttpContext` in Razor components, we need to in
 
         var logtoOptions = httpContext.GetLogtoOptions();
         Resource = logtoOptions?.Resource;
-        // Replace with other token types if needed
+        // 如果需要，可以替换为其他令牌类型
         AccessToken = await httpContext.GetTokenAsync(LogtoParameters.Tokens.AccessTokenForResource);
     }
 }

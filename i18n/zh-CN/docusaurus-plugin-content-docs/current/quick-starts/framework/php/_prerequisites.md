@@ -1,2 +1,2 @@
-- A [Logto Cloud](https://cloud.logto.io) account or a self-hosted Logto (Check out the [Introduction](/introduction) guide to create one if you don't have).
-- A Logto traditional web application created.
+- 一个 [Logto Cloud](https://cloud.logto.io) 账户或自托管的 Logto （如果你没有，请查看 [Introduction](/introduction) 指南来创建一个）。
+- 一个已创建的 Logto 传统 Web 应用。

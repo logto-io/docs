@@ -74,3 +74,14 @@ export const terms = Object.freeze({
     'Authorization token': '授权令牌',
   },
 });
+
+export const patterns = Object.freeze({
+  'zh-CN': {
+    'Set up social login with {provider}': '设置 {provider} 社交登录',
+    'Add authentication to your {framework} application':
+      '为你的 {framework} 应用添加认证 (Authentication)',
+    'Set up email verification with {provider}': '使用 {provider} 设置电子邮件验证',
+    'Set up SMS verification with {provider}': '使用 {provider} 设置短信验证',
+    'Set up Single Sign-On with {provider}': '设置 {provider} 单点登录',
+  },
+});

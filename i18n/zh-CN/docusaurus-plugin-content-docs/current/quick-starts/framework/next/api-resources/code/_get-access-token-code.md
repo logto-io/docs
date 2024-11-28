@@ -9,7 +9,7 @@ export default logtoClient.withLogtoApiRoute(
       return;
     }
 
-    // Get access token here
+    // 在这里获取访问令牌
     console.log(request.user.accessToken);
     response.json(request.user);
   },

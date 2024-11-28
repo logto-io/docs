@@ -1,12 +1,12 @@
 ---
-sidebar_label: Introduction
+sidebar_label: 简介
 ---
 
-# Introduction
+# 简介
 
-Welcome to Logto quick starts. This documentation contains useful guides for integrating Logto into your application.
+欢迎使用 Logto 快速入门。本文档包含将 Logto 集成到你的应用程序中的实用指南。
 
-Most of guides uses Logto official SDKs. Please don't hesitate to contact us if you have any questions.
+大多数指南使用 Logto 官方 SDK。如果你有任何问题，请随时联系我们。
 
 ---
 

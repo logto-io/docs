@@ -1,6 +1,6 @@
 :::tip
 
-- The following demonstration is built on SvelteKit 2.0.0.
-- The sample project is available in the [GitHub repository](https://github.com/logto-io/js/tree/HEAD/packages/sveltekit-sample).
+- 以下演示基于 SvelteKit 2.0.0 构建。
+- 示例项目可在 [GitHub 仓库](https://github.com/logto-io/js/tree/HEAD/packages/sveltekit-sample) 中找到。
 
 :::

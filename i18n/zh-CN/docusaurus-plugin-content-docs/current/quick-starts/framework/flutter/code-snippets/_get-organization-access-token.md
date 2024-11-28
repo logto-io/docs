@@ -1,5 +1,5 @@
 ```dart
-// Valid organization IDs for the user can be found in the ID token claim `organizations`.
+// 用户的有效组织 ID 可以在 ID 令牌声明 `organizations` 中找到。
 Future<AccessToken?> getOrganizationAccessToken(String organizationId) async {
   var token = await logtoClient.getOrganizationToken(organizationId);
 

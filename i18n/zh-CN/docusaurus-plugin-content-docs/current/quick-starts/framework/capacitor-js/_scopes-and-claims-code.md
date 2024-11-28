@@ -2,7 +2,7 @@
 import { type LogtoConfig, UserScope } from '@logto/capacitor';
 
 const config: LogtoConfig = {
-  // ...other options
-  scopes: [UserScope.Email, UserScope.Phone], // Add the scopes you need
+  // ...其他选项
+  scopes: [UserScope.Email, UserScope.Phone], // 添加你需要的权限 (scopes)
 };
 ```

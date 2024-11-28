@@ -1,8 +1,8 @@
-### Checkpoint: Test your Webflow site
+### 检查点：测试你的 Webflow 网站
 
-Now, test your site:
+现在，测试你的网站：
 
-1. Deploy and visit your site URL, the sign-in button should be visible.
-2. Click the sign-in button, the SDK will initiate the sign-in process, redirecting you to the Logto sign-in page.
-3. After signing in, you will be redirected back to your site, seeing the username and the sign-out button.
-4. Click the sign-out button to sign-out.
+1. 部署并访问你的网站 URL，登录按钮应该是可见的。
+2. 点击登录按钮，SDK 将启动登录过程，将你重定向到 Logto 登录页面。
+3. 登录后，你将被重定向回你的网站，看到用户名和退出按钮。
+4. 点击退出按钮以退出。

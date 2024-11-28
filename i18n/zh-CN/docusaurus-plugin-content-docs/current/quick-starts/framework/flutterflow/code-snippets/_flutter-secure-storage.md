@@ -1,14 +1,14 @@
 <details>
 <summary>flutter_secure_storage</summary>
 
-We use [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) to implement the cross-platform persistent secure token storage. Under the hood:
+我们使用 [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) 来实现跨平台的持久安全令牌存储。其底层实现：
 
-- Keychain is used for iOS
-- AES encryption is used for Android.
+- iOS 使用 Keychain
+- Android 使用 AES 加密。
 
-### Config Android version:
+### 配置 Android 版本：
 
-In [project]/android/app/build.gradle set minSdkVersion to >= 18.
+在 [project]/android/app/build.gradle 中将 minSdkVersion 设置为 >= 18。
 
 ```kotlin
   android {
@@ -22,17 +22,17 @@ In [project]/android/app/build.gradle set minSdkVersion to >= 18.
   }
 ```
 
-### Disable autobackup:
+### 禁用自动备份：
 
 :::note
 
-By default Android backups data on Google Drive. It can cause exception java.security.InvalidKeyException:Failed to unwrap key.
+默认情况下，Android 会在 Google Drive 上备份数据。这可能导致异常 java.security.InvalidKeyException:Failed to unwrap key。
 
 :::
 
-To avoid this, you can disable auto backup for your app or exclude sharedprefs from the FlutterSecureStorage.
+为避免这种情况，你可以禁用应用的自动备份或从 FlutterSecureStorage 中排除 sharedprefs。
 
-1. To disable auto backup, go to your app manifest file and set the boolean value android:allowBackup:
+1. 要禁用自动备份，请转到应用的 manifest 文件并设置布尔值 android:allowBackup：
 
    ```xml
    <manifest ... >
@@ -48,9 +48,9 @@ To avoid this, you can disable auto backup for your app or exclude sharedprefs f
 
    ```
 
-2. Exclude sharedprefs from FlutterSecureStorage.
+2. 从 FlutterSecureStorage 中排除 sharedprefs。
 
-   If you need to enable the android:fullBackupContent for your app. Set up a backup rule to [exclude](https://developer.android.com/guide/topics/data/autobackup#IncludingFiles) the prefs used by the plugin:
+   如果你需要为应用启用 android:fullBackupContent。设置一个备份规则以 [排除](https://developer.android.com/guide/topics/data/autobackup#IncludingFiles) 插件使用的 prefs：
 
    ```xml
    <application ...
@@ -65,6 +65,6 @@ To avoid this, you can disable auto backup for your app or exclude sharedprefs f
    </full-backup-content>
    ```
 
-   Please check [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage#configure-android-version) for more details.
+   请查看 [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage#configure-android-version) 了解更多详情。
 
 </details>

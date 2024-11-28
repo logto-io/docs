@@ -1,12 +1,12 @@
-After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/callback` as the callback URL:
+用户登录后，日志 (Logto) 会将用户重定向到你在 Logto Console 中设置的回调 URL。在这个例子中，我们使用 `/callback` 作为回调 URL：
 
 ```python
 @app.route("/callback")
 async def callback():
     try:
-        await client.handleSignInCallback(request.url) # Handle a lot of stuff
-        return redirect("/") # Redirect the user to the home page after a successful sign-in
+        await client.handleSignInCallback(request.url) # 处理很多事情
+        return redirect("/") # 登录成功后将用户重定向到主页
     except Exception as e:
-        # Change this to your error handling logic
+        # 将此更改为你的错误处理逻辑
         return "Error: " + str(e)
 ```

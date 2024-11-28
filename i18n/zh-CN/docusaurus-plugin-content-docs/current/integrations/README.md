@@ -1,10 +1,10 @@
 ---
-sidebar_label: Introduction
+sidebar_label: 介绍
 ---
 
-# Introduction
+# 介绍
 
-Welcome to Logto connectors documentation. This documentation contains useful guides for integrating a third-party auth service with Logto, via Logto connectors.
+欢迎阅读 Logto 连接器文档。此文档包含通过 Logto 连接器将第三方认证服务与日志 (Logto) 集成的实用指南。
 
 ---
 

@@ -2,30 +2,30 @@
 sidebar_position: 2
 ---
 
-# Authenticator app OTP
+# 认证器应用 OTP
 
-## Concepts
+## 概念
 
-The Authenticator app, also referred to as the Software Token, is one of the most widely adopted MFA methods. It generates temporary, one-time passwords (OTP) to enhance the security of online service authentication. Unlike physical hardware tokens, software tokens are typically applications or plugins that users install on their devices, be it a smartphone or a computer browser. Software tokens can operate locally on a single device or synchronize across various devices, depending on the authenticator's capabilities and individual user settings.
+认证器应用，也称为软件令牌，是最广泛采用的多因素认证 (MFA) 方法之一。它生成临时的一次性密码 (OTP) 以增强在线服务认证的安全性。与物理硬件令牌不同，软件令牌通常是用户安装在其设备上的应用程序或插件，无论是智能手机还是计算机浏览器。软件令牌可以在单个设备上本地运行，也可以根据认证器的功能和个人用户设置在各种设备之间同步。
 
-Popular examples of software tokens include Google Authenticator, Microsoft Authenticator, Duo, 1Password, Authy, and more.
+流行的软件令牌示例包括 Google Authenticator、Microsoft Authenticator、Duo、1Password、Authy 等。
 
-## Auth flows
+## 认证流程
 
-**Setup Flows**
+**设置流程**
 
-1. **QR Code or Secret Key**: Users receive a QR code or a secret key from your service.
-2. **Add account**: Using their authenticator app, users scan the QR code or manually enter the secret key to add their account.
-3. **Dynamic one-time password**: The authenticator app displays a six-digit code that refreshes every 1-2 minutes for the added account.
-4. **Complete MFA setup**: Users enter this code within its validity into the MFA setup page, completing the setup of Authenticator App OTP for MFA.
+1. **二维码或密钥**：用户从你的服务接收二维码或密钥。
+2. **添加账户**：用户使用他们的认证器应用扫描二维码或手动输入密钥以添加他们的账户。
+3. **动态一次性密码**：认证器应用显示一个六位数的代码，该代码每 1-2 分钟刷新一次，用于添加的账户。
+4. **完成 MFA 设置**：用户在其有效期内将此代码输入到 MFA 设置页面，完成认证器应用 OTP 的 MFA 设置。
 
-![OTP set up flow](./assets/otp-set-up-flow.png)
+![OTP 设置流程](./assets/otp-set-up-flow.png)
 
-**Verification flows**
+**验证流程**
 
-1. **Login attempt**: During login, users are prompted for MFA.
-2. **Retrieve OTP**: Open their authenticator app to retrieve the OTP for the respective account.
-3. **Enter OTP**: Users enter the OTP displayed in the app within its validity into the 2-step verification page.
-4. **Authentication**: The system verifies the OTP, granting access upon successful validation.
+1. **登录尝试**：在登录期间，用户会被提示进行 MFA。
+2. **获取 OTP**：打开他们的认证器应用以获取相应账户的 OTP。
+3. **输入 OTP**：用户在其有效期内将应用中显示的 OTP 输入到两步验证页面。
+4. **认证**：系统验证 OTP，成功验证后授予访问权限。
 
-![OTP verification flow](./assets/otp-verification-flow.png)
+![OTP 验证流程](./assets/otp-verification-flow.png)

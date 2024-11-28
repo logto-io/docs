@@ -1,6 +1,6 @@
-Since Blazor Server uses SignalR to communicate between the server and the client, this means methods that directly manipulate the HTTP context (like issuing challenges or redirects) don't work as expected when called from a Blazor component.
+由于 Blazor Server 使用 SignalR 在服务器和客户端之间进行通信，这意味着直接操作 HTTP 上下文的方法（如发起挑战或重定向）在从 Blazor 组件调用时无法按预期工作。
 
-To make it right, we need to explicitly add two endpoints for sign-in and sign-out redirects:
+为了正确实现，我们需要显式添加两个用于登录和注销重定向的端点：
 
 ```csharp title="Program.cs"
 app.MapGet("/SignIn", async context =>
@@ -24,4 +24,4 @@ app.MapGet("/SignOut", async context =>
 });
 ```
 
-Now we can redirect to these endpoints to trigger sign-in and sign-out.
+现在我们可以重定向到这些端点以触发登录和注销。

@@ -1,10 +1,10 @@
-Execute in the project root directory:
+在项目根目录执行：
 
 ```bash
 go get github.com/logto-io/go
 ```
 
-Add the `github.com/logto-io/go/client` package to your application code:
+将 `github.com/logto-io/go/client` 包添加到你的应用代码中：
 
 ```go title="main.go"
 // main.go
@@ -12,7 +12,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	// Add dependency
+	// 添加依赖
 	"github.com/logto-io/go/client"
 )
 

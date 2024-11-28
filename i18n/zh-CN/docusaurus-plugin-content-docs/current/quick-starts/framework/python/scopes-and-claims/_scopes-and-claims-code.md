@@ -2,16 +2,16 @@
 client = LogtoClient(
     LogtoConfig(
         # ...other configs
-        scopes=["email", "phone"], # Add more scopes
+        scopes=["email", "phone"], # 添加更多权限 (scopes)
     ),
 )
 
-# or
+# 或者
 
 client = LogtoClient(
     LogtoConfig(
         # ...other configs
-        scopes=[UserInfoScope.email, UserInfoScope.profile], # Same result
+        scopes=[UserInfoScope.email, UserInfoScope.profile], # 相同结果
     ),
 )
 ```

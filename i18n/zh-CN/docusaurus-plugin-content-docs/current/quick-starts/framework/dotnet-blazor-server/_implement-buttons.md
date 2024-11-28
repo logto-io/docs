@@ -1,4 +1,4 @@
-In the Razor component, add the following code:
+在 Razor 组件中，添加以下代码：
 
 ```cshtml title="Components/Pages/Index.razor"
 @using Microsoft.AspNetCore.Components.Authorization
@@ -8,14 +8,14 @@ In the Razor component, add the following code:
 
 @* ... *@
 
-<p>Is authenticated: @User.Identity?.IsAuthenticated</p>
+<p>是否认证 (Is authenticated): @User.Identity?.IsAuthenticated</p>
 @if (User.Identity?.IsAuthenticated == true)
 {
-    <button @onclick="SignOut">Sign out</button>
+    <button @onclick="SignOut">登出</button>
 }
 else
 {
-    <button @onclick="SignIn">Sign in</button>
+    <button @onclick="SignIn">登录</button>
 }
 
 @* ... *@
@@ -41,9 +41,9 @@ else
 }
 ```
 
-**Explanation**:
+**说明**：
 
-- The injected `AuthenticationStateProvider` is used to get the current user's authentication state, and populate the `User` property.
-- The `SignIn` and `SignOut` methods are used to redirect the user to the sign-in and sign-out endpoints respectively. Since the nature of Blazor Server, we need to use `NavigationManager` with force load to trigger the redirection.
+- 注入的 `AuthenticationStateProvider` 用于获取当前用户的认证状态，并填充 `User` 属性。
+- `SignIn` 和 `SignOut` 方法用于分别将用户重定向到登录和登出端点。由于 Blazor Server 的特性，我们需要使用 `NavigationManager` 并强制加载以触发重定向。
 
-The page will show the "Sign in" button if the user is not authenticated, and show the "Sign out" button if the user is authenticated.
+如果用户未认证，页面将显示“登录”按钮；如果用户已认证，则显示“登出”按钮。

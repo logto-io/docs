@@ -1,8 +1,8 @@
-### Checkpoint: Test your application
+### 检查点：测试你的应用程序
 
-Now, you can test your application:
+现在，你可以测试你的应用程序：
 
-1. Run your application, you will see the sign-in button.
-2. Click the sign-in button, the SDK will init the sign-in process and redirect you to the Logto sign-in page.
-3. After you signed in, you will be redirected back to your application and see the sign-out button.
-4. Click the sign-out button to clear local storage and sign out.
+1. 运行你的应用程序，你将看到登录按钮。
+2. 点击登录按钮，SDK 将初始化登录过程并将你重定向到 Logto 登录页面。
+3. 登录后，你将被重定向回你的应用程序，并看到登出按钮。
+4. 点击登出按钮以清除本地存储并登出。

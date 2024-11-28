@@ -1,4 +1,4 @@
-Open `Startup.cs` (or `Program.cs`) and add the following code to register Logto authentication services:
+打开 `Startup.cs`（或 `Program.cs`）并添加以下代码以注册 Logto 认证服务：
 
 ```csharp title="Program.cs"
 using Logto.AspNetCore.Authentication;
@@ -13,9 +13,9 @@ builder.Services.AddLogtoAuthentication(options =>
 });
 ```
 
-The `AddLogtoAuthentication` method will do the following things:
+`AddLogtoAuthentication` 方法将执行以下操作：
 
-- Set the default authentication scheme to `LogtoDefaults.CookieScheme`.
-- Set the default challenge scheme to `LogtoDefaults.AuthenticationScheme`.
-- Set the default sign-out scheme to `LogtoDefaults.AuthenticationScheme`.
-- Add cookie and OpenID Connect authentication handlers to the authentication scheme.
+- 将默认认证方案设置为 `LogtoDefaults.CookieScheme`。
+- 将默认挑战方案设置为 `LogtoDefaults.AuthenticationScheme`。
+- 将默认注销方案设置为 `LogtoDefaults.AuthenticationScheme`。
+- 将 cookie 和 OpenID Connect 认证处理程序添加到认证方案中。

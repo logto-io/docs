@@ -1,6 +1,6 @@
-Now, you can test your application:
+现在，你可以测试你的应用程序：
 
-1. Visit `http://localhost:3000`, you will see "You are not logged in to this website." message on the home page.
-2. Click the "Sign In" link, you will be redirected to the Logto sign-in page.
-3. Sign in with your Logto account, you will be redirected to the home page and see "You are logged in to this website!" message.
-4. Click the "Sign Out" link, and your user authentication information will be cleared, and the home page will display "You are not logged in to this website." message again.
+1. 访问 `http://localhost:3000`，你将在主页上看到 "你未登录此网站。" 的消息。
+2. 点击 "Sign In" 链接，你将被重定向到 Logto 登录页面。
+3. 使用你的 Logto 账户登录，你将被重定向到主页，并看到 "你已登录此网站！" 的消息。
+4. 点击 "Sign Out" 链接，你的用户认证信息将被清除，主页将再次显示 "你未登录此网站。" 的消息。

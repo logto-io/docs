@@ -14,7 +14,7 @@ class FlutterFlowAuthAuthUser {
   OpenIdClaims? idToken;
 }
 
-/// Generates a stream of the authenticated user.
+/// 生成认证用户的流。
 BehaviorSubject<FlutterFlowAuthAuthUser> flutterFlowAuthAuthUserSubject =
     BehaviorSubject.seeded(FlutterFlowAuthAuthUser(loggedIn: false));
 Stream<FlutterFlowAuthAuthUser> flutterFlowAuthAuthUserStream() =>

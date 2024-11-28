@@ -1,6 +1,6 @@
 :::tip
 
-- The following demonstration is built upon the [Gin Web Framework](https://gin-gonic.com). You may also integrate Logto into other frameworks by taking the same steps.
-- The Go sample project is available on our [Go SDK repo](https://github.com/logto-io/go/tree/master/gin-sample).
+- 以下演示基于 [Gin Web Framework](https://gin-gonic.com) 构建。你也可以通过相同的步骤将日志 (Logto) 集成到其他框架中。
+- Go 示例项目可在我们的 [Go SDK 仓库](https://github.com/logto-io/go/tree/master/gin-sample) 中找到。
 
 :::

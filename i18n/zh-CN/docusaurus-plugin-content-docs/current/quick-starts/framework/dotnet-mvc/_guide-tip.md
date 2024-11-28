@@ -1,6 +1,6 @@
 :::tip
 
-- The following demonstration is built on .NET Core 8.0. The SDK is compatible with .NET 6.0 or higher.
-- The .NET Core sample projects are available in the [GitHub repository](https://github.com/logto-io/csharp).
+- 以下演示基于 .NET Core 8.0 构建。该 SDK 兼容 .NET 6.0 或更高版本。
+- .NET Core 示例项目可在 [GitHub 仓库](https://github.com/logto-io/csharp) 中找到。
 
 :::

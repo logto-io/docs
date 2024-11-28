@@ -1,8 +1,8 @@
 :::tip
 
-- The SDK package is available on [pub.dev](https://pub.dev/packages/logto_dart_sdk) and Logto [GitHub repository](https://github.com/logto-io/dart).
-- The sample project is built using [Flutter material](https://flutter.dev). You can find it on [pub.dev](https://pub.dev/packages/logto_dart_sdk/example) and our [GitHub repository](https://github.com/logto-io/dart).
-- The SDK is compatible with Android, and iOS platforms only.
-- The SDK v1.x is compatible with Dart 2.x. For SDK v2.x, you need to update your Dart version to 3.x or higher.
+- SDK 包可以在 [pub.dev](https://pub.dev/packages/logto_dart_sdk) 和 Logto [GitHub 仓库](https://github.com/logto-io/dart) 上获取。
+- 示例项目是使用 [Flutter material](https://flutter.dev) 构建的。你可以在 [pub.dev](https://pub.dev/packages/logto_dart_sdk/example) 和我们的 [GitHub 仓库](https://github.com/logto-io/dart) 上找到它。
+- SDK 仅兼容 Android 和 iOS 平台。
+- SDK v1.x 兼容 Dart 2.x。对于 SDK v2.x，你需要将 Dart 版本更新到 3.x 或更高。
 
 :::

@@ -1,13 +1,12 @@
-In traditional web applications, the user authentication information will be stored in the user session.
+在传统的 Web 应用程序中，用户认证信息会存储在用户会话中。
 
-Logto SDK provides a `Storage` interface, you can implement a `Storage` adapter based on your web framework so that the Logto SDK can store user authentication information in the session.
+Logto SDK 提供了一个 `Storage` 接口，你可以根据你的 Web 框架实现一个 `Storage` 适配器，以便 Logto SDK 可以将用户认证信息存储在会话中。
 
 :::note
-We do NOT recommend using cookie-based sessions, as user authentication information stored by Logto may exceed the cookie size limit.
-In this example, we use memory-based sessions. You can use Redis, MongoDB, and other technologies in production to store sessions as needed.
+我们不推荐使用基于 Cookie 的会话，因为 Logto 存储的用户认证信息可能会超过 Cookie 的大小限制。在这个例子中，我们使用基于内存的会话。你可以在生产环境中使用 Redis、MongoDB 和其他技术根据需要存储会话。
 :::
 
-The `Storage` type in the Logto SDK is as follows:
+Logto SDK 中的 `Storage` 类型如下：
 
 ```go title="github.com/logto-io/client/storage.go"
 package client
@@ -18,9 +17,9 @@ type Storage interface {
 }
 ```
 
-We use [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) middleware as an example to demonstrate this process.
+我们使用 [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) 中间件作为示例来演示这个过程。
 
-Apply the middleware to the application, so that we can get the user session by the user request context in the route handler:
+将中间件应用到应用程序中，以便我们可以在路由处理程序中通过用户请求上下文获取用户会话：
 
 ```go title="main.go"
 package main
@@ -35,12 +34,12 @@ import (
 func main() {
 	router := gin.Default()
 
-	// We use memory-based session in this example
+	// 在这个例子中我们使用基于内存的会话
 	store := memstore.NewStore([]byte("your session secret"))
 	router.Use(sessions.Sessions("logto-session", store))
 
 	router.GET("/", func(ctx *gin.Context) {
-		// Get user session
+		// 获取用户会话
 		session := sessions.Default(ctx)
 		// ...
 		ctx.String(200, "Hello Logto!")
@@ -49,7 +48,7 @@ func main() {
 }
 ```
 
-Create a `session_storage.go` file, define a `SessionStorage` and implement the Logto SDK's `Storage` interfaces:
+创建一个 `session_storage.go` 文件，定义一个 `SessionStorage` 并实现 Logto SDK 的 `Storage` 接口：
 
 ```go title="session_storage.go"
 package main
@@ -76,7 +75,7 @@ func (storage *SessionStorage) SetItem(key, value string) {
 }
 ```
 
-Now, in the route handler, you can create a session storage for Logto:
+现在，在路由处理程序中，你可以为 Logto 创建一个会话存储：
 
 ```go
 session := sessions.Default(ctx)

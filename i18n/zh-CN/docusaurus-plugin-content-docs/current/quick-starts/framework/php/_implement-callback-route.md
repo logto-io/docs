@@ -1,12 +1,12 @@
-After the user signs in, Logto will redirect the user to the callback URL you set in the Logto Console. In this example, we use `/callback` as the callback URL:
+用户登录后，日志 (Logto) 会将用户重定向到你在日志 (Logto) 控制台中设置的回调 URL。在此示例中，我们使用 `/callback` 作为回调 URL：
 
 ```php
 Route::get('/callback', function () {
   try {
-    $client->handleSignInCallback(); // Handle a lot of stuff
+    $client->handleSignInCallback(); // 处理很多事情
   } catch (\Throwable $exception) {
-    return $exception; // Change this to your error handling logic
+    return $exception; // 将此更改为你的错误处理逻辑
   }
-  return redirect('/'); // Redirect the user to the home page after a successful sign-in
+  return redirect('/'); // 成功登录后将用户重定向到主页
 });
 ```

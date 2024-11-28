@@ -2,7 +2,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 import picocolors from 'picocolors';
 
-import { asIsTerms, terms } from './terms.mjs';
+import { asIsTerms, patterns, terms } from './terms.mjs';
 
 const model = 'gpt-4o';
 
@@ -16,14 +16,19 @@ export const log = (...args) => {
  *
  * @param asIsTerms {string[]} The terms that should not be translated.
  * @param terms {Record<string, string>} The terms with their fixed translations.
+ * @param patterns {Record<string, string>} The patterns with their fixed translations.
  */
-const buildInstructions = (asIsTerms, terms) => [
+const buildInstructions = (asIsTerms, terms, patterns) => [
   'Keep frontmatter keys unchanged. Translate values, except for the `slug` value.',
   'Do not translate JSON keys, inline code, component names, keys, URLs, or file paths.',
   `Do not translate the following terms, including their plural forms: ${asIsTerms.join(', ')}.`,
   'For all the keys in the following JSON object (case-insensitive matching), use the values as translations and append the original key in parentheses. For example, if the JSON object is `{ "Logto": "日志", "Log": "日志" }`, then translate "Logto" to "日志 (Logto)" and "Log" to "日志 (Log)". The JSON object is `' +
     JSON.stringify(terms) +
     '`.',
+  'For all the patterns in the keys of the following JSON object (case-insensitive matching), use the values as translations. For example, if the JSON object is `{ "Set up {product}": "安装 {product}" }`, then translate "Set up Logto" to "安装 Logto". The JSON object is `' +
+    JSON.stringify(patterns) +
+    '`.',
+  'Keep import statements unchanged, including the package names and paths.',
   'For mermaid diagrams, translate only the text within the diagram, keeping the diagram type and structure unchanged.',
   'Prefer "你" over "您" when translating into Chinese.',
   'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',
@@ -51,7 +56,11 @@ export class OpenAiTranslate {
       throw new Error(`No terms translation found for locale "${locale}"`);
     }
 
-    this.instructions = buildInstructions(asIsTerms, terms[locale])
+    if (!patterns[locale]) {
+      throw new Error(`No patterns translation found for locale "${locale}"`);
+    }
+
+    this.instructions = buildInstructions(asIsTerms, terms[locale], patterns[locale])
       .map((instruction, index) => `${index + 1}. ${instruction}`)
       .join('\n');
 

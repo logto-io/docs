@@ -2,40 +2,40 @@
 sidebar_position: 3
 ---
 
-# WebAuthn (Passkeys)
+# WebAuthn（通行密钥）
 
-WebAuthn provides a more secure and user-friendly alternative to traditional passwords. By using public-key cryptography, WebAuthn enhances security by linking the user's device, the service domain, and the user ID, effectively countering phishing and password attacks. Compatible with various devices or browsers, and allows users to employ biometrics and hardware security features for convenient authentication. Logto now supports WebAuthn for Multi-Factor Authentication (MFA).
+WebAuthn 提供了一种比传统密码更安全且用户友好的替代方案。通过使用公钥加密，WebAuthn 增强了安全性，将用户设备、服务域和用户 ID 关联起来，有效抵御网络钓鱼和密码攻击。兼容各种设备或浏览器，并允许用户使用生物识别和硬件安全功能进行便捷的认证。日志 (Logto) 现在支持 WebAuthn 用于多因素认证 (MFA)。
 
-## Concepts
+## 概念
 
-Customers always know Passkeys rather than WebAuthn, so what’s the relationship between them, and how to use them? Let's explore these concepts:
+客户通常了解的是通行密钥而不是 WebAuthn，那么它们之间有什么关系，以及如何使用它们？让我们来探讨这些概念：
 
-- **Passkeys**: A passkey is a FIDO-based, phishing-resistant credential to replace passwords. It utilizes asymmetric public-key cryptography for enhanced security. It can be hardware tokens or security keys, such as USB or Bluetooth devices. Since "Passkeys" is the authentication method displayed to users, it should be used within your product client.
-- **WebAuthn**: It is a JavaScript API developed by the W3C and FIDO Alliance, that empowers web applications authentication with FIDO2 standards. Passkeys is one of the authentication methods WebAuthn supports. In the Logto Console, we professionally refer to this integration as "WebAuthn.”
+- **通行密钥**：通行密钥是一种基于 FIDO 的抗网络钓鱼凭证，用于替代密码。它利用非对称公钥加密来增强安全性。它可以是硬件令牌或安全密钥，例如 USB 或蓝牙设备。由于“通行密钥”是向用户展示的认证方法，因此应在你的产品客户端中使用。
+- **WebAuthn**：它是由 W3C 和 FIDO 联盟开发的 JavaScript API，支持使用 FIDO2 标准进行 Web 应用程序认证。通行密钥是 WebAuthn 支持的认证方法之一。在日志 (Logto) 控制台中，我们专业地将此集成称为“WebAuthn”。
 
-WebAuthn provides diverse authenticators for users to choose from, available in two types for local and cloud usage:
+WebAuthn 为用户提供了多种认证器可供选择，分为本地和云端两种类型：
 
-- **Platform authenticator (Internal authenticator)**: It is tied to a single and specific device OS, such as a computer, laptop, phone, or tablet, which the user signs in with. It works exclusively on the device for authorization using methods like biometrics or a device passcode, so it's a quick way to authenticate. E,g,. iCloud Keychain verified by Touch ID, Face ID, or device passcode on macOS or iOS; Windows Hello verified by facial recognition, fingerprint, or friendly PIN.
-- **Roaming authenticator (External authenticator, Cross-platform authenticator)**: It is a separate, portable device or software application, such as a hardware security key or a smartphone. It should link the device using USB or keeping NFC or Bluetooth on. The roaming authenticator is not limited to a single device or browser, providing greater flexibility.
+- **平台认证器（内部认证器）**：它绑定到单一且特定的设备操作系统，如计算机、笔记本电脑、手机或平板电脑，用户通过这些设备登录。它仅在设备上使用生物识别或设备密码等方法进行授权，因此是一种快速的认证方式。例如，iCloud 钥匙串通过 Touch ID、Face ID 或设备密码在 macOS 或 iOS 上验证；Windows Hello 通过面部识别、指纹或友好 PIN 验证。
+- **漫游认证器（外部认证器，跨平台认证器）**：它是一个独立的便携设备或软件应用程序，例如硬件安全密钥或智能手机。它应通过 USB 连接设备或保持 NFC 或蓝牙开启。漫游认证器不限于单一设备或浏览器，提供更大的灵活性。
 
-To delve deeper into the principles and processes of WebAuthn, you can refer to our blog posts: [WebAuthn and Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) and [Things you should know before integrating WebAuthn](https://blog.logto.io/webauthn-base-knowledge/).
+要深入了解 WebAuthn 的原理和流程，可以参考我们的博客文章：[WebAuthn 和通行密钥 101](https://blog.logto.io/web-authn-and-passkey-101/) 和 [集成 WebAuthn 前你应该知道的事情](https://blog.logto.io/webauthn-base-knowledge/)。
 
-## Pay attention to limitations
+## 注意限制
 
-It's essential to be aware of some limitations when implementing WebAuthn:
+在实施 WebAuthn 时，必须注意一些限制：
 
-1. **Platform and browser limitation**: It's important to note that Logto does not currently offer WebAuthn support for native applications. Additionally, the availability of WebAuthn authenticators depends on browser and device capabilities ([Check the list](https://caniuse.com/?search=webauthn)). Therefore, WebAuthn is always not the sole option for implementing Multi-Factor Authentication (MFA), otherwise, you can control which browsers and devices can access your product.
-2. **Domain limitation**: Changing the domain can hinder user verification through their existing WebAuthn accounts. Passkeyss are bound to the specific domain of the current web page and cannot be used across different domains.
-3. **Device limitation**: Losing the device can result in a loss of access to their accounts, especially for those relying on "This device" Platform Authenticators. To enhance authentication access, it's advisable to provide users with more than one authentication factor.
+1. **平台和浏览器限制**：需要注意的是，日志 (Logto) 目前不提供对本地应用程序的 WebAuthn 支持。此外，WebAuthn 认证器的可用性取决于浏览器和设备的能力（[查看列表](https://caniuse.com/?search=webauthn)）。因此，WebAuthn 并不是实现多因素认证 (MFA) 的唯一选项，否则，你可以控制哪些浏览器和设备可以访问你的产品。
+2. **域限制**：更改域可能会阻碍用户通过其现有 WebAuthn 账户进行验证。通行密钥绑定到当前网页的特定域，不能跨不同域使用。
+3. **设备限制**：丢失设备可能导致无法访问其账户，尤其是对于依赖“此设备”平台认证器的用户。为了增强认证访问，建议为用户提供多种认证因素。
 
-## Auth flows
+## 认证流程
 
-The Passkeys specification requires users to actively click the button on the current page to initiate the authentication component. This means that in both the setup and verification flows, users should be redirected to the landing page to initiate WebAuthn.
+通行密钥规范要求用户主动点击当前页面上的按钮以启动认证组件。这意味着在设置和验证流程中，用户应被重定向到登录页面以启动 WebAuthn。
 
-- **Setup flows**
+- **设置流程**
 
-![WebAuthn setup flow](./assets/webauthn-setup-flow.png)
+![WebAuthn 设置流程](./assets/webauthn-setup-flow.png)
 
-- **Verification flows**
+- **验证流程**
 
-![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
+![WebAuthn 验证流程](./assets/webauthn-verification-flow.png)
