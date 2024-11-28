@@ -1,12 +1,18 @@
 import { useDocsSidebar } from '@docusaurus/plugin-content-docs/client';
+import ThemedImage from '@theme/ThemedImage';
 
-import fallbackImage from './fallback.png';
 import styles from './index.module.scss';
 
 type Category = {
   label: string;
   description?: string;
-  items: Array<{ label: string; href: string; logoFilename?: string; description?: string }>;
+  items: Array<{
+    label: string;
+    href: string;
+    logoFilename: string;
+    darkLogoFilename?: string;
+    description?: string;
+  }>;
 };
 
 const stringIfTruthy = (value: unknown) => (value ? String(value) : undefined);
@@ -71,7 +77,10 @@ const Gallery = ({ path }: Props) => {
           {
             label: item.label,
             href: item.href,
-            logoFilename: stringIfTruthy(item.customProps?.logoFilename),
+            logoFilename:
+              stringIfTruthy(item.customProps?.logoFilename) ??
+              `${item.href.slice(guideItemPath.length)}.svg`,
+            darkLogoFilename: stringIfTruthy(item.customProps?.darkLogoFilename),
             description: stringIfTruthy(item.customProps?.description),
           },
         ],
@@ -87,13 +96,16 @@ const Gallery = ({ path }: Props) => {
           <section className={styles.list}>
             {category.items.map((item) => (
               <a key={item.href} href={item.href} className={styles.link} title={item.description}>
-                <img
+                <ThemedImage
                   className={styles.logo}
                   alt="Logo"
-                  src={`/img/logo/${item.logoFilename || `${item.href.slice(guideItemPath.length)}.svg`}`}
+                  sources={{
+                    light: `/img/logo/${item.logoFilename}`,
+                    dark: `/img/logo/${item.darkLogoFilename ?? item.logoFilename}`,
+                  }}
                   onError={({ currentTarget }) => {
                     // eslint-disable-next-line @silverhand/fp/no-mutation
-                    currentTarget.src = fallbackImage;
+                    currentTarget.src = '/img/logo/broken-image.svg';
                   }}
                 />
                 <span className={styles.title}>{item.label}</span>
