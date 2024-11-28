@@ -177,14 +177,11 @@ const filterFiles = async (files) => {
   if (check) {
     const outdatedFiles = result.filter(Boolean);
     if (outdatedFiles.length > 0) {
-      log(
-        picocolors.red(
-          `The following files are outdated and need to be translated:\n${outdatedFiles
-            .map((file) => `  - ${file}`)
-            .join('\n')}`
-        )
+      exit(
+        `The following files are outdated and need to be translated:\n${outdatedFiles
+          .map((file) => `  - ${file}`)
+          .join('\n')}`
       );
-      exit(1);
     }
 
     log(picocolors.green('All files are up to date.'));

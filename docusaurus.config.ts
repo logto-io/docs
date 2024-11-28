@@ -126,6 +126,11 @@ const config: Config = {
     [
       'classic',
       {
+        sitemap: {
+          changefreq: 'weekly',
+          // Tutorial pages are not translated. Ignore them.
+          ignorePatterns: ['blog/**', 'tutorial/tags/**', '*/tutorial/**'],
+        },
         docs: {
           routeBasePath: '/',
           breadcrumbs: true,
