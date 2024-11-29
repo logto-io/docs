@@ -1,6 +1,8 @@
 import { useDocsSidebar } from '@docusaurus/plugin-content-docs/client';
 import ThemedImage from '@theme/ThemedImage';
 
+import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
+
 import styles from './index.module.scss';
 
 type Category = {
@@ -27,7 +29,8 @@ type Props = {
  * Note: This component is only available in the "Quick starts" and "Integrations" tabs of the documentation.
  */
 const Gallery = ({ path }: Props) => {
-  const guideItemPath = `/${path}/`;
+  const prefix = useCurrentLocalePrefix();
+  const guideItemPath = prefix + `/${path}/`;
   const sidebar = useDocsSidebar();
 
   if (!sidebar) {
@@ -100,12 +103,12 @@ const Gallery = ({ path }: Props) => {
                   className={styles.logo}
                   alt="Logo"
                   sources={{
-                    light: `/img/logo/${item.logoFilename}`,
-                    dark: `/img/logo/${item.darkLogoFilename ?? item.logoFilename}`,
+                    light: `${prefix}/img/logo/${item.logoFilename}`,
+                    dark: `${prefix}/img/logo/${item.darkLogoFilename ?? item.logoFilename}`,
                   }}
                   onError={({ currentTarget }) => {
                     // eslint-disable-next-line @silverhand/fp/no-mutation
-                    currentTarget.src = '/img/logo/broken-image.svg';
+                    currentTarget.src = prefix + '/img/logo/broken-image.svg';
                   }}
                 />
                 <span className={styles.title}>{item.label}</span>
