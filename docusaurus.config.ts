@@ -9,6 +9,13 @@ import remarkMath from 'remark-math';
 
 import { generateConnectorGuides } from './docs/integrations/generate';
 
+const defaultLocale = 'en';
+
+// A workaround for locale-specific values in the config
+// https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
+const currentLocale = process.env.DOCUSAURUS_CURRENT_LOCALE ?? defaultLocale;
+const localePath = currentLocale === defaultLocale ? '' : currentLocale;
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
@@ -141,7 +148,7 @@ const injectHeadTagsPlugin: PluginConfig = () => ({
 
 const config: Config = {
   title: 'Logto docs',
-  url: 'https://docs.logto.io',
+  url: 'https://docs.logto.io/',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -210,7 +217,7 @@ const config: Config = {
         alt: 'Logto Logo',
         src: 'img/logto.svg',
         srcDark: 'img/logto_dark.svg',
-        href: 'https://logto.io',
+        href: new URL(localePath, 'https://logto.io/').href,
       },
       items: [
         {
