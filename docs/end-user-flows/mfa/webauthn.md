@@ -2,9 +2,11 @@
 sidebar_position: 3
 ---
 
-# WebAuthn (Passkeys)
+# Passkeys (WebAuthn)
 
-WebAuthn provides a more secure and user-friendly alternative to traditional passwords. By using public-key cryptography, WebAuthn enhances security by linking the user's device, the service domain, and the user ID, effectively countering phishing and password attacks. Compatible with various devices or browsers, and allows users to employ biometrics and hardware security features for convenient authentication. Logto now supports WebAuthn for Multi-Factor Authentication (MFA).
+[Passkey](https://auth.wiki/passkey) provides a more secure and user-friendly alternative to traditional passwords. By using public-key cryptography, passkey enhances security by linking the user's device, the service domain, and the user ID, effectively countering phishing and password attacks. Compatible with various devices or browsers, and allows users to employ biometrics and hardware security features for convenient authentication. [WebAuthn](https://auth.wiki/webauthn) provide the API to allow websites to implement passkey.
+
+Logto now supports passkey(Webauthn) for Multi-Factor Authentication (MFA). Passkey sign-in feature in coming soon. Please stay tuned for updates.
 
 ## Concepts
 
@@ -28,14 +30,14 @@ It's essential to be aware of some limitations when implementing WebAuthn:
 2. **Domain limitation**: Changing the domain can hinder user verification through their existing WebAuthn accounts. Passkeyss are bound to the specific domain of the current web page and cannot be used across different domains.
 3. **Device limitation**: Losing the device can result in a loss of access to their accounts, especially for those relying on "This device" Platform Authenticators. To enhance authentication access, it's advisable to provide users with more than one authentication factor.
 
-## Auth flows
+## Authentication flows
 
 The Passkeys specification requires users to actively click the button on the current page to initiate the authentication component. This means that in both the setup and verification flows, users should be redirected to the landing page to initiate WebAuthn.
 
-- **Setup flows**
+- **Passkey setup flows**
 
 ![WebAuthn setup flow](./assets/webauthn-setup-flow.png)
 
-- **Verification flows**
+- **Passkey verification flows**
 
 ![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
