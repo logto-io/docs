@@ -19,6 +19,15 @@ const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const cfPagesBranch = process.env.CF_PAGES_BRANCH;
+
+console.log('#### Deploying branch ####', cfPagesBranch);
+
+const getLogtoDocsUrl = () =>
+  cfPagesBranch && !['production', 'master'].includes(cfPagesBranch)
+    ? `https://${cfPagesBranch}.logto-docs.pages.dev/`
+    : 'https://docs.logto.io/';
+
 const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
 
 const addAliasPlugin: PluginConfig = () => ({
@@ -149,7 +158,7 @@ const injectHeadTagsPlugin: PluginConfig = () => ({
 
 const config: Config = {
   title: 'Logto docs',
-  url: 'https://docs.logto.io/',
+  url: getLogtoDocsUrl(),
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
