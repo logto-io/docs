@@ -151,7 +151,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'zh-CN', 'fr', 'de'],
+    locales: ['de', 'en', 'fr', 'zh-CN'],
   },
 
   markdown: {
@@ -207,7 +207,7 @@ const config: Config = {
   themeConfig: {
     navbar: {
       logo: {
-        alt: 'Silverhand Logo',
+        alt: 'Logto Logo',
         src: 'img/logto.svg',
         srcDark: 'img/logto_dark.svg',
         href: 'https://logto.io',
