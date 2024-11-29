@@ -1,0 +1,121 @@
+---
+slug: /quick-starts/wordpress
+sidebar_label: WordPress
+sidebar_custom_props:
+  description: WordPress é um sistema de gerenciamento de conteúdo gratuito e de código aberto.
+---
+
+import FurtherReadings from '../../fragments/_further-readings.md';
+
+# Adicionar autenticação ao seu aplicativo WordPress
+
+Este tutorial mostrará como integrar o Logto ao seu site [Wordpress](https://wordpress.org).
+
+## Pré-requisitos
+
+- Uma conta no [Logto Cloud](https://cloud.logto.io) ou um [Logto auto-hospedado](/introduction/set-up-logto-oss).
+- Um aplicativo tradicional Logto criado.
+- Um projeto WordPress: siga o guia oficial de [instalação do WordPress](https://wordpress.org/support/article/how-to-install-wordpress/) para configurar seu site WordPress antes de prosseguir.
+
+## Integração
+
+### Instalar o plugin
+
+Usaremos o plugin [OpenID Connect Generic](https://wordpress.org/plugins/generic-openid-connect/) para integrar o Logto via protocolo OIDC ao seu site WordPress.
+
+1. Faça login no seu site WordPress.
+2. Navegue até "Plugins" e clique em "Adicionar Novo".
+3. Procure por "OpenID Connect Generic" e instale o plugin de daggerhart.
+4. Ative o plugin.
+
+### Configurar o URI de redirecionamento
+
+Primeiro, vamos configurar o URI de redirecionamento. Você pode encontrá-lo nas configurações do plugin, role para baixo até a seção "Notas" e copie o valor "Redirect URI".
+
+Mude para a página de detalhes do aplicativo no Logto Console. Adicione um Redirect URI e clique em "Salvar alterações".
+
+### Configurar o plugin
+
+Consulte a tabela a seguir para os detalhes de configuração necessários:
+
+| Campo do Plugin               | Descrição                                                                                                                                                                                                   |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Client ID                     | O ID do aplicativo do seu aplicativo Logto                                                                                                                                                                  |
+| Client Secret                 | O segredo do aplicativo do seu aplicativo Logto                                                                                                                                                             |
+| OpenID Scope                  | Insira `email profile openid offline_access`                                                                                                                                                                |
+| Login Endpoint URL            | A URL do endpoint de autorização do seu aplicativo Logto, que é https://[tenant-id].logto.app/oidc/auth, você pode clicar em "mostrar detalhes do endpoint" na página do aplicativo Logto para obter a URL. |
+| Userinfo Endpoint URL         | A URL do endpoint de informações do usuário do seu aplicativo Logto, que é https://[tenant-id].logto.app/oidc/me.                                                                                           |
+| Token Validation Endpoint URL | A URL do endpoint de validação de token do seu aplicativo Logto, que é https://[tenant-id].logto.app/oidc/token.                                                                                            |
+| End Session Endpoint URL      | A URL do endpoint de encerramento de sessão do seu aplicativo Logto, que é https://[tenant-id].logto.app/oidc/session/end.                                                                                  |
+| Identity Key                  | A chave única no Token de ID que contém a identidade do usuário, pode ser email ou sub, dependendo da sua configuração.                                                                                     |
+| Nickname Key                  | A chave no Token de ID que contém o apelido do usuário, você pode defini-la como sub e alterá-la posteriormente.                                                                                            |
+
+### Ponto de verificação: Teste seu aplicativo
+
+Agora, você pode testar seu aplicativo:
+
+1. Saia do seu site WordPress.
+2. Visite a página de login do WordPress e clique no botão "Sign in with Logto".
+3. Você será redirecionado para a página de login do Logto.
+4. Faça login com sua conta Logto.
+5. Você será redirecionado de volta para o site WordPress e logado automaticamente.
+
+## Mapeamento de papéis
+
+O WordPress possui um sistema de gerenciamento de papéis de usuário embutido que define quais ações (capacidades) um usuário pode realizar em um site. Os papéis de usuário padrão incluem Administrador, Editor, Autor, Colaborador e Assinante, cada um com seu próprio conjunto de capacidades.
+
+O Logto emprega o Controle de Acesso Baseado em Papel (RBAC) como seu modelo de autorização, utilizando "escopos" como a menor unidade de permissão. Esses escopos definem as ações específicas que um usuário autenticado pode realizar dentro de um aplicativo. No entanto, o WordPress opera em um princípio diferente para gerenciar permissões de usuário, confiando em "papéis" predefinidos que agrupam várias capacidades juntas.
+
+Dada essa diferença fundamental, sugerimos criar papéis especiais dentro do Logto que correspondam aos papéis definidos no WordPress. Esses papéis podem não ter nenhum escopo, eles são usados apenas como referência para mapear usuários para papéis do WordPress.
+
+### Pré-requisitos
+
+- Configure papéis no Logto que correspondam aos papéis no WordPress. Por exemplo, se você tiver um papel 'editor' no WordPress, crie um papel 'group:editors' no Logto.
+
+### Implementar mapeamento de papéis
+
+Para implementar o mapeamento de papéis, adicionaremos código personalizado ao arquivo `functions.php` do tema do WordPress. Isso envolve o uso do gancho de ação `wp_login`, que é acionado quando um usuário faz login. Aqui está um guia passo a passo sobre como configurar isso:
+
+### Passo 1: acesse o functions.php do seu tema
+
+Abra o arquivo `functions.php` do seu tema. Você pode acessar este arquivo através do painel de administração do WordPress navegando até Aparência > Editor de Tema e selecionando `functions.php` na lista de arquivos à direita. Ou no código-fonte, navegue até o diretório do tema do WordPress e localize o arquivo `functions.php`. Este arquivo permite que você adicione funções PHP personalizadas que estendem a funcionalidade do seu site WordPress.
+
+### Passo 2: escreva a função de mapeamento de papéis
+
+Abaixo está um exemplo simples de uma função que você pode adicionar ao functions.php. Esta função será acionada no login do usuário e atribuirá papéis com base na reivindicação `roles` do usuário obtida do Logto.
+
+```php
+function logto_handler($user_login, $user = null) {
+	if (!$user) {
+		$user = get_user_by('login', $user_login);
+	}
+
+	$oidc_claims = get_user_meta($user->ID, 'openid-connect-generic-last-user-claim', true);
+
+	if (in_array('group:editors', $oidc_claims['roles'])) {
+		$user->set_role('editor');
+	} else {
+		$user->set_role('subscriber');
+	}
+}
+
+add_action('wp_login', 'logto_handler', 10, 2);
+```
+
+### Passo 3: entendendo o código e personalizando-o
+
+- Função `logto_handler`: Esta função recebe dois parâmetros: `$user_login` (nome de usuário) e `$user` (objeto usuário). Ela recupera papéis do Logto que estão armazenados como `openid-connect-generic-last-user-claim` nos metadados do usuário, mapeia esse papel para um papel correspondente do WordPress e o atribui ao usuário.
+
+- `add_action`: Esta linha conecta a função `logto_handler` à ação `wp_login`, que é acionada após um usuário fazer login. O `10` é a prioridade (padrão), e `2` indica o número de argumentos que a função aceita.
+
+O exemplo acima atribui o papel 'editor' aos usuários autenticados via Logto com o nome de papel `group:editors`. No entanto, em um cenário real, você provavelmente precisará implementar mais tipos de mapeamentos de papéis.
+
+Você pode encontrar a lista de papéis do WordPress e suas capacidades [aqui](https://wordpress.org/support/article/roles-and-capabilities/).
+
+### Passo 4: teste sua configuração
+
+Agora, vamos testar a função de mapeamento de papéis fazendo login com um usuário que tenha o papel `group:editors` no Logto. Após o login, verifique o papel do usuário no WordPress para garantir que o mapeamento esteja funcionando corretamente.
+
+## Leituras adicionais
+
+<FurtherReadings />

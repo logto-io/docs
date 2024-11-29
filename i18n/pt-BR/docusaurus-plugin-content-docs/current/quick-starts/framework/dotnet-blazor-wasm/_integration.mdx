@@ -1,0 +1,148 @@
+import CodeBlock from '@theme/CodeBlock';
+
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris, {
+  defaultBaseUrl,
+  defaultRedirectUri,
+} from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+### Adicionar referências de script
+
+Inclua `Blorc.Core/injector.js` no arquivo `index.html`:
+
+```html title="index.html"
+<head>
+  <!-- ... -->
+  <script src="_content/Blorc.Core/injector.js"></script>
+  <!-- ... -->
+</head>
+```
+
+### Registrar serviços
+
+Adicione o seguinte código ao arquivo `Program.cs`:
+
+```csharp title="Program.cs"
+using Blorc.OpenIdConnect;
+using Blorc.Services;
+
+builder.Services.AddBlorcCore();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddBlorcOpenIdConnect(
+    options =>
+    {
+        builder.Configuration.Bind("IdentityServer", options);
+    });
+
+var webAssemblyHost = builder.Build();
+
+await webAssemblyHost
+    .ConfigureDocumentAsync(async documentService =>
+    {
+        await documentService.InjectBlorcCoreJsAsync();
+        await documentService.InjectOpenIdConnectAsync();
+    });
+
+await webAssemblyHost.RunAsync();
+```
+
+:::info
+Não há necessidade de usar o pacote `Microsoft.AspNetCore.Components.WebAssembly.Authentication`. O pacote `Blorc.OpenIdConnect` cuidará do processo de autenticação.
+:::
+
+### Configurar URIs de redirecionamento
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Configurar aplicativo
+
+Adicione o seguinte código ao arquivo `appsettings.json`:
+
+<CodeBlock language="json5" title="appsettings.json">
+  {`{
+  // ...
+  IdentityServer: {
+    Authority: 'https://<your-logto-endpoint>/oidc',
+    ClientId: '<your-logto-app-id>',
+    PostLogoutRedirectUri: '${defaultBaseUrl}',
+    RedirectUri: '${defaultRedirectUri}',
+    ResponseType: 'code',
+    Scope: 'openid profile', // Adicione mais escopos se necessário
+  },
+}`}
+</CodeBlock>
+
+Lembre-se de adicionar o `RedirectUri` e o `PostLogoutRedirectUri` à lista de URIs de redirecionamento permitidos nas configurações do aplicativo Logto. Ambos são a URL do seu aplicativo WASM.
+
+### Adicionar componente `AuthorizeView`
+
+Nas páginas Razor que requerem autenticação, adicione o componente `AuthorizeView`. Vamos supor que seja a página `Home.razor`:
+
+```cshtml title="Pages/Home.razor"
+@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        @* Visualização autenticada *@
+        <button @onclick="OnLogoutButtonClickAsync">
+            Sair
+        </button>
+    </Authorized>
+    <NotAuthorized>
+        @* Visualização não autenticada *@
+        <button @onclick="OnLoginButtonClickAsync">
+            Entrar
+        </button>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### Configurar autenticação
+
+No arquivo `Home.razor.cs` (crie-o se não existir), adicione o seguinte código:
+
+```csharp title="Pages/Home.razor.cs"
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Blorc.OpenIdConnect;
+using Microsoft.AspNetCore.Components.Authorization;
+
+[Authorize]
+public partial class Home : ComponentBase
+{
+    [Inject]
+    public required IUserManager UserManager { get; set; }
+
+    public User<Profile>? User { get; set; }
+
+    [CascadingParameter]
+    protected Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await UserManager.GetUserAsync<User<Profile>>(AuthenticationStateTask!);
+    }
+
+    private async Task OnLoginButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignInRedirectAsync();
+    }
+
+    private async Task OnLogoutButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignOutRedirectAsync();
+    }
+}
+```
+
+Uma vez que o usuário é autenticado, a propriedade `User` será preenchida com as informações do usuário.
+
+<Checkpoint />

@@ -1,0 +1,259 @@
+---
+slug: /quick-starts/flutter-flow
+sidebar_label: FlutterFlow
+sidebar_custom_props:
+  description: FlutterFlow é um framework de baixo código para construir aplicativos híbridos em Flutter.
+---
+
+import InitCustomAuthManagerCode from './code-snippets/_flutter-flow-auth-manager-init.md';
+import AuthUserProviderCode from './code-snippets/_flutter-flow-auth-user-provider.md';
+import FlutterSecureStorageCode from './code-snippets/_flutter-secure-storage.md';
+import FlutterWebAuthCode from './code-snippets/_flutter-web-auth.md';
+import flutterFlowCustomAuth from './flutter-flow-custom-authentication.png';
+import flutterFlowGitHub from './flutter-flow-github-push.png';
+
+# Personalizar o FlutterFlow CustomAuthManager usando Logto SDK
+
+FlutterFlow possui um recurso de [autenticação personalizada](https://docs.flutterflow.io/data-and-backend/custom-authentication) embutido que permite autenticar usuários usando seu próprio backend. No entanto, o fluxo de autenticação personalizada embutido foi projetado para funcionar com uma única chamada de API de autenticação. Se você estiver usando um Provedor de Identidade (IdP) de terceiros, a solicitação de autenticação só pode ser feita usando o tipo de concessão `Resource Owner Password Credentials`, o que não é recomendado para uso em produção. Veja [Tipo de concessão ropc obsoleto](https://blog.logto.io/deprecated-ropc-grant-type/) para mais detalhes.
+
+Um fluxo de autenticação padrão OpenID Connect (OIDC) envolve várias etapas, como autorização, troca de tokens e recuperação de informações do usuário. Para implementar um fluxo de autenticação OIDC padrão com um IdP como Logto, você precisa personalizar a classe `CustomAuthManager` no FlutterFlow.
+
+Este tutorial mostrará como personalizar a classe `CustomAuthManager` no FlutterFlow usando o Logto [Flutter SDK](../flutter/README.mdx). Você pode aproveitar o Logto SDK para o fluxo de autenticação OIDC padrão enquanto mantém os benefícios do construtor de interface do FlutterFlow.
+
+:::tip
+
+- O pacote Logto SDK está disponível no [pub.dev](https://pub.dev/packages/logto_dart_sdk) e no repositório [github do Logto](https://github.com/logto-io/dart).
+- O SDK atualmente é adequado apenas para plataformas Android e iOS.
+
+:::
+
+## Pré-requisitos
+
+- Uma conta [Logto Cloud](https://cloud.logto.io) ou um [Logto auto-hospedado](/introduction/set-up-logto-oss).
+- Criar um aplicativo Logto Flutter.
+- Um projeto FlutterFlow.
+
+## Habilitar código personalizado no FlutterFlow
+
+Para personalizar a classe `CustomAuthManager`, você precisa habilitar o recurso de código personalizado no FlutterFlow. Siga o guia [Gerenciar Código Personalizado no GitHub](https://docs.flutterflow.io/customizing-your-app/manage-custom-code-in-github) para sincronizar seu projeto FlutterFlow com o GitHub.
+
+:::note
+Gerenciar código personalizado no GitHub é um recurso premium no FlutterFlow. Você precisa atualizar seu FlutterFlow para o plano pro para habilitar esse recurso.
+:::
+
+Uma vez feito isso, você terá três branches diferentes no seu repositório GitHub FlutterFlow:
+
+1. `main`: A branch principal para o projeto flutter. Você precisará dessa branch para implantar seu projeto.
+2. `flutterflow`: A branch onde o `FlutterFlow` sincronizará as alterações do editor FlutterFlow.
+3. `develop`: A branch onde você pode modificar seu código personalizado.
+
+## Crie sua interface no FlutterFlow
+
+Primeiro, crie sua interface no FlutterFlow. Você pode seguir a [documentação do FlutterFlow](https://docs.flutterflow.io/) para criar sua interface com base em seus requisitos. Para este tutorial, como requisito mínimo, criaremos duas páginas:
+
+1. Uma página inicial simples com um botão de login.
+2. Uma página de perfil do usuário para exibir informações do usuário e botão de logout.
+
+Vá para `App Settings` -> página `Authentication` e habilite a autenticação personalizada. Isso criará uma classe `CustomAuthManager` no seu projeto FlutterFlow.
+
+<center>
+  <img src={flutterFlowCustomAuth} alt="Autenticação personalizada do FlutterFlow" />
+</center>
+
+Uma vez que você tenha a interface pronta, navegue até `integrations` -> página `GitHub` e clique no botão `Push to Repository` para enviar as alterações para a branch `flutterflow`.
+
+<center>
+  <img src={flutterFlowGitHub} alt="Envio para o GitHub do FlutterFlow" />
+</center>
+
+## Personalizar o CustomAuthManager
+
+Mude para a branch `develop` no seu repositório GitHub e mescle as últimas alterações da branch `flutterflow`. Incluindo suas páginas de interface e a classe `CustomAuthManager` pré-construída.
+
+### Instalar a dependência do Logto SDK
+
+Adicione a dependência do Logto SDK ao seu projeto.
+
+```bash
+  flutter pub add logto_dart_sdk
+```
+
+:::note
+Pacote Http opcional:
+
+O cliente Logto requer um cliente http para fazer chamadas de API. Você pode usar o pacote `http` ou qualquer outro pacote de cliente http de sua escolha.
+
+```bash
+  flutter pub add http
+```
+
+:::
+
+### Atualizar o UserProvider
+
+Adicione a classe `OpenIdClaims` à classe `CustomAuthUserProvider` para armazenar as informações do usuário.
+
+> A classe `OpenIdClaims` faz parte do Logto SDK, que fornecerá as reivindicações do `id_token` para o usuário autenticado.
+
+<AuthUserProviderCode />
+
+### Inicializar o cliente logto no CustomAuthManager
+
+Inicialize o cliente Logto na classe `CustomAuthManager`.
+
+<InitCustomAuthManagerCode />
+
+O método `initialize` inicializará o cliente Logto e atualizará o fluxo de usuário atual com o status de autenticação do usuário persistido no armazenamento local.
+
+> O Logto SDK usa o pacote [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) para armazenar as informações de autenticação do usuário de forma segura.
+
+### Implementar o método de login
+
+Chame o método `LogtoClient.signIn` para iniciar um fluxo de autenticação OIDC padrão. A página de login do Logto será aberta em uma webview usando [flutter_web_auth](https://pub.dev/packages/flutter_web_auth).
+
+```dart
+// lib/auth/custom_auth/custom_auth_manager.dart
+
+Future<FlutterFlowAuthAuthUser?> signIn(
+    String redirectUri,
+  ) async {
+    await logtoClient.signIn(redirectUri);
+
+    var idTokenClaims = await logtoClient.idTokenClaims;
+
+    return _updateCurrentUser(
+      loggedIn: idTokenClaims != null,
+      uid: idTokenClaims?.subject,
+      idToken: idTokenClaims,
+    );
+  }
+
+```
+
+O LogtoClient lidará com as etapas de autorização, troca de tokens e recuperação de informações do usuário. Uma vez que o usuário é autenticado, as `idTokenClaims` serão armazenadas no armazenamento local.
+Recupere as `idTokenClaims` do LogtoClient e atualize o fluxo de usuário atual.
+
+### Implementar o método de logout
+
+```dart
+// lib/auth/custom_auth/custom_auth_manager.dart
+
+Future signOut() async {
+    await logtoClient.signOut();
+
+    flutterFlowAuthAuthUserSubject.add(
+      FlutterFlowAuthAuthUser(loggedIn: false),
+    );
+  }
+```
+
+### Atualizar os métodos utilitários de autenticação
+
+- Adicione o getter `authManager` para acessar a instância do `CustomAuthManager`.
+- Adicione o getter `currentUserUid` para obter o uid do usuário atual.
+- Adicione o getter `currentUserData` para obter os dados do usuário atual.
+- Adicione o getter `logtoClient` para acessar a instância do cliente Logto.
+
+```dart
+// lib/auth/custom_auth/auth_util.dart
+
+import 'package:logto_dart_sdk/logto_client.dart';
+import 'package:logto_dart_sdk/src/modules/id_token.dart';
+
+import 'custom_auth_manager.dart';
+
+export 'custom_auth_manager.dart';
+
+final _authManager = CustomAuthManager();
+CustomAuthManager get authManager => _authManager;
+String get currentUserUid => currentUser?.uid ?? '';
+OpenIdClaims? get currentUserData => currentUser?.idToken;
+LogtoClient get logtoClient => _authManager.logtoClient;
+```
+
+## Integrar a autenticação personalizada na sua interface
+
+### Página Inicial
+
+Chame o método `authManager.signIn` para iniciar o fluxo de autenticação quando o usuário clicar no botão de login.
+
+> `redirectUri` é a URL de callback que será usada para capturar o callback de autorização da página de login do Logto.
+> Veja o [Flutter SDK](../flutter/README.mdx#implement-sign-in) para mais detalhes sobre o redirectUri.
+
+```dart
+// lib/pages/home_page/home_page_widget.dart
+
+final redirectUri = 'io.logto://callback';
+
+// ...
+
+FFButtonWidget(
+  onPressed: () async {
+    GoRouter.of(context).prepareAuthEvent();
+
+    await authManager.signIn(redirectUri);
+
+    context.replaceNamed('user');
+  },
+  text: 'Sign In',
+  // ...
+)
+```
+
+### Página de Perfil do Usuário
+
+Use os getters utilitários de autenticação para acessar os dados do usuário atual e a instância do cliente Logto.
+
+```dart
+// lib/pages/user/user_widget.dart
+
+import '/auth/custom_auth/auth_util.dart';
+
+// ...
+
+children: [
+  Text(
+    'User ID: $currentUserUid',
+  ),
+  Text(
+    'Display Name: ${currentUserData?.name}',
+  ),
+  Text(
+    'Username: ${currentUserData?.username}',
+  ),
+  Text(
+    'Email: ${currentUserData?.emailVerified ?? currentUserData?.email}',
+  ),
+]
+
+```
+
+Implemente o método de logout quando o usuário clicar no botão de logout.
+
+```dart
+// lib/pages/user/user_widget.dart
+
+FFButtonWidget(
+  onPressed: () async {
+    await authManager.signOut();
+
+    context.replaceNamed('HomePage');
+  },
+  text: 'Sign Out',
+  // ...
+)
+```
+
+## Leituras adicionais
+
+O Logto SDK fornece mais métodos para interagir com a API do Logto. Você pode personalizar ainda mais a classe `CustomAuthManager` para implementar mais recursos.
+
+- [Perfil do Usuário](../flutter/README.mdx#get-user-information)
+- [Recursos de API](../flutter/README.mdx#api-resources)
+- [Organização](../flutter/README.mdx#organization)
+
+## Solução de problemas de dependência
+
+<FlutterSecureStorageCode />
+
+<FlutterWebAuthCode />

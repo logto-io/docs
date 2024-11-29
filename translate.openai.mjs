@@ -88,7 +88,11 @@ export class OpenAiTranslate {
    */
   async translate(content, target, task) {
     if (!sampleTranslations[target]) {
-      throw new Error(`No sample translation found for locale "${target}"`);
+      log(
+        picocolors.yellow(
+          `No sample translation found for locale "${target}", the translation quality may vary.`
+        )
+      );
     }
 
     const stream = await this.openai.chat.completions.create({
@@ -102,18 +106,23 @@ export class OpenAiTranslate {
             .concat(this.instructions)
             .join('\n'),
         },
-        {
-          role: 'user',
-          content: sampleInput,
-        },
-        {
-          role: 'assistant',
-          content: sampleTranslations[target],
-        },
-        {
-          role: 'system',
-          content: 'Continue translating the content, be consistent with the previous translation.',
-        },
+        ...(sampleTranslations[target]
+          ? [
+              {
+                role: 'user',
+                content: sampleInput,
+              },
+              {
+                role: 'assistant',
+                content: sampleTranslations[target],
+              },
+              {
+                role: 'system',
+                content:
+                  'Continue translating the content, be consistent with the previous translation.',
+              },
+            ]
+          : []),
         {
           role: 'user',
           content,

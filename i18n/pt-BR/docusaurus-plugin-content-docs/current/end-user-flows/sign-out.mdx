@@ -1,0 +1,198 @@
+---
+sidebar_position: 6
+---
+
+# Logout
+
+O processo de logout no Logto (como um provedor de identidade baseado em OIDC) é um conceito multifacetado devido ao envolvimento tanto da sessão de login centralizada gerenciada pelo Logto quanto do status de autenticação distribuído gerenciado pelas aplicações cliente.
+
+## Sessão de login
+
+Para entender melhor o processo de logout, é importante primeiro entender como as sessões de login do usuário e seu status de autenticação são gerenciados no Logto.
+
+```mermaid
+  sequenceDiagram
+    autonumber
+    actor User
+
+    box Relying Party (RP)
+      participant Client as Aplicativo cliente
+    end
+
+    box Logto (IdP)
+      participant OIDC as Provedor OIDC
+      participant SignIn as Página de login
+    end
+
+    User ->> Client: Acessar aplicativo web
+    Client ->> OIDC: Redirecionar usuário para OIDC para autenticação
+    OIDC -->> OIDC: Verificar sessão de login do usuário
+    OIDC ->> SignIn: Solicitar que o usuário faça login
+    SignIn ->> OIDC: Identificar usuário e enviar o resultado da interação
+    OIDC -->> OIDC: Estabelecer sessão de login do usuário e concessão de autenticação
+    OIDC ->> Client: Redirecionar usuário de volta ao aplicativo web com código de autenticação (Fluxo de Código de Autorização)
+    Client ->> OIDC: Trocar o código por tokens
+    OIDC -->> Client: Retornar tokens
+```
+
+1. O usuário acessa o aplicativo web (RP).
+2. O aplicativo cliente redireciona o usuário para o Logto (IdP) para [autenticação (Authentication)](https://auth.wiki/authentication).
+3. O provedor OIDC verifica o status da sessão de login do usuário. Se não houver sessão ou a sessão tiver expirado, o usuário é solicitado a fazer login.
+4. O usuário interage com a página de login para ser autenticado.
+5. Após o login bem-sucedido, o Logto cria uma nova sessão para o usuário e redireciona de volta para o aplicativo cliente com um código de autorização.
+6. O provedor OIDC cria uma nova sessão de login e concessão de autenticação para o usuário.
+7. O provedor OIDC redireciona o usuário de volta ao cliente com um código de autenticação ([Fluxo de Código de Autorização](https://auth.wiki/authorization-code-flow)).
+8. O cliente recebe o código de autenticação e o troca por tokens para acessar as informações do usuário.
+9. Conceder tokens ao aplicativo cliente.
+
+## Componentes
+
+### Sessão de login centralizada gerenciada pelo Logto
+
+No fluxo acima, a sessão de login centralizada é gerenciada pelo Logto. A sessão é criada quando o usuário faz login com sucesso e é destruída quando o usuário faz logout. A sessão também é destruída quando a sessão do usuário expira.
+
+A sessão de login do Logto é gerenciada usando cookies de sessão. O cookie de sessão é definido quando o usuário faz login. Todas as solicitações de autenticação são validadas em relação ao cookie de sessão. Se o cookie de sessão estiver presente e válido, o usuário será automaticamente autenticado e redirecionado diretamente para o aplicativo cliente com o código de autorização. Caso contrário, o usuário será solicitado a fazer login.
+
+1. Cookie de sessão compartilhado do Logto
+   Para um usuário que faz login em vários aplicativos cliente a partir do mesmo agente de usuário (por exemplo, navegador), o usuário terá um cookie de sessão compartilhado sob o domínio do Logto. Isso significa que o usuário só precisa fazer login uma vez e será automaticamente autenticado para outros aplicativos cliente.
+
+   ```mermaid
+    flowchart TD
+    subgraph User [Agente de usuário A]
+      U[Usuário]
+
+      subgraph Layer1 [Domínio do cliente A]
+        A[Aplicativo Cliente A]
+      end
+
+      subgraph Layer1 [Domínio do cliente B]
+        B[Aplicativo Cliente B]
+      end
+
+      subgraph Layer2 [Domínio do Logto]
+          C{{Sessão de login do Logto?}}
+          D[Página de login]
+      end
+    end
+
+    U --> |Login| A
+    A --> |Redirecionar para Logto| C
+    U --> |Login| B
+    B --> |Redirecionar para Logto| C
+    C --> |Não| D
+    D --> |Criar sessão| C
+   ```
+
+2. Cookie de sessão isolado do Logto
+   Para um usuário que faz login em diferentes aplicativos cliente a partir de diferentes dispositivos ou navegadores, o usuário terá cookies de sessão isolados sob o domínio do Logto. Isso significa que o usuário precisa fazer login separadamente para cada aplicativo cliente.
+
+   ```mermaid
+    flowchart TD
+    U[Usuário]
+
+    subgraph DeviceA [Agente de usuário A]
+      subgraph Layer1 [Domínio do cliente A]
+        A[Aplicativo Cliente A]
+      end
+
+      subgraph Layer2 [Domínio do Logto]
+          C{{Sessão de login do Logto?}}
+          D[Página de login]
+      end
+    end
+
+    subgraph DeviceB [Agente de usuário B]
+      subgraph Layer3 [Domínio do cliente B]
+        B[Aplicativo Cliente B]
+      end
+
+      subgraph Layer4 [Domínio do Logto]
+          E{{Sessão de login do Logto?}}
+          F[Página de login]
+      end
+    end
+
+    U --> |Login| A
+    A --> |Redirecionar para Logto| C
+    U --> |Login| B
+    B --> |Redirecionar para Logto| E
+    C --> |Não| D
+    E --> |Não| F
+    D --> |Criar sessão| C
+    F --> |Criar sessão| E
+   ```
+
+## Status de autenticação distribuído gerenciado pelas aplicações cliente
+
+Cada aplicativo cliente mantém seu próprio status de autenticação. Seja um aplicativo nativo, SPA ou web, todos têm sua própria maneira de gerenciar o status de autenticação do usuário.
+
+Após o login bem-sucedido, o aplicativo cliente pode receber um [Token de ID (ID token)](https://auth.wiki/id-token) e um [Token de acesso (Access token)](https://auth.wiki/access-token). O aplicativo cliente pode usar o Token de ID para determinar a identidade do usuário e o Token de acesso para acessar os recursos do usuário. O status de autenticação do usuário é representado pelo tempo de expiração do Token de acesso.
+
+- Aplicativos nativos e SPA:
+  O aplicativo cliente precisa armazenar e gerenciar esses tokens de forma segura para manter o status de autenticação do usuário. Por exemplo, armazenar os tokens no armazenamento local ou de sessão e limpar os tokens quando o usuário fizer logout.
+- Aplicativos web:
+  Aplicativos web, como aqueles construídos com frameworks como Next.js, geralmente gerenciam sua própria sessão para usuários logados juntamente com os tokens emitidos pelo Logto. Uma vez que o usuário faz login e o aplicativo web recebe os tokens do Logto, ele pode armazenar os tokens no lado do cliente, assim como aplicativos SPA, ou pode armazenar os tokens no lado do servidor e gerenciar a sessão usando cookies ou outros mecanismos.
+
+## Mecanismos de logout
+
+### Limpar tokens e sessão local no lado do cliente
+
+No lado do cliente, um logout simples envolve limpar a sessão local e remover tokens (Token de ID, Token de acesso, Token de atualização) do armazenamento local ou de sessão. Isso resulta em um logout apenas no lado do cliente, onde a sessão centralizada permanece intacta. Usuários que fazem logout dessa maneira ainda podem acessar outros aplicativos sob a mesma sessão do servidor de autorização até que a sessão centralizada expire ou seja ativamente destruída.
+
+### Limpar sessão de login no Logto
+
+Para explicitamente fazer logout do usuário e limpar a sessão no Logto, o aplicativo cliente precisa redirecionar o usuário para o **endpoint de término de sessão** do Logto.
+
+Por exemplo, `https://{seu-domínio-logto}/oidc/session/end`
+
+O **endpoint de término de sessão** é um endpoint padrão do OIDC que permite que o aplicativo cliente notifique o servidor de autorização que o usuário fez logout. O endpoint limpará a sessão de login centralizada no Logto.
+
+Uma vez que a sessão é limpa, qualquer solicitação de autorização subsequente exigirá que o usuário faça login novamente.
+
+Se um **URI de redirecionamento pós-logout** for fornecido, o usuário será redirecionado para o URI especificado após a sessão ser limpa. Caso contrário, o usuário será redirecionado para a página padrão de pós-logout hospedada pelo Logto.
+
+## Logout federado: Logout de back-channel
+
+Para um gerenciamento de logout mais consistente, o Logto suporta [logout de back-channel](https://openid.net/specs/openid-connect-backchannel-1_0-final.html). O logout de back-channel é um mecanismo que permite ao Logto notificar todos os aplicativos cliente sob a mesma sessão de login quando o usuário faz logout.
+
+Isso é particularmente útil em cenários onde o usuário faz logout de um aplicativo cliente e espera ser desconectado de todos os outros aplicativos cliente sob a mesma sessão de login do Logto.
+
+Para habilitar o logout de back-channel para seus aplicativos cliente, vá para a página de detalhes do aplicativo no painel do Logto e registre um URI de logout de back-channel. O Logto enviará um token de logout para todos os URI registrados quando o usuário iniciar uma solicitação de logout de qualquer aplicativo cliente.
+
+Se o seu aplicativo cliente exigir que a sessão de login seja incluída no token de logout, ative as configurações `Is session required` na configuração de logout de back-channel. Uma reivindicação `sid` será incluída no token de logout para identificar a sessão de login do usuário no Logto.
+
+1. O usuário inicia uma solicitação de logout de um aplicativo cliente.
+2. O Logto recebe a solicitação de término de sessão, gera um token de logout e envia o token de logout para todos os URI de logout de back-channel registrados.
+3. Cada aplicativo cliente recebe o token de logout e executa ações de logout.
+
+Ações de logout para cada aplicativo cliente ao receber o token de logout:
+
+- Validar o token de logout.
+- Limpar a sessão local e remover tokens do armazenamento local ou de sessão.
+
+## Métodos de logout nos SDKs do Logto
+
+Se você estiver integrando o Logto com seu aplicativo cliente usando os SDKs do Logto:
+
+- Para aplicativos SPA e web, o método `client.signOut()` limpará o armazenamento local de tokens e redirecionará o usuário para o endpoint de término de sessão do Logto. Você pode especificar um **URI de redirecionamento pós-logout** para redirecionar o usuário após a sessão ser limpa.
+- Para aplicativos nativos (incluindo aplicativos híbridos como **React Native** e **Flutter**), apenas o armazenamento local de tokens é limpo. Isso ocorre porque, em aplicativos nativos, usamos o webview sem sessão para lidar com o processo de login. Nenhum cookie de sessão é armazenado no navegador nativo, então não há necessidade de limpar a sessão de login no Logto. Cada solicitação de autenticação é uma solicitação independente que não carrega nenhum cookie de sessão.
+
+:::note
+Para aplicativos nativos que não suportam webview sem sessão ou não reconhecem as configurações `emphasized` (aplicativo Android usando **React Native** ou **Flutter** SDK), você pode forçar o usuário a fazer login novamente passando o parâmetro `prompt=login` na solicitação de autorização.
+:::
+
+## Perguntas frequentes
+
+<details>
+  <summary> Não estou recebendo as notificações de logout de back-channel.</summary>
+
+- Certifique-se de que o URI de logout de back-channel está corretamente registrado no painel do Logto.
+- Certifique-se de que seu aplicativo cliente tem uma sessão de login ativa válida e é a mesma sessão que iniciou a solicitação de logout.
+
+</details>
+
+## Recursos relacionados
+
+<Url href="https://blog.logto.io/oidc-back-channel-logout/">
+  Entendendo o logout de back-channel do OIDC.
+</Url>

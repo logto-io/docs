@@ -1,0 +1,186 @@
+---
+sidebar_position: 2
+---
+
+# Aplicativo Protegido
+
+O Aplicativo Protegido é projetado para eliminar a complexidade das integrações de SDK, separando a camada de autenticação do seu aplicativo. Nós lidamos com a autenticação, permitindo que você se concentre em sua funcionalidade principal. Uma vez que um usuário é autenticado, o Aplicativo Protegido serve o conteúdo do seu servidor.
+
+## Como o Aplicativo Protegido funciona
+
+O Aplicativo Protegido, alimentado pela Cloudflare, opera globalmente em redes de borda, garantindo baixa latência e alta disponibilidade para o seu aplicativo.
+
+O Aplicativo Protegido mantém o estado da sessão e as informações do usuário. Se um usuário não estiver autenticado, o Aplicativo Protegido o redireciona para a página de login. Uma vez autenticado, o Aplicativo Protegido envolve a solicitação do usuário com autenticação e informações do usuário, e a encaminha para o servidor de origem.
+
+Este processo é visualizado no seguinte fluxograma:
+
+```mermaid
+graph LR
+  A("Cliente<br/>(Navegador)") -->|Solicitação| B(Logto<br/>Aplicativo Protegido)
+  B --> Condition{{Rota<br/>corresponde?}}
+  Condition -->|Sim| Matched{{Está autenticado?}}
+  Matched -->|Sim| C(Servidor de origem)
+  Matched -->|Não| D(Login Logto)
+  Condition -->|Não| C
+```
+
+## Proteja seu servidor de origem
+
+O servidor de origem, que pode ser um dispositivo físico ou virtual não pertencente ao Aplicativo Protegido do Logto, é onde reside o conteúdo do seu aplicativo. Semelhante a um servidor de Rede de Distribuição de Conteúdo (CDN), o Aplicativo Protegido gerencia processos de autenticação e recupera conteúdo do seu servidor de origem. Portanto, se os usuários obtiverem acesso direto ao seu servidor de origem, eles podem contornar a autenticação e seu aplicativo não estará mais protegido.
+
+Portanto, é importante proteger as conexões de origem, isso impede que invasores descubram e acessem seu servidor de origem sem autenticação. Existem várias maneiras de fazer isso:
+
+1. Validação de Cabeçalho HTTP
+2. Validação de JSON Web Tokens (JWT)
+
+### Validação de Cabeçalho HTTP
+
+Proteger seu servidor de origem pode ser alcançado usando [Autenticação Básica HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme) para proteger seu servidor de origem.
+
+Cada solicitação do Aplicativo Protegido inclui o seguinte cabeçalho:
+
+```
+Authorization: Basic base64(appId:appSecret)
+```
+
+Ao validar este cabeçalho, você pode confirmar que a solicitação vem do Aplicativo Protegido e negar quaisquer solicitações que não incluam este cabeçalho.
+
+Se você estiver usando Nginx ou Apache, pode consultar os seguintes guias para implementar a Autenticação Básica HTTP no seu servidor de origem:
+
+1. Nginx: [Configurando Autenticação Básica HTTP](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
+2. Apache: [Autenticação e Autorização](https://httpd.apache.org/docs/2.4/howto/auth.html)
+
+Para verificar os cabeçalhos dentro do seu aplicativo, consulte o [exemplo de Autenticação Básica HTTP](https://developers.cloudflare.com/workers/examples/basic-auth/) fornecido pela Cloudflare para aprender como restringir o acesso usando o esquema Básico HTTP.
+
+### Validação de JSON Web Tokens (JWT)
+
+Outra maneira de proteger seu servidor de origem é usando JSON Web Tokens (JWT).
+
+Cada solicitação autenticada do Aplicativo Protegido inclui o seguinte cabeçalho:
+
+```
+Logto-ID-Token: <JWT>
+```
+
+O JWT é chamado de [Token de ID](https://auth.wiki/id-token), que é assinado pelo Logto e contém informações do usuário. Ao validar este JWT, você pode confirmar que a solicitação vem do Aplicativo Protegido e negar quaisquer solicitações que não incluam este cabeçalho.
+
+O token é criptografado e assinado como um token [JWS](https://auth.wiki/jws).
+
+Os passos de validação:
+
+1. [Validando um JWT](https://datatracker.ietf.org/doc/html/rfc7519#section-7.2)
+2. [Validando a assinatura JWS](https://datatracker.ietf.org/doc/html/rfc7515#section-5.2)
+3. O emissor do token é `https://<your-logto-domain>/oidc` (emitido pelo seu servidor de autenticação Logto)
+
+```js
+const express = require('express');
+const jwksClient = require('jwks-rsa');
+const jwt = require('jsonwebtoken');
+
+const ISSUER = 'https://<your-logto-domain>/oidc';
+const CERTS_URL = 'https://<your-logto-domain>/oidc/jwks';
+
+const client = jwksClient({
+  jwksUri: CERTS_URL,
+});
+
+const getKey = (header, callback) => {
+  client.getSigningKey(header.kid, function (err, key) {
+    callback(err, key?.getPublicKey());
+  });
+};
+
+const verifyToken = (req, res, next) => {
+  const token = req.headers['Logto-ID-Token'];
+
+  // Certifique-se de que a solicitação recebida tenha nosso cabeçalho de token
+  if (!token) {
+    return res
+      .status(403)
+      .send({ status: false, message: 'cabeçalho Logto-ID-Token necessário ausente' });
+  }
+
+  jwt.verify(token, getKey, { issuer: ISSUER }, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ status: false, message: 'token de ID inválido' });
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
+
+const app = express();
+
+app.use(verifyToken);
+
+app.get('/', (req, res) => {
+  res.send('Olá Mundo!');
+});
+
+app.listen(3000);
+```
+
+## Obter estado de autenticação e informações do usuário
+
+Se você precisar obter autenticação e informações do usuário para seu aplicativo, também pode usar o cabeçalho `Logto-ID-Token`.
+
+Se você apenas quiser decodificar o token, pode usar o seguinte código:
+
+```js
+const express = require('express');
+
+const decodeIdToken = (req, res, next) => {
+  const token = req.headers['Logto-ID-Token'];
+
+  if (!token) {
+    return res.status(403).send({
+      status: false,
+      message: 'cabeçalho Logto-ID-Token necessário ausente',
+    });
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Token de ID inválido');
+  }
+
+  const payload = parts[1];
+  const decodedPayload = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+  const claims = JSON.parse(decodedPayload);
+
+  req.user = claims;
+  next();
+};
+
+const app = express();
+
+app.use(decodeIdToken);
+
+app.get('/', (req, res) => {
+  res.json(req.user);
+});
+
+app.listen(3000);
+```
+
+## Obter o host original
+
+Se você precisar obter o host original solicitado pelo cliente, pode usar o cabeçalho `Logto-Host` ou `x-forwarded-host`.
+
+## Personalizar regras de autenticação
+
+Por padrão, o Aplicativo Protegido protegerá todas as rotas. Se você precisar personalizar as regras de autenticação, pode definir o campo "Regras de autenticação personalizadas" no Console.
+
+Ele suporta expressões regulares, aqui estão dois cenários de caso:
+
+1. Para proteger apenas as rotas `/admin` e `/privacy` com autenticação: `^/(admin|privacy)/.*`
+2. Para excluir imagens JPG da autenticação: `^(?!.*\.jpg$).*$`
+
+## Desenvolvimento local
+
+O Aplicativo Protegido é projetado para funcionar com seu servidor de origem. No entanto, se seu servidor de origem não for acessível publicamente, você pode usar uma ferramenta como [ngrok](https://ngrok.com/) ou [Cloudflare Tunnels](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) para expor seu servidor local à internet.
+
+## Transição para integração de SDK
+
+O Aplicativo Protegido é projetado para simplificar o processo de autenticação. No entanto, se você decidir fazer a transição para a integração de SDK para melhor controle e personalização, pode criar um novo aplicativo no Logto e configurar a integração do SDK. E para uma transição suave, você pode reutilizar as configurações do aplicativo do Aplicativo Protegido. O Aplicativo Protegido é, na verdade, um "Aplicativo Web Tradicional" no Logto, você pode encontrar o "AppId" e "AppSecret" nas configurações do aplicativo. Após a conclusão da transição, você pode remover o Aplicativo Protegido do seu aplicativo.
