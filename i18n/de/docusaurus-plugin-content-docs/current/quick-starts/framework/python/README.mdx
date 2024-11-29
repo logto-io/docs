@@ -1,0 +1,190 @@
+---
+slug: /quick-starts/python
+sidebar_label: Python
+sidebar_custom_props:
+  description: Integriere Logto in deine Python-Webanwendung, wie Django und Flask.
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import ClaimsNeedNetworkRequest from '../../fragments/_claims-need-network-request.mdx';
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import PythonGuideTip from './_guide-tip.md';
+import HandleAuthenticationStatus from './_handle-authentication-status.md';
+import ImplementSignInAndSignOutRoutes from './_implement-sign-in-and-sign-out.mdx';
+import InitLogtoClient from './_init-logto-client.mdx';
+import Installation from './_installation.md';
+import ConfigApiResources from './api-resources/_config-api-resources.mdx';
+import FetchAccessTokenForApiResources from './api-resources/_fetch-access-token-for-api-resources.mdx';
+import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-token-for-user.mdx';
+
+# Authentifizierung zu deiner Python-Webanwendung hinzufügen
+
+Dieser Leitfaden zeigt dir, wie du Logto in deine Python-Webanwendung integrierst.
+
+<PythonGuideTip />
+
+## Voraussetzungen
+
+- Ein [Logto Cloud](https://cloud.logto.io) Konto oder ein [selbst gehostetes Logto](/introduction/set-up-logto-oss).
+- Eine Logto traditionelle Webanwendung erstellt.
+
+## Installation
+
+<Installation />
+
+## Integration
+
+### LogtoClient initialisieren
+
+<InitLogtoClient />
+
+### Redirect-URIs konfigurieren
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Anmelde- und Abmelderouten implementieren
+
+<ImplementSignInAndSignOutRoutes />
+
+### Authentifizierungsstatus verwalten
+
+<HandleAuthenticationStatus />
+
+<Checkpoint />
+
+## Benutzerinformationen abrufen
+
+### Benutzerinformationen anzeigen
+
+Um die Informationen des Benutzers anzuzeigen, kannst du entweder die Methode `getIdTokenClaims` oder die Methode `fetchUserInfo` verwenden, um Benutzerinformationen zu erhalten. Während `getIdTokenClaims` die Benutzerinformationen zurückgibt, die im ID-Token enthalten sind, ruft `fetchUserInfo` die Benutzerinformationen vom Userinfo-Endpunkt ab.
+
+Wie du sehen kannst, verwenden wir den `@authenticated` Dekorator, um den Benutzerinformationskontext zu den Flask-Anwendungs-APIs zu bringen.
+
+<CodeBlock title="authenticated.py" language="python">
+  {`from functools import wraps
+from flask import g, jsonify, redirect
+from samples.client import client
+def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if client.isAuthenticated() is False:
+                if shouldRedirect:
+                    return redirect("/sign-in")
+                return jsonify({"error": "Not authenticated"}), 401
+            # Benutzerinformationen im Flask-Anwendungskontext speichern
+            g.user = (
+                await client.fetchUserInfo()
+                if fetchUserInfo
+                else client.getIdTokenClaims()
+            )
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+`}
+</CodeBlock>
+
+Zum Beispiel, um die Benutzerinformationen in einer API anzuzeigen, kannst du den folgenden Code verwenden:
+
+<CodeBlock title="flask.py" language="python">
+  {`@app.route("/protected/userinfo")
+@authenticated(shouldRedirect=True, fetchUserInfo=True)
+async def protectedUserinfo():
+    try:
+        return (
+            "<h2>User info</h2>"
+            + g.user.model_dump_json(indent=2, exclude_unset=True).replace("\\n", "<br>")
+            + navigationHtml
+        )
+    except LogtoException as e:
+        return "<h2>Error</h2>" + str(e) + "<br>" + navigationHtml
+`}
+</CodeBlock>
+
+Unsere Datenmodelle basieren auf [pydantic](https://docs.pydantic.dev/), daher kannst du `model_dump_json` verwenden, um das Datenmodell in JSON zu dumpen.
+
+Das Hinzufügen von `exclude_unset=True` wird nicht gesetzte Felder aus der JSON-Ausgabe ausschließen, was die Ausgabe präziser macht.
+
+Zum Beispiel, wenn wir die `email` Berechtigung beim Anmelden nicht angefordert haben, wird das `email` Feld aus der JSON-Ausgabe ausgeschlossen. Wenn wir jedoch die `email` Berechtigung angefordert haben, der Benutzer jedoch keine E-Mail-Adresse hat, wird das `email` Feld mit einem `null` Wert in der JSON-Ausgabe enthalten sein.
+
+Um mehr über Berechtigungen und Ansprüche zu erfahren, siehe [Benutzerinformationen abrufen](#get-user-information).
+
+### Zusätzliche Ansprüche anfordern
+
+<FindUserInfoMissing method="client.getIdTokenClaims()" />
+
+<ScopesAndClaimsIntroduction />
+
+Um zusätzliche Berechtigungen anzufordern, kannst du die Berechtigungen an das `LogtoConfig` Objekt übergeben. Zum Beispiel:
+
+```python title="client.py"
+# highlight-next-line
+from logto import UserInfoScope
+
+client = LogtoClient(
+    LogtoConfig(
+        # ...andere Konfigurationen
+        # highlight-start
+        scopes = [
+            UserInfoScope.email,
+            UserInfoScope.phone,
+        ],
+        # highlight-end
+    ),
+    storage=SessionStorage(),
+)
+```
+
+Dann kannst du auf die zusätzlichen Ansprüche im Rückgabewert von `client.getIdTokenClaims()` zugreifen:
+
+```python
+idTokenClaims = await client.getIdTokenClaims();
+```
+
+<ClaimsNeedNetworkRequest
+  type="method"
+  method="client.fetchUserInfo()"
+  codeSnippet={
+    <CodeBlock language="python" title="flask.py">
+      (await client.fetchUserInfo()).custom_data
+    </CodeBlock>
+  }
+/>
+
+### Berechtigungen und Ansprüche
+
+<ScopesAndClaims />
+
+## API-Ressourcen und Organisationen
+
+<ApiResourcesDescription />
+
+### Logto-Client konfigurieren
+
+<ConfigApiResources />
+
+### Zugangstoken für die API-Ressource abrufen
+
+<FetchAccessTokenForApiResources />
+
+### Organisationstokens abrufen
+
+<FetchOrganizationTokenForUser />
+
+## Weiterführende Lektüre
+
+<FurtherReadings />

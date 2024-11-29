@@ -1,0 +1,174 @@
+---
+sidebar_position: 2
+---
+
+# Bereitstellung und Konfiguration
+
+Im vorherigen Artikel haben wir die Grundlagen für einen schnellen Einstieg mit Logto behandelt. Dieser Artikel geht tiefer und konzentriert sich auf bewährte Praktiken und detaillierte Konfigurationsschritte für die Bereitstellung von Logto in einer Produktionsumgebung.
+
+## Umgebungsvariablen
+
+Wir verwenden ein generiertes Preset von Umgebungsvariablen in unserem Demo (`docker-compose.yml`), das du durch deine eigenen ersetzen und über mehrere Logto-Instanzen hinweg konsistent halten solltest.
+
+Du kannst die Umgebungsvariablen direkt setzen oder eine `.env`-Datei im Stammverzeichnis des Logto-Projekts ablegen. Wenn du mit Docker testest, überprüfe das generierte `.env`-Image in `/etc/logto`.
+
+### Wesentliches
+
+- `DB_URL` Der [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) für die Logto-Datenbank.
+- `PORT` Der Port, auf dem Logto hört. Standard `3001`.
+- `ENDPOINT` Du kannst eine URL mit deiner benutzerdefinierten Domain für die Produktion angeben (z.B. `ENDPOINT=https://logto.domain.com`). Dies beeinflusst auch den Wert des [OIDC-Ausstelleridentifikators](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier).
+
+**Admin-Konsole aktivieren**
+
+- `ADMIN_PORT` Der Port, auf dem die Logto Admin-Konsole hört. Standard `3002`.
+- `ADMIN_ENDPOINT` Du kannst eine URL mit deiner benutzerdefinierten Domain für die Produktion angeben (z.B. `ADMIN_ENDPOINT=https://admin.domain.com`). Dies beeinflusst auch den Wert der Admin-Konsole-Redirect-URIs.
+
+**Admin-Konsole deaktivieren**
+
+- `ADMIN_DISABLE_LOCALHOST` Setze es auf `1` oder `true`, um den Port für die Admin-Konsole zu schließen. Wenn `ADMIN_ENDPOINT` nicht gesetzt ist, wird die Admin-Konsole vollständig deaktiviert.
+
+Für weitere Details zu Umgebungsvariablen siehe [Konfiguration](/concepts/core-service/configuration/).
+
+### HTTPS
+
+Du kannst Node.js verwenden, um HTTPS direkt bereitzustellen, oder einen HTTPS-Proxy / Balancer vor Node.js einrichten. Siehe [HTTPS aktivieren](/concepts/core-service/configuration/#enabling-https) für Details.
+
+### Reverse Proxy
+
+Wenn du einen Reverse Proxy auf deinem Server verwenden möchtest, zum Beispiel Nginx oder Apache, musst du die Ports 3001 und 3002 separat in deinen Proxy-Pass-Einstellungen zuordnen. Angenommen, du verwendest Nginx, dein Logto-Auth-Endpunkt läuft auf Port 3001 und deine Logto-Admin-Konsole läuft auf 3002, füge die folgende Konfiguration in nginx.conf ein:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // z.B. auth.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+Füge dann eine ähnliche Konfiguration für deine Admin-Konsole hinzu:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // z.B. admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
+}
+```
+
+Lade die Nginx-Konfiguration neu, um die neuesten Änderungen zu übernehmen:
+
+```
+nginx -s reload
+```
+
+Alles ist bereit. Öffne den Browser und besuche `https://admin.your-domain.com`, du solltest die Logto-Willkommensseite sehen können.
+
+## Containerisierung
+
+Für die Produktion kannst du Docker verwenden, um Logto zu containerisieren. Du findest die Dockerfile im Stammverzeichnis des Projekts. Wenn du mehrere Instanzen von Logto ausführen möchtest, zum Beispiel Logto in einem Kubernetes-Cluster bereitstellen, gibt es einige zusätzliche Schritte, die du unternehmen musst.
+
+### Gemeinsamer Connectors-Ordner
+
+Standardmäßig erstellt Logto einen `connectors`-Ordner im Stammverzeichnis des `core`-Ordners. Wir empfehlen, den Ordner zwischen mehreren Instanzen von Logto zu teilen. Du musst den Ordner `packages/core/connectors` in den Container einbinden und `npm run cli connector add -- --official` ausführen, um die Connectors bereitzustellen.
+
+Hier ist ein minimales Beispiel für `deployment` für Kubernetes:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+In diesem Beispiel erstellen wir ein leeres Verzeichnis als Volume und binden es an Container. Dann führen wir `npm run cli connector add -- --official` im Init-Container aus, um die Connectors herunterzuladen. Schließlich teilt jeder Container denselben Connectors-Ordner mit unseren offiziellen Connectors, die bereits darin enthalten sind.
+
+:::note
+
+Dies ist ein Beispiel-YAML, um Logto auszuführen, musst du die Umgebungen richtig setzen.
+
+:::
+
+Für die Produktion kannst du das "leere Verzeichnis"-Volume durch ein persistentes Volume ersetzen und den "Init"-Job auf deine eigene Weise durchführen, du weißt, was du tust!
+
+### Datenbankänderung
+
+Ähnlich wie bei den Connectors muss die Datenbankänderung in einer einzelnen Instanz ausgeführt werden. Du kannst einen Job verwenden, um das Änderungsskript auszuführen.
+
+Die Umgebungsvariable `CI=true` ist notwendig, wenn die Änderung nicht interaktiv ausgeführt wird.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+Siehe [Datenbankänderung](/logto-oss/using-cli/database-alteration/) für Details zum Änderungskommando.
