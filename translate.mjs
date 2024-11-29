@@ -8,6 +8,7 @@ import { Listr } from 'listr2';
 import picocolors from 'picocolors';
 
 import { log, OpenAiTranslate } from './translate.openai.mjs';
+import { sampleTranslations } from './translate.samples.mjs';
 
 dotenv.config();
 
@@ -205,13 +206,27 @@ for (const slug of sortedFiles) {
   log(`  - ${picocolors.blue(slug)}`);
 }
 
+const confirm = async () =>
+  new Promise((resolve) => {
+    process.stdin.once('data', (data) => resolve(data.toString().trim()));
+  });
+
 if (files.length > 1) {
   log(`${files.length} files will be translated. Enter "y" to confirm.`);
-  const confirmation = await new Promise((resolve) => {
-    process.stdin.once('data', (data) => {
-      resolve(data.toString().trim());
-    });
-  });
+  const confirmation = await confirm();
+
+  if (confirmation.toLowerCase() !== 'y') {
+    exit('Translation cancelled.');
+  }
+}
+
+if (!sampleTranslations[locale]) {
+  log(
+    picocolors.yellow(
+      `No sample translation found for locale "${locale}", the translation quality may vary. Enter "y" to confirm.`
+    )
+  );
+  const confirmation = await confirm();
 
   if (confirmation.toLowerCase() !== 'y') {
     exit('Translation cancelled.');

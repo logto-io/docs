@@ -159,4 +159,82 @@ Es gibt jedoch einige Fälle, in denen du 1-1-Zuordnungen zwischen Benutzerquell
 
 Bitte schaue dir [App-spezifisches Branding](/customization/match-your-brand/#app-specific-branding) und [Organisationsspezifisches Branding](/customization/match-your-brand/#organization-specific-branding) für verwandte Konfigurationen an.
 `,
+  'pt-BR': `---
+sidebar_position: 2
+---
+
+# Autenticação vs. autorização
+
+A diferença entre **autenticação** e **autorização** pode ser resumida da seguinte forma:
+
+- **Autenticação (Authentication)** responde à pergunta "Qual identidade você possui?"
+- **Autorização (Authorization)** responde à pergunta "O que você pode fazer?"
+
+Para uma introdução completa ao gerenciamento de identidade e acesso do cliente (CIAM), você pode consultar nossa série CIAM:
+
+- [CIAM 101: Authentication, Identity, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
+- [CIAM 102: Authorization & Role-based Access Control](https://blog.logto.io/ciam-102-authz-and-rbac/)
+
+## Autenticação (Authentication)
+
+Logto suporta vários métodos de autenticação interativos e não interativos, por exemplo:
+
+- **Experiência de login**: O processo de autenticação para usuários finais.
+- **Autenticação máquina para máquina (M2M)**: O processo de autenticação para serviços ou aplicativos.
+
+O objetivo final da autenticação é dramaticamente simples: verificar e obter o identificador único da entidade (no Logto, um usuário ou um aplicativo).
+
+## Autorização (Authorization)
+
+No Logto, a autorização é feita através do controle de acesso baseado em papel (RBAC). Ele oferece controle total para gerenciar o acesso de seus usuários ou aplicativos M2M aos seguintes:
+
+- **Recursos de API (API resources)**: Uma entidade global representada por um URI absoluto.
+- **Organizações (Organizations)**: Um grupo de usuários ou aplicativos.
+- **Recursos de API da organização (Organization API resources)**: Um recurso de API que pertence a uma organização.
+
+Para saber mais sobre esses conceitos, você pode consultar os seguintes recursos:
+
+- [Controle de acesso baseado em papel (RBAC)](/authorization/role-based-access-control)
+- [Organizações (Multi-tenancy)](/organizations)
+
+Aqui está uma representação visual da relação entre esses conceitos:
+
+\`\`\`mermaid
+graph TD
+  subgraph Resources
+    R(Recursos de API)
+    O(Organizações)
+    OR(Recursos de API da organização)
+  end
+
+  subgraph Identities
+    U(Usuários)
+    A(Aplicativos M2M)
+  end
+\`\`\`
+
+Em resumo, a autorização é sobre definir as regras que determinam quais entidades no grupo "Identities" podem acessar as entidades no grupo "Resources".
+
+## Perguntas frequentes
+
+### Preciso especificar quais usuários podem fazer login em um aplicativo
+
+Devido à natureza da autenticação única (SSO), o Logto atualmente não suporta o uso de aplicativos como recursos. Em vez disso, você pode definir recursos de API e permissões para controlar o acesso aos seus recursos.
+
+### Preciso que meus usuários façam login em uma organização
+
+Como mencionado anteriormente, a autenticação envolve verificar a identidade de uma entidade, enquanto o controle de acesso é tratado através da autorização. Portanto:
+
+- Determinar a qual(is) organização(ões) um usuário pertence é uma preocupação de autorização.
+- O processo de login é uma preocupação de autenticação.
+
+Isso significa que não há conceito de "fazer login em uma organização" no Logto. Uma vez que um usuário é autenticado, ele pode ser autorizado a acessar todos os recursos (incluindo recursos da organização) com base nas permissões definidas.
+
+Esse modelo é eficiente e claro, pois separa as preocupações de autenticação e autorização. Todos os aplicativos SaaS modernos, como GitHub e Notion, seguem esse modelo.
+
+No entanto, há alguns casos em que você precisa estabelecer mapeamentos 1-1 entre fontes de usuários e organizações. Nesse caso, [SSO corporativo (Enterprise SSO)](/end-user-flows/enterprise-sso) e [provisionamento Just-in-Time (JIT) da organização](/organizations/just-in-time-provisioning) podem ser úteis.
+
+### Nossos clientes precisam de personalização de marca para suas páginas de login
+
+Por favor, confira [personalização específica do aplicativo](/customization/match-your-brand/#app-specific-branding) e [personalização específica da organização](/customization/match-your-brand/#organization-specific-branding) para configurações relacionadas.`,
 });
