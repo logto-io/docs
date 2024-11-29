@@ -18,4 +18,4 @@ Notez que le jeton d’accès (Access token) ci-dessus est un jeton opaque (Opaq
 var accessToken = await HttpContext.GetTokenAsync(LogtoParameters.Tokens.AccessTokenForResource);
 ```
 
-Ce jeton sera un jeton JWT avec la ressource API comme audience (Audience).
+Ce jeton sera un jeton JWT avec la ressource API comme audience.

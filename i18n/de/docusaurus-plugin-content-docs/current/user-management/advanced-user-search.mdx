@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# Erweiterte Benutzersuche
+
+Direkte Nutzung der Management API, um erweiterte Benutzersuchbedingungen zu nutzen.
+
+## Eine Suchanfrage durchführen
+
+Verwende `GET /api/users`, um Benutzer zu suchen. Beachte, dass es sich um eine Management API handelt, die wie andere Authentifizierung erfordert. Siehe [Interaktion mit der Management API](/integrate-logto/interact-with-management-api) für das Interaktionsrezept.
+
+### Beispiel
+
+**Anfrage**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**Antwort**
+
+Ein Array von `User`-Entitäten.
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### Parameter
+
+Eine Suchanfrage besteht aus den folgenden Parameter-Schlüsseln:
+
+- Suchbegriffe: `search`, `search.*`
+- Suchmodus für Felder: `mode`, `mode.*` (Standardwert `'like'`, verfügbar `['exact', 'like', 'similar_to', 'posix']`)
+- Verknüpfungsmodus: `joint` oder `jointMode` (Standardwert `'or'`, verfügbar `['or', 'and']`)
+- Ist Groß-/Kleinschreibung beachten: `isCaseSensitive` (Standardwert `false`)
+
+Diese API hat [Paginierung](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses) aktiviert.
+
+Lass uns einige Beispiele durchgehen. Alle Suchparameter werden als Konstruktor von `URLSearchParams` formatiert.
+
+:::warning
+
+Der Suchmodus ist standardmäßig auf `like` gesetzt, was [Annähernde Zeichenfolgenübereinstimmung](https://en.wikipedia.org/wiki/Approximate_string_matching) ("unscharfe Suche") verwendet.
+
+:::
+
+:::note
+
+Alle unscharfen Suchmodi unterstützen nur die Übereinstimmung eines Wertes pro Feld. Wenn du mehrere Werte für ein einzelnes Feld abgleichen musst, solltest du den "exact"-Modus verwenden. Siehe [Exakte Übereinstimmung und Groß-/Kleinschreibung](./#exact-match-and-case-sensitivity) für Details.
+
+:::
+
+### Grundlegende unscharfe Suche
+
+Wenn du eine unscharfe Suche über alle verfügbaren Felder durchführen möchtest, gib einfach einen Wert für den Schlüssel `search` an. Es wird [den `like`-Operator](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) im Hintergrund verwenden:
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+Diese Suche wird über alle verfügbaren Felder in einer Benutzersuche iterieren, d.h. `id`, `primaryEmail`, `primaryPhone`, `username`, `name`.
+
+### Felder angeben
+
+Was ist, wenn du die Suche nur auf `name` beschränken möchtest? Um jemanden zu suchen, der `foo` in seinem Namen hat, verwende einfach das `.`-Symbol, um das Feld anzugeben:
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+Denke daran, dass verschachtelte Felder nicht unterstützt werden, z.B. `search.name.first` wird zu einem Fehler führen.
+
+Du kannst auch mehrere Felder gleichzeitig angeben:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+Bedeutet, Benutzer zu suchen, die `foo` im Namen haben **ODER** deren E-Mail mit `@gmail.com` endet.
+
+### Ändern des Verknüpfungsmodus
+
+Wenn du möchtest, dass die API nur das Ergebnis zurückgibt, das ALLE Bedingungen erfüllt, setze den Verknüpfungsmodus auf `and`:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+Bedeutet, Benutzer zu suchen, die `foo` im Namen haben **UND** deren E-Mail mit `@gmail.com` endet.
+
+### Exakte Übereinstimmung und Groß-/Kleinschreibung
+
+Angenommen, du möchtest nach jemandem suchen, dessen Name genau "Alice" ist. Du kannst `mode.name` auf exakte Übereinstimmung setzen.
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Du wirst feststellen, dass es denselben Effekt hat, wenn du den `like`-Modus (Standard) verwendest im Vergleich zu `exact`. Ein Unterschied ist, dass der `exact`-Modus `=` zum Vergleichen verwendet, während `like` `like` oder `ilike` verwendet. Theoretisch sollte `=` eine bessere Leistung haben.
+
+Außerdem kannst du im `exact`-Modus mehrere Werte zum Abgleichen übergeben, und sie werden mit `or` verbunden:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Es wird die Benutzer mit dem Namen "Alice" **ODER** "Bob" abgleichen.
+
+Standardmäßig ist die Suche nicht groß-/kleinschreibungssensitiv. Um präziser zu sein, setze die Suche als groß-/kleinschreibungssensitiv:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+Beachte, dass `isCaseSensitive` eine globale Konfiguration ist. Daher wird JEDES Feld ihr folgen.
+
+### Regulärer Ausdruck (RegEx)
+
+PostgreSQL unterstützt zwei Arten von regulären Ausdrücken, [similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) und [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP). Setze `mode` auf `similar_to` oder `posix`, um nach regulären Ausdrücken zu suchen:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> Hinweis: Der Modus similar_to funktioniert nur bei groß-/kleinschreibungssensitiven Suchen.
+
+### Übereinstimmungsmodus überschreiben
+
+Standardmäßig erben alle Schlüsselwörter den Übereinstimmungsmodus von der allgemeinen Suche:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Posix-Modus
+  ['joint', 'and'],
+]);
+```
+
+Um für ein bestimmtes Feld zu überschreiben:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Like-Modus
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Posix-Modus
+  ['joint', 'and'],
+]);
+```

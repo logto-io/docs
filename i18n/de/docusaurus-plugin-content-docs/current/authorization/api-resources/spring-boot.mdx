@@ -1,0 +1,284 @@
+---
+sidebar_position: 4
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# Anleitung: Spring Boot
+
+In diesem Tutorial gehen wir davon aus, dass der Client ein gültiges `access_token` erhalten hat und es als `Authorization: Bearer <access_token>` im Anforderungsheader angehängt ist.
+
+Deine Webanwendung kann serverseitig mit dem Spring Boot Framework ausgeführt werden. Derzeit musst du Logto manuell in Spring Boot integrieren. Dieser Artikel führt dich Schritt für Schritt durch den Prozess. Wir verwenden Gradle, Java und Spring Security als Beispiel.
+
+## Ein Spring Boot-Projekt starten
+
+Mit [Spring Initializr](https://start.spring.io/) kannst du schnell ein Spring Boot-Projekt starten. Verwende die folgenden Optionen:
+
+- Gradle-Projekt
+- Sprache: Java
+- Spring Boot: 2.7.2
+
+Generiere und öffne das Projekt.
+
+## Abhängigkeiten hinzufügen
+
+Füge die Abhängigkeiten zu deiner Gradle-Projekt-Build-Datei `build.gradle` hinzu:
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+}
+```
+
+:::note
+
+Da Spring Boot und Spring Security integrierte Unterstützung für sowohl OAuth2-Ressourcenserver als auch JWT-Validierung bieten, musst du keine zusätzlichen Bibliotheken von Logto hinzufügen, um zu integrieren.
+
+Siehe [Spring Security OAuth 2.0 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html) und [Spring Security Architektur](https://spring.io/guides/topicals/spring-security-architecture) für weitere Details.
+
+:::
+
+## Aussteller und JWKS-URI abrufen
+
+Alle Tokens werden vom [Aussteller (Issuer)](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) ausgestellt und mit [JWK](https://datatracker.ietf.org/doc/html/rfc7517) signiert (siehe [JWS](https://datatracker.ietf.org/doc/html/rfc7515) für weitere Details).
+
+Bevor du fortfährst, musst du einen Aussteller und eine JWKS-URI erhalten, um den Aussteller und die Signatur des Bearer Tokens (`access_token`) zu überprüfen.
+
+Standardmäßig sind der Aussteller und die JWKS-URI deines Logto `https://<your-logto-domain>/oidc` und `https://<your-logto-domain>/oidc/jwks`.
+
+Alle neuesten Logto Authorization Server Konfigurationen findest du unter `https://<your-logto-domain>/oidc/.well-known/openid-configuration`, einschließlich des **issuer**, **jwks_uri** und anderer Autorisierungskonfigurationen. Zum Beispiel:
+
+```json
+{
+  // ...
+  "issuer": "https://<your-logto-domain>/oidc",
+  "jwks_uri": "https://<your-logto-domain>/oidc/jwks"
+  // ...
+}
+```
+
+## Anwendung konfigurieren
+
+Verwende eine `application.yml`-Datei (anstelle der Standard-`application.properties`), um den Serverport, die Zielgruppe und den OAuth2-Ressourcenserver zu konfigurieren.
+
+```yaml
+# path/to/project/src/main/resources/application.yaml
+server:
+  port: 3000
+
+logto:
+  audience: http://localhost:3000/
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: <your-logto-issuer-uri>
+          jwk-set-uri: <your-logto-jwks-uri>
+```
+
+- `audience`: Der eindeutige API-Indikator (d. h. API-Indikator) deiner geschützten API-Ressource.
+- `spring.security.oauth2.resourceserver.jwt.issuer-uri`: Der `iss` Anspruchswert und die Aussteller-URI im von Logto ausgestellten JWT. Fülle den `issuer`-Wert aus dem vorherigen Abschnitt aus.
+- `spring.security.oauth2.resourceserver.jwt.jwk-set-uri`: Spring Security verwendet diese URI, um die öffentlichen Schlüssel des Autorisierungsservers zu erhalten, um JWT-Signaturen zu validieren. Fülle den `jwks_uri`-Wert aus dem vorherigen Abschnitt aus.
+
+## Zielgruppen-Validator bereitstellen
+
+Stelle deine eigene `AudienceValidator`-Klasse bereit, die das `OAuth2TokenValidator`-Interface implementiert, um zu validieren, ob die erforderliche Zielgruppe im JWT vorhanden ist.
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/validator/AudienceValidator.java
+package io.logto.springboot.sample.validator;
+
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
+
+    private final String audience;
+
+    public AudienceValidator(String audience) {
+        this.audience = audience;
+    }
+
+    @Override
+    public OAuth2TokenValidatorResult validate(Jwt jwt) {
+        if (!jwt.getAudience().contains(audience)) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Required audience not found", null));
+        }
+
+	      // Optional: Für RBAC die Berechtigungen des JWT validieren.
+	      String scopes = jwt.getClaimAsString("scope");
+	      if (scopes == null || !scopes.contains("read:profile")) {
+	          return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Insufficient permission", null));
+	      }
+
+        return OAuth2TokenValidatorResult.success();
+    }
+}
+```
+
+## Spring Security konfigurieren
+
+Spring Security macht es einfach, deine Anwendung als Ressourcenserver zu konfigurieren und das JWT aus dem Bearer Token im Anforderungsheader zu validieren.
+
+Du musst Instanzen von `JwtDecoder` und `SecurityFilterChain` (als Spring Beans) bereitstellen und die `@EnableWebSecurity`-Annotation hinzufügen.
+
+:::note
+
+Logto verwendet standardmäßig den `ES384`-Algorithmus, um die JWTs zu signieren. Um die JWTs zu dekodieren, musst du den `jwsAlgorithm` explizit auf `ES384` setzen. Wenn du lieber `RSA` verwenden möchtest, kannst du den Signaturalgorithmus in der Logto Admin-Konsole rotieren. Bitte siehe [Signaturschlüssel](/developers/signing-keys) für weitere Details.
+
+:::
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/configuration/SecurityConfiguration.java
+package io.logto.springboot.sample.configuration;
+
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
+import com.nimbusds.jose.proc.SecurityContext;
+import io.logto.springboot.sample.validator.AudienceValidator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfiguration {
+
+    @Value("${logto.audience}")
+    private String audience;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuer;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
+    private String jwksUri;
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                // Logto verwendet standardmäßig den ES384-Algorithmus, um die JWTs zu signieren.
+                .jwsAlgorithm(ES384)
+                // Der Decoder sollte den Token-Typ unterstützen: Zugangstoken + JWT.
+                .jwtProcessorCustomizer(customizer -> customizer.setJWSTypeVerifier(
+                        new DefaultJOSEObjectTypeVerifier<SecurityContext>(new JOSEObjectType("at+jwt"))))
+                .build();
+
+        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new AudienceValidator(audience),
+                new JwtIssuerValidator(issuer),
+                new JwtTimestampValidator()));
+
+        return jwtDecoder;
+    }
+
+    @Bean
+    public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+         http
+          .securityMatcher("/api/**")
+          .oauth2ResourceServer(oauth2 -> oauth2
+              .jwt(Customizer.withDefaults()))
+          .authorizeHttpRequests(requests -> requests
+              // Erlaube alle Anfragen an die öffentlichen APIs.
+              .requestMatchers("/api/.wellknown/**").permitAll()
+              // Erfordert JWT-Token-Validierung für die geschützten APIs.
+              .anyRequest().authenticated());
+
+        return http.build();
+    }
+}
+```
+
+## APIs hinzufügen
+
+Füge einen Controller hinzu, um die geschützten und öffentlichen APIs bereitzustellen:
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/controller/ProtectedController.java
+package io.logto.springboot.sample.controller;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+// Erlaube alle Ursprünge nur für das Beispiel.
+// (Produktionsanwendungen sollten CORS sorgfältig konfigurieren.)
+@CrossOrigin(origins = "*")
+@RestController
+public class ProtectedController {
+    @GetMapping("/api/profile")
+    public String protectedProfile() {
+        return "Geschütztes Profil.";
+    }
+
+    @GetMapping("/api/.wellknown/config.json")
+    public String publicConfig() {
+        return "Öffentliche Konfiguration.";
+    }
+}
+
+```
+
+## Geschützte API aufrufen
+
+Baue und führe deine Spring Boot-Webanwendung aus, z. B. führe die `bootRun` Gradle-Aufgabe aus.
+
+<Tabs>
+<TabItem value="linux-or-macos" label="Linux oder macOS">
+
+```bash
+./gradlew bootRun
+```
+
+</TabItem>
+<TabItem value="windows" label="Windows">
+
+```bash
+gradlew.bat bootRun
+```
+
+</TabItem>
+</Tabs>
+
+:::note
+
+Dieses Tutorial geht davon aus, dass du das Zugangstoken für eine API-Ressource `http://localhost:3000/` hast, bevor du eine Anfrage stellst. Wenn du noch nicht bereit bist, [lies dies](/authorization/api-resources/protect-your-api) bevor du fortfährst.
+
+:::
+
+Fordere deine geschützte API mit dem Zugangstoken als Bearer-Token im Authorization-Header an, z. B. führe den `curl`-Befehl aus.
+
+```bash
+curl --include 'http://localhost:3000/api/profile' --header 'Authorization: Bearer <your-access-token>'
+```
+
+Wenn erfolgreich, erhältst du eine Antwort mit dem Status 200:
+
+```bash
+HTTP/1.1 200
+...
+```
+
+Andernfalls erhältst du eine Antwort mit dem Status 401 wie folgt:
+
+```
+HTTP/1.1 401
+...
+WWW-Authenticate: Bearer error="invalid_token", error_description="An error occurred while attempting to decode the Jwt: Signed JWT rejected: Invalid signature", error_uri="https://tools.ietf.org/html/rfc6750#section-3.1"
+...
+```

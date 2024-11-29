@@ -1,0 +1,352 @@
+---
+slug: /quick-start/java-spring-boot
+sidebar_label: Java Spring Boot
+sidebar_custom_props:
+  description: Spring Boot ist ein Web-Framework für Java, das Entwicklern ermöglicht, sichere, schnelle und skalierbare Serveranwendungen mit der Programmiersprache Java zu erstellen.
+  logoFilename: 'spring-boot.svg'
+---
+
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ScopesAndClaims from './_scopes-and-claims.mdx';
+
+# Authentifizierung zu deiner Java Spring Boot-Anwendung hinzufügen
+
+Diese Anleitung zeigt dir, wie du Logto in deine Java Spring Boot-Anwendung integrierst.
+
+:::tip
+
+- Du findest den Beispielcode für diese Anleitung in unserem [spring-boot-sample](https://github.com/logto-io/spring-boot-sample) GitHub-Repository.
+- Es ist kein offizielles SDK erforderlich, um Logto mit deiner Java Spring Boot-Anwendung zu integrieren. Wir werden die Bibliotheken [Spring Security](https://spring.io/projects/spring-security) und [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2) verwenden, um den OIDC-Authentifizierungsfluss mit Logto zu handhaben.
+
+:::
+
+## Voraussetzungen
+
+- Ein [Logto Cloud](https://cloud.logto.io) Konto oder ein [selbst gehostetes Logto](/introduction/set-up-logto-oss).
+- Unser Beispielcode wurde mit dem Spring Boot [securing web starter](https://spring.io/guides/gs/securing-web) erstellt. Folge den Anweisungen, um eine neue Webanwendung zu starten, wenn du noch keine hast.
+- In dieser Anleitung verwenden wir die Bibliotheken [Spring Security](https://spring.io/projects/spring-security) und [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2), um den OIDC-Authentifizierungsfluss mit Logto zu handhaben. Bitte gehe die offizielle Dokumentation durch, um die Konzepte zu verstehen.
+
+## Konfiguriere deine Java Spring Boot-Anwendung
+
+### Abhängigkeiten hinzufügen
+
+Für [gradle](https://spring.io/guides/gs/gradle) Benutzer, füge die folgenden Abhängigkeiten zu deiner `build.gradle` Datei hinzu:
+
+```groovy title="build.gradle"
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+}
+```
+
+Für [maven](https://spring.io/guides/gs/maven) Benutzer, füge die folgenden Abhängigkeiten zu deiner `pom.xml` Datei hinzu:
+
+```xml title="pom.xml"
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+```
+
+### OAuth2 Client-Konfiguration
+
+Registriere eine neue `Java Spring Boot` Anwendung in der Logto-Konsole und erhalte die Client-Anmeldeinformationen und IdP-Konfigurationen für deine Webanwendung.
+
+Füge die folgende Konfiguration zu deiner `application.properties` Datei hinzu:
+
+```properties title="application.properties"
+spring.security.oauth2.client.registration.logto.client-name=logto
+spring.security.oauth2.client.registration.logto.client-id={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.client-secret={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.logto.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access
+spring.security.oauth2.client.registration.logto.provider=logto
+
+spring.security.oauth2.client.provider.logto.issuer-uri={{LOGTO_ENDPOINT}}/oidc
+spring.security.oauth2.client.provider.logto.authorization-uri={{LOGTO_ENDPOINT}}/oidc/auth
+spring.security.oauth2.client.provider.logto.jwk-set-uri={{LOGTO_ENDPOINT}}/oidc/jwks
+```
+
+## Implementierung
+
+<SignInFlowSummary />
+
+Um Benutzer nach der Anmeldung zurück zu deiner Anwendung umzuleiten, musst du die Redirect-URI mit der Eigenschaft `client.registration.logto.redirect-uri` im vorherigen Schritt festlegen.
+
+<WebConfigureRedirectUris />
+
+### Implementiere die WebSecurityConfig
+
+#### Erstelle eine neue Klasse `WebSecurityConfig` in deinem Projekt
+
+Die Klasse `WebSecurityConfig` wird verwendet, um die Sicherheitseinstellungen für deine Anwendung zu konfigurieren. Sie ist die Schlüsselklasse, die den Authentifizierungs- und Autorisierungsfluss handhaben wird. Bitte überprüfe die [Spring Security Dokumentation](https://spring.io/guides/topicals/spring-security-architecture) für weitere Details.
+
+```java title="WebSecurityConfig.java"
+package com.example.securingweb;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+@Configuration
+@EnableWebSecurity
+
+public class WebSecurityConfig {
+ // ...
+}
+```
+
+#### Erstelle einen `idTokenDecoderFactory` Bean
+
+Dies ist erforderlich, da Logto `ES384` als Standardalgorithmus verwendet. Wir müssen den Standard `OidcIdTokenDecoderFactory` überschreiben, um denselben Algorithmus zu verwenden.
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory() {
+    OidcIdTokenDecoderFactory idTokenDecoderFactory = new OidcIdTokenDecoderFactory();
+    idTokenDecoderFactory.setJwsAlgorithmResolver(clientRegistration -> SignatureAlgorithm.ES384);
+    return idTokenDecoderFactory;
+  }
+}
+```
+
+#### Erstelle eine LoginSuccessHandler-Klasse, um das erfolgreiche Anmeldeereignis zu handhaben
+
+Wir leiten den Benutzer nach einer erfolgreichen Anmeldung zur `/user` Seite weiter.
+
+```java title="CustomSuccessHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class CustomSuccessHandler implements AuthenticationSuccessHandler {
+  @Override
+  public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+      Authentication authentication) throws IOException, ServletException {
+    response.sendRedirect("/user");
+  }
+}
+```
+
+#### Erstelle eine LogoutSuccessHandler-Klasse, um das erfolgreiche Abmeldeereignis zu handhaben
+
+Lösche die Sitzung und leite den Benutzer zur Startseite weiter.
+
+```java title="CustomLogoutHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+public class CustomLogoutHandler implements LogoutSuccessHandler {
+  @Override
+  public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+      throws IOException, ServletException {
+    HttpSession session = request.getSession();
+
+    if (session != null) {
+      session.invalidate();
+    }
+
+    response.sendRedirect("/home");
+  }
+}
+```
+
+#### Aktualisiere die `WebSecurityConfig` Klasse mit einer `securityFilterChain`
+
+[securityFilterChain](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/DefaultSecurityFilterChain.html) ist eine Kette von Filtern, die für die Verarbeitung der eingehenden Anfragen und Antworten verantwortlich sind.
+
+Wir werden die `securityFilterChain` konfigurieren, um den Zugriff auf die Startseite zu erlauben und für alle anderen Anfragen eine Authentifizierung zu verlangen. Verwende den `CustomSuccessHandler` und `CustomLogoutHandler`, um die Anmelde- und Abmeldeereignisse zu handhaben.
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+      .authorizeRequests(authorizeRequests ->
+        authorizeRequests
+          .antMatchers("/", "/home").permitAll() // Erlaube den Zugriff auf die Startseite
+          .anyRequest().authenticated() // Alle anderen Anfragen erfordern Authentifizierung
+      )
+      .oauth2Login(oauth2Login ->
+        oauth2Login
+          .successHandler(new CustomSuccessHandler())
+      )
+      .logout(logout ->
+        logout
+          .logoutSuccessHandler(new CustomLogoutHandler())
+      );
+    return http.build();
+  }
+}
+```
+
+### Erstelle eine Startseite
+
+(Du kannst diesen Schritt überspringen, wenn du bereits eine Startseite in deinem Projekt hast)
+
+```java title="HomeController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+  @GetMapping({ "/", "/home" })
+  public String home(Principal principal) {
+    return principal != null ? "redirect:/user" : "home";
+  }
+}
+```
+
+Dieser Controller leitet den Benutzer zur Benutzerseite weiter, wenn der Benutzer authentifiziert ist, andernfalls wird die Startseite angezeigt. Füge einen Anmeldelink zur Startseite hinzu.
+
+```html title="resources/templates/home.html"
+<body>
+  <h1>Willkommen!</h1>
+
+  <p><a th:href="@{/oauth2/authorization/logto}">Mit Logto anmelden</a></p>
+</body>
+```
+
+### Erstelle eine Benutzerseite
+
+Erstelle einen neuen Controller, um die Benutzerseite zu handhaben:
+
+```java title="UserController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+import java.util.Map;
+
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/user")
+public class UserController {
+
+  @GetMapping
+  public String user(Model model, Principal principal) {
+    if (principal instanceof OAuth2AuthenticationToken) {
+      OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) principal;
+      OAuth2User oauth2User = token.getPrincipal();
+      Map<String, Object> attributes = oauth2User.getAttributes();
+
+      model.addAttribute("username", attributes.get("username"));
+      model.addAttribute("email", attributes.get("email"));
+      model.addAttribute("sub", attributes.get("sub"));
+    }
+
+    return "user";
+  }
+}
+```
+
+Sobald der Benutzer authentifiziert ist, werden wir die `OAuth2User` Daten aus dem authentifizierten Principal-Objekt abrufen. Bitte siehe [OAuth2AuthenticationToken](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/client/authentication/OAuth2AuthenticationToken.html) und [OAuth2User](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/core/user/OAuth2User.html) für weitere Details.
+
+Lese die Benutzerdaten und übergebe sie an das `user.html` Template.
+
+```html title="resources/templates/user.html"
+<body>
+  <h1>Benutzerdetails</h1>
+  <div>
+    <p>
+    <div><strong>Name:</strong> <span th:text="${username}"></span></div>
+    <div><strong>E-Mail:</strong> <span th:text="${email}"></span></div>
+    <div><strong>ID:</strong> <span th:text="${sub}"></span></div>
+    </p>
+  </div>
+
+  <form th:action="@{/logout}" method="post">
+    <input type="submit" value="Abmelden" />
+  </form>
+</body>
+```
+
+#### Zusätzliche Ansprüche anfordern
+
+<FindUserInfoMissing method="principal (OAuth2AuthenticationToken)" />
+
+<ScopesAndClaimsIntroduction />
+
+Um zusätzliche Benutzerinformationen abzurufen, kannst du zusätzliche Berechtigungen zur `application.properties` Datei hinzufügen. Zum Beispiel, um die `email`, `phone` und `urn:logto:scope:organizations` Berechtigung anzufordern, füge die folgende Zeile zur `application.properties` Datei hinzu:
+
+```properties title="application.properties"
+  spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access,email,phone,urn:logto:scope:organizations
+```
+
+Dann kannst du auf die zusätzlichen Ansprüche im `OAuth2User` Objekt zugreifen.
+
+### Anwendung ausführen und testen
+
+Führe die Anwendung aus und navigiere zu `http://localhost:8080`.
+
+- Du wirst die Startseite mit einem Anmeldelink sehen.
+- Klicke auf den Link, um dich mit Logto anzumelden.
+- Nach erfolgreicher Authentifizierung wirst du zur Benutzerseite mit deinen Benutzerdetails weitergeleitet.
+- Klicke auf den Abmeldebutton, um dich abzumelden. Du wirst zurück zur Startseite weitergeleitet.
+
+## Berechtigungen und Ansprüche
+
+<ScopesAndClaims />
+
+## Weiterführende Lektüre
+
+<FurtherReadings />

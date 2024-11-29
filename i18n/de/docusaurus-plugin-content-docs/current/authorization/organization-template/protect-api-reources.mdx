@@ -1,0 +1,60 @@
+---
+sidebar_position: 3
+---
+
+# API-Ressource mit Organisationstemplate schützen
+
+Zusätzlich zu [Schütze deine API](/authorization/api-resources/protect-your-api), das Ressourcen sichert, indem es sicherstellt, dass ein gültiges JWT vorhanden ist, können auch Organisationsrollen angewendet werden, um die Berechtigungen zu filtern. In diesem Artikel konzentrieren wir uns darauf, wie die Organisationsrolle die Berechtigungsdelegation und -validierung in deinem Authentifizierungsablauf beeinflusst.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: Token-Anfrage
+    Client->>Logto: POST /oidc/token
+    Note right of Client: mit Ressource, organization_id,<br/>und angeforderten Berechtigungen
+
+    Note over Logto: Überprüfen, ob der Benutzer<br/>zur angegebenen Organisation gehört
+    Logto-->>Client: Gibt JWT-Zugangstoken zurück
+    Note left of Logto: Token enthält:<br/>- Standard-JWT-Ansprüche<br/>- organization_id<br/>- Berechtigungen gefiltert nach Organisationsrolle
+
+    Note over Client,API: API-Anfrage
+    Client->>API: Anfrage mit Bearer-Token
+
+    Note over API: JWT-Token validieren:<br/>1. Standard-JWT-Validierung<br/>2. Überprüfen der organization_id<br/>3. Überprüfen der Berechtigungen
+
+    alt Token ungültig
+        API-->>Client: 401 Unautorisiert
+    else Token gültig
+        alt Gültige organization_id und Berechtigung
+            API-->>Client: Geschützte Ressource
+        else Andernfalls
+            API-->>Client: 403 Verboten
+        end
+    end
+```
+
+## Der zusätzliche `organization_id` Parameter
+
+Zusätzlich zur normalen Zugangstoken-Anfrage fügen wir im Diagramm einen zusätzlichen `organization_id` Parameter hinzu. Dieser teilt Logto mit, die Berechtigungen auf die Rollen einer bestimmten Organisation einzugrenzen.
+
+## Client-Einrichtung
+
+Wenn du das SDK von Logto verwendest, kannst du `organization_id` als zweiten Parameter der `getAccessToken` Methode hinzufügen.
+
+```tsx
+const accessToken = await logto.getAccessToken('https://my-resource.com/api', 'org_1');
+
+// Oder Ansprüche direkt abrufen
+const accessTokenClaims = await logto.getAccessTokenClaims('https://my-resource.com/api', 'org_1');
+console.log(accessTokenClaims.organization_id); // 'org_1'
+console.log(accessTokenClaims.aud); // 'https://my-resource.com/api'
+```
+
+Dann werden nur die Berechtigungen, die von den Rollen dieser Organisation geerbt werden, im Zugangstoken enthalten sein, sowie ein zusätzlicher Anspruch `organization_id`.
+
+## API-Server-Validierung
+
+Zusätzlich zur normalen JWT-Zugangstoken-Validierung musst du eine zusätzliche Ebene hinzufügen, um zu überprüfen, ob `organization_id` vorhanden und gültig ist.
