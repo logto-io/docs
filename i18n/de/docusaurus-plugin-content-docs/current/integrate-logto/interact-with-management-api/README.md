@@ -16,7 +16,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Was ist die Logto Management API?
 
-Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack zu erfüllen. Sie ist vorgefertigt, in der API-Ressourcenliste in der Logto-Konsole aufgeführt und kann nicht gelöscht oder geändert werden.
+Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack zu erfüllen. Sie ist vorgefertigt, in der <CloudLink to="/api-resources">Konsole > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
 
 Ihr Bezeichner hat das Muster `https://[tenant-id].logto.app/api`
 
@@ -28,17 +28,17 @@ Mit der Logto Management API kannst du auf die robusten Backend-Dienste von Logt
 
 Einige häufig verwendete APIs sind unten aufgeführt:
 
-- Benutzer
-- Anwendung
-- Protokolle
-- Rollen
-- Ressourcen
-- Connectors
-- Organisationen
+- [User](https://openapi.logto.io/operation/operation-getuser)
+- [Application](https://openapi.logto.io/operation/operation-listapplications)
+- [Audit logs](https://openapi.logto.io/operation/operation-listlogs)
+- [Roles](https://openapi.logto.io/operation/operation-listroles)
+- [Resources](https://openapi.logto.io/operation/operation-listresources)
+- [Connectors](https://openapi.logto.io/operation/operation-listconnectors)
+- [Organizations](https://openapi.logto.io/operation/operation-listorganizations)
 
 Um mehr über die verfügbaren APIs zu erfahren, besuche bitte https://openapi.logto.io/.
 
-## Wie man auf die Logto Management API zugreift
+## Wie greift man auf die Logto Management API zu?
 
 ### Erstelle eine M2M-App
 
@@ -46,13 +46,13 @@ Um mehr über die verfügbaren APIs zu erfahren, besuche bitte https://openapi.l
 Wenn du mit dem M2M (Maschine-zu-Maschine) Authentifizierungsfluss nicht vertraut bist, empfehlen wir, zuerst [Verständnis des Authentifizierungsflusses](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) zu lesen, um die grundlegenden Konzepte zu verstehen.
 :::
 
-Gehe zu <CloudLink to="/applications">Konsole > Anwendungen</CloudLink>, wähle den M2M-App-Typ und starte den Erstellungsprozess.
+Gehe zu <CloudLink to="/applications">Konsole > Anwendungen</CloudLink>, wähle den Anwendungstyp "Maschine-zu-Maschine" und starte den Erstellungsprozess.
 
 <M2mRoleAssignment />
 
-Im Rollenzuweisungsmodul kannst du sehen, dass alle M2M-Rollen enthalten sind, und Rollen, die durch ein Logto-Symbol angezeigt werden, bedeuten, dass diese Rollen Logto Management API-Berechtigungen enthalten.
+Im Rollenmodul siehst du, dass alle M2M-Rollen enthalten sind, und Rollen, die durch ein Logto-Symbol angezeigt werden, bedeuten, dass diese Rollen Logto Management API-Berechtigungen enthalten.
 
-Weise nun M2M-Rollen zu, die Logto Management API-Berechtigungen für deine M2M-App enthalten.
+Weise nun M2M-Rollen mit Logto Management API-Berechtigungen für deine M2M-App zu.
 
 ### Ein Zugangstoken abrufen
 
@@ -66,11 +66,11 @@ Weise nun M2M-Rollen zu, die Logto Management API-Berechtigungen für deine M2M-
 
 #### Zugangstoken-Antwort
 
-Ein erfolgreicher Antwortkörper für den Zugang wäre wie folgt:
+Ein erfolgreicher Antwortkörper für den Zugang sieht folgendermaßen aus:
 
 ```json
 {
-  "access_token": "eyJhbG...2g", // Verwende dieses Token für den Zugriff auf die Logto Management API
+  "access_token": "eyJhbG...2g", // Verwende dieses Token, um auf die Logto Management API zuzugreifen
   "expires_in": 3600, // Token-Ablauf in Sekunden
   "token_type": "Bearer", // Authentifizierungstyp für deine Anfrage bei Verwendung des Zugangstokens
   "scope": "all" // Berechtigung `all` für die Logto Management API
@@ -91,15 +91,15 @@ Unsere Entwickler haben viele zusätzliche Funktionen mit der Logto Management A
 
 ### Benutzerprofil selbst implementieren
 
-Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, empfehlen wir, unsere APIs zu verwenden, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API nutzen, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
+Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, empfehlen wir, unsere APIs zu nutzen, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API verwenden, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
 
 ### Erweiterte Benutzersuche
 
 Die Logto Admin-Konsole unterstützt grundlegende Such- und Filterfunktionen. Für erweiterte Suchoptionen wie unscharfe Suche, exakte Übereinstimmung und Groß-/Kleinschreibung, schaue dir unsere [Erweiterte Benutzersuche](/user-management/advanced-user-search) Tutorials und Anleitungen an.
 
-### Organisationsverwaltung selbst implementieren
+### Organisationsmanagement selbst implementieren
 
-Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tenant-App zu erstellen, benötigst du möglicherweise die Logto Management API für Aufgaben wie Organisationseinladungen und Mitgliederverwaltung. Für dein SaaS-Produkt, bei dem du sowohl Administratoren als auch Mitglieder im Mandanten hast, kann die Logto Management API dir helfen, ein benutzerdefiniertes Admin-Portal zu erstellen, das auf deine Geschäftsanforderungen zugeschnitten ist. Schaue dir [dies](/end-user-flows/organization-experience/) für mehr Details an.
+Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tenant-App zu erstellen, benötigst du möglicherweise die Logto Management API für Aufgaben wie Organisationseinladungen und Mitgliederverwaltung. Für dein SaaS-Produkt, bei dem du sowohl Administratoren als auch Mitglieder im Tenant hast, kann die Logto Management API dir helfen, ein benutzerdefiniertes Admin-Portal zu erstellen, das auf deine Geschäftsanforderungen zugeschnitten ist. Schaue dir [dies](/end-user-flows/organization-experience/) für mehr Details an.
 
 ## Tipps zur Nutzung der Logto Management API
 
@@ -124,7 +124,7 @@ Der Link-Header bietet die URL für die vorherige, nächste, erste und letzte Se
 
 #### Verwendung des Total-Number-Headers
 
-Zusätzlich zu den Standard-Link-Headern wird Logto auch einen `Total-Number` Header hinzufügen:
+Zusätzlich zu den Standard-Link-Headern fügt Logto auch einen `Total-Number`-Header hinzu:
 
 ```
 Total-Number: 216
@@ -145,4 +145,4 @@ Es gibt 2 optionale Abfrageparameter:
 Dies gilt nur für Logto Cloud.
 :::
 
-Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gewährleisten, setzen wir eine allgemeine Firewall ein, die den Datenverkehr zu unserer Website überwacht und verwaltet. Obwohl wir keine strikte Ratenbegrenzung durchsetzen, empfehlen wir den Benutzern, ihre Aktivität auf etwa 200 Anfragen alle 10 Sekunden zu beschränken, um unsere Schutzmaßnahmen nicht auszulösen.
+Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gewährleisten, verwenden wir eine allgemeine Firewall, die den Datenverkehr auf unserer Website überwacht und verwaltet. Obwohl wir keine strikte Ratenbegrenzung durchsetzen, empfehlen wir den Benutzern, ihre Aktivität auf etwa 200 Anfragen alle 10 Sekunden zu beschränken, um unsere Schutzmaßnahmen nicht auszulösen.
