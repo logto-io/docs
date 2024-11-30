@@ -16,7 +16,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## What is Logto Management API?
 
-The Logto Management API is a comprehensive set of APIs that gives developers full control over their implementation to suit their product needs and tech stack. It is pre-built, listed in the API resource list in the Logto Console, and cannot be deleted or modified.
+The Logto Management API is a comprehensive set of APIs that gives developers full control over their implementation to suit their product needs and tech stack. It is pre-built, listed in the <CloudLink to="/api-resources">Console > API resources > Logto Management API</CloudLink>, and cannot be deleted or modified.
 
 Its identifier is in the pattern of `https://[tenant-id].logto.app/api`
 
@@ -28,13 +28,13 @@ With the Logto Management API, you can access Logto's robust backend services, w
 
 Some frequently used APIs are listed below:
 
-- User
-- Application
-- Logs
-- Roles
-- Resources
-- Connectors
-- Organizations
+- [User](https://openapi.logto.io/operation/operation-getuser)
+- [Application](https://openapi.logto.io/operation/operation-listapplications)
+- [Audit logs](https://openapi.logto.io/operation/operation-listlogs)
+- [Roles](https://openapi.logto.io/operation/operation-listroles)
+- [Resources](https://openapi.logto.io/operation/operation-listresources)
+- [Connectors](https://openapi.logto.io/operation/operation-listconnectors)
+- [Organizations](https://openapi.logto.io/operation/operation-listorganizations)
 
 To learn more about the APIs that are available, please visit https://openapi.logto.io/.
 
@@ -46,7 +46,7 @@ To learn more about the APIs that are available, please visit https://openapi.lo
 If you're not familiar with M2M (Machine-to-Machine) authentication flow, we recommend reading [Understanding authentication flow](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) first to understand the basic concepts.
 :::
 
-Go to <CloudLink to="/applications">Console > Applications</CloudLink>, select the M2M app type and start the creation process.
+Go to <CloudLink to="/applications">Console > Applications</CloudLink>, select the "Machine-to-machine" application type and start the creation process.
 
 <M2mRoleAssignment />
 
