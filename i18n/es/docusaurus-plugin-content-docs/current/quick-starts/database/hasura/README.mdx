@@ -1,0 +1,107 @@
+---
+slug: /quick-starts/hasura
+sidebar_label: Hasura
+sidebar_custom_props:
+  description: Integra Logto con Hasura.
+---
+
+# Añade autenticación a tu aplicación Hasura
+
+[Hasura](https://hasura.io/) es una herramienta que puede proporcionar rápidamente APIs GraphQL y REST que se ajusten a tus datos. Considerando la seguridad de los datos, Hasura también ofrece la capacidad de ajustar finamente el control de acceso para cada API diferente.
+
+Usualmente, los usuarios de Hasura utilizan otros servicios de gestión de identidad y autenticación, siendo Logto uno muy popular entre ellos.
+
+En esta publicación del blog, asumiremos que ya estás utilizando servicios de Hasura. Introduciremos cómo integrar Hasura y Logto para maximizar la seguridad de tus datos. Si no tienes una cuenta de Logto, regístrate y comienza a usarla ahora.
+
+## Antecedentes
+
+Hasura emplea [gestión de acceso basada en roles](https://hasura.io/docs/latest/auth/overview/), mientras que Logto utiliza el estándar [Control de acceso basado en roles (RBAC)](/authorization/role-based-access-control).
+
+En el modelo de Logto y las mejores prácticas para RBAC, aconsejamos a los usuarios usar `alcance` para corresponder a la granularidad más fina de permisos, usar `rol` como un conjunto de `alcances` para operaciones por lotes convenientes, y finalmente verificar el `alcance` (usualmente del lado de los proveedores de recursos) para verificar si un usuario puede realizar una operación específica.
+
+En Hasura, un `rol` corresponde a la granularidad más fina de permisos, y las verificaciones de permisos se realizan contra los `roles`. Por lo tanto, durante la configuración de Logto, recomendamos mapear un `rol` a exactamente un `alcance`. Este enfoque puede vincular los permisos de Logto y Hasura para evitar confusiones y mal uso.
+
+Hasura puede soportar el control de acceso usando Webhooks o JWT. Nuestra [publicación anterior del blog](https://blog.logto.io/logto-x-hasura) introdujo cómo usar Webhooks, y en las siguientes secciones, explicaremos cómo utilizar el control de acceso en modo JWT de Hasura.
+
+## Empezar
+
+Comencemos con un ejemplo simple. Supongamos que un usuario ya tiene dos APIs en Hasura, `GET /user` y `PATCH /user`, que corresponden a dos roles: `user:reader` y `user:maintainer`, respectivamente.
+
+### 1. Crear recurso de API de Hasura en Logto
+
+Crea un recurso de API de Hasura en Logto.
+
+![Hasura API](./hasura-api.webp)
+
+### 2. Crear roles según la configuración de Hasura en Logto
+
+Necesitamos crear dos `alcances` para el recurso de API de Hasura mencionado en el paso 1, a saber, `read:user` y `maintain:user`, y luego crear dos roles: `user:reader` (que contiene el alcance `read:user`) y `user:maintainer` (que incluye el alcance `maintain:user`) para corresponder uno a uno con los roles de Hasura. Y asignar estos roles a los usuarios de Logto según sea necesario.
+
+![Hasura API with scopes](./hasura-api-with-scopes.webp)
+
+![User reader role](./user-reader-role.webp)
+
+![User maintainer role](./user-maintainer-role.webp)
+
+### 3. Configurar la variable de entorno de Hasura `HASURA_GRAPHQL_JWT_SECRET` para habilitar el modo JWT
+
+Al revisar las [opciones de configuración de JWT de Hasura](https://hasura.io/docs/latest/auth/authentication/jwt/#hasura-jwt-configuration-options), necesitamos agregar y configurar la variable de entorno `HASURA_GRAPHQL_JWT_SECRET` antes de poder usar JWT para el control de acceso.
+
+Hay muchas opciones diferentes que se pueden configurar, pero aquí introducimos el caso más simple: solo se necesita configurar el `jwk_url`. Este valor se puede obtener desde el endpoint de configuración de OpenID de tu Logto (https://your.logto.domain/oidc/.well-known/openid-configuration).
+
+![Hasura JWT config](./hasura-jwt-config.webp)
+
+### 4. Personalizar reclamos adicionales del token de acceso del usuario
+
+Usando la función de reclamos personalizados del token de Logto, personaliza la lógica para agregar reclamos adicionales al token de acceso del usuario.
+
+![User access token script](./user-access-token-script.webp)
+
+Personaliza el método `getCustomJwtClaims` para agregar datos en el JWT de los que Hasura depende para implementar el control de acceso. Esto puede incluir datos relacionados con el usuario que está siendo autorizado durante esa instancia, incluidos los `roles` que poseen, los cuales pueden ser accedidos a través de `context`.
+
+También hemos definido una variable de entorno `USER_DEFAULT_ROLE_NAMES` para evitar codificación fija.
+
+### 5. Integrar Logto SDK
+
+Después de configurar Logto y Hasura, integra tu aplicación con el Logto SDK. Aquí usamos un ejemplo de React para previsualizar el token de acceso del usuario emitido por Logto después del inicio de sesión del usuario.
+
+![User with roles](./user-with-roles.webp)
+
+Primero, asignamos los roles `user:reader` y `user:maintainer` previamente creados al usuario, y luego iniciamos sesión como ese usuario.
+
+```tsx
+const config: LogtoConfig = {
+  endpoint: 'http://localhost:3001',
+  appId: '<your-application-id>',
+  appSecret: '<your-application-secret>',
+  scopes: [
+    ...// existing scopes
+    'read:user',
+    'maintain:user',
+  ],
+  resources: [
+    ...// existing resources
+    'https://*.hasura.app/api',
+  ],
+};
+```
+
+Obtén el token de acceso del usuario y solicita las APIs de Hasura:
+
+```tsx
+const accessToken = await logto.getAccessToken('https://*.hasura.app/api');
+
+// Antes de enviar la solicitud a Hasura
+request.headers.set('Authorization', `Bearer ${accessToken}`);
+request.headers.set('x-Hasura-Role', '<required-role-for-the-endpoint>');
+```
+
+## Conclusión
+
+En este artículo, proporcionamos otro método de control de acceso basado en JWT soportado por Hasura, además de Webhook.
+
+Al comparar los procesos de control de acceso de [Webhook](https://hasura.io/docs/latest/auth/authentication/webhook/) y [JWT](https://hasura.io/docs/latest/auth/authentication/jwt/) de Hasura, podemos ver que el enfoque de Webhook envía un Webhook a Logto y espera una respuesta con cada solicitud de Hasura; mientras que el enfoque basado en JWT puede ser utilizado continuamente hasta que el JWT expire.
+
+El enfoque de JWT puede reducir la carga de la red y eliminar la latencia de red provocada por los Webhooks; mientras tanto, el enfoque de Webhook puede sincronizar cambios en los permisos de usuario en tiempo real.
+
+Los usuarios pueden elegir el enfoque apropiado basado en estas conclusiones, combinado con sus necesidades comerciales reales.
