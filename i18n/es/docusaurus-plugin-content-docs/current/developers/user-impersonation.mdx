@@ -1,0 +1,336 @@
+---
+id: user-impersonation
+title: Suplantación de usuario
+sidebar_label: Suplantación de usuario
+sidebar_position: 3
+---
+
+# Suplantación de usuario
+
+Imagina que Sarah, una ingeniera de soporte en TechCorp, recibe un ticket urgente de Alex, un cliente que no puede acceder a un recurso crítico. Para diagnosticar y resolver el problema de manera eficiente, Sarah necesita ver exactamente lo que Alex ve en el sistema. Aquí es donde la función de suplantación de usuario de Logto resulta útil.
+
+La suplantación de usuario permite a usuarios autorizados como Sarah actuar temporalmente en nombre de otros usuarios como Alex dentro del sistema. Esta poderosa función es invaluable para la resolución de problemas, la prestación de soporte al cliente y la realización de tareas administrativas.
+
+## ¿Cómo funciona?
+
+```mermaid
+sequenceDiagram
+    participant Sarah as Aplicación de Sarah
+    participant TechCorp as Servidor de TechCorp
+    participant Logto as Logto Management API
+    participant LogtoToken as Endpoint de token de Logto
+
+    Sarah->>TechCorp: POST /api/request-impersonation
+    Note over Sarah,TechCorp: Solicitud para suplantar a Alex
+
+    TechCorp->>Logto: POST /api/subject-tokens
+    Note over TechCorp,Logto: Solicitud de token de sujeto para Alex
+
+    Logto-->>TechCorp: Devuelve token de sujeto
+    TechCorp-->>Sarah: Devuelve token de sujeto
+
+    Sarah->>LogtoToken: POST /oidc/token
+    Note over Sarah,LogtoToken: Intercambia token de sujeto por token de acceso
+
+    LogtoToken-->>Sarah: Devuelve token de acceso
+    Note over Sarah: Sarah ahora puede acceder a recursos como Alex
+```
+
+El proceso de suplantación implica tres pasos principales:
+
+1. Sarah solicita la suplantación a través del servidor backend de TechCorp.
+2. El servidor de TechCorp obtiene un token de sujeto de Logto Management API.
+3. La aplicación de Sarah intercambia este token de sujeto por un token de acceso.
+
+Veamos cómo Sarah puede usar esta función para ayudar a Alex.
+
+### Paso 1: Solicitar suplantación
+
+Primero, la aplicación de soporte de Sarah necesita solicitar la suplantación al servidor backend de TechCorp.
+
+**Solicitud (Aplicación de Sarah al servidor de TechCorp)**
+
+```bash
+POST /api/request-impersonation HTTP/1.1
+Host: api.techcorp.com
+Authorization: Bearer <Sarah's_access_token>
+Content-Type: application/json
+
+{
+  "userId": "alex123",
+  "reason": "Investigando problema de acceso a recursos",
+  "ticketId": "TECH-1234"
+}
+```
+
+En esta API, el backend debe realizar verificaciones de autorización adecuadas para asegurar que Sarah tenga los permisos necesarios para suplantar a Alex.
+
+### Paso 2: Obtener un token de sujeto
+
+El servidor de TechCorp, tras validar la solicitud de Sarah, llamará a Logto [Management API](/integrate-logto/interact-with-management-api) para obtener un token de sujeto.
+
+**Solicitud (Servidor de TechCorp a Logto Management API)**
+
+```bash
+POST /api/subject-tokens HTTP/1.1
+Host: techcorp.logto.app
+Authorization: Bearer <TechCorp_m2m_access_token>
+Content-Type: application/json
+
+{
+  "userId": "alex123",
+  "context": {
+    "ticketId": "TECH-1234",
+    "reason": "Problema de acceso a recursos",
+    "supportEngineerId": "sarah789"
+  }
+}
+```
+
+**Respuesta (Logto al servidor de TechCorp)**
+
+```json
+{
+  "subjectToken": "sub_7h32jf8sK3j2",
+  "expiresIn": 600
+}
+```
+
+El servidor de TechCorp debe devolver este token de sujeto a la aplicación de Sarah.
+
+**Respuesta (Servidor de TechCorp a la aplicación de Sarah)**
+
+```json
+{
+  "subjectToken": "sub_7h32jf8sK3j2",
+  "expiresIn": 600
+}
+```
+
+### Paso 3: Intercambiar el token de sujeto por un token de acceso
+
+Ahora, la aplicación de Sarah intercambia este token de sujeto por un token de acceso que representa a Alex, especificando el recurso donde se utilizará el token.
+
+**Solicitud (Aplicación de Sarah al endpoint de token de Logto)**
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&client_id=techcorp_support_app
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+**Respuesta (Logto a la aplicación de Sarah)**
+
+```json
+{
+  "access_token": "eyJhbG...<truncated>",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "resource:read"
+}
+```
+
+El `access_token` devuelto estará vinculado al recurso especificado, asegurando que solo pueda ser utilizado con la API de datos de clientes de TechCorp.
+
+## Ejemplo de uso
+
+Aquí se muestra cómo Sarah podría usar esto en una aplicación de soporte en Node.js:
+
+```jsx
+interface ImpersonationResponse {
+  subjectToken: string;
+  expiresIn: number;
+}
+
+interface TokenExchangeResponse {
+  access_token: string;
+  issued_token_type: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+}
+
+async function impersonateUser(
+  userId: string,
+  clientId: string,
+  ticketId: string,
+  resource: string
+): Promise<string> {
+  try {
+    // Paso 1 y 2: Solicitar suplantación y obtener token de sujeto
+    const impersonationResponse = await fetch(
+      'https://api.techcorp.com/api/request-impersonation',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: "Bearer <Sarah's_access_token>",
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          reason: 'Investigando problema de acceso a recursos',
+          ticketId,
+        }),
+      }
+    );
+
+    if (!impersonationResponse.ok) {
+      throw new Error(`Ocurrió un error HTTP. Estado: ${impersonationResponse.status}`);
+    }
+
+    const { subjectToken } = (await impersonationResponse.json()) as ImpersonationResponse;
+
+    // Paso 3: Intercambiar token de sujeto por token de acceso
+    const tokenExchangeBody = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      client_id: clientId,
+      scope: 'openid profile resource.read',
+      subject_token: subjectToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      resource: resource,
+    });
+
+    const tokenExchangeResponse = await fetch('https://techcorp.logto.app/oidc/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: tokenExchangeBody,
+    });
+
+    if (!tokenExchangeResponse.ok) {
+      throw new Error(`¡Error HTTP! estado: ${tokenExchangeResponse.status}`);
+    }
+
+    const tokenData = (await tokenExchangeResponse.json()) as TokenExchangeResponse;
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('La suplantación falló:', error);
+    throw error;
+  }
+}
+
+// Sarah usa esta función para suplantar a Alex
+async function performImpersonation(): Promise<void> {
+  try {
+    const accessToken = await impersonateUser(
+      'alex123',
+      'techcorp_support_app',
+      'TECH-1234',
+      'https://api.techcorp.com/customer-data'
+    );
+    console.log('Token de acceso de suplantación para Alex:', accessToken);
+  } catch (error) {
+    console.error('Falló la suplantación:', error);
+  }
+}
+
+// Ejecutar la suplantación
+void performImpersonation()
+```
+
+:::note
+
+1. El token de sujeto es de corta duración y para un solo uso.
+2. El token de acceso de suplantación no viene con un token de actualización. Sarah necesitará repetir este proceso si el token expira antes de que resuelva el problema de Alex.
+3. El servidor backend de TechCorp debe implementar verificaciones de autorización adecuadas para asegurar que solo el personal de soporte autorizado como Sarah pueda solicitar la suplantación.
+   :::
+
+## Reclamo `act`
+
+Al usar el flujo de intercambio de tokens para la suplantación, el token de acceso emitido puede incluir un reclamo adicional `act` (actor). Este reclamo representa la identidad de la "parte actuante": en nuestro ejemplo, Sarah, quien está realizando la suplantación.
+
+Para incluir el reclamo `act`, la aplicación de Sarah necesita proporcionar un `actor_token` en la solicitud de intercambio de tokens. Este token debe ser un token de acceso válido para Sarah con el alcance `openid`. Aquí se muestra cómo incluirlo en la solicitud de intercambio de tokens:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&client_id=techcorp_support_app
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+Si se proporciona un `actor_token`, el token de acceso resultante contendrá un reclamo `act` como este:
+
+```json
+{
+  "aud": "https://api.techcorp.com",
+  "iss": "https://techcorp.logto.app",
+  "exp": 1443904177,
+  "sub": "alex123",
+  "act": {
+    "sub": "sarah789"
+  }
+}
+```
+
+Este reclamo `act` indica claramente que Sarah (sarah789) está actuando en nombre de Alex (alex123). El reclamo `act` puede ser útil para auditar y rastrear acciones de suplantación.
+
+## Personalización de reclamos de tokens
+
+Logto te permite personalizar los reclamos de tokens ~~reclamos JWT~~ para tokens de suplantación. Esto puede ser útil para agregar contexto o metadatos adicionales al proceso de suplantación, como la razón de la suplantación o el ticket de soporte asociado.
+
+Cuando el servidor de TechCorp solicita un token de sujeto de Logto Management API, puede incluir un objeto `context`:
+
+```json
+{
+  "userId": "alex123",
+  "context": {
+    "ticketId": "TECH-1234",
+    "reason": "Problema de acceso a recursos",
+    "supportEngineerId": "sarah789"
+  }
+}
+```
+
+Este contexto puede luego ser utilizado en una función `getCustomJwtClaims()` para agregar reclamos específicos al token de acceso final. Aquí hay un ejemplo de cómo podría implementarse:
+
+```tsx
+const getCustomJwtClaims = async ({ token, context, environmentVariables }) => {
+  if (context.grant?.type === 'urn:ietf:params:oauth:grant-type:token-exchange') {
+    const { ticketId, reason, supportEngineerId } = context.grant.subjectTokenContext;
+    return {
+      impersonation_context: {
+        ticket_id: ticketId,
+        reason: reason,
+        support_engineer: supportEngineerId,
+      },
+    };
+  }
+  return {};
+};
+```
+
+El token de acceso resultante que Sarah recibe podría verse así:
+
+```json
+{
+  "sub": "alex123",
+  "aud": "https://api.techcorp.com/customer-data",
+  "impersonation_context": {
+    "ticket_id": "TECH-1234",
+    "reason": "Problema de acceso a recursos",
+    "support_engineer": "sarah789"
+  }
+  // ... otros reclamos estándar
+}
+```
+
+Al personalizar los reclamos de tokens de acceso de esta manera, TechCorp puede incluir información valiosa sobre el contexto de la suplantación, facilitando la auditoría y comprensión de las actividades de suplantación en su sistema.
+
+:::note
+Ten cuidado al agregar reclamos personalizados a tus tokens. Evita incluir información sensible que podría representar riesgos de seguridad si el token es interceptado o filtrado. Los JWT están firmados pero no cifrados, por lo que los reclamos son visibles para cualquiera que tenga acceso al token.
+:::

@@ -1,0 +1,104 @@
+---
+sidebar_position: 3
+---
+
+# Guía: Node (Express)
+
+## Paso 1: Extraer el Token Bearer del encabezado de la solicitud
+
+Una solicitud autorizada debe contener un encabezado `Authorization` con `Bearer <access_token>` como su contenido. Extrae el Token de Autorización del encabezado de la solicitud:
+
+```tsx
+// auth_middleware.ts
+
+import { IncomingHttpHeaders } from 'http';
+
+const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+```
+
+## Paso 2: Validación del token
+
+Para la demostración, usamos el paquete [jose](https://github.com/panva/jose) para validar la firma del token, el estado de expiración y los reclamos requeridos.
+
+### Instalar `jose` como tu dependencia
+
+```bash
+npm i jose --save
+```
+
+### Recuperar las configuraciones OIDC de Logto
+
+Necesitarás un conjunto de claves públicas JWK y el emisor del token para verificar la firma y la fuente del token JWS recibido. Todas las configuraciones de autorización públicas más recientes de Logto se pueden encontrar en `https://<your-logto-domain>/oidc/.well-known/openid-configuration`.
+
+Por ejemplo, llama a `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`. Y localiza los siguientes dos campos en el cuerpo de la respuesta:
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### Añadir middleware de autenticación
+
+El método `jwtVerify` de Jose puede ayudarte a verificar el formato JWS del token, la firma del token, el emisor, la audiencia y el estado de expiración. Se lanzará una excepción si la validación falla.
+
+:::warning
+
+Si usas [control de acceso basado en roles (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac), también se requiere la validación del alcance.
+
+:::
+
+```tsx
+// auth-middleware.ts
+
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (req, res, next) => {
+  // Extraer el token
+  const token = extractBearerTokenFromHeaders(req.headers);
+
+  const { payload } = await jwtVerify(
+    token, // El Token Bearer bruto extraído del encabezado de la solicitud
+    createRemoteJWKSet(new URL('https://<your-logto-domain>/oidc/jwks')), // generar un jwks usando jwks_uri consultado desde el servidor Logto
+    {
+      // emisor esperado del token, debe ser emitido por el servidor Logto
+      issuer: 'https://<your-logto-domain>/oidc',
+      // audiencia esperada del token, debe ser el indicador de recurso de la API actual
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // si estás usando RBAC
+  assert(payload.scope.includes('some_scope'));
+
+  // lógica personalizada del payload
+  userId = payload.sub;
+
+  return next();
+};
+```
+
+## Aplicar middleware a tu API
+
+```tsx
+import { verifyAuthFromRequest } from '/middleware/auth-middleware.ts';
+
+app.get('/user/:id', verifyAuthFromRequest, (req, res, next) => {
+  // Código personalizado
+});
+```

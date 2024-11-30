@@ -1,0 +1,125 @@
+---
+sidebar_position: 2
+---
+
+# Guía: Python
+
+## Paso 1: Extraer el Token Bearer del encabezado de la solicitud
+
+Una solicitud autorizada debe contener un encabezado `Authorization` con `Bearer <access_token>` como su contenido. Extrae el Token de Autorización del encabezado de la solicitud:
+
+```python
+"""requires-auth.py
+"""
+def get_auth_token():
+  auth = request.headers.get("Authorization", None)
+
+  if not auth:
+    raise Error({ code: 'auth.authorization_header_missing', status: 401 })
+
+  contents = auth.split()
+
+  if len(contents) < 2:
+    raise Error({code: 'auth.authorization_token_invalid_format', status: 401})
+
+  elif contents[0] != 'Bearer':
+    raise Error({code: 'auth.authorization_token_type_not_supported', status: 401})
+
+  return contents[1]
+```
+
+## Paso 2: Validación del token
+
+Para la demostración, usamos la aplicación Flask y el paquete [jose](https://github.com/mpdavis/python-jose) para crear el decorador require_auth para validar la firma del token, el estado de expiración y los reclamos requeridos.
+
+### Instalar `python-jose` como tu dependencia
+
+Elige la criptografía que estás usando en Logto. (`ecdsa` por defecto)
+
+```
+pip install python-jose[ecdsa]
+
+```
+
+### Recuperar las configuraciones OIDC de Logto
+
+Necesitarás un conjunto de claves públicas JWK y el emisor del token para verificar la firma y la fuente del token JWS recibido. Todas las configuraciones públicas de autorización de Logto más recientes se pueden encontrar en `https://<your-logto-domain>/oidc/.well-known/openid-configuration`.
+
+Por ejemplo, llama a `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`. Y localiza los siguientes dos campos en el cuerpo de la respuesta:
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### Crear el decorador de validación de autorización
+
+:::warning
+
+Si usas [control de acceso basado en roles (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac), también se requiere la validación del alcance.
+
+:::
+
+```python
+"""requires-auth.py
+"""
+
+import json
+from flask import request,  _request_ctx_stack
+from six.moves.urllib.request import urlopen
+from functools import wraps
+from jose import jwt
+
+def requires_auth(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    token = get_token_auth_header()
+
+# endpoint jwks_uri recuperado de Logto
+    jwks_uri = urlopen('https://<your-logto-domain>/oidc/jwks')
+
+# emisor recuperado de Logto
+    issuer = 'https://<your-logto-domain>/oidc'
+
+    jwks = json.loads(jwks_uri.read())
+
+    try:
+      payload = jwt.decode(
+        token,
+        jwks,
+# El algoritmo de codificación jwt recuperado junto con jwks. ES384 por defecto
+        algorithms=jwt.get_unverified_header(token).get('alg'),
+# El indicador de recurso registrado de la API en Logto
+        audience='<your request listener resource indicator>',
+        issuer=issuer,
+        options={
+          'verify_at_hash': False
+        }
+      )
+    except Exception:
+# manejador de excepciones
+      raise Error({code: 'invalid_token', status: 401})
+
+# Código personalizado para procesar el payload
+    _request_ctx_stack.top.user_id = payload.get('sub')
+
+    return f(*args, **kwargs)
+  return decorated
+```
+
+## Aplicar el decorador a tu API
+
+```python
+from flask import Flask
+from flask_cors import cross_origin
+
+APP = Flask(__name__)
+
+@APP.route("/user/info")
+@cross_origin(headers=["Content-Type", "Authorization"])
+@requires_auth
+def api:
+# Tu lógica de API
+```

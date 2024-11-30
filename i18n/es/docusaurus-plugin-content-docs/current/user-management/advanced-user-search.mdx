@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# Búsqueda avanzada de usuarios
+
+Usar directamente la Management API para aprovechar las condiciones avanzadas de búsqueda de usuarios.
+
+## Realizar una solicitud de búsqueda
+
+Usa `GET /api/users` para buscar usuarios. Ten en cuenta que es una Management API que requiere autenticación como las demás. Consulta [Interactuar con Management API](/integrate-logto/interact-with-management-api) para la receta de interacción.
+
+### Ejemplo
+
+**Solicitud**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<tu-endpoint-logto>/api/users?search=%25alice%25'
+
+```
+
+**Respuesta**
+
+Un array de entidades `User`.
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### Parámetros
+
+Una solicitud de búsqueda consta de las siguientes claves de parámetros:
+
+- Palabras clave de búsqueda: `search`, `search.*`
+- Modo de búsqueda para campos: `mode`, `mode.*` (valor predeterminado `'like'`, disponibles `['exact', 'like', 'similar_to', 'posix']`)
+- Modo conjunto: `joint` o `jointMode` (valor predeterminado `'or'`, disponibles `['or', 'and']`)
+- Es sensible a mayúsculas y minúsculas: `isCaseSensitive` (valor predeterminado `false`)
+
+Esta API tiene habilitada la [paginación](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses).
+
+Vamos a revisarlos a través de algunos ejemplos. Todos los parámetros de búsqueda se formatearán como un constructor de `URLSearchParams`.
+
+:::advertencia
+
+El modo de búsqueda está configurado en `like` por defecto, que utiliza [coincidencia aproximada de cadenas](https://en.wikipedia.org/wiki/Approximate_string_matching) ("búsqueda difusa").
+
+:::
+
+:::nota
+
+Todos los modos de búsqueda difusa solo admiten la coincidencia de un valor por campo. Si necesitas coincidir múltiples valores para un solo campo, debes usar el modo "exacto". Consulta [Coincidencia exacta y sensibilidad a mayúsculas y minúsculas](./#exact-match-and-case-sensitivity) para más detalles.
+
+:::
+
+### Búsqueda difusa básica
+
+Si deseas realizar una búsqueda difusa en todos los campos disponibles, simplemente proporciona un valor para la clave `search`. Utilizará [el operador `like`](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) internamente:
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+Esta búsqueda iterará sobre todos los campos disponibles en una búsqueda de usuario, es decir, `id`, `primaryEmail`, `primaryPhone`, `username`, `name`.
+
+### Especificar campos
+
+¿Qué pasa si deseas limitar la búsqueda solo en `name`? Para buscar a alguien que incluya `foo` en su nombre, simplemente usa el símbolo `.` para especificar el campo:
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+Recuerda que los campos anidados no son compatibles, por ejemplo, `search.name.first` resultará en un error.
+
+También puedes especificar múltiples campos al mismo tiempo:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+Significa buscar usuarios que tengan `foo` en el nombre **O** cuyo correo electrónico termine con `@gmail.com`.
+
+### Cambiar el modo conjunto
+
+Si deseas que la API solo devuelva el resultado que satisfaga TODAS las condiciones, establece el modo conjunto en `and`:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+Significa buscar usuarios que tengan `foo` en el nombre **Y** cuyo correo electrónico termine con `@gmail.com`.
+
+### Coincidencia exacta y sensibilidad a mayúsculas y minúsculas
+
+Supongamos que deseas buscar cuyo nombre sea exactamente "Alice". Puedes establecer `mode.name` para usar coincidencia exacta.
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Puedes encontrar que tiene el mismo efecto al usar el modo `like` (predeterminado) frente a especificar `exact`. Una diferencia es que el modo `exact` utiliza `=` para comparar mientras que `like` utiliza `like` o `ilike`. Teóricamente, `=` debería tener un mejor rendimiento.
+
+Además, en el modo `exact`, puedes pasar múltiples valores para coincidir, y se conectarán con `or`:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+Coincidirá con los usuarios con nombre "Alice" **O** "Bob".
+
+Por defecto, la búsqueda no distingue entre mayúsculas y minúsculas. Para ser más preciso, establece la búsqueda como sensible a mayúsculas y minúsculas:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+Ten en cuenta que `isCaseSensitive` es una configuración global. Por lo tanto, TODOS los campos la seguirán.
+
+### Expresión regular (RegEx)
+
+PostgreSQL admite dos tipos de expresiones regulares, [similar a](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) y [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP). Establece `mode` en `similar_to` o `posix` para buscar por expresiones regulares:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> Nota: El modo similar_to solo funciona en búsquedas sensibles a mayúsculas y minúsculas.
+
+### Sobrescribir el modo de coincidencia
+
+Por defecto, todas las palabras clave heredarán el modo de coincidencia de la búsqueda general:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Modo Posix
+  ['joint', 'and'],
+]);
+```
+
+Para sobrescribir para un campo específico:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Modo Like
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Modo Posix
+  ['joint', 'and'],
+]);
+```

@@ -158,7 +158,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['de', 'en', 'fr', 'pt-BR', 'zh-CN'],
+    locales: ['de', 'en', 'es', 'fr', 'pt-BR', 'zh-CN'],
   },
 
   markdown: {
