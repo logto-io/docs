@@ -10,14 +10,14 @@ Backup-Codes, auch bekannt als Wiederherstellungscode, sind Einmalcodes für die
 
 Der Verlust dieser Codes kann zu Herausforderungen bei der Kontowiederherstellung führen. Daher wird empfohlen, einen zusätzlichen primären Faktor einzurichten, bevor Backup-Codes aktiviert werden, und diesem Priorität zu geben.
 
-Logto generiert automatisch 10 Backup-Codes für Benutzer, sobald sie einen zusätzlichen Faktor konfigurieren. Jeder Code ist nur einmal verwendbar. Benutzern wird geraten, in den Benutzereinstellungen (zugänglich über die [Management API](/integrate-logto/interact-with-management-api/)) ein neues Set von Codes zu generieren, bevor alle vorhandenen Codes aufgebraucht sind.
+Logto generiert automatisch 10 Backup-Codes für Benutzer, sobald sie einen zusätzlichen Faktor konfigurieren. Jeder Code ist nur einmal verwendbar. Benutzern wird geraten, in den Benutzereinstellungen (zugänglich über die [Management API](/integrate-logto/interact-with-management-api/)) ein neues Set von Codes zu regenerieren, bevor alle vorhandenen Codes aufgebraucht sind.
 
 ## Authentifizierungsabläufe
 
-- **Einrichtungsabläufe**
+- **Backup-Codes Einrichtungsabläufe**
 
 ![Backup-Codes Einrichtungsablauf](./assets/backup-codes-set-up-flow.png)
 
-- **Verifizierungsablauf**
+- **Backup-Codes Verifizierungsablauf**
 
 ![Backup-Codes Verifizierungsablauf](./assets/backup-codes-verification-flow.png)

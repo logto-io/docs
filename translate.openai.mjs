@@ -2,8 +2,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import { OpenAI } from 'openai';
 import picocolors from 'picocolors';
 
-import { asIsTerms, patterns, terms } from './terms.mjs';
 import { sampleInput, sampleTranslations } from './translate.samples.mjs';
+import { asIsTerms, patterns, terms } from './translate.terms.mjs';
 
 const model = 'gpt-4o';
 

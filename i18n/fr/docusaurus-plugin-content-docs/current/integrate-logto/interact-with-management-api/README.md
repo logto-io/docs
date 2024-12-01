@@ -16,7 +16,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Qu'est-ce que Logto Management API ?
 
-Le Logto Management API est un ensemble complet d'API qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins en matière de produit et de pile technologique. Il est pré-construit, répertorié dans la liste des ressources API dans la Logto Console, et ne peut pas être supprimé ou modifié.
+Logto Management API est un ensemble complet d'API qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins produits et technologiques. Il est pré-construit, répertorié dans le <CloudLink to="/api-resources">Console > Ressources API > Logto Management API</CloudLink>, et ne peut pas être supprimé ou modifié.
 
 Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
@@ -24,17 +24,17 @@ Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
 <img alt="Détails Logto Management API" src={logtoManagementApiDetailsSrc} />
 
-Avec le Logto Management API, vous pouvez accéder aux services backend robustes de Logto, qui sont hautement évolutifs et peuvent être utilisés dans une multitude de scénarios. Il va au-delà de ce qui est possible avec les capacités low-code de l'Admin Console.
+Avec Logto Management API, vous pouvez accéder aux services backend robustes de Logto, qui sont hautement évolutifs et peuvent être utilisés dans une multitude de scénarios. Cela va au-delà de ce qui est possible avec les capacités low-code de la Console Admin.
 
 Certaines API fréquemment utilisées sont listées ci-dessous :
 
-- Utilisateur
-- Application
-- Journaux
-- Rôles
-- Ressources
-- Connecteurs
-- Organisations
+- [Utilisateur](https://openapi.logto.io/operation/operation-getuser)
+- [Application](https://openapi.logto.io/operation/operation-listapplications)
+- [Journaux d'audit](https://openapi.logto.io/operation/operation-listlogs)
+- [Rôles](https://openapi.logto.io/operation/operation-listroles)
+- [Ressources](https://openapi.logto.io/operation/operation-listresources)
+- [Connecteurs](https://openapi.logto.io/operation/operation-listconnectors)
+- [Organisations](https://openapi.logto.io/operation/operation-listorganizations)
 
 Pour en savoir plus sur les API disponibles, veuillez visiter https://openapi.logto.io/.
 
@@ -46,13 +46,13 @@ Pour en savoir plus sur les API disponibles, veuillez visiter https://openapi.lo
 Si vous n'êtes pas familier avec le flux d'authentification M2M (Machine-to-Machine), nous vous recommandons de lire [Comprendre le flux d'authentification](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) d'abord pour comprendre les concepts de base.
 :::
 
-Allez sur <CloudLink to="/applications">Console > Applications</CloudLink>, sélectionnez le type d'application M2M et commencez le processus de création.
+Allez dans <CloudLink to="/applications">Console > Applications</CloudLink>, sélectionnez le type d'application "Machine-to-machine" et commencez le processus de création.
 
 <M2mRoleAssignment />
 
-Dans le module d'attribution de rôle, vous pouvez voir que tous les rôles M2M sont inclus, et les rôles indiqués par une icône Logto signifient que ces rôles incluent des Permissions Logto Management API.
+Dans le module d'attribution de rôles, vous pouvez voir que tous les rôles M2M sont inclus, et les rôles indiqués par une icône Logto signifient que ces rôles incluent des permissions Logto Management API.
 
-Attribuez maintenant des rôles M2M incluant des Permissions Logto Management API pour votre application M2M.
+Attribuez maintenant des rôles M2M incluant des permissions Logto Management API pour votre application M2M.
 
 ### Récupérer un jeton d’accès
 
@@ -85,23 +85,23 @@ Un corps de réponse d'accès réussi serait comme :
 
 <AccessLogtoManagementApiUsingAccessToken />
 
-## Scénarios typiques pour l'utilisation de Logto Management API
+## Scénarios typiques d'utilisation de Logto Management API
 
-Nos développeurs ont implémenté de nombreuses fonctionnalités supplémentaires en utilisant Logto Management API. Nous croyons que notre API est hautement évolutive et peut répondre à un large éventail de vos besoins. Voici quelques exemples de scénarios qui ne sont pas possibles avec la Logto Admin Console mais peuvent être réalisés grâce à Logto Management API.
+Nos développeurs ont implémenté de nombreuses fonctionnalités supplémentaires en utilisant Logto Management API. Nous croyons que notre API est hautement évolutive et peut répondre à un large éventail de vos besoins. Voici quelques exemples de scénarios qui ne sont pas possibles avec la Console Admin Logto mais qui peuvent être réalisés via Logto Management API.
 
 ### Implémenter le profil utilisateur par vous-même
 
-Logto ne fournit actuellement pas de solution d'interface utilisateur pré-construite pour les profils utilisateurs. Nous reconnaissons que les profils utilisateurs sont étroitement liés aux attributs commerciaux et de produit. Pendant que nous travaillons à déterminer la meilleure approche, nous vous suggérons d'utiliser nos API pour créer votre propre solution. Par exemple, vous pouvez utiliser notre API d'interaction, API de profil et API de code de vérification pour développer une solution personnalisée qui répond à vos besoins.
+Logto ne fournit actuellement pas de solution d'interface utilisateur pré-construite pour les profils utilisateurs. Nous reconnaissons que les profils utilisateurs sont étroitement liés aux attributs commerciaux et produits. Pendant que nous travaillons à déterminer la meilleure approche, nous vous suggérons d'utiliser nos API pour créer votre propre solution. Par exemple, vous pouvez utiliser notre API d'interaction, API de profil et API de code de vérification pour développer une solution personnalisée qui répond à vos besoins.
 
 ### Recherche avancée d'utilisateurs
 
-La Logto Admin Console prend en charge les fonctions de recherche et de filtrage de base. Pour des options de recherche avancées comme la recherche floue, la correspondance exacte et la sensibilité à la casse, consultez nos tutoriels et guides [Recherche avancée d'utilisateurs](/user-management/advanced-user-search).
+La Console Admin Logto prend en charge les fonctions de recherche et de filtrage de base. Pour des options de recherche avancées comme la recherche floue, la correspondance exacte et la sensibilité à la casse, consultez nos tutoriels et guides [Recherche avancée d'utilisateurs](/user-management/advanced-user-search).
 
 ### Implémenter la gestion des organisations par vous-même
 
-Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-locataires, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le locataire, Logto Management API peut vous aider à créer un portail d'administration personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
+Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-tenant, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le tenant, Logto Management API peut vous aider à créer un portail admin personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
 
-## Conseils pour l'utilisation de Logto Management API
+## Conseils pour utiliser Logto Management API
 
 ### Gestion des réponses API paginées
 

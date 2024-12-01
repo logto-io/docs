@@ -237,6 +237,85 @@ Sin embargo, hay algunos casos en los que necesitas establecer mapeos 1-1 entre 
 ### Nuestros clientes necesitan personalización de marca para sus páginas de inicio de sesión
 
 Por favor, consulta [personalización específica de la aplicación](/customization/match-your-brand/#app-specific-branding) y [personalización específica de la organización](/customization/match-your-brand/#organization-specific-branding) para configuraciones relacionadas.`,
+  fr: `---
+sidebar_position: 2
+---
+
+# Authentification vs. autorisation
+
+La différence entre **l'authentification** et **l'autorisation** peut être résumée comme suit :
+
+- **Authentification (Authentication)** répond à la question "Quelle identité possédez-vous ?"
+- **Autorisation (Authorization)** répond à la question "Que pouvez-vous faire ?"
+
+Pour une introduction complète à la gestion des identités et des accès des clients (CIAM), vous pouvez vous référer à notre série CIAM :
+
+- [CIAM 101 : Authentification, Identité, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
+- [CIAM 102 : Autorisation & Contrôle d’accès basé sur les rôles (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
+
+## Authentification
+
+Logto prend en charge diverses méthodes d'authentification interactives et non interactives, par exemple :
+
+- **Expérience de connexion** : Le processus d'authentification pour les utilisateurs finaux.
+- **Authentification machine à machine (M2M)** : Le processus d'authentification pour les services ou les applications.
+
+L'objectif ultime de l'authentification est extrêmement simple : vérifier et obtenir l'identifiant unique de l'entité (dans Logto, un utilisateur ou une application).
+
+## Autorisation
+
+Dans Logto, l'autorisation est effectuée via le contrôle d’accès basé sur les rôles (RBAC). Cela vous donne un contrôle complet pour gérer l'accès de vos utilisateurs ou applications M2M aux éléments suivants :
+
+- **Ressources API** : Une entité globale représentée par un URI absolu.
+- **Organisations** : Un groupe d'utilisateurs ou d'applications.
+- **Ressources API d'organisation** : Une ressource API qui appartient à une organisation.
+
+Pour en savoir plus sur ces concepts, vous pouvez vous référer aux ressources suivantes :
+
+- [Contrôle d’accès basé sur les rôles (RBAC)](/authorization/role-based-access-control)
+- [Organisations (Multi-tenancy)](/organizations)
+
+Voici une représentation visuelle de la relation entre ces concepts :
+
+\`\`\`mermaid
+graph TD
+  subgraph Resources
+    R(Ressources API)
+    O(Organisations)
+    OR(Ressources API d'organisation)
+  end
+
+  subgraph Identities
+    U(Utilisateurs)
+    A(Applications M2M)
+  end
+\`\`\`
+
+En résumé, l'autorisation consiste à définir les règles qui déterminent quelles entités du groupe "Identités" peuvent accéder aux entités du groupe "Resources".
+
+## Questions fréquemment posées
+
+### Je dois spécifier quels utilisateurs peuvent se connecter à une application
+
+En raison de la nature de l'authentification unique (SSO), Logto ne prend actuellement pas en charge l'utilisation des applications en tant que ressources. Au lieu de cela, vous pouvez définir des ressources API et des permissions pour contrôler l'accès à vos ressources.
+
+### Je veux que mes utilisateurs se connectent à une organisation
+
+Comme mentionné précédemment, l'authentification implique la vérification de l'identité d'une entité, tandis que le contrôle d'accès est géré par l'autorisation. Par conséquent :
+
+- Déterminer à quelle(s) organisation(s) un utilisateur appartient est une question d'autorisation.
+- Le processus de connexion est une question d'authentification.
+
+Cela signifie qu'il n'y a pas de concept de "connexion à une organisation" dans Logto. Une fois qu'un utilisateur est authentifié, il peut être autorisé à accéder à toutes les ressources (y compris les ressources d'organisation) en fonction des permissions définies.
+
+Ce modèle est efficace et clair, car il sépare les préoccupations de l'authentification et de l'autorisation. Toutes les applications SaaS modernes, telles que GitHub et Notion, suivent ce modèle.
+
+Cependant, il existe certains cas où vous devez établir des correspondances 1-1 entre les sources d'utilisateurs et les organisations. Dans ce cas, [SSO d’entreprise](/end-user-flows/enterprise-sso) et [approvisionnement Just-in-Time (JIT) d'organisation](/organizations/just-in-time-provisioning) peuvent être utiles.
+
+### Nos clients ont besoin d'une personnalisation de marque pour leurs pages de connexion
+
+Veuillez consulter [personnalisation spécifique à l'application](/customization/match-your-brand/#app-specific-branding) et [personnalisation spécifique à l'organisation](/customization/match-your-brand/#organization-specific-branding) pour les configurations associées.
+`,
   'pt-BR': `---
 sidebar_position: 2
 ---
@@ -315,4 +394,83 @@ No entanto, há alguns casos em que você precisa estabelecer mapeamentos 1-1 en
 ### Nossos clientes precisam de personalização de marca para suas páginas de login
 
 Por favor, confira [personalização específica do aplicativo](/customization/match-your-brand/#app-specific-branding) e [personalização específica da organização](/customization/match-your-brand/#organization-specific-branding) para configurações relacionadas.`,
+  'zh-CN': `---
+sidebar_position: 2
+---
+
+# 认证 (Authentication) 与授权 (Authorization)
+
+**认证 (Authentication)** 和 **授权 (Authorization)** 之间的区别可以总结如下：
+
+- **认证 (Authentication)** 回答了“你拥有哪个身份？”的问题
+- **授权 (Authorization)** 回答了“你可以做什么？”的问题
+
+有关完整的客户身份和访问管理 (CIAM) 介绍，你可以参考我们的 CIAM 系列：
+
+- [CIAM 101: 认证 (Authentication)、身份、单点登录 (SSO)](https://blog.logto.io/ciam-101-intro-authn-sso/)
+- [CIAM 102: 授权 (Authorization) 与基于角色的访问控制 (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
+
+## 认证 (Authentication)
+
+Logto 支持多种交互式和非交互式的认证 (Authentication) 方法，例如：
+
+- **登录体验**：终端用户的认证 (Authentication) 过程。
+- **机器对机器 (M2M) 认证 (Authentication)**：服务或应用程序的认证 (Authentication) 过程。
+
+认证 (Authentication) 的最终目标非常简单：验证并获取实体的唯一标识符（在 Logto 中，是用户或应用程序）。
+
+## 授权 (Authorization)
+
+在 Logto 中，授权 (Authorization) 是通过基于角色的访问控制 (RBAC) 完成的。它让你可以完全控制用户或 M2M 应用程序对以下内容的访问：
+
+- **API 资源**：由绝对 URI 表示的全局实体。
+- **组织 (Organizations)**：用户或应用程序的组。
+- **组织 API 资源**：属于组织的 API 资源。
+
+要了解更多关于这些概念的信息，你可以参考以下资源：
+
+- [基于角色的访问控制 (RBAC)](/authorization/role-based-access-control)
+- [组织 (Organizations)（多租户）](/organizations)
+
+以下是这些概念之间关系的可视化表示：
+
+\`\`\`mermaid
+graph TD
+  subgraph Resources
+    R(API 资源)
+    O(组织 (Organizations))
+    OR(组织 API 资源)
+  end
+
+  subgraph Identities
+    U(用户)
+    A(M2M 应用程序)
+  end
+\`\`\`
+
+简而言之，授权 (Authorization) 是关于定义规则，以确定“Identities”组中的实体可以访问“Resources”组中的哪些实体。
+
+## 常见问题解答
+
+### 我需要指定哪些用户可以登录到应用程序
+
+由于单点登录 (SSO) 的特性，Logto 目前不支持将应用程序用作资源。相反，你可以定义 API 资源和权限来控制对资源的访问。
+
+### 我需要我的用户登录到一个组织
+
+如前所述，认证 (Authentication) 涉及验证实体的身份，而访问控制是通过授权 (Authorization) 处理的。因此：
+
+- 确定用户属于哪个组织是一个授权 (Authorization) 问题。
+- 登录过程是一个认证 (Authentication) 问题。
+
+这意味着在 Logto 中没有“登录到组织”的概念。一旦用户被认证 (Authentication)，他们可以根据定义的权限被授权 (Authorization) 访问所有资源（包括组织资源）。
+
+这种模型高效且清晰，因为它将认证 (Authentication) 和授权 (Authorization) 的关注点分开。所有现代 SaaS 应用程序，如 GitHub 和 Notion，都遵循这种模型。
+
+然而，在某些情况下，你需要在用户来源和组织之间建立 1-1 映射。在这种情况下，[企业单点登录 (SSO)](/end-user-flows/enterprise-sso) 和 [组织即时 (JIT) 供应](/organizations/just-in-time-provisioning) 可能会有所帮助。
+
+### 我们的客户需要为他们的登录页面定制品牌
+
+请查看 [应用程序特定品牌](/customization/match-your-brand/#app-specific-branding) 和 [组织特定品牌](/customization/match-your-brand/#organization-specific-branding) 以获取相关配置。
+`,
 });

@@ -14,10 +14,10 @@ O Logto gera automaticamente 10 Códigos de Backup para os usuários assim que e
 
 ## Fluxos de autenticação
 
-- **Fluxos de configuração**
+- **Fluxos de configuração de códigos de backup**
 
 ![Fluxo de configuração de códigos de backup](./assets/backup-codes-set-up-flow.png)
 
-- **Fluxo de verificação**
+- **Fluxo de verificação de códigos de backup**
 
 ![Fluxo de verificação de códigos de backup](./assets/backup-codes-verification-flow.png)
