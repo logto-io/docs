@@ -10,8 +10,11 @@ import LayoutProvider from '@theme/Layout/Provider';
 import Navbar from '@theme/Navbar';
 import SkipToContent from '@theme/SkipToContent';
 import clsx from 'clsx';
+import ReactModal from 'react-modal';
 
 import styles from './styles.module.css';
+
+ReactModal.setAppElement('body');
 
 export default function Layout(props: Props): JSX.Element {
   const {
