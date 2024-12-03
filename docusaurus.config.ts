@@ -21,10 +21,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const cfPagesBranch = process.env.CF_PAGES_BRANCH;
 
-console.log('#### Deploying branch ####', cfPagesBranch);
-
 const getLogtoDocsUrl = () =>
-  cfPagesBranch && !['production', 'master'].includes(cfPagesBranch)
+  cfPagesBranch && cfPagesBranch !== 'master'
     ? `https://${cfPagesBranch}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
