@@ -23,7 +23,8 @@ const cfPagesBranch = process.env.CF_PAGES_BRANCH;
 
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${cfPagesBranch}.logto-docs.pages.dev/`
+    // https://community.cloudflare.com/t/algorithm-to-generate-a-preview-dns-subdomain-from-a-branch-name/477633/2
+    ? `https://${cfPagesBranch.substring(0, 28)}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
