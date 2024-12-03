@@ -23,10 +23,6 @@ const fontsMetadata = [
   { name: 'Inter', filename: 'Inter_28pt-Bold.ttf', weight: 700 },
   { name: 'NotoSans', filename: 'NotoSansSC-Regular.ttf', weight: 400 },
   { name: 'NotoSans', filename: 'NotoSansSC-Bold.ttf', weight: 700 },
-  { name: 'NotoSans', filename: 'NotoSansJP-Regular.ttf', weight: 400 },
-  { name: 'NotoSans', filename: 'NotoSansJP-Bold.ttf', weight: 700 },
-  { name: 'NotoSans', filename: 'NotoSansKR-Regular.ttf', weight: 400 },
-  { name: 'NotoSans', filename: 'NotoSansKR-Bold.ttf', weight: 700 },
 ] satisfies FontMetadata[];
 
 export const getFonts = async (): Promise<Font[]> => {
