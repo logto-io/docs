@@ -61,6 +61,9 @@ const configs = [
     rules: {
       'max-lines': 'off',
     },
+    env: {
+      node: true,
+    },
   },
   {
     files: ['**/generate.mjs', '**/generate.js'],

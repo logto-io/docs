@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
 import { generateConnectorGuides } from './docs/integrations/generate';
+import ogImageGenerator from './plugins/og-image-generator';
 
 const defaultLocale = 'en';
 
@@ -17,6 +18,15 @@ const currentLocale = process.env.DOCUSAURUS_CURRENT_LOCALE ?? defaultLocale;
 const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const cfPagesBranch = process.env.CF_PAGES_BRANCH;
+
+console.log('#### Deploying branch ####', cfPagesBranch);
+
+const getLogtoDocsUrl = () =>
+  cfPagesBranch && !['production', 'master'].includes(cfPagesBranch)
+    ? `https://${cfPagesBranch}.logto-docs.pages.dev/`
+    : 'https://docs.logto.io/';
 
 const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
 
@@ -148,7 +158,7 @@ const injectHeadTagsPlugin: PluginConfig = () => ({
 
 const config: Config = {
   title: 'Logto docs',
-  url: 'https://docs.logto.io/',
+  url: getLogtoDocsUrl(),
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -318,6 +328,7 @@ const config: Config = {
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
     ...generateConnectorGuides(),
+    ogImageGenerator,
     [
       '@docusaurus/plugin-content-blog',
       {
