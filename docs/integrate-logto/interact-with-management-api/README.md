@@ -146,3 +146,11 @@ This is only for Logto Cloud.
 :::
 
 To ensure the reliability and security of our services for all users, we employ a general firewall that monitors and manages traffic to our website. While we do not enforce a strict rate limit, we recommend that users limit their activity to approximately 200 requests every 10 seconds to avoid triggering our protective measures.
+
+## Related resources
+
+<Url href="https://blog.logto.io/management-api">
+  Use Logto Management API: A step-by-step guide
+</Url>
+
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtain M2M access tokens in minutes with Postman</Url>

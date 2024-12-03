@@ -41,3 +41,13 @@ The Passkeys specification requires users to actively click the button on the cu
 - **Passkey verification flows**
 
 ![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
+
+## Related resources
+
+<Url href="https://blog.logto.io/webauthn-base-knowledge">
+  Things you should know before integrating WebAuthn
+</Url>
+
+<Url href="https://blog.logto.io/web-authn-and-passkey-101">
+  WebAuthn and Passkey 101
+</Url>
