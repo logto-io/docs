@@ -1,5 +1,6 @@
 import Link from '@docusaurus/Link';
-import isInternalUrl from '@docusaurus/isInternalUrl';
+import isInternalUrlDocusaurus from '@docusaurus/isInternalUrl';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import clsx from 'clsx';
 import {
   type MouseEvent,
@@ -7,6 +8,7 @@ import {
   type ReactNode,
   type CSSProperties,
   useMemo,
+  useCallback,
 } from 'react';
 
 import { onKeyDownHandler } from '@site/src/utils/a11y';
@@ -23,6 +25,13 @@ type Props = {
 };
 
 const DropdownItem = ({ onClick, to, className, children, style, type = 'default' }: Props) => {
+  const { siteConfig } = useDocusaurusContext();
+
+  const isInternalUrl = useCallback(
+    (url?: string): boolean => url?.startsWith(siteConfig.url) || isInternalUrlDocusaurus(url),
+    [siteConfig.url]
+  );
+
   const item = useMemo(
     () => (
       <li
