@@ -72,7 +72,7 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
                   type="primary"
                   onClick={() => {
                     window.plausible?.('Docs Not Helpful', {
-                      feedback,
+                      properties: { feedback },
                     });
                     setShowSuccessMessage(true);
                   }}
