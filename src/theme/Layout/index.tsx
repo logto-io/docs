@@ -12,6 +12,8 @@ import SkipToContent from '@theme/SkipToContent';
 import clsx from 'clsx';
 import ReactModal from 'react-modal';
 
+import LanguageSwitchBanner from '@site/src/components/LanguageSwitchBanner';
+
 import styles from './styles.module.css';
 
 ReactModal.setAppElement('body');
@@ -40,6 +42,8 @@ export default function Layout(props: Props): JSX.Element {
       <SkipToContent />
 
       <AnnouncementBar />
+
+      <LanguageSwitchBanner />
 
       <Navbar />
 

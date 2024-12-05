@@ -1,6 +1,4 @@
 import Link from '@docusaurus/Link';
-import { useLocation } from '@docusaurus/router';
-import { useAlternatePageUtils } from '@docusaurus/theme-common/internal';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import type { Props } from '@theme/Footer/Layout';
 import clsx from 'clsx';
@@ -8,6 +6,7 @@ import { useMemo } from 'react';
 
 import Globe from '@site/src/assets/globe-i18n.svg';
 import Select from '@site/src/components/Select';
+import useLocalizedUrl from '@site/src/hooks/use-localized-url';
 
 import styles from './index.module.scss';
 
@@ -15,22 +14,16 @@ export default function FooterLayout({ style, links, logo, copyright }: Props): 
   const {
     i18n: { currentLocale, localeConfigs },
   } = useDocusaurusContext();
-  const alternatePageUtils = useAlternatePageUtils();
-  const { search, hash } = useLocation();
+  const getLocalizedPageUrl = useLocalizedUrl();
 
   const languageOptions = useMemo(
     () =>
-      Object.entries(localeConfigs).map(([locale, { label }]) => {
-        const baseTo = `${alternatePageUtils.createUrl({
-          locale,
-          fullyQualified: true,
-        })}`;
-
-        const to = `${baseTo}${search}${hash}`;
-
-        return { value: locale, title: label, to };
-      }),
-    [localeConfigs, alternatePageUtils, search, hash]
+      Object.entries(localeConfigs).map(([locale, { label }]) => ({
+        value: locale,
+        title: label,
+        to: getLocalizedPageUrl(locale),
+      })),
+    [localeConfigs, getLocalizedPageUrl]
   );
 
   return (
