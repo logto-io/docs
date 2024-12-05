@@ -17,10 +17,16 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
   const [feedback, setFeedback] = useState('');
 
   return (
-    <div className={className}>
-      <div className={styles.container}>
-        <div className={styles.feedbackWrapper}>
-          <span className={styles.label}>Did you find what you needed?</span>
+    <div className={clsx(styles.container, className)}>
+      <div className={styles.flexRow}>
+        <div className={styles.feedback}>
+          <span className={styles.label}>
+            {translate({
+              id: 'theme.common.doYouFindThisPageHelpful',
+              message: 'Do you find this page helpful?',
+              description: 'The label for the docs helpfulness question',
+            })}
+          </span>
           {!showSuccessMessage && (
             <div className={styles.buttons}>
               <Button
@@ -52,40 +58,6 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
               </Button>
             </div>
           )}
-          {!showSuccessMessage && showTextarea && (
-            <>
-              <Textarea
-                className={styles.feedback}
-                placeholder={translate({
-                  id: 'theme.common.feedbackPlaceholder',
-                  message: "We'd love to hear your feedback!",
-                  description: 'The placeholder of the feedback textarea',
-                })}
-                value={feedback}
-                onChange={({ currentTarget }) => {
-                  setFeedback(currentTarget.value);
-                }}
-              />
-              <div className={styles.buttons}>
-                <Button
-                  className={styles.button}
-                  type="primary"
-                  onClick={() => {
-                    window.plausible?.('Docs Not Helpful', {
-                      properties: { feedback },
-                    });
-                    setShowSuccessMessage(true);
-                  }}
-                >
-                  {translate({
-                    id: 'theme.common.submit',
-                    message: 'Submit',
-                    description: 'The label of the submit button',
-                  })}
-                </Button>
-              </div>
-            </>
-          )}
           {showSuccessMessage && (
             <div className={styles.successMessage}>
               {translate({
@@ -112,6 +84,40 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
           </div>
         )}
       </div>
+      {!showSuccessMessage && showTextarea && (
+        <>
+          <Textarea
+            className={styles.feedbackInput}
+            placeholder={translate({
+              id: 'theme.common.feedbackPlaceholder',
+              message: "We'd love to hear your feedback!",
+              description: 'The placeholder of the feedback textarea',
+            })}
+            value={feedback}
+            onChange={({ currentTarget }) => {
+              setFeedback(currentTarget.value);
+            }}
+          />
+          <div className={styles.buttons}>
+            <Button
+              className={styles.button}
+              type="primary"
+              onClick={() => {
+                window.plausible?.('Docs Not Helpful', {
+                  properties: { feedback },
+                });
+                setShowSuccessMessage(true);
+              }}
+            >
+              {translate({
+                id: 'theme.common.submit',
+                message: 'Submit',
+                description: 'The label of the submit button',
+              })}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
