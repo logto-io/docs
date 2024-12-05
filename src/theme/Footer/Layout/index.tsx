@@ -1,4 +1,5 @@
 import Link from '@docusaurus/Link';
+import Translate from '@docusaurus/Translate';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import type { Props } from '@theme/Footer/Layout';
 import clsx from 'clsx';
@@ -38,13 +39,13 @@ export default function FooterLayout({ style, links, logo, copyright }: Props): 
           {logo && <div className="margin-bottom--sm">{logo}</div>}
           {copyright}
           <Link className="footer__link-item" to="https://logto.io/trust-and-security">
-            Hosted in 🇪🇺🇺🇸🇦🇺
+            <Translate>Hosted in 🇪🇺🇺🇸🇦🇺</Translate>
           </Link>
           <Link className="footer__link-item" to="/terms/of-service">
-            Terms
+            <Translate>Terms</Translate>
           </Link>
           <Link className="footer__link-item" to="/terms/privacy-policy">
-            Privacy
+            <Translate>Privacy</Translate>
           </Link>
           <Select
             className={styles.languageSelector}
