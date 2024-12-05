@@ -47,7 +47,7 @@ const LanguageSwitchBanner = () => {
           setTargetLocale(undefined);
         }}
       >
-        <span>
+        <span className={styles.message}>
           {translate({
             id: 'theme.languageSwitchBanner.message',
             message: 'A version matching your device language is available. Switch to ',
