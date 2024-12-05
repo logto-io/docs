@@ -289,6 +289,35 @@ const config: Config = {
             { label: 'GitHub', href: 'https://github.com/logto-io/logto' },
           ],
         },
+        {
+          title: 'Need help?',
+          items: [
+            {
+              label: 'Contact support',
+              href: 'https://logto.io/contact',
+              icon: 'email',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Open a GitHub issue',
+              href: 'https://github.com/logto-io/logto/issues/new/choose',
+              icon: 'github',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Request a new feature',
+              href: 'https://logto.productlane.com/roadmap',
+              icon: 'roadmap',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Ask the Discord community',
+              href: 'https://discord.gg/UEPaF3j5e6',
+              icon: 'discord',
+              hideExternalLinkIcon: true,
+            },
+          ]
+        }
       ],
       copyright: `Designed by Silverhand Inc.`,
     },
