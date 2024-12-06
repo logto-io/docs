@@ -108,7 +108,7 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
               type="primary"
               onClick={() => {
                 window.plausible?.('Docs Not Helpful', {
-                  properties: { feedback },
+                  props: { method: 'HTTP', feedback },
                 });
                 setShowSuccessMessage(true);
               }}
