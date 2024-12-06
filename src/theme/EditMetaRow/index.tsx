@@ -1,4 +1,4 @@
-import { translate } from '@docusaurus/Translate';
+import Translate, { translate } from '@docusaurus/Translate';
 import type { Props } from '@theme/EditMetaRow';
 import clsx from 'clsx';
 import { useState } from 'react';
@@ -70,7 +70,11 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
         </div>
         {editUrl && (
           <div className={styles.editUrlColumn}>
-            <span className={styles.label}>Help us improve the docs!</span>
+            <span className={styles.label}>
+              <Translate id="theme.common.helpUsImproveTheDocs">
+                Help us improve the docs!
+              </Translate>
+            </span>
             <div className={styles.buttons}>
               <Button className={styles.button} href={editUrl}>
                 <EditIcon />
