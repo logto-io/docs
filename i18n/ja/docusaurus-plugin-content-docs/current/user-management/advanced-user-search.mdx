@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# 高度なユーザー検索
+
+Management API を直接使用して、高度なユーザー検索条件を活用します。
+
+## 検索リクエストを実行する
+
+ユーザーを検索するには、[`GET /api/users`](https://openapi.logto.io/operation/operation-getuser) を使用します。他の API と同様に認証が必要な Management API であることに注意してください。[Management API と対話する](/integrate-logto/interact-with-management-api) を参照して、対話の手順を確認してください。
+
+### サンプル
+
+**リクエスト**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**レスポンス**
+
+`User` エンティティの配列。
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### パラメーター
+
+検索リクエストは次のパラメーターキーで構成されます：
+
+- 検索キーワード: `search`, `search.*`
+- フィールドの検索モード: `mode`, `mode.*` (デフォルト値 `'like'`, 使用可能な値 `['exact', 'like', 'similar_to', 'posix']`)
+- 結合モード: `joint` または `jointMode` (デフォルト値 `'or'`, 使用可能な値 `['or', 'and']`)
+- 大文字小文字を区別するか: `isCaseSensitive` (デフォルト値 `false`)
+
+この API には [ページネーション](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses) が有効です。
+
+いくつかの例を通じて説明します。すべての検索パラメーターは `URLSearchParams` のコンストラクタとしてフォーマットされます。
+
+:::warning
+
+検索モードはデフォルトで `like` に設定されており、[近似文字列マッチング](https://en.wikipedia.org/wiki/Approximate_string_matching)（「ファジー検索」）を使用します。
+
+:::
+
+:::note
+
+すべてのファジー検索モードは、フィールドごとに 1 つの値のみをサポートします。単一のフィールドに対して複数の値をマッチさせる必要がある場合は、「exact」モードを使用する必要があります。詳細は [正確な一致と大文字小文字の区別](./#exact-match-and-case-sensitivity) を参照してください。
+
+:::
+
+### 基本的なファジー検索
+
+すべての利用可能なフィールドに対してファジー検索を行いたい場合は、キー `search` に値を指定するだけです。内部的には [ `like` 演算子](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) を使用します：
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+この検索は、ユーザー検索で利用可能なすべてのフィールド、すなわち `id`、`primaryEmail`、`primaryPhone`、`username`、`name` を反復します。
+
+### フィールドを指定する
+
+`name` のみで検索を制限したい場合はどうすればよいでしょうか？名前に `foo` を含む人を検索するには、フィールドを指定するために `.` 記号を使用します：
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+ネストされたフィールドはサポートされていないことを覚えておいてください。例えば、`search.name.first` はエラーになります。
+
+同時に複数のフィールドを指定することもできます：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+これは、名前に `foo` を含むユーザー **または** メールが `@gmail.com` で終わるユーザーを検索することを意味します。
+
+### 結合モードを変更する
+
+すべての条件を満たす結果のみを API に返してほしい場合は、結合モードを `and` に設定します：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+これは、名前に `foo` を含み **かつ** メールが `@gmail.com` で終わるユーザーを検索することを意味します。
+
+### 正確な一致と大文字小文字の区別
+
+名前が正確に「Alice」である人を検索したい場合は、`mode.name` を設定して正確な一致を使用できます。
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+`like` モード（デフォルト）を使用する場合と `exact` を指定する場合で同じ効果があることに気付くかもしれません。違いは、`exact` モードは比較に `=` を使用し、`like` は `like` または `ilike` を使用することです。理論的には `=` の方がパフォーマンスが良いはずです。
+
+さらに、`exact` モードでは、複数の値をマッチングのために渡すことができ、それらは `or` で接続されます：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+これは、名前が「Alice」 **または** 「Bob」であるユーザーをマッチングします。
+
+デフォルトでは検索は大文字小文字を区別しません。より正確にするために、検索を大文字小文字を区別するように設定します：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+`isCaseSensitive` はグローバル設定であることに注意してください。したがって、すべてのフィールドがそれに従います。
+
+### 正規表現 (RegEx)
+
+PostgreSQL は 2 種類の正規表現をサポートしています。[similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) と [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP) です。正規表現で検索するには、`mode` を `similar_to` または `posix` に設定します：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> 注意: モード similar_to は大文字小文字を区別する検索でのみ機能します。
+
+### マッチモードのオーバーライド
+
+デフォルトでは、すべてのキーワードは一般的な検索からマッチモードを継承します：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Posix モード
+  ['joint', 'and'],
+]);
+```
+
+特定のフィールドに対してオーバーライドするには：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Like モード
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Posix モード
+  ['joint', 'and'],
+]);
+```

@@ -1,0 +1,2 @@
+- [Logto Cloud](https://cloud.logto.io) アカウントまたはセルフホスト型 Logto （持っていない場合は [Introduction](/introduction) ガイドを参照して作成してください）。
+- Logto の従来の Web アプリケーションが作成されていること。

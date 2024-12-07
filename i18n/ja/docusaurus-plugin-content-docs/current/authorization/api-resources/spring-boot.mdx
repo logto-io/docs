@@ -1,0 +1,284 @@
+---
+sidebar_position: 4
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# ガイド: Spring Boot
+
+このチュートリアルでは、クライアントが有効な `access_token` を取得し、リクエストヘッダーに `Authorization: Bearer <access_token>` として添付されていることを前提とします。
+
+あなたの Web アプリケーションは、Spring Boot フレームワークを使用してサーバーサイドで実行されるかもしれません。現在、Spring Boot に Logto を手動で統合する必要があります。このガイドでは、それをステップバイステップで完了する方法を説明します。例として Gradle、Java、および Spring Security を使用します。
+
+## Spring Boot プロジェクトを開始する
+
+[Spring Initializr](https://start.spring.io/) を使用すると、Spring Boot プロジェクトをすばやく開始できます。次のオプションを使用します：
+
+- Gradle プロジェクト
+- 言語: Java
+- Spring Boot: 2.7.2
+
+プロジェクトを生成して開きます。
+
+## 依存関係を追加する
+
+Gradle プロジェクトのビルドファイル `build.gradle` に依存関係を追加します：
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+}
+```
+
+:::note
+
+Spring Boot と Spring Security は、OAuth2 リソースサーバーと JWT 検証の両方をサポートしているため、Logto から追加のライブラリを追加する必要はありません。
+
+詳細については、[Spring Security OAuth 2.0 Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/index.html) と [Spring Security Architecture](https://spring.io/guides/topicals/spring-security-architecture) を参照してください。
+
+:::
+
+## 発行者 (Issuer) と JWKS URI を取得する
+
+すべてのトークンは [発行者 (Issuer)](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) によって発行され、[JWK](https://datatracker.ietf.org/doc/html/rfc7517) で署名されています（詳細は [JWS](https://datatracker.ietf.org/doc/html/rfc7515) を参照してください）。
+
+次に進む前に、発行者 (Issuer) と JWKS URI を取得して、Bearer トークン (`access_token`) の発行者と署名を確認する必要があります。
+
+デフォルトでは、Logto の発行者 (Issuer) と JWKS URI は `https://<your-logto-domain>/oidc` と `https://<your-logto-domain>/oidc/jwks` です。
+
+最新の Logto 認可 (Authorization) サーバー構成は、`https://<your-logto-domain>/oidc/.well-known/openid-configuration` で見つけることができます。これには、**issuer**、**jwks_uri**、およびその他の認可 (Authorization) 設定が含まれています。例：
+
+```json
+{
+  // ...
+  "issuer": "https://<your-logto-domain>/oidc",
+  "jwks_uri": "https://<your-logto-domain>/oidc/jwks"
+  // ...
+}
+```
+
+## アプリケーションを構成する
+
+サーバーポート、オーディエンス、OAuth2 リソースサーバーを構成するために、デフォルトの `application.properties` の代わりに `application.yml` ファイルを使用します。
+
+```yaml
+# path/to/project/src/main/resources/application.yaml
+server:
+  port: 3000
+
+logto:
+  audience: http://localhost:3000/
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: <your-logto-issuer-uri>
+          jwk-set-uri: <your-logto-jwks-uri>
+```
+
+- `audience`: 保護された API リソースの一意の API 識別子（つまり、API インジケーター）。
+- `spring.security.oauth2.resourceserver.jwt.issuer-uri`: Logto によって発行された JWT の `iss` クレーム値と発行者 URI。前のセクションから `issuer` 値を入力します。
+- `spring.security.oauth2.resourceserver.jwt.jwk-set-uri`: Spring Security はこの URI を使用して、JWT 署名を検証するための認可 (Authorization) サーバーの公開鍵を取得します。前のセクションから `jwks_uri` 値を入力します。
+
+## オーディエンスバリデーターを提供する
+
+`OAuth2TokenValidator` インターフェースを実装する独自の `AudienceValidator` クラスを提供し、JWT に必要なオーディエンスが存在するかどうかを検証します。
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/validator/AudienceValidator.java
+package io.logto.springboot.sample.validator;
+
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+public class AudienceValidator implements OAuth2TokenValidator<Jwt> {
+
+    private final String audience;
+
+    public AudienceValidator(String audience) {
+        this.audience = audience;
+    }
+
+    @Override
+    public OAuth2TokenValidatorResult validate(Jwt jwt) {
+        if (!jwt.getAudience().contains(audience)) {
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Required audience not found", null));
+        }
+
+	      // オプション: RBAC のために JWT のスコープを検証します。
+	      String scopes = jwt.getClaimAsString("scope");
+	      if (scopes == null || !scopes.contains("read:profile")) {
+	          return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Insufficient permission", null));
+	      }
+
+        return OAuth2TokenValidatorResult.success();
+    }
+}
+```
+
+## Spring Security を構成する
+
+Spring Security を使用すると、アプリケーションをリソースサーバーとして簡単に構成し、リクエストヘッダーの Bearer トークンから JWT を検証できます。
+
+`JwtDecoder` と `SecurityFilterChain` のインスタンスを提供し（Spring ビーンとして）、`@EnableWebSecurity` アノテーションを追加する必要があります。
+
+:::note
+
+Logto はデフォルトで `ES384` アルゴリズムを使用して JWT に署名します。JWT をデコードするには、`jwsAlgorithm` を明示的に `ES384` に設定する必要があります。`RSA` を使用したい場合は、Logto 管理コンソールで署名アルゴリズムを回転させることができます。詳細については、[署名キー](/developers/signing-keys) を参照してください。
+
+:::
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/configuration/SecurityConfiguration.java
+package io.logto.springboot.sample.configuration;
+
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.proc.DefaultJOSEObjectTypeVerifier;
+import com.nimbusds.jose.proc.SecurityContext;
+import io.logto.springboot.sample.validator.AudienceValidator;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfiguration {
+
+    @Value("${logto.audience}")
+    private String audience;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuer;
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}")
+    private String jwksUri;
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                // Logto はデフォルトで ES384 アルゴリズムを使用して JWT に署名します。
+                .jwsAlgorithm(ES384)
+                // デコーダーはトークンタイプをサポートする必要があります：アクセス トークン + JWT。
+                .jwtProcessorCustomizer(customizer -> customizer.setJWSTypeVerifier(
+                        new DefaultJOSEObjectTypeVerifier<SecurityContext>(new JOSEObjectType("at+jwt"))))
+                .build();
+
+        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                new AudienceValidator(audience),
+                new JwtIssuerValidator(issuer),
+                new JwtTimestampValidator()));
+
+        return jwtDecoder;
+    }
+
+    @Bean
+    public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+         http
+          .securityMatcher("/api/**")
+          .oauth2ResourceServer(oauth2 -> oauth2
+              .jwt(Customizer.withDefaults()))
+          .authorizeHttpRequests(requests -> requests
+              // 公開 API へのすべてのリクエストを許可します。
+              .requestMatchers("/api/.wellknown/**").permitAll()
+              // 保護された API には jwt トークン検証を要求します。
+              .anyRequest().authenticated());
+
+        return http.build();
+    }
+}
+```
+
+## API を追加する
+
+保護された API と公開 API を提供するためのコントローラーを追加します：
+
+```java
+// path/to/project/src/main/java/io/logto/springboot/sample/controller/ProtectedController.java
+package io.logto.springboot.sample.controller;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+// サンプルのためにすべてのオリジンを許可します。
+// （本番アプリケーションでは CORS を慎重に構成する必要があります。）
+@CrossOrigin(origins = "*")
+@RestController
+public class ProtectedController {
+    @GetMapping("/api/profile")
+    public String protectedProfile() {
+        return "Protected profile.";
+    }
+
+    @GetMapping("/api/.wellknown/config.json")
+    public String publicConfig() {
+        return "Public config.";
+    }
+}
+
+```
+
+## 保護された API にアクセスする
+
+Spring Boot Web アプリケーションをビルドして実行します。例えば、`bootRun` Gradle タスクを実行します。
+
+<Tabs>
+<TabItem value="linux-or-macos" label="Linux または macOS">
+
+```bash
+./gradlew bootRun
+```
+
+</TabItem>
+<TabItem value="windows" label="Windows">
+
+```bash
+gradlew.bat bootRun
+```
+
+</TabItem>
+</Tabs>
+
+:::note
+
+このチュートリアルでは、リクエストを行う前に API リソース `http://localhost:3000/` のアクセス トークンを持っていることを前提としています。準備ができていない場合は、[こちらを読んでください](/authorization/api-resources/protect-your-api) 。
+
+:::
+
+Authorization ヘッダーの Bearer トークンとしてアクセス トークンを使用して保護された API にリクエストを送信します。例えば、`curl` コマンドを実行します。
+
+```bash
+curl --include 'http://localhost:3000/api/profile' --header 'Authorization: Bearer <your-access-token>'
+```
+
+成功した場合、200 ステータスのレスポンスが返されます：
+
+```bash
+HTTP/1.1 200
+...
+```
+
+そうでない場合、次のように 401 ステータスのレスポンスが返されます：
+
+```
+HTTP/1.1 401
+...
+WWW-Authenticate: Bearer error="invalid_token", error_description="An error occurred while attempting to decode the Jwt: Signed JWT rejected: Invalid signature", error_uri="https://tools.ietf.org/html/rfc6750#section-3.1"
+...
+```
