@@ -52,7 +52,7 @@ Vá para <CloudLink to="/applications">Console > Applications</CloudLink>, selec
 
 No módulo de atribuição de papéis, você pode ver que todos os papéis M2M estão incluídos, e os papéis indicados por um ícone do Logto significam que esses papéis incluem permissões da Logto Management API.
 
-Agora, atribua papéis M2M que incluam permissões da Logto Management API para o seu aplicativo M2M.
+Agora atribua papéis M2M que incluem permissões da Logto Management API para o seu aplicativo M2M.
 
 ### Obter um token de acesso
 
@@ -99,7 +99,7 @@ O Logto Admin Console suporta funções básicas de pesquisa e filtragem. Para o
 
 ### Implementar gerenciamento de organizações por conta própria
 
-Se você está usando o recurso de [organizações](/organizations) para construir seu aplicativo multi-tenant, pode precisar da Logto Management API para tarefas como convites para organizações e gerenciamento de membros. Para seu produto SaaS, onde você tem tanto administradores quanto membros no tenant, a Logto Management API pode ajudá-lo a criar um portal de administração personalizado adaptado às suas necessidades de negócios. Confira [este](/end-user-flows/organization-experience/) para mais detalhes.
+Se você estiver usando o recurso de [organizações](/organizations) para construir seu aplicativo multi-tenant, pode precisar da Logto Management API para tarefas como convites para organizações e gerenciamento de membros. Para seu produto SaaS, onde você tem tanto administradores quanto membros no tenant, a Logto Management API pode ajudá-lo a criar um portal de administração personalizado adaptado às suas necessidades de negócios. Confira [este](/end-user-flows/organization-experience/) para mais detalhes.
 
 ## Dicas para usar a Logto Management API
 
@@ -115,14 +115,14 @@ Um cabeçalho de resposta paginada será assim:
 Link: <https://logto.dev/users?page=1&page_size=20>; rel="first"
 ```
 
-O cabeçalho de link fornece a URL para a página anterior, próxima, primeira e última dos resultados:
+O cabeçalho de link fornece a URL para a página anterior, próxima, primeira e última de resultados:
 
 - A URL para a página anterior é seguida por rel="prev".
 - A URL para a próxima página é seguida por rel="next".
 - A URL para a última página é seguida por rel="last".
 - A URL para a primeira página é seguida por rel="first".
 
-#### Usando cabeçalho de número total
+#### Usando o cabeçalho total-number
 
 Além dos cabeçalhos de link padrão, o Logto também adicionará um cabeçalho `Total-Number`:
 
@@ -146,3 +146,11 @@ Isso é apenas para Logto Cloud.
 :::
 
 Para garantir a confiabilidade e segurança de nossos serviços para todos os usuários, empregamos um firewall geral que monitora e gerencia o tráfego para nosso site. Embora não imponhamos um limite de taxa estrito, recomendamos que os usuários limitem sua atividade a aproximadamente 200 solicitações a cada 10 segundos para evitar acionar nossas medidas de proteção.
+
+## Recursos relacionados
+
+<Url href="https://blog.logto.io/management-api">
+  Use Logto Management API: Um guia passo a passo
+</Url>
+
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtenha tokens de acesso M2M em minutos com o Postman</Url>
