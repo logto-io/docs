@@ -16,7 +16,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Qu'est-ce que Logto Management API ?
 
-Logto Management API est un ensemble complet d'API qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins produits et technologiques. Il est pré-construit, répertorié dans le <CloudLink to="/api-resources">Console > Ressources API > Logto Management API</CloudLink>, et ne peut pas être supprimé ou modifié.
+Le Logto Management API est un ensemble complet d'API qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins produits et technologiques. Il est pré-construit, répertorié dans le <CloudLink to="/api-resources">Console > Ressources API > Logto Management API</CloudLink>, et ne peut pas être supprimé ou modifié.
 
 Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
@@ -24,9 +24,9 @@ Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
 <img alt="Détails Logto Management API" src={logtoManagementApiDetailsSrc} />
 
-Avec Logto Management API, vous pouvez accéder aux services backend robustes de Logto, qui sont hautement évolutifs et peuvent être utilisés dans une multitude de scénarios. Cela va au-delà de ce qui est possible avec les capacités low-code de la Console Admin.
+Avec le Logto Management API, vous pouvez accéder aux services backend robustes de Logto, qui sont hautement évolutifs et peuvent être utilisés dans une multitude de scénarios. Il va au-delà de ce qui est possible avec les capacités low-code de la Console Admin.
 
-Certaines API fréquemment utilisées sont listées ci-dessous :
+Quelques API fréquemment utilisées sont listées ci-dessous :
 
 - [Utilisateur](https://openapi.logto.io/operation/operation-getuser)
 - [Application](https://openapi.logto.io/operation/operation-listapplications)
@@ -72,7 +72,7 @@ Un corps de réponse d'accès réussi serait comme :
 {
   "access_token": "eyJhbG...2g", // Utilisez ce jeton pour accéder à Logto Management API
   "expires_in": 3600, // Expiration du jeton en secondes
-  "token_type": "Bearer", // Type d'authentification pour votre requête lors de l'utilisation du jeton d’accès
+  "token_type": "Bearer", // Type d'authentification pour votre requête lors de l'utilisation du jeton d'accès
   "scope": "all" // portée `all` pour Logto Management API
 }
 ```
@@ -99,7 +99,7 @@ La Console Admin Logto prend en charge les fonctions de recherche et de filtrage
 
 ### Implémenter la gestion des organisations par vous-même
 
-Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-tenant, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le tenant, Logto Management API peut vous aider à créer un portail admin personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
+Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-tenant, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le tenant, Logto Management API peut vous aider à créer un portail administrateur personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
 
 ## Conseils pour utiliser Logto Management API
 
@@ -146,3 +146,11 @@ Ceci est uniquement pour Logto Cloud.
 :::
 
 Pour assurer la fiabilité et la sécurité de nos services pour tous les utilisateurs, nous employons un pare-feu général qui surveille et gère le trafic vers notre site Web. Bien que nous n'imposions pas de limite de taux stricte, nous recommandons aux utilisateurs de limiter leur activité à environ 200 requêtes toutes les 10 secondes pour éviter de déclencher nos mesures de protection.
+
+## Ressources connexes
+
+<Url href="https://blog.logto.io/management-api">
+  Utiliser Logto Management API : Un guide étape par étape
+</Url>
+
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtenez des jetons d'accès M2M en quelques minutes avec Postman</Url>

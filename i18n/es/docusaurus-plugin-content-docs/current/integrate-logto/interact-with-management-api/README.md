@@ -12,29 +12,29 @@ import AccessLogtoManagementApiUsingAccessToken from '../../quick-starts/generic
 import M2mAccessTokenNote from '../../quick-starts/generic/machine-to-machine/fragments/\_m2m-access-token-sub-note.mdx';
 import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fragments/\_m2m-role-assignment.mdx';
 
-# Interactúa con Management API
+# Interactuar con Management API
 
 ## ¿Qué es Logto Management API?
 
-El Logto Management API es un conjunto completo de APIs que brinda a los desarrolladores control total sobre su implementación para adaptarse a las necesidades de su producto y stack tecnológico. Está preconstruido, listado en el <CloudLink to="/api-resources">Consola > Recursos de API > Logto Management API</CloudLink>, y no se puede eliminar ni modificar.
+El Logto Management API es un conjunto completo de APIs que brinda a los desarrolladores control total sobre su implementación para adaptarse a las necesidades de su producto y pila tecnológica. Está preconstruido, listado en el <CloudLink to="/api-resources">Consola > Recursos de API > Logto Management API</CloudLink>, y no se puede eliminar ni modificar.
 
-Su identificador sigue el patrón de `https://[tenant-id].logto.app/api`
+Su identificador sigue el patrón `https://[tenant-id].logto.app/api`
 
 <img alt="Recurso de Logto Management API" src={logtoManagementApiResourceSrc} />
 
 <img alt="Detalles de Logto Management API" src={logtoManagementApiDetailsSrc} />
 
-Con Logto Management API, puedes acceder a los robustos servicios de backend de Logto, que son altamente escalables y pueden ser utilizados en una multitud de escenarios. Va más allá de lo que es posible con las capacidades de bajo código de la Consola de Administración.
+Con el Logto Management API, puedes acceder a los robustos servicios de backend de Logto, que son altamente escalables y pueden ser utilizados en una multitud de escenarios. Va más allá de lo que es posible con las capacidades de bajo código de la Consola de Administración.
 
-Algunas APIs frecuentemente utilizadas se enumeran a continuación:
+Algunas APIs de uso frecuente se enumeran a continuación:
 
-- [Usuario](https://openapi.logto.io/operation/operation-getuser)
-- [Aplicación](https://openapi.logto.io/operation/operation-listapplications)
-- [Registros de auditoría](https://openapi.logto.io/operation/operation-listlogs)
+- [User](https://openapi.logto.io/operation/operation-getuser)
+- [Application](https://openapi.logto.io/operation/operation-listapplications)
+- [Audit logs](https://openapi.logto.io/operation/operation-listlogs)
 - [Roles](https://openapi.logto.io/operation/operation-listroles)
-- [Recursos](https://openapi.logto.io/operation/operation-listresources)
-- [Conectores](https://openapi.logto.io/operation/operation-listconnectors)
-- [Organizaciones](https://openapi.logto.io/operation/operation-listorganizations)
+- [Resources](https://openapi.logto.io/operation/operation-listresources)
+- [Connectors](https://openapi.logto.io/operation/operation-listconnectors)
+- [Organizations](https://openapi.logto.io/operation/operation-listorganizations)
 
 Para obtener más información sobre las APIs disponibles, visita https://openapi.logto.io/.
 
@@ -91,7 +91,7 @@ Nuestros desarrolladores han implementado muchas características adicionales us
 
 ### Implementar el perfil de usuario por tu cuenta
 
-Logto actualmente no proporciona una solución de interfaz de usuario preconstruida para perfiles de usuario. Reconocemos que los perfiles de usuario están estrechamente vinculados a los atributos de negocio y producto. Mientras trabajamos en determinar el mejor enfoque, sugerimos usar nuestras APIs para crear tu propia solución. Por ejemplo, puedes utilizar nuestra API de interacción, API de perfil y API de código de verificación para desarrollar una solución personalizada que satisfaga tus necesidades.
+Logto actualmente no proporciona una solución de interfaz de usuario preconstruida para perfiles de usuario. Reconocemos que los perfiles de usuario están estrechamente ligados a los atributos de negocio y producto. Mientras trabajamos en determinar el mejor enfoque, sugerimos usar nuestras APIs para crear tu propia solución. Por ejemplo, puedes utilizar nuestra API de interacción, API de perfil y API de código de verificación para desarrollar una solución personalizada que satisfaga tus necesidades.
 
 ### Búsqueda avanzada de usuarios
 
@@ -146,3 +146,11 @@ Esto es solo para Logto Cloud.
 :::
 
 Para garantizar la fiabilidad y seguridad de nuestros servicios para todos los usuarios, empleamos un firewall general que monitorea y gestiona el tráfico a nuestro sitio web. Aunque no imponemos un límite de tasa estricto, recomendamos que los usuarios limiten su actividad a aproximadamente 200 solicitudes cada 10 segundos para evitar activar nuestras medidas de protección.
+
+## Recursos relacionados
+
+<Url href="https://blog.logto.io/management-api">
+  Usa Logto Management API: Una guía paso a paso
+</Url>
+
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtén tokens de acceso M2M en minutos con Postman</Url>
