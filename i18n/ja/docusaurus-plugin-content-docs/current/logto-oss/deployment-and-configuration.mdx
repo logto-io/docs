@@ -1,0 +1,174 @@
+---
+sidebar_position: 2
+---
+
+# デプロイと設定
+
+前回の記事では、[Logto を迅速に始める方法](/logto-oss/get-started-with-oss) の基本を紹介しました。この記事では、Logto を本番環境にデプロイするためのベストプラクティスと詳細な設定手順に焦点を当てて、さらに深く掘り下げます。
+
+## 環境変数
+
+デモ (`docker-compose.yml`) では、生成された環境変数のプリセットを使用していますが、これを独自のものに置き換え、複数の Logto インスタンス間で一貫性を保つ必要があります。
+
+環境変数を直接設定するか、Logto プロジェクトのルートに `.env` ファイルを配置できます。Docker でテストしている場合は、`/etc/logto` に生成された `.env` を確認してください。
+
+### 必須項目
+
+- `DB_URL` Logto データベース用の [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
+- `PORT` Logto がリッスンするポート。デフォルトは `3001`。
+- `ENDPOINT` 本番用にカスタムドメインを指定できます（例：`ENDPOINT=https://logto.domain.com`）。これは [OIDC 発行者識別子](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) の値にも影響します。
+
+**管理コンソールを有効にする**
+
+- `ADMIN_PORT` Logto 管理コンソールがリッスンするポート。デフォルトは `3002`。
+- `ADMIN_ENDPOINT` 本番用にカスタムドメインを指定できます（例：`ADMIN_ENDPOINT=https://admin.domain.com`）。これは管理コンソールのリダイレクト URI の値にも影響します。
+
+**管理コンソールを無効にする**
+
+- `ADMIN_DISABLE_LOCALHOST` 管理コンソールのポートを閉じるには `1` または `true` に設定します。`ADMIN_ENDPOINT` が設定されていない場合、管理コンソールは完全に無効になります。
+
+環境変数の詳細については、[設定](/concepts/core-service/configuration/) を参照してください。
+
+### HTTPS
+
+Node.js を使用して直接 HTTPS を提供するか、Node.js の前に HTTPS プロキシ / バランサーを設定できます。詳細は [HTTPS の有効化](/concepts/core-service/configuration/#enabling-https) を参照してください。
+
+### リバースプロキシ
+
+サーバーでリバースプロキシを使用したい場合、例えば Nginx や Apache では、プロキシパス設定で 3001 と 3002 ポートを別々にマッピングする必要があります。Nginx を使用していると仮定し、Logto 認証エンドポイントがポート 3001 で、Logto 管理コンソールがポート 3002 で動作している場合、nginx.conf に次の設定を追加します：
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // 例：auth.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+次に、管理コンソール用に同様の設定を追加します：
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // 例：admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
+}
+```
+
+Nginx の設定をリロードして最新の変更を反映させます：
+
+```
+nginx -s reload
+```
+
+これで準備完了です。ブラウザを開いて `https://admin.your-domain.com` にアクセスすると、Logto のウェルカムページが表示されるはずです。
+
+## コンテナ化
+
+本番環境では、Docker を使用して Logto をコンテナ化することができます。プロジェクトのルートディレクトリに Dockerfile が見つかります。複数の Logto インスタンスを実行したい場合、例えば Kubernetes クラスターに Logto をデプロイする場合、追加の手順が必要です。
+
+### 共有コネクタフォルダ
+
+デフォルトでは、Logto は `core` フォルダのルートディレクトリに `connectors` フォルダを作成します。Logto の複数のインスタンス間でフォルダを共有することをお勧めします。`packages/core/connectors` フォルダをコンテナにマウントし、`npm run cli connector add -- --official` を実行してコネクタをデプロイします。
+
+Kubernetes の最小例 `deployment` は次のとおりです：
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+この例では、ボリュームとして空のディレクトリを作成し、それをコンテナにマウントします。次に、init コンテナで `npm run cli connector add -- --official` を実行してコネクタをダウンロードします。最後に、すべてのコンテナが公式コネクタを含む同じコネクタフォルダを共有します。
+
+:::note
+
+これは例の yaml です。Logto を実行するには、環境変数を適切に設定する必要があります。
+
+:::
+
+本番環境では、「空のディレクトリ」ボリュームを永続ボリュームに置き換え、自分の方法で「init」ジョブを実行できます。自分が何をしているかを理解しているはずです！
+
+### データベースの変更
+
+コネクタと同様に、データベースの変更は単一のインスタンスで実行する必要があります。ジョブを使用して変更スクリプトを実行できます。
+
+`CI=true` 環境変数は、非対話的に変更を実行する場合に必要です。
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+変更コマンドの詳細については、[データベースの変更](/logto-oss/using-cli/database-alteration/) を参照してください。

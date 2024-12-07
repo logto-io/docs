@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 export const sampleInput = `---
 sidebar_position: 2
 ---
@@ -394,6 +395,85 @@ No entanto, há alguns casos em que você precisa estabelecer mapeamentos 1-1 en
 ### Nossos clientes precisam de personalização de marca para suas páginas de login
 
 Por favor, confira [personalização específica do aplicativo](/customization/match-your-brand/#app-specific-branding) e [personalização específica da organização](/customization/match-your-brand/#organization-specific-branding) para configurações relacionadas.`,
+  ja: `---
+sidebar_position: 2
+---
+
+# 認証 (Authentication) と認可 (Authorization)
+
+**認証 (Authentication)** と **認可 (Authorization)** の違いは次のように要約できます：
+
+- **認証 (Authentication)** は「どのアイデンティティを所有していますか？」という質問に答えます。
+- **認可 (Authorization)** は「何ができますか？」という質問に答えます。
+
+完全な顧客アイデンティティとアクセス管理 (CIAM) の紹介については、CIAM シリーズを参照できます：
+
+- [CIAM 101: 認証 (Authentication)、アイデンティティ、シングルサインオン (SSO)](https://blog.logto.io/ciam-101-intro-authn-sso/)
+- [CIAM 102: 認可 (Authorization) とロールベースのアクセス制御 (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
+
+## 認証 (Authentication)
+
+Logto は、さまざまなインタラクティブおよび非インタラクティブな認証 (Authentication) 方法をサポートしています。例えば：
+
+- **サインイン体験**：エンドユーザーのための認証 (Authentication) プロセス。
+- **マシン間通信 (M2M) 認証 (Authentication)**：サービスまたはアプリケーションのための認証 (Authentication) プロセス。
+
+認証 (Authentication) の究極の目標は非常にシンプルです：エンティティ（Logto ではユーザーまたはアプリケーション）の一意の識別子を確認し取得することです。
+
+## 認可 (Authorization)
+
+Logto では、認可 (Authorization) はロールベースのアクセス制御 (RBAC) を通じて行われます。これにより、次のアクセスを管理するための完全なコントロールが可能になります：
+
+- **API リソース**：絶対 URI で表されるグローバルエンティティ。
+- **組織 (Organizations)**：ユーザーまたはアプリケーションのグループ。
+- **組織 API リソース**：組織に属する API リソース。
+
+これらの概念について詳しく知るには、次のリソースを参照してください：
+
+- [ロールベースのアクセス制御 (RBAC)](/authorization/role-based-access-control)
+- [組織 (マルチテナンシー)](/organizations)
+
+これらの概念間の関係を視覚的に表現したものがこちらです：
+
+\`\`\`mermaid
+graph TD
+  subgraph Resources
+    R(API リソース)
+    O(組織)
+    OR(組織 API リソース)
+  end
+
+  subgraph Identities
+    U(ユーザー)
+    A(M2M アプリケーション)
+  end
+\`\`\`
+
+要するに、認可 (Authorization) は「Identities」グループのエンティティが「Resources」グループのエンティティにアクセスできるかどうかを決定するルールを定義することです。
+
+## よくある質問
+
+### アプリケーションにサインインできるユーザーを指定する必要があります
+
+シングルサインオン (SSO) の性質上、Logto は現在、アプリケーションをリソースとして使用することをサポートしていません。代わりに、API リソースと権限を定義してリソースへのアクセスを制御できます。
+
+### ユーザーが組織にサインインする必要があります
+
+前述のように、認証 (Authentication) はエンティティのアイデンティティを確認することであり、アクセス制御は認可 (Authorization) によって処理されます。したがって：
+
+- ユーザーがどの組織に属しているかを決定することは、認可 (Authorization) の問題です。
+- サインインプロセスは、認証 (Authentication) の問題です。
+
+これは、Logto には「組織にサインインする」という概念がないことを意味します。ユーザーが認証 (Authentication) されると、定義された権限に基づいてすべてのリソース（組織リソースを含む）にアクセスする権限が与えられます。
+
+このモデルは、認証 (Authentication) と認可 (Authorization) の問題を分離するため、効率的で明確です。GitHub や Notion などのすべての最新の SaaS アプリケーションは、このモデルに従っています。
+
+ただし、ユーザーソースと組織の間に 1 対 1 のマッピングを確立する必要がある場合もあります。この場合、[エンタープライズシングルサインオン (SSO)](/end-user-flows/enterprise-sso) と [組織のジャストインタイム (JIT) プロビジョニング](/organizations/just-in-time-provisioning) が役立ちます。
+
+### 顧客はサインインページにカスタムブランディングを必要としています
+
+関連する設定については、[アプリ固有のブランディング](/customization/match-your-brand/#app-specific-branding) と [組織固有のブランディング](/customization/match-your-brand/#organization-specific-branding) を確認してください。
+`,
   'zh-CN': `---
 sidebar_position: 2
 ---
@@ -474,3 +554,4 @@ graph TD
 请查看 [应用程序特定品牌](/customization/match-your-brand/#app-specific-branding) 和 [组织特定品牌](/customization/match-your-brand/#organization-specific-branding) 以获取相关配置。
 `,
 });
+/* eslint-enable max-lines */

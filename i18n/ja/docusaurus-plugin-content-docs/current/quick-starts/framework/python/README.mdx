@@ -1,0 +1,190 @@
+---
+slug: /quick-starts/python
+sidebar_label: Python
+sidebar_custom_props:
+  description: Django や Flask などの Python ウェブアプリに Logto を統合します。
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import ClaimsNeedNetworkRequest from '../../fragments/_claims-need-network-request.mdx';
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import PythonGuideTip from './_guide-tip.md';
+import HandleAuthenticationStatus from './_handle-authentication-status.md';
+import ImplementSignInAndSignOutRoutes from './_implement-sign-in-and-sign-out.mdx';
+import InitLogtoClient from './_init-logto-client.mdx';
+import Installation from './_installation.md';
+import ConfigApiResources from './api-resources/_config-api-resources.mdx';
+import FetchAccessTokenForApiResources from './api-resources/_fetch-access-token-for-api-resources.mdx';
+import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-token-for-user.mdx';
+
+# あなたの Python ウェブアプリケーションに認証 (Authentication) を追加する
+
+このガイドでは、あなたの Python ウェブアプリケーションに Logto を統合する方法を示します。
+
+<PythonGuideTip />
+
+## 前提条件
+
+- [Logto Cloud](https://cloud.logto.io) アカウントまたは [セルフホスト Logto](/introduction/set-up-logto-oss)。
+- Logto の従来のウェブアプリケーションが作成されていること。
+
+## インストール
+
+<Installation />
+
+## 統合
+
+### LogtoClient の初期化
+
+<InitLogtoClient />
+
+### リダイレクト URI の設定
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### サインインおよびサインアウトルートの実装
+
+<ImplementSignInAndSignOutRoutes />
+
+### 認証 (Authentication) ステータスの処理
+
+<HandleAuthenticationStatus />
+
+<Checkpoint />
+
+## ユーザー情報の取得
+
+### ユーザー情報の表示
+
+ユーザーの情報を表示するには、`getIdTokenClaims` メソッドまたは `fetchUserInfo` メソッドを使用してユーザー情報を取得できます。`getIdTokenClaims` は ID トークンに含まれるユーザー情報を返し、`fetchUserInfo` は userinfo エンドポイントからユーザー情報を取得します。
+
+ご覧のとおり、`@authenticated` デコレーターを使用して、Flask アプリケーション API にユーザー情報コンテキストを提供しています。
+
+<CodeBlock title="authenticated.py" language="python">
+  {`from functools import wraps
+from flask import g, jsonify, redirect
+from samples.client import client
+def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if client.isAuthenticated() is False:
+                if shouldRedirect:
+                    return redirect("/sign-in")
+                return jsonify({"error": "Not authenticated"}), 401
+            # Flask アプリケーションコンテキストにユーザー情報を保存
+            g.user = (
+                await client.fetchUserInfo()
+                if fetchUserInfo
+                else client.getIdTokenClaims()
+            )
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+`}
+</CodeBlock>
+
+例えば、API でユーザーの情報を表示するには、次のコードを使用できます：
+
+<CodeBlock title="flask.py" language="python">
+  {`@app.route("/protected/userinfo")
+@authenticated(shouldRedirect=True, fetchUserInfo=True)
+async def protectedUserinfo():
+    try:
+        return (
+            "<h2>User info</h2>"
+            + g.user.model_dump_json(indent=2, exclude_unset=True).replace("\\n", "<br>")
+            + navigationHtml
+        )
+    except LogtoException as e:
+        return "<h2>Error</h2>" + str(e) + "<br>" + navigationHtml
+`}
+</CodeBlock>
+
+私たちのデータモデルは [pydantic](https://docs.pydantic.dev/) に基づいているため、`model_dump_json` を使用してデータモデルを JSON にダンプできます。
+
+`exclude_unset=True` を追加すると、未設定のフィールドが JSON 出力から除外され、出力がより正確になります。
+
+例えば、サインイン時に `email` スコープを要求しなかった場合、`email` フィールドは JSON 出力から除外されます。ただし、`email` スコープを要求したが、ユーザーにメールアドレスがない場合、`email` フィールドは `null` 値で JSON 出力に含まれます。
+
+スコープとクレームについて詳しくは、[ユーザー情報の取得](#get-user-information) を参照してください。
+
+### 追加のクレームを要求する
+
+<FindUserInfoMissing method="client.getIdTokenClaims()" />
+
+<ScopesAndClaimsIntroduction />
+
+追加のスコープを要求するには、スコープを `LogtoConfig` オブジェクトに渡すことができます。例えば：
+
+```python title="client.py"
+# highlight-next-line
+from logto import UserInfoScope
+
+client = LogtoClient(
+    LogtoConfig(
+        # ...他の設定
+        # highlight-start
+        scopes = [
+            UserInfoScope.email,
+            UserInfoScope.phone,
+        ],
+        # highlight-end
+    ),
+    storage=SessionStorage(),
+)
+```
+
+その後、`client.getIdTokenClaims()` の戻り値で追加のクレームにアクセスできます：
+
+```python
+idTokenClaims = await client.getIdTokenClaims();
+```
+
+<ClaimsNeedNetworkRequest
+  type="method"
+  method="client.fetchUserInfo()"
+  codeSnippet={
+    <CodeBlock language="python" title="flask.py">
+      (await client.fetchUserInfo()).custom_data
+    </CodeBlock>
+  }
+/>
+
+### スコープとクレーム
+
+<ScopesAndClaims />
+
+## API リソースと組織
+
+<ApiResourcesDescription />
+
+### Logto クライアントの設定
+
+<ConfigApiResources />
+
+### API リソースのためのアクセス トークンの取得
+
+<FetchAccessTokenForApiResources />
+
+### 組織トークンの取得
+
+<FetchOrganizationTokenForUser />
+
+## さらなる読み物
+
+<FurtherReadings />

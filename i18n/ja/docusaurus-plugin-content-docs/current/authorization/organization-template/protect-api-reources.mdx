@@ -1,0 +1,60 @@
+---
+sidebar_position: 3
+---
+
+# 組織テンプレートで API リソースを保護する
+
+有効な JWT が存在することを確認することでリソースを保護する [API を保護する](/authorization/api-resources/protect-your-api) に加えて、組織のロールを適用してスコープをフィルタリングすることもできます。この記事では、組織のロールが認証 (Authentication) フローにおけるスコープの委任と検証にどのように影響するかに焦点を当てます。
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: トークンリクエスト
+    Client->>Logto: POST /oidc/token
+    Note right of Client: リソース、organization_id、<br/>および要求されたスコープを含む
+
+    Note over Logto: ユーザーが指定された<br/>組織に属していることを確認
+    Logto-->>Client: JWT アクセス トークンを返す
+    Note left of Logto: トークンに含まれるもの：<br/>- 標準 JWT クレーム<br/>- organization_id<br/>- 組織のロールでフィルタリングされたスコープ
+
+    Note over Client,API: API リクエスト
+    Client->>API: Bearer トークンを使用してリクエスト
+
+    Note over API: JWT トークンを検証：<br/>1. 標準 JWT 検証<br/>2. organization_id を確認<br/>3. スコープを確認
+
+    alt トークンが無効
+        API-->>Client: 401 Unauthorized
+    else トークンが有効
+        alt 有効な organization_id とスコープ
+            API-->>Client: 保護されたリソース
+        else それ以外
+            API-->>Client: 403 Forbidden
+        end
+    end
+```
+
+## 追加の `organization_id` パラメーター
+
+通常のアクセス トークン付与リクエストに加えて、図では追加の `organization_id` パラメーターを追加しています。これにより、Logto は特定の組織のロールにスコープを絞り込むことができます。
+
+## クライアント設定
+
+Logto の SDK を使用している場合、`getAccessToken` メソッドの第 2 パラメーターとして `organization_id` を追加できます。
+
+```tsx
+const accessToken = await logto.getAccessToken('https://my-resource.com/api', 'org_1');
+
+// またはクレームを直接取得
+const accessTokenClaims = await logto.getAccessTokenClaims('https://my-resource.com/api', 'org_1');
+console.log(accessTokenClaims.organization_id); // 'org_1'
+console.log(accessTokenClaims.aud); // 'https://my-resource.com/api'
+```
+
+その後、この組織のロールから継承されたスコープのみがアクセス トークンに含まれ、追加のクレーム `organization_id` も含まれます。
+
+## API サーバーの検証
+
+通常の JWT アクセス トークンの検証に加えて、`organization_id` が存在し有効であるかどうかを確認する追加のレベルを追加する必要があります。

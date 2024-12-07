@@ -1,0 +1,295 @@
+---
+id: platform-sdk-convention
+title: プラットフォーム SDK の規約
+sidebar_label: プラットフォーム SDK の規約
+sidebar_position: 4
+---
+
+# プラットフォーム SDK の規約
+
+プラットフォーム SDK は、特定のプラットフォームでクライアントを Logto サービスと統合するための標準的な方法を提供し、統合プロセスを加速します。
+
+- プラットフォーム SDK は、プラットフォーム固有の実装で [コア](/developers/sdk-conventions/core-sdk-convention) をカプセル化します。
+- プラットフォーム SDK は、SDK を使いやすくする基本的な型を提供する必要があります。
+- プラットフォーム SDK は、`LogtoClient` という名前のクラスとしてエクスポートされるべきです。
+
+## 基本的な型
+
+<details>
+  <summary>LogtoConfig</summary>
+
+| 名前                | 型         | 必須 | デフォルト値                        | 備考                                                                        |
+| ------------------- | ---------- | ---- | ----------------------------------- | --------------------------------------------------------------------------- |
+| endpoint            | `string`   | ✅   |                                     | OIDC サービスのエンドポイント。                                             |
+| appId               | `string`   | ✅   |                                     | Logto サービスに登録したアプリケーションの ID。                             |
+| scopes              | `string[]` |      | `[openid, offline_access, profile]` | このフィールドには常に `openid`、`offline_access`、`profile` が含まれます。 |
+| resources           | `string[]` |      |                                     | 使用したい保護されたリソースインジケーター。                                |
+| prompt              | `string`   |      | `consent`                           | `generateSignInUri` で使用されるプロンプト値。                              |
+| usingPersistStorage | `boolean`  |      | `true`                              | 資格情報をローカルマシンに保存するかどうかを決定します。                    |
+
+**\*備考**
+
+- 必要に応じてこの `LogtoConfig` を拡張できます。
+- `usingPersistStorage` はクライアント SDK のみで提供されます。例：iOS、Android、SPA。
+
+</details>
+
+<details>
+  <summary>AccessToken</summary>
+
+| 名前      | 型       | 備考                 |
+| --------- | -------- | -------------------- |
+| token     | `string` |                      |
+| scope     | `string` |                      |
+| expiresAt | `number` | タイムスタンプ（秒） |
+
+</details>
+
+## LogtoClient
+
+### プロパティ
+
+<details>
+  <summary>logtoConfig</summary>
+
+**型**
+
+`LogtoConfig`
+
+</details>
+
+<details>
+  <summary>oidcConfig</summary>
+
+**型**
+
+`OidcConfigResponse?`
+
+</details>
+
+<details>
+  <summary>accessTokenMap</summary>
+
+**型**
+
+`Map<string, AccessToken>`
+
+**キー**
+
+- キーは `scope` と `resource` で構成されるべきです。
+- `scope` の値はアルファベット順にソートされ、スペースで結合されるべきです。
+- キーは `${scope}@${resource}` のパターンで構成されるべきです。
+- `scope` または `resource` が null または空の場合、それらの値は空として扱われるべきです。
+
+例：`"offline_access openid read:usr@https://logto.dev/api"`、`"@https://logto.dev/api"`、`"openid@"`、`"@"`。
+
+**値**
+
+- `expiresAt` プロパティを使用してアクセス トークンの有効期限を示す `AccessToken`。
+
+**備考**
+
+- Logto V1 ではカスタムスコープをサポートしていないため、`scope` は常に null 値になります。
+- アクセストークンキーを構築してアクセストークンを保存する際：
+  - `scope` は常に null 値になります。
+  - アクセストークンが JWT でない場合、`resource` を null 値として扱います。
+  - アクセストークンが JWT の場合、アクセストークンをデコードし、ペイロードの `aud` クレーム値をアクセストークンキーの `resource` 部分として使用します。
+
+</details>
+
+<details>
+  <summary>refreshToken</summary>
+
+**型**
+
+`string?`
+
+**備考**
+
+`refreshToken` は以下の状況で設定または更新されます：
+
+- ストレージから `refreshToken` をロードします。
+- トークンの取得に成功した際、サーバーがレスポンスで `refreshToken` を返します。
+- サインアウト（`null` に設定されます）。
+
+</details>
+
+<details>
+  <summary>idToken</summary>
+
+**型**
+
+`string?`
+
+**備考**
+
+- `idToken` はバックエンドから来た場合に検証されるべきです。
+- `idToken` は以下の状況で設定または更新されます：
+  - ストレージから `idToken` をロードします。
+  - トークンの取得に成功した際、サーバーがレスポンスで `idToken` を返します。
+  - サインアウト（`null` に設定されます）。
+
+</details>
+
+### メソッド
+
+<details>
+  <summary>constructor</summary>
+
+**パラメーター**
+
+| パラメーター | 型            |
+| ------------ | ------------- |
+| logtoConfig  | `LogtoConfig` |
+
+**戻り値の型**
+
+`LogtoClient`
+
+**備考**
+
+- 必要に応じて追加のパラメーターを追加できます。
+- logtoConfig で usePersistStorage が有効になっている場合、プラットフォーム SDK は以下の機能を提供します：
+  - `clientId` に基づいて一意のキーで永続データを保存します。
+  - 初期化時にローカルマシンから `refreshToken` と `idToken` をロードします。
+  - `Core.fetchTokenByAuthorizationCode` と `Core.fetchTokenByRefreshToken` で `refreshToken` と `idToken` をローカルに保存します。
+
+</details>
+
+<details>
+  <summary>isAuthenticated</summary>
+
+ユーザーが認証 (Authentication) されているかどうかを知るためのものです。  
+これはゲッターとしても定義できます。
+
+ユーザーは次の場合に認証 (Authentication) されていると見なされます：
+
+- ID トークンを正常に取得した場合。
+- ローカルマシンから ID トークンをロードした場合。
+
+**パラメーター**
+
+なし。
+
+**戻り値の型**
+
+`boolean`
+
+</details>
+
+<details>
+  <summary>SignIn</summary>
+
+このメソッドはサインインフローを開始する必要があり、プラットフォーム SDK はサインインリダイレクトプロセスを含む認可に必要なすべてのステップを完了する必要があります。
+
+このメソッドが正常に呼び出された後、ユーザーは認証 (Authentication) されます。
+
+サインインプロセスは Core SDK の関数に依存します：
+
+- `generateSignInUri`
+- `verifyAndParseCodeFromCallbackUri`
+- `fetchTokenByAuthorizationCode`
+
+備考：
+
+- generateSignInUri に必要なリソースが含まれているため、fetchTokenByAuthorizationCode 関数にリソースを渡す必要はありません。
+
+**パラメーター**
+
+| パラメーター | 型       |
+| ------------ | -------- |
+| redirectUri  | `string` |
+
+**戻り値の型**
+
+`void`
+
+**例外**
+
+- このサインインプロセス中に発生したエラー。
+
+</details>
+
+<details>
+  <summary>SignOut</summary>
+
+サインアウトプロセスは次のステップに従うべきです：
+
+1. ローカルストレージ、クッキー、永続データ、その他のものをクリアします。
+2. `Core.revoke` を介して取得したリフレッシュトークンを取り消します（リフレッシュトークンが取り消されると、Logto サービスは関連するすべてのトークンを取り消します）。
+3. ステップ 1 がサインインページのセッションをクリアしない限り、ユーザーを Logto のサインアウトエンドポイントにリダイレクトします。
+
+備考：
+
+- ステップ 2 では、`Core.revoke` は非同期呼び出しであり、失敗してもサインアウトプロセスをブロックしません。
+- ステップ 3 は、Logto のサインアウトエンドポイントを生成するために `Core.generateSignOutUri` に依存しています。
+
+**パラメーター**
+
+| パラメーター          | 型       | 必須 | デフォルト値 |
+| --------------------- | -------- | ---- | ------------ |
+| postLogoutRedirectUri | `string` |      | `null`       |
+
+**戻り値の型**
+
+`void`
+
+**例外**
+
+- このサインアウトプロセス中に発生したエラー。
+
+</details>
+
+<details>
+  <summary>getAccessToken</summary>
+
+`getAccessToken` は `accessTokenMap` から `resource` と `scope` によって `AccessToken` を取得し、その `AccessToken` の `token` 値を返します。
+
+Logto V1 ではカスタムスコープをサポートしていないため、`accessTokenMap` のキーを構築する際に `scope` を `null` に設定します。
+
+**備考**
+
+- 対応する `AccessToken` が見つからない場合、必要なトークンを取得するために `Core.fetchTokenByRefreshToken` アクションを実行します。
+- `accessToken` が期限切れでない場合、その内部の `token` 値を返します。
+- `accessToken` が期限切れの場合、新しい `accessToken` を取得するために `Core.fetchTokenByRefreshToken` アクションを実行し、ローカルの `accessTokenMap` を更新し、新しい `token` 値を返します。
+- `Core.fetchTokenByRefreshToken` が失敗した場合、発生した例外をユーザーに通知します。
+- リフレッシュトークンが見つからない場合、ユーザーに未認可の例外を通知します。
+- サインイン後に `refreshToken` を取得することでのみ、`Core.fetchTokenByRefreshToken` アクションを実行できます。
+
+**パラメーター**
+
+| パラメーター | 型       | 必須 | デフォルト値 |
+| ------------ | -------- | ---- | ------------ |
+| resource     | `string` |      | `null`       |
+
+**戻り値の型**
+
+`string`
+
+**例外**
+
+- ユーザーが認証 (Authentication) されていません。
+- 入力された `resource` が `logtoConfig` に設定されていません。
+- `Core.fetchTokenByRefreshToken` の前にリフレッシュトークンが見つかりません。
+- `Core.fetchTokenByRefreshToken` が失敗しました。
+
+</details>
+
+<details>
+  <summary>getIdTokenClaims</summary>
+
+`getIdTokenClaims` は `idToken` プロパティのクレームを持つオブジェクトを返します。
+
+**パラメーター**
+
+なし。
+
+**戻り値の型**
+
+`IdTokenClaims`
+
+**例外**
+
+- ユーザーが認証 (Authentication) されていません。
+
+</details>

@@ -1,0 +1,148 @@
+import CodeBlock from '@theme/CodeBlock';
+
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris, {
+  defaultBaseUrl,
+  defaultRedirectUri,
+} from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+### スクリプト参照を追加する
+
+`index.html` ファイルに `Blorc.Core/injector.js` を含めます：
+
+```html title="index.html"
+<head>
+  <!-- ... -->
+  <script src="_content/Blorc.Core/injector.js"></script>
+  <!-- ... -->
+</head>
+```
+
+### サービスを登録する
+
+次のコードを `Program.cs` ファイルに追加します：
+
+```csharp title="Program.cs"
+using Blorc.OpenIdConnect;
+using Blorc.Services;
+
+builder.Services.AddBlorcCore();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddBlorcOpenIdConnect(
+    options =>
+    {
+        builder.Configuration.Bind("IdentityServer", options);
+    });
+
+var webAssemblyHost = builder.Build();
+
+await webAssemblyHost
+    .ConfigureDocumentAsync(async documentService =>
+    {
+        await documentService.InjectBlorcCoreJsAsync();
+        await documentService.InjectOpenIdConnectAsync();
+    });
+
+await webAssemblyHost.RunAsync();
+```
+
+:::info
+`Microsoft.AspNetCore.Components.WebAssembly.Authentication` パッケージを使用する必要はありません。`Blorc.OpenIdConnect` パッケージが認証 (Authentication) プロセスを処理します。
+:::
+
+### リダイレクト URI を設定する
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### アプリケーションを設定する
+
+次のコードを `appsettings.json` ファイルに追加します：
+
+<CodeBlock language="json5" title="appsettings.json">
+  {`{
+  // ...
+  IdentityServer: {
+    Authority: 'https://<your-logto-endpoint>/oidc',
+    ClientId: '<your-logto-app-id>',
+    PostLogoutRedirectUri: '${defaultBaseUrl}',
+    RedirectUri: '${defaultRedirectUri}',
+    ResponseType: 'code',
+    Scope: 'openid profile', // 必要に応じてスコープを追加
+  },
+}`}
+</CodeBlock>
+
+`RedirectUri` と `PostLogoutRedirectUri` を Logto アプリケーション設定の許可されたリダイレクト URI のリストに追加することを忘れないでください。これらはどちらも WASM アプリケーションの URL です。
+
+### `AuthorizeView` コンポーネントを追加する
+
+認証 (Authentication) が必要な Razor ページに `AuthorizeView` コンポーネントを追加します。`Home.razor` ページであると仮定します：
+
+```cshtml title="Pages/Home.razor"
+@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        @* サインイン済みビュー *@
+        <button @onclick="OnLogoutButtonClickAsync">
+            サインアウト
+        </button>
+    </Authorized>
+    <NotAuthorized>
+        @* 未認証ビュー *@
+        <button @onclick="OnLoginButtonClickAsync">
+            サインイン
+        </button>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### 認証 (Authentication) を設定する
+
+`Home.razor.cs` ファイルに（存在しない場合は作成して）次のコードを追加します：
+
+```csharp title="Pages/Home.razor.cs"
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Blorc.OpenIdConnect;
+using Microsoft.AspNetCore.Components.Authorization;
+
+[Authorize]
+public partial class Home : ComponentBase
+{
+    [Inject]
+    public required IUserManager UserManager { get; set; }
+
+    public User<Profile>? User { get; set; }
+
+    [CascadingParameter]
+    protected Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await UserManager.GetUserAsync<User<Profile>>(AuthenticationStateTask!);
+    }
+
+    private async Task OnLoginButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignInRedirectAsync();
+    }
+
+    private async Task OnLogoutButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignOutRedirectAsync();
+    }
+}
+```
+
+ユーザーが認証 (Authentication) されると、`User` プロパティにユーザー情報が設定されます。
+
+<Checkpoint />
