@@ -14,6 +14,7 @@ import {
 } from '@docusaurus/theme-common';
 import { isSamePath } from '@docusaurus/theme-common/internal';
 import useIsBrowser from '@docusaurus/useIsBrowser';
+import { cond, condString } from '@silverhand/essentials';
 import type { Props } from '@theme/DocSidebarItem/Category';
 import DocSidebarItems from '@theme/DocSidebarItems';
 import clsx from 'clsx';
@@ -112,7 +113,8 @@ export default function DocSidebarItemCategory({
   ...props
 }: Props): JSX.Element {
   const { items, label, collapsible, className, href, customProps } = item;
-  const Icon = typeof customProps?.id === 'string' ? icons[customProps.id] : undefined;
+  const Icon = cond(typeof customProps?.id === 'string' && icons[customProps.id]);
+  const sublistLabel = condString(customProps?.sublist_label);
   const {
     docs: {
       sidebar: { autoCollapseCategories },
@@ -148,77 +150,85 @@ export default function DocSidebarItemCategory({
   }, [collapsible, expandedItem, index, setCollapsed, autoCollapseCategories]);
 
   return (
-    <li
-      className={clsx(
-        ThemeClassNames.docs.docSidebarItemCategory,
-        ThemeClassNames.docs.docSidebarItemCategoryLevel(level),
-        'menu__list-item',
-        {
-          'menu__list-item--collapsed': collapsed,
-        },
-        className
+    <>
+      {sublistLabel && (
+        <li className={clsx('menu__list-item', styles.sublistLabel)}>
+          <span>{sublistLabel}</span>
+          <div className={styles.divider} />
+        </li>
       )}
-    >
-      <div
-        className={clsx('menu__list-item-collapsible', {
-          'menu__list-item-collapsible--active': isCurrentPage,
-        })}
-      >
-        <Link
-          className={clsx('menu__link', {
-            'menu__link--sublist': collapsible,
-            // @charles modified this:
-            // 'menu__link--sublist-caret': !href && collapsible,
-            'menu__link--active': isActive,
-          })}
-          aria-current={isCurrentPage ? 'page' : undefined}
-          role={collapsible && !href ? 'button' : undefined}
-          aria-expanded={collapsible && !href ? !collapsed : undefined}
-          href={collapsible ? (hrefWithSSRFallback ?? '#') : hrefWithSSRFallback}
-          onClick={
-            collapsible
-              ? (event) => {
-                  onItemClick?.(item);
-                  if (href) {
-                    updateCollapsed(false);
-                  } else {
-                    event.preventDefault();
-                    updateCollapsed();
-                  }
-                }
-              : () => {
-                  onItemClick?.(item);
-                }
-          }
-          {...props}
-        >
-          {/** @charles added category icon support */}
-          {Icon && <Icon className={styles.icon} />}
-          {label}
-        </Link>
-        {/* @charles modified this: */}
-        {/* {href && collapsible && ( */}
-        {collapsible && (
-          <CollapseButton
-            collapsed={collapsed}
-            categoryLabel={label}
-            onClick={(event) => {
-              event.preventDefault();
-              updateCollapsed();
-            }}
-          />
+      <li
+        className={clsx(
+          ThemeClassNames.docs.docSidebarItemCategory,
+          ThemeClassNames.docs.docSidebarItemCategoryLevel(level),
+          'menu__list-item',
+          {
+            'menu__list-item--collapsed': collapsed,
+          },
+          className
         )}
-      </div>
+      >
+        <div
+          className={clsx('menu__list-item-collapsible', {
+            'menu__list-item-collapsible--active': isCurrentPage,
+          })}
+        >
+          <Link
+            className={clsx('menu__link', {
+              'menu__link--sublist': collapsible,
+              // @charles modified this:
+              // 'menu__link--sublist-caret': !href && collapsible,
+              'menu__link--active': isActive,
+            })}
+            aria-current={isCurrentPage ? 'page' : undefined}
+            role={collapsible && !href ? 'button' : undefined}
+            aria-expanded={collapsible && !href ? !collapsed : undefined}
+            href={collapsible ? (hrefWithSSRFallback ?? '#') : hrefWithSSRFallback}
+            onClick={
+              collapsible
+                ? (event) => {
+                    onItemClick?.(item);
+                    if (href) {
+                      updateCollapsed(false);
+                    } else {
+                      event.preventDefault();
+                      updateCollapsed();
+                    }
+                  }
+                : () => {
+                    onItemClick?.(item);
+                  }
+            }
+            {...props}
+          >
+            {/** @charles added category icon support */}
+            {Icon && <Icon className={styles.icon} />}
+            {label}
+          </Link>
+          {/* @charles modified this: */}
+          {/* {href && collapsible && ( */}
+          {collapsible && (
+            <CollapseButton
+              collapsed={collapsed}
+              categoryLabel={label}
+              onClick={(event) => {
+                event.preventDefault();
+                updateCollapsed();
+              }}
+            />
+          )}
+        </div>
 
-      <Collapsible lazy as="ul" className="menu__list" collapsed={collapsed}>
-        <DocSidebarItems
-          items={items.filter((item) => 'href' in item && item.href !== href)}
-          tabIndex={collapsed ? -1 : 0}
-          activePath={activePath}
-          level={level + 1}
-          onItemClick={onItemClick}
-        />
-      </Collapsible>
-    </li>
+        <Collapsible lazy as="ul" className="menu__list" collapsed={collapsed}>
+          <DocSidebarItems
+            items={items.filter((item) => 'href' in item && item.href !== href)}
+            tabIndex={collapsed ? -1 : 0}
+            activePath={activePath}
+            level={level + 1}
+            onItemClick={onItemClick}
+          />
+        </Collapsible>
+      </li>
+    </>
   );
 }
