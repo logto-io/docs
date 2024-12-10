@@ -27,7 +27,7 @@ const getLogtoDocsUrl = () =>
     ? `https://${cfPagesBranch.substring(0, 28)}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
-const { dracula: darkCodeTheme, github: lightCodeTheme } = themes;
+const { dracula } = themes;
 
 const addAliasPlugin: PluginConfig = () => ({
   name: 'add-alias-plugin',
@@ -322,8 +322,8 @@ const config: Config = {
       copyright: `Designed by Silverhand Inc.`,
     },
     prism: {
-      theme: lightCodeTheme,
-      darkTheme: darkCodeTheme,
+      theme: dracula,
+      darkTheme: dracula,
       additionalLanguages: [
         'swift',
         'kotlin',
