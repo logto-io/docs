@@ -11,6 +11,7 @@ import Navbar from '@theme/Navbar';
 import SkipToContent from '@theme/SkipToContent';
 import clsx from 'clsx';
 import ReactModal from 'react-modal';
+import 'katex/dist/katex.min.css';
 
 import LanguageSwitchBanner from '@site/src/components/LanguageSwitchBanner';
 
