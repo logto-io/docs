@@ -36,7 +36,9 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
             <div className={styles.buttons}>
               <Button
                 className={styles.button}
-                onClick={() => {
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
                   void fetch(likeWebhookUrl, {
                     method: 'POST',
                     body: JSON.stringify({ url: window.location.href }),
@@ -49,7 +51,9 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
               </Button>
               <Button
                 className={clsx(styles.button, showTextarea && styles.notHelpful)}
-                onClick={() => {
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
                   setShowTextarea(true);
                 }}
               >
@@ -84,7 +88,9 @@ export default function EditMetaRow({ className, editUrl }: Props): JSX.Element 
               <Button
                 className={styles.button}
                 type="primary"
-                onClick={() => {
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
                   void fetch(feedbackWebhookUrl, {
                     method: 'POST',
                     body: JSON.stringify({ url: window.location.href, feedback }),

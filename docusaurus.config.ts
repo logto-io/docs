@@ -211,15 +211,6 @@ const config: Config = {
       } satisfies Options,
     ],
   ],
-  // To enabled math formula rendering
-  // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
-  stylesheets: [
-    {
-      href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
-      type: 'text/css',
-      crossorigin: 'anonymous',
-    },
-  ],
   themeConfig: {
     navbar: {
       logo: {
