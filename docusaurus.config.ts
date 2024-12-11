@@ -24,7 +24,7 @@ const cfPagesBranch = process.env.CF_PAGES_BRANCH;
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
     // https://community.cloudflare.com/t/algorithm-to-generate-a-preview-dns-subdomain-from-a-branch-name/477633/2
-    ? `https://${cfPagesBranch.substring(0, 28)}.logto-docs.pages.dev/`
+    ? `https://${cfPagesBranch.substring(0, 28).replace(/[^a-z0-9-]/g, '-')}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula } = themes;
