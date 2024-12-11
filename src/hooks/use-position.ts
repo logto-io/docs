@@ -1,3 +1,4 @@
+import { type Nullable } from '@silverhand/essentials';
 import type { RefObject } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -14,8 +15,8 @@ type Props = {
   verticalAlign: VerticalAlignment;
   horizontalAlign: HorizontalAlignment;
   offset: Offset;
-  anchorRef: RefObject<Element>;
-  overlayRef: RefObject<Element>;
+  anchorRef: RefObject<Nullable<Element>>;
+  overlayRef: RefObject<Nullable<Element>>;
 };
 
 export type Position = {
