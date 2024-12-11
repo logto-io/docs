@@ -21,7 +21,7 @@ function LogoImage({ logo }: Props) {
       height={logo.height}
       style={logo.style}
       // Charles note: Defer loading off-screen images
-      loading="lazy"
+      // loading="lazy"
     />
   );
 }
