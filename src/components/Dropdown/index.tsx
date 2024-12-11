@@ -1,3 +1,4 @@
+import { type Nullable } from '@silverhand/essentials';
 import clsx from 'clsx';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
@@ -16,7 +17,7 @@ type Props = {
   readonly isOpen: boolean;
   readonly style?: CSSProperties;
   readonly onClose?: () => void;
-  readonly anchorRef: RefObject<HTMLElement>;
+  readonly anchorRef: RefObject<Nullable<HTMLElement>>;
   readonly isFullWidth?: boolean;
   readonly className?: string;
   readonly horizontalAlign?: HorizontalAlignment;
