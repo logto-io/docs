@@ -10,7 +10,6 @@ import DocItemTOCDesktop from '@theme/DocItem/TOC/Desktop';
 import DocItemTOCMobile from '@theme/DocItem/TOC/Mobile';
 import DocVersionBadge from '@theme/DocVersionBadge';
 import DocVersionBanner from '@theme/DocVersionBanner';
-import clsx from 'clsx';
 
 import styles from './index.module.scss';
 
@@ -43,7 +42,7 @@ export default function DocItemLayout({ children }: Props): JSX.Element {
   const { metadata } = useDoc();
   return (
     <div className={styles.layout}>
-      <div className={clsx(styles.main, docTOC.desktop && styles.hasDocToc)}>
+      <div className={styles.main}>
         <ContentVisibility metadata={metadata} />
         <DocVersionBanner />
         <div className={styles.docItemContainer}>
@@ -57,7 +56,7 @@ export default function DocItemLayout({ children }: Props): JSX.Element {
           <DocItemPaginator />
         </div>
       </div>
-      {docTOC.desktop && <div className={styles.toc}>{docTOC.desktop}</div>}
+      {docTOC.desktop && <div className={styles.desktopToc}>{docTOC.desktop}</div>}
     </div>
   );
 }
