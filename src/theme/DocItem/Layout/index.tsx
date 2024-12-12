@@ -10,6 +10,7 @@ import DocItemTOCDesktop from '@theme/DocItem/TOC/Desktop';
 import DocItemTOCMobile from '@theme/DocItem/TOC/Mobile';
 import DocVersionBadge from '@theme/DocVersionBadge';
 import DocVersionBanner from '@theme/DocVersionBanner';
+import clsx from 'clsx';
 
 import styles from './index.module.scss';
 
@@ -38,25 +39,26 @@ function useDocTOC() {
 }
 
 export default function DocItemLayout({ children }: Props): JSX.Element {
-  const docTOC = useDocTOC();
+  const { hidden, mobile: mobileToc, desktop: desktopToc } = useDocTOC();
   const { metadata } = useDoc();
+  const hasDesktopToc = !hidden && !!desktopToc;
   return (
     <div className={styles.layout}>
-      <div className={styles.main}>
+      <div className={clsx(styles.main, hasDesktopToc && styles.hasDesktopToc)}>
         <ContentVisibility metadata={metadata} />
         <DocVersionBanner />
         <div className={styles.docItemContainer}>
           <article>
             <DocBreadcrumbs />
             <DocVersionBadge />
-            {docTOC.mobile}
+            {mobileToc}
             <DocItemContent>{children}</DocItemContent>
             <DocItemFooter />
           </article>
           <DocItemPaginator />
         </div>
       </div>
-      {docTOC.desktop && <div className={styles.desktopToc}>{docTOC.desktop}</div>}
+      {hasDesktopToc && <div className={styles.desktopToc}>{desktopToc}</div>}
     </div>
   );
 }
