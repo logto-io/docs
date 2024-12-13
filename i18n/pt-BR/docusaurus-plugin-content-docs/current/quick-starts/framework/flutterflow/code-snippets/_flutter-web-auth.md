@@ -1,5 +1,9 @@
 <details>
-  <summary>flutter_web_auth</summary>
+  <summary>
+
+### flutter_web_auth
+
+</summary>
 
 [flutter_web_auth](https://pub.dev/packages/flutter_web_auth) é usado por trás do SDK flutter do Logto. Nós confiamos em sua interface de interação baseada em webview para abrir as páginas de autorização do Logto.
 

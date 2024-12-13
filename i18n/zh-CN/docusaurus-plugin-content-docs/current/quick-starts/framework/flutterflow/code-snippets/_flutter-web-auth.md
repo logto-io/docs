@@ -1,5 +1,9 @@
 <details>
-  <summary>flutter_web_auth</summary>
+  <summary>
+
+### flutter_web_auth
+
+</summary>
 
 [flutter_web_auth](https://pub.dev/packages/flutter_web_auth) 在 Logto 的 flutter SDK 中使用。我们依赖其基于 webview 的交互界面来打开 Logto 的授权页面。
 

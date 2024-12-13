@@ -1,5 +1,9 @@
 <details>
-<summary>flutter_secure_storage</summary>
+<summary>
+
+### flutter_secure_storage
+
+</summary>
 
 We use [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) to implement the cross-platform persistent secure token storage. Under the hood:
 

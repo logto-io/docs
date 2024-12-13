@@ -1,5 +1,9 @@
 <details>
-<summary>flutter_secure_storage</summary>
+<summary>
+
+### flutter_secure_storage
+
+</summary>
 
 Nous utilisons [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) pour implémenter le stockage sécurisé persistant de jetons multiplateforme. Sous le capot :
 
