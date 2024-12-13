@@ -1,5 +1,9 @@
 <details>
-<summary>flutter_secure_storage</summary>
+<summary>
+
+### flutter_secure_storage
+
+</summary>
 
 我们使用 [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) 来实现跨平台的持久安全令牌存储。其底层实现：
 

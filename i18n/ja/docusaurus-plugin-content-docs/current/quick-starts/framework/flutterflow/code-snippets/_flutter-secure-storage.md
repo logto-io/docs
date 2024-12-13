@@ -1,5 +1,9 @@
 <details>
-<summary>flutter_secure_storage</summary>
+<summary>
+
+### flutter_secure_storage
+
+</summary>
 
 クロスプラットフォームの永続的なセキュアトークンストレージを実装するために、[flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage) を使用しています。内部では：
 

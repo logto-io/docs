@@ -1,5 +1,9 @@
 <details>
-<summary>flutter_secure_storage</summary>
+<summary>
+
+### flutter_secure_storage
+
+</summary>
 
 Wir verwenden [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage), um die plattformübergreifende, persistente sichere Token-Speicherung zu implementieren. Unter der Haube:
 
