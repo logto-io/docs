@@ -9,18 +9,16 @@ import picocolors from 'picocolors';
 
 import { log, OpenAiTranslate } from './translate.openai.mjs';
 import { sampleTranslations } from './translate.samples.mjs';
+import {
+  walk,
+  exit,
+  docsBaseDir,
+  i18nBaseDir,
+  validExtensions,
+  translateDir,
+} from './translate.shared.mjs';
 
 dotenv.config();
-
-const exit = (message) => {
-  if (!message) {
-    // eslint-disable-next-line unicorn/no-process-exit
-    process.exit(0);
-  }
-  console.error(picocolors.red(message));
-  // eslint-disable-next-line unicorn/no-process-exit
-  process.exit(1);
-};
 
 const args = arg({
   '--file': [String],
@@ -86,11 +84,6 @@ if (all && inputFiles?.length) {
   exit('Cannot use --all and --file together.');
 }
 
-const validExtensions = ['.mdx', '.md'];
-const docsBaseDir = 'docs';
-const i18nBaseDir = 'i18n';
-const translateDir = 'docusaurus-plugin-content-docs/current';
-
 if (!locale) {
   exit('No locale specified. Use --locale to specify the target locale.');
 }
@@ -100,30 +93,6 @@ await fs.readdir(path.join(i18nBaseDir, locale)).catch(() => {
     `Locale ${locale} does not exist. Did you forget to run the Docusaurus write translation command?`
   );
 });
-
-// Recursively get all files in the docs directory.
-/** @type {(dir: string) => Promise<string[]>} */
-const walk = async (dir) => {
-  const files = await fs.readdir(dir);
-  const entries = await Promise.all(
-    files.map(async (file) => {
-      const filePath = path.join(dir, file);
-      const stats = await fs.stat(filePath);
-
-      if (stats.isDirectory()) {
-        return filePath.startsWith('.') ? [] : walk(filePath);
-      }
-
-      if (!validExtensions.includes(path.extname(filePath))) {
-        return [];
-      }
-
-      return filePath;
-    })
-  );
-
-  return entries.flat();
-};
 
 const getFiles = async () => {
   if (inputFiles?.length) {
