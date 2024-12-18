@@ -14,7 +14,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 # Management API と対話する
 
-## Logto Management API とは？
+## Logto Management API とは？ {#what-is-logto-management-api}
 
 Logto Management API は、開発者が製品のニーズや技術スタックに合わせて実装を完全にコントロールできる包括的な API セットです。これは事前に構築され、<CloudLink to="/api-resources">コンソール > API リソース > Logto Management API</CloudLink> にリストされており、削除や変更はできません。
 
@@ -38,9 +38,9 @@ Logto Management API を使用すると、Logto の強力なバックエンド�
 
 利用可能な API について詳しく知るには、https://openapi.logto.io/ を訪問してください。
 
-## Logto Management API へのアクセス方法
+## Logto Management API へのアクセス方法 {#how-to-access-logto-management-api}
 
-### M2M アプリを作成する
+### M2M アプリを作成する {#create-an-m2m-app}
 
 :::note
 M2M (マシン間通信) 認証 (Authentication) フローに慣れていない場合は、基本的な概念を理解するために [認証 (Authentication) フローを理解する](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) を最初に読むことをお勧めします。
@@ -54,17 +54,17 @@ M2M (マシン間通信) 認証 (Authentication) フローに慣れていない�
 
 今、あなたの M2M アプリに Logto Management API 権限を含む M2M ロールを割り当てます。
 
-### アクセス トークンを取得する
+### アクセス トークンを取得する {#fetch-an-access-token}
 
-#### アクセス トークンリクエストの基本
+#### アクセス トークンリクエストの基本 {#basics-about-access-token-request}
 
 <BasicsAboutAccessTokenRequest />
 
-#### Logto Management API のアクセス トークンを取得する
+#### Logto Management API のアクセス トークンを取得する {#fetch-access-token-for-logto-management-api}
 
 <FetchAccessTokenForLogtoManagementApi />
 
-#### アクセス トークンレスポンス
+#### アクセス トークンレスポンス {#access-token-response}
 
 成功したアクセスレスポンスボディは次のようになります：
 
@@ -79,35 +79,35 @@ M2M (マシン間通信) 認証 (Authentication) フローに慣れていない�
 
 <M2mAccessTokenNote />
 
-### アクセス トークンを使用して Logto Management API にアクセスする
+### アクセス トークンを使用して Logto Management API にアクセスする {#access-logto-management-api-using-access-token}
 
 <AccessTokenUsage />
 
 <AccessLogtoManagementApiUsingAccessToken />
 
-## Logto Management API を使用する典型的なシナリオ
+## Logto Management API を使用する典型的なシナリオ {#typical-scenarios-for-using-logto-management-api}
 
 私たちの開発者は、Logto Management API を使用して多くの追加機能を実装しました。私たちは、API が非常にスケーラブルで、さまざまなニーズをサポートできると信じています。ここでは、Logto Admin Console では不可能ですが、Logto Management API を通じて実現できるシナリオの例をいくつか紹介します。
 
-### 独自のユーザープロフィールを実装する
+### 独自のユーザープロフィールを実装する {#implement-user-profile-on-your-own}
 
 Logto は現在、ユーザープロフィールのための事前構築された UI ソリューションを提供していません。ユーザープロフィールはビジネスや製品の属性と密接に関連していることを認識しています。最適なアプローチを決定するために作業を進めている間、API を使用して独自のソリューションを作成することをお勧めします。たとえば、インタラクション API、プロフィール API、検証コード API を利用して、ニーズに合ったカスタムソリューションを開発できます。
 
-### 高度なユーザー検索
+### 高度なユーザー検索 {#advanced-user-search}
 
 Logto Admin Console は基本的な検索とフィルタリング機能をサポートしています。あいまい検索、完全一致、ケースセンシティブなどの高度な検索オプションについては、[高度なユーザー検索](/user-management/advanced-user-search) のチュートリアルとガイドを確認してください。
 
-### 独自の組織管理を実装する
+### 独自の組織管理を実装する {#implement-organization-management-on-your-own}
 
 マルチテナントアプリを構築するために [組織](/organizations) 機能を使用している場合、組織の招待やメンバー管理などのタスクに Logto Management API が必要になることがあります。テナントに管理者とメンバーの両方がいる SaaS 製品の場合、Logto Management API を使用してビジネスニーズに合わせたカスタム管理ポータルを作成できます。詳細については [こちら](/end-user-flows/organization-experience/) を確認してください。
 
-## Logto Management API を使用するためのヒント
+## Logto Management API を使用するためのヒント {#tips-for-using-logto-management-api}
 
-### ページネーションされた API レスポンスの管理
+### ページネーションされた API レスポンスの管理 {#managing-paginated-api-responses}
 
 一部の API レスポンスには多くの結果が含まれる場合があり、結果はページネーションされます。Logto は 2 種類のページネーション情報を提供します。
 
-#### リンクヘッダーを使用する
+#### リンクヘッダーを使用する {#using-link-headers}
 
 ページネーションされたレスポンスヘッダーは次のようになります：
 
@@ -122,7 +122,7 @@ Link: <https://logto.dev/users?page=1&page_size=20>; rel="first"
 - 最後のページの URL は rel="last" に続きます。
 - 最初のページの URL は rel="first" に続きます。
 
-#### トータルナンバーヘッダーを使用する
+#### トータルナンバーヘッダーを使用する {#using-total-number-header}
 
 標準のリンクヘッダーに加えて、Logto は `Total-Number` ヘッダーも追加します：
 
@@ -132,14 +132,14 @@ Total-Number: 216
 
 これはページ番号を表示するのに非常に便利で役立ちます。
 
-#### ページ番号とページサイズの変更
+#### ページ番号とページサイズの変更 {#changing-page-number-and-page-size}
 
 2 つのオプションのクエリパラメーターがあります：
 
 - `page`: ページ番号を示し、1 から始まります。デフォルト値は 1 です。
 - `page_size`: 1 ページあたりのアイテム数を示し、デフォルト値は 20 です。
 
-### レート制限
+### レート制限 {#rate-limit}
 
 :::note
 これは Logto Cloud のみです。
@@ -147,7 +147,7 @@ Total-Number: 216
 
 すべてのユーザーに対するサービスの信頼性とセキュリティを確保するために、私たちはウェブサイトへのトラフィックを監視および管理する一般的なファイアウォールを採用しています。厳格なレート制限は設けていませんが、保護措置を発動しないように、ユーザーが 10 秒ごとに約 200 リクエストに活動を制限することをお勧めします。
 
-## 関連リソース
+## 関連リソース {#related-resources}
 
 <Url href="https://blog.logto.io/management-api">
   Logto Management API を使用する：ステップバイステップガイド

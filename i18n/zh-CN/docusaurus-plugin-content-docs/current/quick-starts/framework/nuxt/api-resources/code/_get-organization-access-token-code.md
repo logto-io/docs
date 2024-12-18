@@ -4,7 +4,7 @@ import Availability from '@components/Availability';
 const token = await client.getOrganizationToken(organizationId);
 ```
 
-#### 组织 API 资源
+#### 组织 API 资源 {#organization-api-resources}
 
 要获取组织中 API 资源的访问令牌 (Access token)，你可以使用 `getAccessToken` 方法，并将 API 资源和组织 ID 作为参数：
 

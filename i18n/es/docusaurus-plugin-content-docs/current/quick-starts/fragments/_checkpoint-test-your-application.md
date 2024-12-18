@@ -1,4 +1,4 @@
-### Punto de control: Prueba tu aplicación
+### Punto de control: Prueba tu aplicación {#checkpoint-test-your-application}
 
 Ahora, puedes probar tu aplicación:
 

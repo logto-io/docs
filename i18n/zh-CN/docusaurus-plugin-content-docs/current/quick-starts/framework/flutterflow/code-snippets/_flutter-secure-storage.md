@@ -1,7 +1,7 @@
 <details>
 <summary>
 
-### flutter_secure_storage
+### flutter_secure_storage {#flutter_secure_storage}
 
 </summary>
 
@@ -10,7 +10,7 @@
 - iOS 使用 Keychain
 - Android 使用 AES 加密。
 
-### 配置 Android 版本：
+### 配置 Android 版本： {#config-android-version}
 
 在 [project]/android/app/build.gradle 中将 minSdkVersion 设置为 >= 18。
 
@@ -26,7 +26,7 @@
   }
 ```
 
-### 禁用自动备份：
+### 禁用自动备份： {#disable-autobackup}
 
 :::note
 

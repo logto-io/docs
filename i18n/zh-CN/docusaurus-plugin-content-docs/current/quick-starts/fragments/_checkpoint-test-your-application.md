@@ -1,4 +1,4 @@
-### 检查点：测试你的应用程序
+### 检查点：测试你的应用程序 {#checkpoint-test-your-application}
 
 现在，你可以测试你的应用程序：
 

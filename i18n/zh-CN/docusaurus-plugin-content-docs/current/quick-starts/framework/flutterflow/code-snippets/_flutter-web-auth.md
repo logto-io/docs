@@ -1,7 +1,7 @@
 <details>
   <summary>
 
-### flutter_web_auth
+### flutter_web_auth {#flutter_web_auth}
 
 </summary>
 
@@ -12,7 +12,7 @@
 你可以在 iOS 8+ 上构建它，但目前仅支持 iOS 11 或更高版本。
 :::
 
-### 在 Android 上注册回调 url
+### 在 Android 上注册回调 url {#register-the-callback-url-on-android}
 
 为了从 Logto 的登录网页捕获回调 url，你需要将你的登录 redirectUri 注册到 AndroidManifest.xml 中。
 

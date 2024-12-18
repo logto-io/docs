@@ -1,8 +1,8 @@
 # Configuration
 
-## Environment variables
+## Environment variables {#environment-variables}
 
-### Usage
+### Usage {#usage}
 
 Logto handles environment variables in the following order:
 
@@ -11,7 +11,7 @@ Logto handles environment variables in the following order:
 
 Thus the system environment variables will override the values in `.env`.
 
-### Variables
+### Variables {#variables}
 
 :::caution
 If you run Logto via `npm start` in the project root, `NODE_ENV` will always be `production`.
@@ -33,15 +33,15 @@ In default values, `protocol` will be either `http` or `https` according to your
 | ADMIN_ENDPOINT          | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | You may specify a URL with your custom domain for production (E.g. `ADMIN_ENDPOINT=https://admin.domain.com`). This will also affect the value of Admin Console Redirect URIs.                                           |
 | CASE_SENSITIVE_USERNAME | `true`                               | `boolean`                                                | Specifies whether the username is case-sensitive. Exercise caution when modifying this value; changes will not automatically adjust existing database data, requiring manual management.                                 |
 
-### Enabling HTTPS
+### Enabling HTTPS {#enabling-https}
 
-#### Using Node
+#### Using Node {#using-node}
 
 Node natively supports HTTPS. Provide **BOTH** `HTTPS_CERT_PATH` and `HTTPS_KEY_PATH` to enable HTTPS via Node.
 
 `HTTPS_CERT_PATH` implies the path to your HTTPS certificate, while `HTTPS_KEY_PATH` implies the path to your HTTPS key.
 
-#### Using a HTTPS proxy
+#### Using a HTTPS proxy {#using-a-https-proxy}
 
 Another common practice is to have an HTTPS proxy in front of Node (E.g. Nginx).
 
@@ -49,7 +49,7 @@ In this case, you're likely want to set `TRUST_PROXY_HEADER` to `true` which ind
 
 See [Trusting TLS offloading proxies](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) for when to configure this field.
 
-## Database configs
+## Database configs {#database-configs}
 
 Managing too many environment variables are not efficient and flexible, so most of our general configs are stored in the database table `logto_configs`.
 
@@ -60,7 +60,7 @@ The table is a simple key-value storage, and the key is enumerable as following:
 | oidc.cookieKeys  | <code>string[]</code> | The string array of the [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys).   |
 | oidc.privateKeys | <code>string[]</code> | The string array of the private key content for [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing). |
 
-### Supported private key types
+### Supported private key types {#supported-private-key-types}
 
 - EC (P-256, secp256k1, P-384, and P-521 curves)
 - RSA

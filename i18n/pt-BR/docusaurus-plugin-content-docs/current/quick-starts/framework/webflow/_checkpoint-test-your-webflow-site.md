@@ -1,4 +1,4 @@
-### Ponto de verificação: Teste seu site Webflow
+### Ponto de verificação: Teste seu site Webflow {#checkpoint-test-your-webflow-site}
 
 Agora, teste seu site:
 

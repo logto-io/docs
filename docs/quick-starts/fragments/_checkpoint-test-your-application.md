@@ -1,4 +1,4 @@
-### Checkpoint: Test your application
+### Checkpoint: Test your application {#checkpoint-test-your-application}
 
 Now, you can test your application:
 

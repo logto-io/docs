@@ -25,7 +25,7 @@ if (!locale) {
 
 const headingRegex = /^(#+ .*)$/gm;
 const headingLevelRegex = /^(#+) /;
-const headingIdRegex = /\\{#([^}]+)}/;
+const headingIdRegex = /(\\?{#[^}]+})/;
 const files = await walk(docsBaseDir);
 
 for (const file of files) {
@@ -99,7 +99,7 @@ for (const file of files) {
         return match;
       }
 
-      const newHeading = `${match} \\{#${headingId[1]}}`;
+      const newHeading = `${match} ${headingId[0]}`;
       console.log(picocolors.dim(`  ✅ Appended ID ${newHeading}`));
       return newHeading;
     })

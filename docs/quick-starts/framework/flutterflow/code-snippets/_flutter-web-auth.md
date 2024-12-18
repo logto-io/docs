@@ -1,7 +1,7 @@
 <details>
   <summary>
 
-### flutter_web_auth
+### flutter_web_auth {#flutter_web_auth}
 
 </summary>
 
@@ -12,7 +12,7 @@ This plugin uses ASWebAuthenticationSession on iOS 12+ and macOS 10.15+, SFAuthe
 You can build it with iOS 8+, but it is currently only supported by iOS 11 or higher.
 :::
 
-### Register the callback url on Android
+### Register the callback url on Android {#register-the-callback-url-on-android}
 
 In order to capture the callback url from Logto's sign-in web page, you will need to register your sign-in redirectUri to the AndroidManifest.xml.
 

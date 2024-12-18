@@ -4,7 +4,7 @@ sidebar_position: 4
 
 # バックアップコード
 
-## 概念
+## 概念 {#concepts}
 
 バックアップコード（リカバリーコードとも呼ばれる）は、MFA のための一度限りの使用コードであり、ユーザーの主要な認証 (Authentication) 要素（例：認証 (Authentication) アプリやハードウェアトークン）が利用できない場合のバックアップとして機能します。
 
@@ -12,7 +12,7 @@ sidebar_position: 4
 
 Logto は、ユーザーが追加の要素を設定すると、自動的に 10 個のバックアップコードを生成します。各コードは一度限りの使用です。ユーザーは、既存のコードをすべて使い切る前に、ユーザーアカウント設定（[Management API](/integrate-logto/interact-with-management-api/) を通じてアクセス可能）で新しいコードセットを再生成することをお勧めします。
 
-## 認証 (Authentication) フロー
+## 認証 (Authentication) フロー {#authentication-flows}
 
 - **バックアップコード設定フロー**
 
