@@ -1,4 +1,4 @@
-### Checkpoint: Test your Webflow site
+### Checkpoint: Test your Webflow site {#checkpoint-test-your-webflow-site}
 
 Now, test your site:
 

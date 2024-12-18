@@ -4,7 +4,7 @@ import Availability from '@components/Availability';
 const token = await client.getOrganizationToken(organizationId);
 ```
 
-#### Organisations-API-Ressourcen
+#### Organisations-API-Ressourcen {#organization-api-resources}
 
 Um ein Zugangstoken für eine API-Ressource in einer Organisation abzurufen, kannst du die Methode `getAccessToken` mit sowohl der API-Ressource als auch der Organisations-ID als Parameter verwenden:
 

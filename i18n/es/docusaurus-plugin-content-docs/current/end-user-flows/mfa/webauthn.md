@@ -8,7 +8,7 @@ sidebar_position: 3
 
 Logto ahora admite passkey (Webauthn) para la Autenticación Multifactor (MFA). La función de inicio de sesión con passkey estará disponible próximamente. Por favor, mantente atento a las actualizaciones.
 
-## Conceptos
+## Conceptos {#concepts}
 
 Los clientes siempre conocen Passkeys más que WebAuthn, entonces, ¿cuál es la relación entre ellos y cómo usarlos? Exploremos estos conceptos:
 
@@ -22,7 +22,7 @@ WebAuthn proporciona diversos autenticadores para que los usuarios elijan, dispo
 
 Para profundizar en los principios y procesos de WebAuthn, puedes consultar nuestras publicaciones de blog: [WebAuthn and Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) y [Things you should know before integrating WebAuthn](https://blog.logto.io/webauthn-base-knowledge/).
 
-## Presta atención a las limitaciones
+## Presta atención a las limitaciones {#pay-attention-to-limitations}
 
 Es esencial estar al tanto de algunas limitaciones al implementar WebAuthn:
 
@@ -30,7 +30,7 @@ Es esencial estar al tanto de algunas limitaciones al implementar WebAuthn:
 2. **Limitación de dominio**: Cambiar el dominio puede obstaculizar la verificación del usuario a través de sus cuentas WebAuthn existentes. Los passkeys están vinculados al dominio específico de la página web actual y no se pueden usar en diferentes dominios.
 3. **Limitación de dispositivo**: Perder el dispositivo puede resultar en la pérdida de acceso a sus cuentas, especialmente para aquellos que dependen de los Autenticadores de Plataforma "Este dispositivo". Para mejorar el acceso a la autenticación, es aconsejable proporcionar a los usuarios más de un factor de autenticación.
 
-## Flujos de autenticación
+## Flujos de autenticación {#authentication-flows}
 
 La especificación de Passkeys requiere que los usuarios hagan clic activamente en el botón de la página actual para iniciar el componente de autenticación. Esto significa que tanto en los flujos de configuración como de verificación, los usuarios deben ser redirigidos a la página de inicio para iniciar WebAuthn.
 
@@ -42,7 +42,7 @@ La especificación de Passkeys requiere que los usuarios hagan clic activamente 
 
 ![Flujo de verificación de WebAuthn](./assets/webauthn-verification-flow.png)
 
-## Recursos relacionados
+## Recursos relacionados {#related-resources}
 
 <Url href="https://blog.logto.io/webauthn-base-knowledge">
   Cosas que debes saber antes de integrar WebAuthn

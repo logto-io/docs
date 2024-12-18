@@ -1,8 +1,8 @@
 # 設定
 
-## 環境変数
+## 環境変数 {#environment-variables}
 
-### 使用法
+### 使用法 {#usage}
 
 Logto は環境変数を次の順序で処理します：
 
@@ -11,7 +11,7 @@ Logto は環境変数を次の順序で処理します：
 
 したがって、システム環境変数は `.env` の値を上書きします。
 
-### 変数
+### 変数 {#variables}
 
 :::caution
 プロジェクトルートで `npm start` を使用して Logto を実行する場合、`NODE_ENV` は常に `production` になります。
@@ -33,15 +33,15 @@ Logto は環境変数を次の順序で処理します：
 | ADMIN_ENDPOINT          | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | 本番用にカスタムドメインの URL を指定できます（例：`ADMIN_ENDPOINT=https://admin.domain.com`）。これにより、管理コンソールのリダイレクト URI の値にも影響します。                             |
 | CASE_SENSITIVE_USERNAME | `true`                               | `boolean`                                                | ユーザー名が大文字小文字を区別するかどうかを指定します。この値を変更する際は注意が必要です。変更は既存のデータベースデータを自動的に調整しないため、手動での管理が必要です。                  |
 
-### HTTPS の有効化
+### HTTPS の有効化 {#enabling-https}
 
-#### Node を使用する
+#### Node を使用する {#using-node}
 
 Node はネイティブに HTTPS をサポートしています。Node 経由で HTTPS を有効にするには、`HTTPS_CERT_PATH` と `HTTPS_KEY_PATH` の **両方** を提供します。
 
 `HTTPS_CERT_PATH` は HTTPS 証明書のパスを示し、`HTTPS_KEY_PATH` は HTTPS キーのパスを示します。
 
-#### HTTPS プロキシを使用する
+#### HTTPS プロキシを使用する {#using-a-https-proxy}
 
 もう一つの一般的な方法は、Node の前に HTTPS プロキシを配置することです（例：Nginx）。
 
@@ -49,7 +49,7 @@ Node はネイティブに HTTPS をサポートしています。Node 経由で
 
 このフィールドを設定するタイミングについては、[TLS オフロードプロキシの信頼](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) を参照してください。
 
-## データベース設定
+## データベース設定 {#database-configs}
 
 多くの環境変数を管理することは効率的で柔軟ではないため、一般的な設定のほとんどはデータベーステーブル `logto_configs` に保存されています。
 
@@ -60,7 +60,7 @@ Node はネイティブに HTTPS をサポートしています。Node 経由で
 | oidc.cookieKeys  | <code>string[]</code> | [署名クッキーキー](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) の文字列配列。   |
 | oidc.privateKeys | <code>string[]</code> | [OIDC JWT 署名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) のための秘密鍵コンテンツの文字列配列。 |
 
-### サポートされている秘密鍵の種類
+### サポートされている秘密鍵の種類 {#supported-private-key-types}
 
 - EC (P-256, secp256k1, P-384, および P-521 曲線)
 - RSA

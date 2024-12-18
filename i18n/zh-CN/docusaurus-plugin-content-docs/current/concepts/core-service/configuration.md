@@ -1,8 +1,8 @@
 # 配置
 
-## 环境变量
+## 环境变量 {#environment-variables}
 
-### 用法
+### 用法 {#usage}
 
 Logto 按以下顺序处理环境变量：
 
@@ -11,7 +11,7 @@ Logto 按以下顺序处理环境变量：
 
 因此，系统环境变量将覆盖 `.env` 中的值。
 
-### 变量
+### 变量 {#variables}
 
 :::caution
 如果你在项目根目录通过 `npm start` 运行日志 (Logto)，`NODE_ENV` 将始终为 `production`。
@@ -33,15 +33,15 @@ Logto 按以下顺序处理环境变量：
 | ADMIN_ENDPOINT          | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | 你可以为生产指定一个带有自定义域名的 URL（例如 `ADMIN_ENDPOINT=https://admin.domain.com`）。这也会影响管理控制台重定向 URI 的值。                                 |
 | CASE_SENSITIVE_USERNAME | `true`                               | `boolean`                                                | 指定用户名是否区分大小写。修改此值时请谨慎；更改不会自动调整现有数据库数据，需要手动管理。                                                                        |
 
-### 启用 HTTPS
+### 启用 HTTPS {#enabling-https}
 
-#### 使用 Node
+#### 使用 Node {#using-node}
 
 Node 原生支持 HTTPS。提供 **BOTH** `HTTPS_CERT_PATH` 和 `HTTPS_KEY_PATH` 以通过 Node 启用 HTTPS。
 
 `HTTPS_CERT_PATH` 表示你的 HTTPS 证书的路径，而 `HTTPS_KEY_PATH` 表示你的 HTTPS 密钥的路径。
 
-#### 使用 HTTPS 代理
+#### 使用 HTTPS 代理 {#using-a-https-proxy}
 
 另一种常见做法是在 Node 前面设置一个 HTTPS 代理（例如 Nginx）。
 
@@ -49,7 +49,7 @@ Node 原生支持 HTTPS。提供 **BOTH** `HTTPS_CERT_PATH` 和 `HTTPS_KEY_PATH`
 
 有关何时配置此字段的信息，请参见 [信任 TLS 卸载代理](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies)。
 
-## 数据库配置
+## 数据库配置 {#database-configs}
 
 管理过多的环境变量既不高效也不灵活，因此我们的大多数通用配置都存储在数据库表 `logto_configs` 中。
 
@@ -60,7 +60,7 @@ Node 原生支持 HTTPS。提供 **BOTH** `HTTPS_CERT_PATH` 和 `HTTPS_KEY_PATH`
 | oidc.cookieKeys  | <code>string[]</code> | [签名 cookie 密钥](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) 的字符串数组。 |
 | oidc.privateKeys | <code>string[]</code> | 用于 [OIDC JWT 签名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 的私钥内容字符串数组。          |
 
-### 支持的私钥类型
+### 支持的私钥类型 {#supported-private-key-types}
 
 - EC (P-256, secp256k1, P-384 和 P-521 曲线)
 - RSA

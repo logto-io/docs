@@ -1,7 +1,7 @@
 <details>
   <summary>
 
-### flutter_web_auth
+### flutter_web_auth {#flutter_web_auth}
 
 </summary>
 
@@ -12,7 +12,7 @@
 iOS 8+ でビルドできますが、現在サポートされているのは iOS 11 以上のみです。
 :::
 
-### Android でコールバック URL を登録する
+### Android でコールバック URL を登録する {#register-the-callback-url-on-android}
 
 Logto のサインインウェブページからコールバック URL をキャプチャするためには、サインイン redirectUri を AndroidManifest.xml に登録する必要があります。
 

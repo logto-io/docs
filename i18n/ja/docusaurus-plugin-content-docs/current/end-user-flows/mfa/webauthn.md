@@ -8,7 +8,7 @@ sidebar_position: 3
 
 Logto は現在、多要素認証 (MFA) のために passkey (Webauthn) をサポートしています。パスキーサインイン機能は近日公開予定です。更新情報をお待ちください。
 
-## 概念
+## 概念 {#concepts}
 
 顧客は常に WebAuthn よりも Passkeys を知っていますが、それらの関係は何であり、どのように使用するのでしょうか？これらの概念を探ってみましょう：
 
@@ -22,7 +22,7 @@ WebAuthn は、ユーザーが選択できる多様な認証 (Authentication) �
 
 WebAuthn の原理とプロセスについて詳しく知るには、ブログ記事 [WebAuthn and Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) と [Things you should know before integrating WebAuthn](https://blog.logto.io/webauthn-base-knowledge/) を参照してください。
 
-## 制限に注意
+## 制限に注意 {#pay-attention-to-limitations}
 
 WebAuthn を実装する際には、いくつかの制限に注意することが重要です：
 
@@ -30,7 +30,7 @@ WebAuthn を実装する際には、いくつかの制限に注意すること�
 2. **ドメインの制限**: ドメインを変更すると、既存の WebAuthn アカウントを通じたユーザーの確認が妨げられる可能性があります。Passkeys は現在の Web ページの特定のドメインに結びついており、異なるドメイン間で使用することはできません。
 3. **デバイスの制限**: デバイスを紛失すると、特に「このデバイス」プラットフォーム認証 (Authentication) に依存している場合、アカウントへのアクセスが失われる可能性があります。認証 (Authentication) アクセスを強化するために、ユーザーに複数の認証 (Authentication) 要素を提供することをお勧めします。
 
-## 認証 (Authentication) フロー
+## 認証 (Authentication) フロー {#authentication-flows}
 
 Passkeys の仕様では、ユーザーが現在のページでボタンをアクティブにクリックして認証 (Authentication) コンポーネントを開始する必要があります。これは、セットアップと検証の両方のフローで、ユーザーが WebAuthn を開始するためにランディングページにリダイレクトされる必要があることを意味します。
 
@@ -42,7 +42,7 @@ Passkeys の仕様では、ユーザーが現在のページでボタンをア�
 
 ![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
 
-## 関連リソース
+## 関連リソース {#related-resources}
 
 <Url href="https://blog.logto.io/webauthn-base-knowledge">
   WebAuthn を統合する前に知っておくべきこと

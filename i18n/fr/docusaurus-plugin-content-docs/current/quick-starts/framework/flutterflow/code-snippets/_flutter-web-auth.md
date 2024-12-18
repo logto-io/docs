@@ -1,7 +1,7 @@
 <details>
   <summary>
 
-### flutter_web_auth
+### flutter_web_auth {#flutter_web_auth}
 
 </summary>
 
@@ -12,7 +12,7 @@ Ce plugin utilise ASWebAuthenticationSession sur iOS 12+ et macOS 10.15+, SFAuth
 Vous pouvez le construire avec iOS 8+, mais il est actuellement uniquement pris en charge par iOS 11 ou supérieur.
 :::
 
-### Enregistrer l'URL de rappel sur Android
+### Enregistrer l'URL de rappel sur Android {#register-the-callback-url-on-android}
 
 Afin de capturer l'URL de rappel depuis la page de connexion de Logto, vous devrez enregistrer votre redirectUri de connexion dans le fichier AndroidManifest.xml.
 

@@ -8,7 +8,7 @@ sidebar_position: 3
 
 Logto 现在支持用于多因素认证 (MFA) 的 passkey (WebAuthn)。Passkey 登录功能即将推出。请关注更新。
 
-## 概念
+## 概念 {#concepts}
 
 客户通常了解 Passkeys 而不是 WebAuthn，那么它们之间有什么关系，以及如何使用它们？让我们来探讨这些概念：
 
@@ -22,7 +22,7 @@ WebAuthn 为用户提供了多种认证器可供选择，分为本地和云使�
 
 要深入了解 WebAuthn 的原理和流程，你可以参考我们的博客文章：[WebAuthn 和 Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) 和 [在集成 WebAuthn 之前你应该知道的事情](https://blog.logto.io/webauthn-base-knowledge/)。
 
-## 注意限制
+## 注意限制 {#pay-attention-to-limitations}
 
 在实施 WebAuthn 时，了解一些限制是很重要的：
 
@@ -30,7 +30,7 @@ WebAuthn 为用户提供了多种认证器可供选择，分为本地和云使�
 2. **域限制**：更改域可能会阻碍用户通过其现有的 WebAuthn 帐户进行验证。Passkeys 绑定到当前网页的特定域，不能跨不同域使用。
 3. **设备限制**：丢失设备可能导致无法访问其帐户，特别是对于依赖“此设备”平台认证器的用户。为了增强认证 (Authentication) 访问，建议为用户提供多种认证 (Authentication) 因素。
 
-## 认证 (Authentication) 流程
+## 认证 (Authentication) 流程 {#authentication-flows}
 
 Passkeys 规范要求用户在当前页面主动点击按钮以启动认证 (Authentication) 组件。这意味着在设置和验证流程中，用户应被重定向到登录页面以启动 WebAuthn。
 
@@ -42,7 +42,7 @@ Passkeys 规范要求用户在当前页面主动点击按钮以启动认证 (Aut
 
 ![WebAuthn 验证流程](./assets/webauthn-verification-flow.png)
 
-## 相关资源
+## 相关资源 {#related-resources}
 
 <Url href="https://blog.logto.io/webauthn-base-knowledge">
   在集成 WebAuthn 之前你应该知道的事情

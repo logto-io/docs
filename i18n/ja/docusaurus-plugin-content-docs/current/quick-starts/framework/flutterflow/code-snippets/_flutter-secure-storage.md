@@ -1,7 +1,7 @@
 <details>
 <summary>
 
-### flutter_secure_storage
+### flutter_secure_storage {#flutter_secure_storage}
 
 </summary>
 
@@ -10,7 +10,7 @@
 - iOS では Keychain が使用されます
 - Android では AES 暗号化が使用されます。
 
-### Android バージョンの設定：
+### Android バージョンの設定： {#config-android-version}
 
 [project]/android/app/build.gradle で minSdkVersion を >= 18 に設定します。
 
@@ -26,7 +26,7 @@
   }
 ```
 
-### 自動バックアップを無効にする：
+### 自動バックアップを無効にする： {#disable-autobackup}
 
 :::note
 

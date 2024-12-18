@@ -8,7 +8,7 @@ sidebar_position: 3
 
 O Logto agora suporta passkey (Webauthn) para Autenticação Multifatorial (MFA). O recurso de login com passkey estará disponível em breve. Fique atento para atualizações.
 
-## Conceitos
+## Conceitos {#concepts}
 
 Os clientes sempre conhecem Passkeys em vez de WebAuthn, então qual é a relação entre eles e como usá-los? Vamos explorar esses conceitos:
 
@@ -22,7 +22,7 @@ WebAuthn fornece diversos autenticadores para os usuários escolherem, disponív
 
 Para se aprofundar nos princípios e processos do WebAuthn, você pode consultar nossos posts no blog: [WebAuthn and Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) e [Things you should know before integrating WebAuthn](https://blog.logto.io/webauthn-base-knowledge/).
 
-## Atenção às limitações
+## Atenção às limitações {#pay-attention-to-limitations}
 
 É essencial estar ciente de algumas limitações ao implementar o WebAuthn:
 
@@ -30,7 +30,7 @@ Para se aprofundar nos princípios e processos do WebAuthn, você pode consultar
 2. **Limitação de domínio**: Alterar o domínio pode dificultar a verificação do usuário através de suas contas WebAuthn existentes. Passkeys estão vinculados ao domínio específico da página web atual e não podem ser usados em diferentes domínios.
 3. **Limitação de dispositivo**: Perder o dispositivo pode resultar na perda de acesso às suas contas, especialmente para aqueles que dependem de Autenticadores de Plataforma "Este dispositivo". Para melhorar o acesso à autenticação, é aconselhável fornecer aos usuários mais de um fator de autenticação.
 
-## Fluxos de autenticação
+## Fluxos de autenticação {#authentication-flows}
 
 A especificação Passkeys exige que os usuários cliquem ativamente no botão na página atual para iniciar o componente de autenticação. Isso significa que, tanto nos fluxos de configuração quanto de verificação, os usuários devem ser redirecionados para a página de destino para iniciar o WebAuthn.
 
@@ -42,7 +42,7 @@ A especificação Passkeys exige que os usuários cliquem ativamente no botão n
 
 ![Fluxo de verificação do WebAuthn](./assets/webauthn-verification-flow.png)
 
-## Recursos relacionados
+## Recursos relacionados {#related-resources}
 
 <Url href="https://blog.logto.io/webauthn-base-knowledge">
   Coisas que você deve saber antes de integrar o WebAuthn

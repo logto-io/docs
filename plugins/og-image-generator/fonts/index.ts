@@ -21,6 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fontsMetadata = [
   { name: 'Inter', filename: 'Inter_18pt-Regular.ttf', weight: 400 },
   { name: 'Inter', filename: 'Inter_28pt-Bold.ttf', weight: 700 },
+  // NotoSansSC also includes JP characters
   { name: 'NotoSans', filename: 'NotoSansSC-Regular.ttf', weight: 400 },
   { name: 'NotoSans', filename: 'NotoSansSC-Bold.ttf', weight: 700 },
 ] satisfies FontMetadata[];

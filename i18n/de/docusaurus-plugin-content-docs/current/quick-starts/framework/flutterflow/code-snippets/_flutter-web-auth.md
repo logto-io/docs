@@ -1,7 +1,7 @@
 <details>
   <summary>
 
-### flutter_web_auth
+### flutter_web_auth {#flutter_web_auth}
 
 </summary>
 
@@ -12,7 +12,7 @@ Dieses Plugin verwendet ASWebAuthenticationSession auf iOS 12+ und macOS 10.15+,
 Du kannst es mit iOS 8+ bauen, aber es wird derzeit nur von iOS 11 oder höher unterstützt.
 :::
 
-### Registriere die Callback-URL auf Android
+### Registriere die Callback-URL auf Android {#register-the-callback-url-on-android}
 
 Um die Callback-URL von Logtos Anmelde-Webseite zu erfassen, musst du deine Anmelde-redirectUri in der AndroidManifest.xml registrieren.
 

@@ -14,7 +14,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 # 与 Management API 交互
 
-## 什么是 Logto Management API？
+## 什么是 Logto Management API？ {#what-is-logto-management-api}
 
 Logto Management API 是一套全面的 API，开发者可以通过它们完全控制实现，以满足产品需求和技术栈。它是预构建的，列在 <CloudLink to="/api-resources">控制台 > API 资源 > Logto Management API</CloudLink> 中，不能删除或修改。
 
@@ -38,9 +38,9 @@ Logto Management API 是一套全面的 API，开发者可以通过它们完全�
 
 要了解更多可用的 API，请访问 https://openapi.logto.io/。
 
-## 如何访问 Logto Management API
+## 如何访问 Logto Management API {#how-to-access-logto-management-api}
 
-### 创建一个 M2M 应用
+### 创建一个 M2M 应用 {#create-an-m2m-app}
 
 :::note
 如果你不熟悉 M2M（机器对机器）认证 (Authentication) 流程，我们建议先阅读 [理解认证 (Authentication) 流程](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) 以了解基本概念。
@@ -54,17 +54,17 @@ Logto Management API 是一套全面的 API，开发者可以通过它们完全�
 
 现在为你的 M2M 应用分配包含 Logto Management API 权限的 M2M 角色 (Roles)。
 
-### 获取访问令牌 (Access token)
+### 获取访问令牌 (Access token) {#fetch-an-access-token}
 
-#### 关于访问令牌 (Access token) 请求的基础知识
+#### 关于访问令牌 (Access token) 请求的基础知识 {#basics-about-access-token-request}
 
 <BasicsAboutAccessTokenRequest />
 
-#### 获取 Logto Management API 的访问令牌 (Access token)
+#### 获取 Logto Management API 的访问令牌 (Access token) {#fetch-access-token-for-logto-management-api}
 
 <FetchAccessTokenForLogtoManagementApi />
 
-#### 访问令牌 (Access token) 响应
+#### 访问令牌 (Access token) 响应 {#access-token-response}
 
 成功的访问响应体如下：
 
@@ -79,35 +79,35 @@ Logto Management API 是一套全面的 API，开发者可以通过它们完全�
 
 <M2mAccessTokenNote />
 
-### 使用访问令牌 (Access token) 访问 Logto Management API
+### 使用访问令牌 (Access token) 访问 Logto Management API {#access-logto-management-api-using-access-token}
 
 <AccessTokenUsage />
 
 <AccessLogtoManagementApiUsingAccessToken />
 
-## 使用 Logto Management API 的典型场景
+## 使用 Logto Management API 的典型场景 {#typical-scenarios-for-using-logto-management-api}
 
 我们的开发者已经使用 Logto Management API 实现了许多附加功能。我们相信我们的 API 具有高度的可扩展性，可以支持你的广泛需求。以下是一些无法通过 Logto 管理控制台实现但可以通过 Logto Management API 实现的场景示例。
 
-### 自行实现用户资料
+### 自行实现用户资料 {#implement-user-profile-on-your-own}
 
 Logto 目前不提供用户资料的预构建 UI 解决方案。我们认识到用户资料与业务和产品属性密切相关。在我们努力确定最佳方法的同时，我们建议使用我们的 API 创建你自己的解决方案。例如，你可以利用我们的交互 API、资料 API 和验证码 API 开发满足你需求的自定义解决方案。
 
-### 高级用户搜索
+### 高级用户搜索 {#advanced-user-search}
 
 Logto 管理控制台支持基本的搜索和过滤功能。对于模糊搜索、精确匹配和区分大小写等高级搜索选项，请查看我们的 [高级用户搜索](/user-management/advanced-user-search) 教程和指南。
 
-### 自行实现组织管理
+### 自行实现组织管理 {#implement-organization-management-on-your-own}
 
 如果你正在使用 [组织 (Organizations)](/organizations) 功能构建多租户应用程序，你可能需要 Logto Management API 来执行组织邀请和成员管理等任务。对于你的 SaaS 产品，在租户中同时拥有管理员和成员的情况下，Logto Management API 可以帮助你创建一个定制的管理员门户，以满足你的业务需求。查看 [此处](/end-user-flows/organization-experience/) 了解更多详细信息。
 
-## 使用 Logto Management API 的提示
+## 使用 Logto Management API 的提示 {#tips-for-using-logto-management-api}
 
-### 管理分页 API 响应
+### 管理分页 API 响应 {#managing-paginated-api-responses}
 
 某些 API 响应可能包含许多结果，结果将被分页。Logto 提供两种分页信息。
 
-#### 使用链接头
+#### 使用链接头 {#using-link-headers}
 
 分页响应头如下：
 
@@ -122,7 +122,7 @@ Link: <https://logto.dev/users?page=1&page_size=20>; rel="first"
 - 最后一页的 URL 后跟 rel="last"。
 - 第一页的 URL 后跟 rel="first"。
 
-#### 使用总数头
+#### 使用总数头 {#using-total-number-header}
 
 除了标准的链接头，Logto 还会添加一个 `Total-Number` 头：
 
@@ -132,14 +132,14 @@ Total-Number: 216
 
 这将非常方便和有用，以显示页码。
 
-#### 更改页码和页面大小
+#### 更改页码和页面大小 {#changing-page-number-and-page-size}
 
 有两个可选的查询参数：
 
 - `page`：表示页码，从 1 开始，默认值为 1。
 - `page_size`：表示每页的项目数，默认值为 20。
 
-### 速率限制
+### 速率限制 {#rate-limit}
 
 :::note
 这仅适用于 Logto Cloud。
@@ -147,7 +147,7 @@ Total-Number: 216
 
 为了确保我们服务的可靠性和安全性，我们对网站的流量进行监控和管理。虽然我们不强制执行严格的速率限制，但我们建议用户将活动限制在每 10 秒约 200 个请求，以避免触发我们的保护措施。
 
-## 相关资源
+## 相关资源 {#related-resources}
 
 <Url href="https://blog.logto.io/management-api">
   使用 Logto Management API：分步指南

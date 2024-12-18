@@ -1,4 +1,4 @@
-### 检查点：测试你的 Webflow 网站
+### 检查点：测试你的 Webflow 网站 {#checkpoint-test-your-webflow-site}
 
 现在，测试你的网站：
 

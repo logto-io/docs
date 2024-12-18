@@ -1,4 +1,4 @@
-### Ponto de verificação: Teste seu aplicativo
+### Ponto de verificação: Teste seu aplicativo {#checkpoint-test-your-application}
 
 Agora, você pode testar seu aplicativo:
 

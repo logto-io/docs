@@ -8,7 +8,7 @@ sidebar_position: 3
 
 Logto now supports passkey(Webauthn) for Multi-Factor Authentication (MFA). Passkey sign-in feature in coming soon. Please stay tuned for updates.
 
-## Concepts
+## Concepts {#concepts}
 
 Customers always know Passkeys rather than WebAuthn, so what’s the relationship between them, and how to use them? Let's explore these concepts:
 
@@ -22,7 +22,7 @@ WebAuthn provides diverse authenticators for users to choose from, available in 
 
 To delve deeper into the principles and processes of WebAuthn, you can refer to our blog posts: [WebAuthn and Passkeys 101](https://blog.logto.io/web-authn-and-passkey-101/) and [Things you should know before integrating WebAuthn](https://blog.logto.io/webauthn-base-knowledge/).
 
-## Pay attention to limitations
+## Pay attention to limitations {#pay-attention-to-limitations}
 
 It's essential to be aware of some limitations when implementing WebAuthn:
 
@@ -30,7 +30,7 @@ It's essential to be aware of some limitations when implementing WebAuthn:
 2. **Domain limitation**: Changing the domain can hinder user verification through their existing WebAuthn accounts. Passkeyss are bound to the specific domain of the current web page and cannot be used across different domains.
 3. **Device limitation**: Losing the device can result in a loss of access to their accounts, especially for those relying on "This device" Platform Authenticators. To enhance authentication access, it's advisable to provide users with more than one authentication factor.
 
-## Authentication flows
+## Authentication flows {#authentication-flows}
 
 The Passkeys specification requires users to actively click the button on the current page to initiate the authentication component. This means that in both the setup and verification flows, users should be redirected to the landing page to initiate WebAuthn.
 
@@ -42,7 +42,7 @@ The Passkeys specification requires users to actively click the button on the cu
 
 ![WebAuthn verification flow](./assets/webauthn-verification-flow.png)
 
-## Related resources
+## Related resources {#related-resources}
 
 <Url href="https://blog.logto.io/webauthn-base-knowledge">
   Things you should know before integrating WebAuthn

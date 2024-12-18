@@ -166,7 +166,8 @@ const config: Config = {
   url: getLogtoDocsUrl(),
   baseUrl: '/',
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenAnchors: 'throw',
+  onBrokenMarkdownLinks: 'throw',
   favicon: '/img/favicon.ico',
   organizationName: 'logto-io', // Usually your GitHub org/user name.
   projectName: 'docs', // Usually your repo name.

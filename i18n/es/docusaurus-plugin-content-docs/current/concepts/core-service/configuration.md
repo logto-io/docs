@@ -1,8 +1,8 @@
 # Configuración
 
-## Variables de entorno
+## Variables de entorno {#environment-variables}
 
-### Uso
+### Uso {#usage}
 
 Logto maneja las variables de entorno en el siguiente orden:
 
@@ -11,7 +11,7 @@ Logto maneja las variables de entorno en el siguiente orden:
 
 Por lo tanto, las variables de entorno del sistema sobrescribirán los valores en `.env`.
 
-### Variables
+### Variables {#variables}
 
 :::caution
 Si ejecutas Logto a través de `npm start` en la raíz del proyecto, `NODE_ENV` siempre será `production`.
@@ -33,15 +33,15 @@ En los valores predeterminados, `protocol` será `http` o `https` según tu conf
 | ADMIN_ENDPOINT          | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | Puedes especificar una URL con tu dominio personalizado para producción (Ej. `ADMIN_ENDPOINT=https://admin.domain.com`). Esto también afectará el valor de los URIs de redirección de Admin Console.                                       |
 | CASE_SENSITIVE_USERNAME | `true`                               | `boolean`                                                | Especifica si el nombre de usuario distingue entre mayúsculas y minúsculas. Ten cuidado al modificar este valor; los cambios no ajustarán automáticamente los datos existentes de la base de datos, requiriendo gestión manual.            |
 
-### Habilitar HTTPS
+### Habilitar HTTPS {#enabling-https}
 
-#### Usando Node
+#### Usando Node {#using-node}
 
 Node admite HTTPS de forma nativa. Proporciona **AMBOS** `HTTPS_CERT_PATH` y `HTTPS_KEY_PATH` para habilitar HTTPS a través de Node.
 
 `HTTPS_CERT_PATH` implica la ruta a tu certificado HTTPS, mientras que `HTTPS_KEY_PATH` implica la ruta a tu clave HTTPS.
 
-#### Usando un proxy HTTPS
+#### Usando un proxy HTTPS {#using-a-https-proxy}
 
 Otra práctica común es tener un proxy HTTPS frente a Node (Ej. Nginx).
 
@@ -49,7 +49,7 @@ En este caso, probablemente querrás establecer `TRUST_PROXY_HEADER` en `true`, 
 
 Consulta [Confiar en proxies de descarga de TLS](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) para saber cuándo configurar este campo.
 
-## Configuraciones de la base de datos
+## Configuraciones de la base de datos {#database-configs}
 
 Gestionar demasiadas variables de entorno no es eficiente ni flexible, por lo que la mayoría de nuestras configuraciones generales se almacenan en la tabla de la base de datos `logto_configs`.
 
@@ -60,7 +60,7 @@ La tabla es un almacenamiento simple de clave-valor, y la clave es enumerable de
 | oidc.cookieKeys  | <code>string[]</code> | El arreglo de cadenas de las [claves de firma de cookies](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys).           |
 | oidc.privateKeys | <code>string[]</code> | El arreglo de cadenas del contenido de la clave privada para la [firma de JWT de OIDC](https://openid.net/specs/openid-connect-core-1_0.html#Signing). |
 
-### Tipos de clave privada compatibles
+### Tipos de clave privada compatibles {#supported-private-key-types}
 
 - EC (curvas P-256, secp256k1, P-384 y P-521)
 - RSA

@@ -1,7 +1,7 @@
 <details>
 <summary>
 
-### flutter_secure_storage
+### flutter_secure_storage {#flutter_secure_storage}
 
 </summary>
 
@@ -10,7 +10,7 @@ Usamos [flutter_secure_storage](https://pub.dev/packages/flutter_secure_storage)
 - Keychain é usado para iOS
 - Criptografia AES é usada para Android.
 
-### Configurar versão do Android:
+### Configurar versão do Android: {#config-android-version}
 
 Em [project]/android/app/build.gradle defina minSdkVersion para >= 18.
 
@@ -26,7 +26,7 @@ Em [project]/android/app/build.gradle defina minSdkVersion para >= 18.
   }
 ```
 
-### Desativar backup automático:
+### Desativar backup automático: {#disable-autobackup}
 
 :::note
 

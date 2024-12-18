@@ -1,4 +1,4 @@
-### チェックポイント: Webflow サイトをテストする
+### チェックポイント: Webflow サイトをテストする {#checkpoint-test-your-webflow-site}
 
 次に、サイトをテストします：
 

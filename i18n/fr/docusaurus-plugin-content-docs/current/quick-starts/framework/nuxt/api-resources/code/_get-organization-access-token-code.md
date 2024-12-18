@@ -4,7 +4,7 @@ import Availability from '@components/Availability';
 const token = await client.getOrganizationToken(organizationId);
 ```
 
-#### Ressources API d’organisation
+#### Ressources API d’organisation {#organization-api-resources}
 
 Pour récupérer un jeton d’accès pour une ressource API dans une organisation, vous pouvez utiliser la méthode `getAccessToken` avec à la fois la ressource API et l’identifiant de l’organisation comme paramètres :
 
