@@ -105,7 +105,7 @@ const getFiles = async () => {
           return walk(filePath);
         }
 
-        if (!validExtensions.includes(path.extname(filePath))) {
+        if (!validExtensions.has(path.extname(filePath))) {
           exit(`Invalid file extension: ${file}. Only ${validExtensions.join(', ')} allowed.`);
         }
 
