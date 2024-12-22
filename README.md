@@ -59,4 +59,4 @@ We welcome contributions to improve our documentation. To contribute, follow the
 
 [![Website](https://img.shields.io/badge/website-logto.io-8262F8.svg)](https://logto.io)
 [![Blog](https://img.shields.io/badge/blog-logto.io-green.svg)](https://blog.logto.io)
-[![Discord](https://img.shields.io/discord/965845662535147551?logo=discord&logoColor=ffffff&color=7389D8&cacheSeconds=600)](https://discord.gg/UEPaF3j5e6)
+[![Discord](https://img.shields.io/discord/965845662535147551?logo=discord&logoColor=ffffff&color=7389D8&cacheSeconds=600)](https://discord.com/invite/UEPaF3j5e6)

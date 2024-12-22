@@ -310,7 +310,7 @@ const config: Config = {
             },
             {
               label: 'Ask the Discord community',
-              href: 'https://discord.gg/UEPaF3j5e6',
+              href: 'https://discord.com/invite/UEPaF3j5e6',
               icon: 'discord',
               hideExternalLinkIcon: true,
             },
