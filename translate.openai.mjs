@@ -142,14 +142,20 @@ export class OpenAiTranslate {
     // Extract the translated content from the stream.
     let count = 0;
     let result = '';
+    let lastUpdated = Date.now();
     for await (const chunk of stream) {
       const choice0 = chunk.choices[0];
       result += choice0?.delta.content ?? '';
+      count++;
 
-      if (task) {
-        task.output = `Receiving response (${++count} chunks)`;
-      } else {
-        log(`Receiving response (${++count} chunks)`);
+      if (Date.now() - lastUpdated > 1000) {
+        if (task) {
+          task.output = `Receiving response (${count} chunks)`;
+        } else {
+          log(`Receiving response (${count} chunks)`);
+        }
+
+        lastUpdated = Date.now();
       }
 
       if (choice0?.finish_reason && choice0.finish_reason !== 'stop') {

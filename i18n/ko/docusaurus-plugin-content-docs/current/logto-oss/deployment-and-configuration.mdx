@@ -1,0 +1,174 @@
+---
+sidebar_position: 2
+---
+
+# 배포 및 구성
+
+이전 기사에서는 [Logto를 빠르게 시작하는 방법](/logto-oss/get-started-with-oss)의 기본 사항을 다루었습니다. 이 기사는 프로덕션 환경에서 Logto를 배포하기 위한 모범 사례와 자세한 구성 단계를 중점적으로 다룹니다.
+
+## 환경 변수 \{#environment-variables}
+
+우리는 데모 (`docker-compose.yml`)에서 생성된 환경 변수 프리셋을 사용하며, 이를 자신의 것으로 교체하고 여러 Logto 인스턴스 간에 일관성을 유지해야 합니다.
+
+환경 변수를 직접 설정하거나 Logto 프로젝트 루트에 `.env` 파일을 넣을 수 있습니다. Docker로 테스트하는 경우, `/etc/logto`에 생성된 이미지의 `.env`를 확인하세요.
+
+### 필수 사항 \{#essentials}
+
+- `DB_URL` Logto 데이터베이스를 위한 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6).
+- `PORT` Logto가 수신하는 포트. 기본값 `3001`.
+- `ENDPOINT` 프로덕션을 위해 사용자 정의 도메인으로 URL을 지정할 수 있습니다 (예: `ENDPOINT=https://logto.domain.com`). 이는 [OIDC 발급자 식별자](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier)의 값에도 영향을 미칩니다.
+
+**관리 콘솔 활성화**
+
+- `ADMIN_PORT` Logto 관리 콘솔이 수신하는 포트. 기본값 `3002`.
+- `ADMIN_ENDPOINT` 프로덕션을 위해 사용자 정의 도메인으로 URL을 지정할 수 있습니다 (예: `ADMIN_ENDPOINT=https://admin.domain.com`). 이는 관리 콘솔 리디렉션 URI의 값에도 영향을 미칩니다.
+
+**관리 콘솔 비활성화**
+
+- `ADMIN_DISABLE_LOCALHOST` 관리 콘솔의 포트를 닫으려면 `1` 또는 `true`로 설정하세요. `ADMIN_ENDPOINT`가 설정되지 않은 경우, 관리 콘솔을 완전히 비활성화합니다.
+
+환경 변수에 대한 자세한 내용은 [구성](/concepts/core-service/configuration/)을 참조하세요.
+
+### HTTPS \{#https}
+
+Node.js를 사용하여 HTTPS를 직접 제공하거나 Node.js 앞에 HTTPS 프록시 / 밸런서를 설정할 수 있습니다. 자세한 내용은 [HTTPS 활성화](/concepts/core-service/configuration/#enabling-https)를 참조하세요.
+
+### 리버스 프록시 \{#reverse-proxy}
+
+서버에서 Nginx 또는 Apache와 같은 리버스 프록시를 사용하려면, 프록시 패스 설정에서 3001 및 3002 포트를 별도로 매핑해야 합니다. Nginx를 사용한다고 가정하고, Logto 인증 엔드포인트가 포트 3001에서 실행 중이며, Logto 관리 콘솔이 포트 3002에서 실행 중인 경우, nginx.conf에 다음 구성을 추가하세요:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // 예: auth.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+그런 다음 관리 콘솔에 대한 유사한 구성을 추가하세요:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // 예: admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
+}
+```
+
+최신 변경 사항을 반영하기 위해 Nginx 구성을 다시 로드하세요:
+
+```
+nginx -s reload
+```
+
+모든 설정이 완료되었습니다. 브라우저를 열고 `https://admin.your-domain.com`을 방문하면 Logto 환영 페이지를 볼 수 있습니다.
+
+## 컨테이너화 \{#containerization}
+
+프로덕션 환경에서는 Docker를 사용하여 Logto를 컨테이너화할 수 있습니다. 프로젝트의 루트 디렉토리에서 Dockerfile을 찾을 수 있습니다. Logto의 여러 인스턴스를 실행하려면, 예를 들어 Kubernetes 클러스터에 Logto를 배포하려면 추가적인 단계가 필요합니다.
+
+### 공유 커넥터 폴더 \{#shared-connectors-folder}
+
+기본적으로 Logto는 `core` 폴더의 루트 디렉토리에 `connectors` 폴더를 생성합니다. 여러 Logto 인스턴스 간에 폴더를 공유하는 것이 좋습니다. `packages/core/connectors` 폴더를 컨테이너에 마운트하고 `npm run cli connector add -- --official`을 실행하여 커넥터를 배포해야 합니다.
+
+Kubernetes에 대한 최소 예제 `배포`가 있습니다:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+이 예제에서는 빈 디렉토리를 볼륨으로 생성하고 이를 컨테이너에 마운트합니다. 그런 다음 init 컨테이너에서 `npm run cli connector add -- --official`을 실행하여 커넥터를 다운로드합니다. 마지막으로, 모든 컨테이너는 이미 공식 커넥터가 포함된 동일한 커넥터 폴더를 공유하게 됩니다.
+
+:::note
+
+이것은 예제 yaml이며, Logto를 실행하려면 환경 변수를 적절히 설정해야 합니다.
+
+:::
+
+프로덕션 환경에서는 "빈 디렉토리" 볼륨을 영구 볼륨으로 교체하고, "init" 작업을 자신의 방식으로 수행할 수 있습니다. 당신이 무엇을 하고 있는지 알고 있다면 가능합니다!
+
+### 데이터베이스 변경 \{#database-alteration}
+
+커넥터와 유사하게, 데이터베이스 변경은 단일 인스턴스에서 실행해야 합니다. 작업을 사용하여 변경 스크립트를 실행할 수 있습니다.
+
+`CI=true` 환경 변수는 비상호작용 방식으로 변경이 실행될 때 필요합니다.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+변경 명령에 대한 자세한 내용은 [데이터베이스 변경](/logto-oss/using-cli/database-alteration/)을 참조하세요.

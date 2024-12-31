@@ -1,0 +1,352 @@
+---
+slug: /quick-start/java-spring-boot
+sidebar_label: Java Spring Boot
+sidebar_custom_props:
+  description: Spring Boot는 Java 프로그래밍 언어로 보안적이고 빠르며 확장 가능한 서버 애플리케이션을 구축할 수 있도록 하는 Java 웹 프레임워크입니다.
+  logoFilename: 'spring-boot.svg'
+---
+
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ScopesAndClaims from './_scopes-and-claims.mdx';
+
+# Java Spring Boot 애플리케이션에 인증 (Authentication)을 추가하세요
+
+이 가이드는 Java Spring Boot 애플리케이션에 Logto를 통합하는 방법을 보여줍니다.
+
+:::tip
+
+- 이 가이드의 샘플 코드는 [spring-boot-sample](https://github.com/logto-io/spring-boot-sample) GitHub 저장소에서 찾을 수 있습니다.
+- Java Spring Boot 애플리케이션에 Logto를 통합하기 위해 공식 SDK가 필요하지 않습니다. 우리는 Logto와의 OIDC 인증 흐름을 처리하기 위해 [Spring Security](https://spring.io/projects/spring-security) 및 [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2) 라이브러리를 사용할 것입니다.
+
+:::
+
+## 사전 준비 사항 \{#prerequisites}
+
+- [Logto Cloud](https://cloud.logto.io) 계정 또는 [셀프 호스팅 Logto](/introduction/set-up-logto-oss).
+- 우리의 샘플 코드는 Spring Boot [웹 보안 스타터](https://spring.io/guides/gs/securing-web)를 사용하여 생성되었습니다. 웹 애플리케이션이 없는 경우 새 웹 애플리케이션을 부트스트랩하는 지침을 따르세요.
+- 이 가이드에서는 Logto와의 OIDC 인증 흐름을 처리하기 위해 [Spring Security](https://spring.io/projects/spring-security) 및 [Spring Security OAuth2](https://spring.io/guides/tutorials/spring-boot-oauth2) 라이브러리를 사용할 것입니다. 개념을 이해하기 위해 공식 문서를 반드시 읽어보세요.
+
+## Java Spring Boot 애플리케이션 구성 \{#configure-your-java-spring-boot-application}
+
+### 종속성 추가 \{#adding-dependencies}
+
+[gradle](https://spring.io/guides/gs/gradle) 사용자는 `build.gradle` 파일에 다음 종속성을 추가하세요:
+
+```groovy title="build.gradle"
+dependencies {
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+}
+```
+
+[maven](https://spring.io/guides/gs/maven) 사용자는 `pom.xml` 파일에 다음 종속성을 추가하세요:
+
+```xml title="pom.xml"
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-thymeleaf</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+```
+
+### OAuth2 클라이언트 구성 \{#oauth2-client-configuration}
+
+Logto Console에서 새로운 `Java Spring Boot` 애플리케이션을 등록하고 웹 애플리케이션에 대한 클라이언트 자격 증명 및 IdP 구성을 가져옵니다.
+
+`application.properties` 파일에 다음 구성을 추가하세요:
+
+```properties title="application.properties"
+spring.security.oauth2.client.registration.logto.client-name=logto
+spring.security.oauth2.client.registration.logto.client-id={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.client-secret={{YOUR_CLIENT_ID}}
+spring.security.oauth2.client.registration.logto.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.logto.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access
+spring.security.oauth2.client.registration.logto.provider=logto
+
+spring.security.oauth2.client.provider.logto.issuer-uri={{LOGTO_ENDPOINT}}/oidc
+spring.security.oauth2.client.provider.logto.authorization-uri={{LOGTO_ENDPOINT}}/oidc/auth
+spring.security.oauth2.client.provider.logto.jwk-set-uri={{LOGTO_ENDPOINT}}/oidc/jwks
+```
+
+## 구현 \{#implementation}
+
+<SignInFlowSummary />
+
+사용자가 로그인한 후 애플리케이션으로 다시 리디렉션되도록 하려면 이전 단계에서 `client.registration.logto.redirect-uri` 속성을 사용하여 리디렉션 URI를 설정해야 합니다.
+
+<WebConfigureRedirectUris />
+
+### WebSecurityConfig 구현 \{#implement-the-websecurityconfig}
+
+#### 프로젝트에 새로운 클래스 `WebSecurityConfig` 생성 \{#create-a-new-class-websecurityconfig-in-your-project}
+
+`WebSecurityConfig` 클래스는 애플리케이션의 보안 설정을 구성하는 데 사용됩니다. 이는 인증 및 인가 흐름을 처리하는 핵심 클래스입니다. 자세한 내용은 [Spring Security 문서](https://spring.io/guides/topicals/spring-security-architecture)를 참조하세요.
+
+```java title="WebSecurityConfig.java"
+package com.example.securingweb;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+@Configuration
+@EnableWebSecurity
+
+public class WebSecurityConfig {
+ // ...
+}
+```
+
+#### `idTokenDecoderFactory` 빈 생성 \{#create-a-idtokendecoderfactory-bean}
+
+Logto는 기본 알고리즘으로 `ES384`를 사용하기 때문에, 동일한 알고리즘을 사용하도록 기본 `OidcIdTokenDecoderFactory`를 덮어써야 합니다.
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory() {
+    OidcIdTokenDecoderFactory idTokenDecoderFactory = new OidcIdTokenDecoderFactory();
+    idTokenDecoderFactory.setJwsAlgorithmResolver(clientRegistration -> SignatureAlgorithm.ES384);
+    return idTokenDecoderFactory;
+  }
+}
+```
+
+#### 로그인 성공 이벤트를 처리하기 위한 LoginSuccessHandler 클래스 생성 \{#create-a-loginsuccesshandler-class-to-handle-the-login-success-event}
+
+성공적인 로그인 후 사용자를 `/user` 페이지로 리디렉션합니다.
+
+```java title="CustomSuccessHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class CustomSuccessHandler implements AuthenticationSuccessHandler {
+  @Override
+  public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+      Authentication authentication) throws IOException, ServletException {
+    response.sendRedirect("/user");
+  }
+}
+```
+
+#### 로그아웃 성공 이벤트를 처리하기 위한 LogoutSuccessHandler 클래스 생성 \{#create-a-logoutsuccesshandler-class-to-handle-the-logout-success-event}
+
+세션을 지우고 사용자를 홈 페이지로 리디렉션합니다.
+
+```java title="CustomLogoutHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+public class CustomLogoutHandler implements LogoutSuccessHandler {
+  @Override
+  public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+      throws IOException, ServletException {
+    HttpSession session = request.getSession();
+
+    if (session != null) {
+      session.invalidate();
+    }
+
+    response.sendRedirect("/home");
+  }
+}
+```
+
+#### `securityFilterChain`으로 `WebSecurityConfig` 클래스 업데이트 \{#update-the-websecurityconfig-class-with-a-securityfilterchain}
+
+[securityFilterChain](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/DefaultSecurityFilterChain.html)은 들어오는 요청과 응답을 처리하는 필터 체인입니다.
+
+우리는 `securityFilterChain`을 구성하여 홈 페이지에 대한 접근을 허용하고 다른 모든 요청에 대해 인증을 요구할 것입니다. 로그인 및 로그아웃 이벤트를 처리하기 위해 `CustomSuccessHandler`와 `CustomLogoutHandler`를 사용합니다.
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+      .authorizeRequests(authorizeRequests ->
+        authorizeRequests
+          .antMatchers("/", "/home").permitAll() // 홈 페이지에 대한 접근 허용
+          .anyRequest().authenticated() // 다른 모든 요청은 인증 필요
+      )
+      .oauth2Login(oauth2Login ->
+        oauth2Login
+          .successHandler(new CustomSuccessHandler())
+      )
+      .logout(logout ->
+        logout
+          .logoutSuccessHandler(new CustomLogoutHandler())
+      );
+    return http.build();
+  }
+}
+```
+
+### 홈 페이지 생성 \{#create-a-home-page}
+
+(프로젝트에 이미 홈 페이지가 있는 경우 이 단계를 건너뛸 수 있습니다)
+
+```java title="HomeController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+  @GetMapping({ "/", "/home" })
+  public String home(Principal principal) {
+    return principal != null ? "redirect:/user" : "home";
+  }
+}
+```
+
+이 컨트롤러는 사용자가 인증된 경우 사용자 페이지로 리디렉션하고, 그렇지 않으면 홈 페이지를 표시합니다. 홈 페이지에 로그인 링크를 추가하세요.
+
+```html title="resources/templates/home.html"
+<body>
+  <h1>Welcome!</h1>
+
+  <p><a th:href="@{/oauth2/authorization/logto}">Login with Logto</a></p>
+</body>
+```
+
+### 사용자 페이지 생성 \{#create-a-user-page}
+
+사용자 페이지를 처리하기 위한 새로운 컨트롤러를 생성하세요:
+
+```java title="UserController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+import java.util.Map;
+
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/user")
+public class UserController {
+
+  @GetMapping
+  public String user(Model model, Principal principal) {
+    if (principal instanceof OAuth2AuthenticationToken) {
+      OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) principal;
+      OAuth2User oauth2User = token.getPrincipal();
+      Map<String, Object> attributes = oauth2User.getAttributes();
+
+      model.addAttribute("username", attributes.get("username"));
+      model.addAttribute("email", attributes.get("email"));
+      model.addAttribute("sub", attributes.get("sub"));
+    }
+
+    return "user";
+  }
+}
+```
+
+사용자가 인증되면, 인증된 주체 객체에서 `OAuth2User` 데이터를 가져옵니다. 자세한 내용은 [OAuth2AuthenticationToken](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/client/authentication/OAuth2AuthenticationToken.html) 및 [OAuth2User](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/core/user/OAuth2User.html)를 참조하세요.
+
+사용자 데이터를 읽고 `user.html` 템플릿에 전달합니다.
+
+```html title="resources/templates/user.html"
+<body>
+  <h1>User Details</h1>
+  <div>
+    <p>
+    <div><strong>name:</strong> <span th:text="${username}"></span></div>
+    <div><strong>email:</strong> <span th:text="${email}"></span></div>
+    <div><strong>id:</strong> <span th:text="${sub}"></span></div>
+    </p>
+  </div>
+
+  <form th:action="@{/logout}" method="post">
+    <input type="submit" value="Logout" />
+  </form>
+</body>
+```
+
+#### 추가 클레임 요청 \{#request-additional-claims}
+
+<FindUserInfoMissing method="principal (OAuth2AuthenticationToken)" />
+
+<ScopesAndClaimsIntroduction />
+
+추가 사용자 정보를 가져오기 위해 `application.properties` 파일에 추가 스코프를 추가할 수 있습니다. 예를 들어, `email`, `phone`, 및 `urn:logto:scope:organizations` 스코프를 요청하려면 `application.properties` 파일에 다음 줄을 추가하세요:
+
+```properties title="application.properties"
+  spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access,email,phone,urn:logto:scope:organizations
+```
+
+그런 다음 `OAuth2User` 객체에서 추가 클레임에 접근할 수 있습니다.
+
+### 애플리케이션 실행 및 테스트 \{#run-and-test-the-application}
+
+애플리케이션을 실행하고 `http://localhost:8080`으로 이동하세요.
+
+- 로그인 링크가 있는 홈 페이지를 볼 수 있습니다.
+- 링크를 클릭하여 Logto로 로그인하세요.
+- 인증이 성공하면 사용자 세부 정보와 함께 사용자 페이지로 리디렉션됩니다.
+- 로그아웃 버튼을 클릭하여 로그아웃하세요. 홈 페이지로 다시 리디렉션됩니다.
+
+## 스코프 및 클레임 \{#scopes-and-claims}
+
+<ScopesAndClaims />
+
+## 추가 읽을거리 \{#further-readings}
+
+<FurtherReadings />

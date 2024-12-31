@@ -1,0 +1,110 @@
+---
+sidebar_position: 3
+---
+
+# 가이드: Node (Express)
+
+## 1단계: 요청 헤더에서 Bearer 토큰 추출하기 \{#step-1-extract-the-bearer-token-from-request-header}
+
+인가된 요청은 `Bearer <액세스 토큰>`을 내용으로 하는 `Authorization` 헤더를 포함해야 합니다. 요청 헤더에서 인가 토큰을 추출하세요:
+
+```tsx
+// auth_middleware.ts
+
+import { IncomingHttpHeaders } from 'http';
+
+const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+```
+
+## 2단계: 토큰 검증 \{#step-2-token-validation}
+
+데모를 위해 [jose](https://github.com/panva/jose) 패키지를 사용하여 토큰의 서명, 만료 상태 및 필요한 클레임을 검증합니다.
+
+### `jose`를 종속성으로 설치하기 \{#install-jose-as-your-dependency}
+
+```bash
+npm i jose --save
+```
+
+### Logto의 OIDC 구성 가져오기 \{#retrieve-logtos-oidc-configurations}
+
+JWS 토큰의 서명과 출처를 검증하기 위해 JWK 공개 키 세트와 토큰 발급자가 필요합니다. 최신 공개 Logto 인가 구성은 `https://<your-logto-domain>/oidc/.well-known/openid-configuration`에서 찾을 수 있습니다.
+
+예: `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`을 호출하고, 응답 본문에서 다음 두 필드를 찾습니다:
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### 인증 미들웨어 추가하기 \{#add-auth-middleware}
+
+Jose의 `jwtVerify` 메서드는 토큰의 JWS 형식, 토큰 서명, 발급자, 대상 및 만료 상태를 검증하는 데 도움이 될 수 있습니다. 검증에 실패하면 예외가 발생합니다.
+
+:::warning
+
+[역할 기반 접근 제어 (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac)를 사용하는 경우, 스코프 검증도 필요합니다.
+
+:::
+
+```tsx
+// auth-middleware.ts
+
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (req, res, next) => {
+  // 토큰 추출
+  const token = extractBearerTokenFromHeaders(req.headers);
+
+  const { payload } = await jwtVerify(
+    token, // 요청 헤더에서 추출한 원시 Bearer 토큰
+    createRemoteJWKSet(new URL('https://<your-logto-domain>/oidc/jwks')), // Logto 서버에서 조회한 jwks_uri를 사용하여 jwks 생성
+    {
+      // 토큰의 예상 발급자, Logto 서버에 의해 발급되어야 함
+      issuer: 'https://<your-logto-domain>/oidc',
+      // 예상 대상 토큰, 현재 API의 리소스 지표여야 함
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // RBAC를 사용하는 경우
+  assert(payload.scope.includes('some_scope'));
+
+  // 사용자 정의 페이로드 로직
+  userId = payload.sub;
+
+  return next();
+};
+```
+
+## API에 미들웨어 적용하기 \{#apply-middleware-to-your-api}
+
+```tsx
+import { verifyAuthFromRequest } from '/middleware/auth-middleware.ts';
+
+app.get('/user/:id', verifyAuthFromRequest, (req, res, next) => {
+  // 사용자 정의 코드
+});
+```
+
+## 관련 리소스 \{#related-resources}
+
+<Url href="https://blog.logto.io/protect-your-express-js-api">
+  Express.js API를 JWT 및 Logto로 보호하세요
+</Url>

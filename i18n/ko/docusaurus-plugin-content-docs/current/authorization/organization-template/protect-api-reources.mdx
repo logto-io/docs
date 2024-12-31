@@ -1,0 +1,60 @@
+---
+sidebar_position: 3
+---
+
+# 조직 템플릿으로 API 리소스 보호하기
+
+유효한 JWT가 존재함을 보장하여 리소스를 보호하는 [API 보호하기](/authorization/api-resources/protect-your-api) 외에도, 조직 역할을 적용하여 스코프를 필터링할 수 있습니다. 이 글에서는 조직 역할이 인증 흐름에서 스코프 위임 및 검증에 어떻게 영향을 미치는지에 중점을 두겠습니다.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API
+
+    Note over Client,API: 토큰 요청
+    Client->>Logto: POST /oidc/token
+    Note right of Client: 리소스, organization_id,<br/>및 요청된 스코프와 함께
+
+    Note over Logto: 사용자가<br/>지정된 조직에 속하는지 확인
+    Logto-->>Client: JWT 액세스 토큰 반환
+    Note left of Logto: 토큰에는 다음이 포함됨:<br/>- 표준 JWT 클레임<br/>- organization_id<br/>- 조직 역할에 의해 필터링된 스코프
+
+    Note over Client,API: API 요청
+    Client->>API: Bearer 토큰과 함께 요청
+
+    Note over API: JWT 토큰 검증:<br/>1. 표준 JWT 검증<br/>2. organization_id 확인<br/>3. 스코프 확인
+
+    alt 토큰이 유효하지 않음
+        API-->>Client: 401 인증 실패
+    else 토큰이 유효함
+        alt 유효한 organization_id 및 스코프
+            API-->>Client: 보호된 리소스
+        else 그렇지 않음
+            API-->>Client: 403 접근 금지
+        end
+    end
+```
+
+## 추가적인 `organization_id` 매개변수 \{#the-additional-organization_id-parameter}
+
+일반적인 액세스 토큰 부여 요청 외에도, 다이어그램에서는 추가적인 `organization_id` 매개변수를 추가합니다. 이는 Logto에게 특정 조직의 역할로 스코프를 좁히도록 지시합니다.
+
+## 클라이언트 설정 \{#client-setup}
+
+Logto의 SDK를 사용하는 경우, `getAccessToken` 메서드의 두 번째 매개변수로 `organization_id`를 추가할 수 있습니다.
+
+```tsx
+const accessToken = await logto.getAccessToken('https://my-resource.com/api', 'org_1');
+
+// 또는 클레임을 직접 가져오기
+const accessTokenClaims = await logto.getAccessTokenClaims('https://my-resource.com/api', 'org_1');
+console.log(accessTokenClaims.organization_id); // 'org_1'
+console.log(accessTokenClaims.aud); // 'https://my-resource.com/api'
+```
+
+그러면 이 조직의 역할에서 상속된 스코프만 액세스 토큰에 포함되며, 추가적인 클레임 `organization_id`도 포함됩니다.
+
+## API 서버 검증 \{#api-server-validation}
+
+일반적인 JWT 액세스 토큰 검증 외에도, `organization_id`가 존재하고 유효한지 확인하는 추가적인 단계를 추가해야 합니다.

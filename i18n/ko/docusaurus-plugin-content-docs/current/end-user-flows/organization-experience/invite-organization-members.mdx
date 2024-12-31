@@ -1,0 +1,178 @@
+---
+sidebar_position: 2
+---
+
+# 조직 멤버 초대
+
+다중 조직 애플리케이션으로서, 조직에 멤버를 초대하는 것은 일반적인 요구 사항입니다. 이 가이드에서는 애플리케이션에서 이 기능을 구현하는 단계와 기술적 세부 사항을 안내합니다.
+
+## 흐름 개요 \{#flow-overview}
+
+전체 프로세스는 아래 다이어그램에 설명되어 있습니다:
+
+```mermaid
+sequenceDiagram
+	Participant U as 최종 사용자
+  Participant A as 조직 관리자
+  Participant C as 귀하의 다중 조직 앱
+	Participant L as Logto
+
+  A ->> C: 초대받는 사람의 이메일과 역할 입력
+  C ->> L: Management API로 조직 초대 생성
+  L -->> C: 초대 ID 반환
+  C ->> C: 초대 ID로 초대 링크 작성
+  C ->> L: 초대 링크로 초대 이메일 전송 요청
+  L -->> U: 초대 링크가 포함된 초대 이메일 전송
+  U ->> C: 초대 링크 클릭 후 랜딩 페이지로 이동,<br /> 초대 수락 또는 거절
+  C ->> L: Management API로 초대 상태 업데이트
+```
+
+## 조직 역할 생성 \{#create-organization-roles}
+
+조직에 멤버를 초대하기 전에 조직 역할을 생성해야 합니다. 자세한 지침은 [조직 템플릿 구성](/authorization/organization-template/configure-organization-template) 가이드를 확인하세요.
+
+이 가이드에서는 `admin`과 `member`라는 두 가지 일반적인 조직 역할을 생성해 보겠습니다.
+
+`admin` 역할은 조직 내 모든 리소스에 대한 전체 접근 권한을 가지며, `member` 역할은 제한된 접근 권한을 가집니다. 예를 들어, 각 역할은 다음과 같은 권한 세트를 가질 수 있습니다:
+
+- `admin` 역할:
+  - `read:data` - 모든 조직 데이터 리소스에 대한 읽기 접근.
+  - `write:data` - 모든 조직 데이터 리소스에 대한 쓰기 접근.
+  - `delete:data` - 모든 조직 데이터 리소스에 대한 삭제 접근.
+  - `invite:member` - 조직에 멤버 초대.
+  - `manage:member` - 조직 내 멤버 관리.
+  - `delete:member` - 조직에서 멤버 제거.
+- `member` 역할:
+  - `read:data` - 모든 조직 데이터 리소스에 대한 읽기 접근.
+  - `write:data` - 모든 조직 데이터 리소스에 대한 쓰기 접근.
+  - `invite:member` - 조직에 멤버 초대.
+
+이는 [Logto Console](https://cloud.logto.io/)에서 쉽게 수행할 수 있습니다. 또한 [Logto Management API](https://openapi.logto.io/operation/operation-createorganizationrole)를 사용하여 프로그래밍 방식으로 조직 역할을 생성할 수 있습니다.
+
+## 이메일 커넥터 구성 \{#configure-your-email-connector}
+
+초대는 이메일을 통해 전송되므로, [이메일 커넥터](/connectors/email-connectors)가 적절히 구성되어 있는지 확인하세요. 초대를 보내려면 새로 도입된 [이메일 템플릿](/connectors/email-connectors/email-templates#email-template-types) 사용 유형 - `OrganizationInvitation`을 구성해야 합니다.
+
+`OrganizationInvitation` 사용 유형에 대한 샘플 이메일 템플릿은 아래와 같습니다:
+
+```json
+{
+  "subject": "내 조직에 오신 것을 환영합니다",
+  "content": "<p>이 <a href=\"{{link}}\" target=\"_blank\">링크</a>를 통해 내 조직에 가입하세요.</p>",
+  "usageType": "OrganizationInvitation",
+  "type": "text/html"
+}
+```
+
+이메일 내용의 `{{link}}` 자리표시는 이메일을 보낼 때 실제 초대 링크로 대체됩니다. 이 가이드에서는 `https://your-app.com/invitation/accept/{your-invitation-id}`가 될 것입니다.
+
+:::note
+
+Logto Cloud의 내장 "Logto 이메일 서비스"는 현재 `OrganizationInvitation` 사용 유형을 지원하지 않습니다. 대신, 이메일 커넥터 (예: Sendgrid)를 구성하고 `OrganizationInvitation` 템플릿을 설정해야 합니다.
+
+:::
+
+## Logto Management API로 초대 처리 \{#handle-invitations-with-logto-management-api}
+
+:::note
+
+아직 Logto Management API를 설정하지 않았다면, [Management API와 상호작용하기](/integrate-logto/interact-with-management-api)를 확인하세요.
+
+:::
+
+우리는 조직 기능에서 초대 관련 Management API 세트를 제공합니다. 이 API를 통해 다음을 수행할 수 있습니다:
+
+- `POST /api/organization-invitations` 조직 역할이 할당된 조직 초대 생성.
+- `POST /api/organization-invitations/{id}/message` 초대받는 사람에게 이메일로 조직 초대 전송.
+  참고: 이 API 페이로드는 `link` 속성을 지원하며, 초대 ID를 기반으로 초대 링크를 작성할 수 있습니다. 예를 들어:
+
+  ```json
+  {
+    "link": "https://your-app.com/invitation/accept/{your-invitation-id}"
+  }
+  ```
+
+  이에 따라, 초대받는 사람이 초대 링크를 통해 애플리케이션으로 이동할 때 랜딩 페이지를 구현해야 합니다.
+
+- `GET /api/organization-invitations` & `GET /api/organization-invitations/{id}` 모든 초대 또는 ID로 특정 초대 가져오기.
+  랜딩 페이지에서 사용자가 받은 초대의 목록이나 세부 정보를 표시하기 위해 이 API를 사용하세요.
+- `PUT /api/organization-invitations/{id}/status` 초대 상태를 업데이트하여 초대를 수락하거나 거절.
+  사용자의 초대 응답을 처리하기 위해 이 API를 사용하세요.
+
+위에 나열된 모든 API는 유효한 "조직 토큰"이 필요합니다. 조직 토큰을 얻는 방법은 [이 가이드](/authorization/organization-template/protect-organization-resources#step-2-fetch-organization-token)를 확인하세요.
+
+## 조직 역할 기반 접근 제어 (RBAC)로 사용자 권한 관리 \{#use-organization-role-based-access-control-rbac-to-manage-user-permissions}
+
+위의 설정을 통해 이제 이메일로 초대를 보낼 수 있으며, 초대받는 사람은 할당된 역할로 조직에 가입할 수 있습니다.
+
+다른 조직 역할을 가진 사용자는 조직 토큰에서 다른 스코프 (권한)를 가지게 됩니다. 따라서 클라이언트 앱과 백엔드 서비스 모두 이러한 스코프를 확인하여 표시할 기능과 허용된 작업을 결정해야 합니다.
+
+## 조직 토큰에서 스코프 업데이트 처리 \{#handle-scope-updates-in-organization-tokens}
+
+:::note
+
+앱과 조직을 통합했는지 확인하세요. 자세한 내용은 [통합 가이드](/authorization/organization-template/protect-organization-resources)를 확인하세요.
+
+:::
+
+조직 토큰에서 스코프 업데이트를 관리하는 것은 다음을 포함합니다:
+
+### 기존 스코프 철회 \{#revoking-existing-scopes}
+
+예를 들어, 관리자를 비관리자 멤버로 강등하는 경우 사용자의 스코프를 제거해야 합니다. 이 경우, 캐시된 조직 토큰을 단순히 지우고 리프레시 토큰으로 새 토큰을 가져오면 됩니다. 축소된 스코프는 새로 발급된 조직 토큰에 즉시 반영됩니다.
+
+### 새로운 스코프 부여 \{#granting-new-scopes}
+
+이는 두 가지 시나리오로 나눌 수 있습니다:
+
+#### 인증 시스템에 이미 정의된 새로운 스코프 부여 \{#grant-new-scopes-that-already-defined-in-your-auth-system}
+
+스코프 철회와 유사하게, 새로 부여된 스코프가 인증 서버에 이미 등록되어 있는 경우, 새 조직 토큰을 발급하면 새 스코프가 즉시 반영됩니다.
+
+#### 인증 시스템에 새로 도입된 새로운 스코프 부여 \{#grant-new-scopes-that-are-newly-introduced-your-auth-system}
+
+이 경우, 사용자의 조직 토큰을 업데이트하기 위해 재로그인 또는 재동의 프로세스를 트리거해야 합니다. 예를 들어, Logto SDK의 `signIn` 메서드를 호출합니다.
+
+[조직 토큰 발급](/authorization/organization-template/protect-organization-resources/#fetch-the-organization-token)에 대해 자세히 알아보세요.
+
+### 실시간 권한 검사 및 조직 토큰 업데이트 구현 \{#implement-real-time-permission-check-and-update-organization-token}
+
+Logto는 조직 내 실시간 사용자 권한을 가져오는 Management API를 제공합니다.
+
+- `GET /api/organizations/{id}/users/{userId}/scopes` ([API 참조](https://openapi.logto.io/operation/operation-listorganizationuserscopes))
+
+사용자의 조직 토큰에 있는 스코프와 실시간 권한을 비교하여 사용자가 승진되었는지 강등되었는지를 결정할 수 있습니다.
+
+- 강등된 경우, 캐시된 조직 토큰을 단순히 지우면 SDK가 자동으로 업데이트된 스코프를 가진 새 토큰을 발급합니다.
+
+  ```ts
+  const { clearAccessToken } = useLogto();
+
+  ...
+  // 실시간으로 가져온 스코프가 조직 토큰 스코프보다 적은 경우
+  await clearAccessToken();
+  ```
+
+  이는 재로그인 또는 재동의 프로세스를 요구하지 않습니다. Logto SDK가 자동으로 새 조직 토큰을 발급합니다.
+
+- 인증 시스템에 새로운 스코프가 도입된 경우, 사용자의 조직 토큰을 업데이트하기 위해 재로그인 또는 재동의 프로세스를 트리거합니다. React SDK를 예로 들어보겠습니다:
+
+  ```ts
+  const { clearAllTokens, signIn } = useLogto();
+
+  ...
+  // 실시간으로 가져온 스코프가 조직 토큰 스코프보다 새로 할당된 경우
+  await clearAllTokens();
+  signIn({
+    redirectUri: '<your-sign-in-redirect-uri>',
+    prompt: 'consent',
+  });
+  ```
+
+  위의 코드는 동의 화면으로 페이지 탐색을 트리거하고, 사용자의 조직 토큰에 업데이트된 스코프와 함께 앱으로 자동 리디렉션됩니다.
+
+## 관련 리소스 \{#related-resources}
+
+<Url href="https://blog.logto.io/implement-user-collaboration-in-your-app">
+  다중 테넌트 앱 내에서 사용자 협업을 구현하는 방법
+</Url>

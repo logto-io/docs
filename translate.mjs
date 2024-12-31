@@ -203,7 +203,7 @@ if (!sampleTranslations[locale]) {
 }
 
 const openAiTranslate = new OpenAiTranslate(locale);
-const listr = new Listr([], { concurrent: 2 });
+const listr = new Listr([], { concurrent: 8 });
 
 for (const file of files) {
   listr.add({

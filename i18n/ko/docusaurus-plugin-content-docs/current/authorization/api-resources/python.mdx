@@ -1,0 +1,125 @@
+---
+sidebar_position: 2
+---
+
+# 가이드: Python
+
+## 1단계: 요청 헤더에서 Bearer 토큰 추출하기 \{#step-1-extract-the-bearer-token-from-request-header}
+
+인가된 요청은 `Bearer <액세스 토큰>`을 내용으로 하는 `Authorization` 헤더를 포함해야 합니다. 요청 헤더에서 인가 토큰을 추출하세요:
+
+```python
+"""requires-auth.py
+"""
+def get_auth_token():
+  auth = request.headers.get("Authorization", None)
+
+  if not auth:
+    raise Error({ code: 'auth.authorization_header_missing', status: 401 })
+
+  contents = auth.split()
+
+  if len(contents) < 2
+    raise Error({code: 'auth.authorization_token_invalid_format', status: 401})
+
+  elif contents[0] != 'Bearer'
+    raise Error({code: 'auth.authorization_token_type_not_supported', status: 401})
+
+  return contents[1]
+```
+
+## 2단계: 토큰 검증 \{#step-2-token-validation}
+
+데모를 위해, Flask 앱과 [jose](https://github.com/mpdavis/python-jose) 패키지를 사용하여 토큰의 서명, 만료 상태 및 필요한 클레임을 검증하는 require_auth 데코레이터를 만듭니다.
+
+### `python-jose`를 종속성으로 설치하기 \{#install-python-jose-as-your-dependency}
+
+Logto에서 사용하는 암호화를 선택하세요. (기본값은 `ecdsa`입니다)
+
+```
+pip install python-jose[ecdsa]
+
+```
+
+### Logto의 OIDC 구성 가져오기 \{#retrieve-logtos-oidc-configurations}
+
+받은 JWS 토큰의 서명과 출처를 검증하려면 JWK 공개 키 세트와 토큰 발급자가 필요합니다. 최신 공개 Logto 인가 구성은 `https://<your-logto-domain>/oidc/.well-known/openid-configuration`에서 찾을 수 있습니다.
+
+예: `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`을 호출하고, 응답 본문에서 다음 두 필드를 찾습니다:
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### 인가 검증 데코레이터 만들기 \{#create-the-authorization-validation-decorator}
+
+:::warning
+
+[역할 기반 접근 제어 (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac)를 사용하는 경우, 스코프 검증도 필요합니다.
+
+:::
+
+```python
+"""requires-auth.py
+"""
+
+import json
+from flask import request,  _request_ctx_stack
+from six.moves.urllib.request import urlopen
+from functools import wraps
+from jose import jwt
+
+def requires_auth(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    token = get_token_auth_header()
+
+# Logto에서 가져온 jwks_uri 엔드포인트
+    jwks_uri = urlopen('https://<your-logto-domain>/oidc/jwks')
+
+# Logto에서 가져온 발급자
+    issuer = 'https://<your-logto-domain>/oidc'
+
+    jwks = json.loads(jwks_uri.read())
+
+    try:
+      payload = jwt.decode(
+        token,
+        jwks,
+# jwks와 함께 가져온 jwt 인코딩 알고리즘. 기본값은 ES384
+        algorithms=jwt.get_unverified_header(token).get('alg'),
+# Logto에 등록된 API의 리소스 지표
+        audience='<your request listener resource indicator>',
+        issuer=issuer,
+        options={
+          'verify_at_hash': False
+        }
+      )
+    except Exception:
+# 예외 처리기
+      raise Error({code: 'invalid_token', status: 401})
+
+# 페이로드를 처리하는 사용자 정의 코드
+    _request_ctx_stack.top.user_id = payload.get('sub')
+
+    return f(*args, **kwargs)
+  return decorated
+```
+
+## API에 데코레이터 적용하기 \{#apply-decorator-to-your-api}
+
+```python
+from flask import Flask
+from flask_cors import cross_origin
+
+APP = Flask(__name__)
+
+@APP.route("/user/info")
+@cross_origin(headers=["Content-Type", "Authorization"])
+@requires_auth
+def api:
+# Your API Logic
+```

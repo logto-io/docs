@@ -1,0 +1,372 @@
+---
+slug: /quick-starts/traditional-web
+sidebar_label: Traditional web
+sidebar_custom_props:
+  description: 서버에서 실행되는 전통적인 웹 앱에 Logto를 통합하세요.
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import redirectUriFigure from '../../assets/web-redirect-uri.png';
+import AppNote from '../../fragments/_app-note.mdx';
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+# 전통적인 웹 애플리케이션에 인증 (Authentication)을 추가하세요
+
+<AppNote type="Traditional web" />
+
+애플리케이션이 Django, Laravel 등과 같은 프레임워크를 사용하여 브라우저 대신 서버 측에서 실행될 수 있습니다. 이를 전통적인 웹 앱이라고 합니다. 이 페이지에서 적절한 SDK를 찾을 수 없는 경우, 수동으로 통합해야 할 수도 있습니다.
+
+이 문서는 단계별로 완료하는 방법을 안내합니다. Node.js의 Express를 예로 들어 설명합니다.
+
+:::tip
+
+이 문서는 Express에만 국한되지 않으며, 다른 프레임워크나 심지어 다른 언어를 사용하는 경우에도 `@logto/js`를 해당 언어의 코어 SDK로 대체하고 일부 단계를 조정할 수 있습니다.
+
+:::
+
+## 소스 코드 가져오기 \{#get-source-code}
+
+이 가이드의 최종 코드는 [GitHub](https://github.com/logto-io/express-example)에서 확인할 수 있습니다.
+
+## Express 프로젝트 시작하기 \{#start-an-express-project}
+
+`express-generator`를 사용하여 Express 프로젝트를 빠르게 시작할 수 있습니다.
+
+```bash
+mkdir express-logto
+cd express-logto
+npx express-generator
+```
+
+## 종속성 설치하기 \{#install-dependencies}
+
+데모 앱에는 4개의 종속성이 필요합니다:
+
+1. **@logto/js**: JavaScript용 Logto의 코어 SDK.
+2. **node-fetch**: Node.js 런타임에서 `window.fetch`와 호환되는 API를 위한 최소 코드.
+3. **express-session**: 세션 미들웨어로, 사용자 토큰을 저장하기 위해 세션을 사용할 것입니다.
+4. **js-base64**: 또 다른 Base64 트랜스코더.
+
+<Tabs>
+
+<TabItem value="npm" label="npm">
+
+```bash
+npm i @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="yarn" label="Yarn">
+
+```bash
+yarn add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+
+</Tabs>
+
+## 세션 사용하기 \{#use-session}
+
+사용자가 로그인하면 액세스 토큰, ID 토큰, 리프레시 토큰과 상호작용 데이터를 받게 되며, 세션은 이를 저장하기에 좋은 장소입니다.
+
+이전 단계에서 [express-session](https://github.com/expressjs/session)을 설치했으므로, 이제 다음 코드를 추가하여 설정해 보겠습니다:
+
+```js
+// app.js
+
+const session = require('express-session');
+
+app.use(
+  session({
+    secret: 'keyboard cat', // 자신의 비밀 키로 변경하세요
+    cookie: { maxAge: 86400 },
+  })
+);
+```
+
+## 사용자 인증 (Authentication) 기능 구현하기 \{#implement-functions-to-authenticate-users}
+
+:::tip
+
+다음 코드 스니펫에서는 애플리케이션이 `http://localhost:3000`에서 실행된다고 가정합니다.
+
+:::
+
+이 단계에서는 다음 인증 기능을 구현해야 합니다:
+
+1. `getSignInUrl`: 사용자가 리디렉션될 Logto 인가 (Authorization) 서버의 완전한 URL을 생성하고 반환합니다.
+2. `handleSignIn`: 인증 과정이 완료된 후 콜백 URL을 파싱하고, 코드 쿼리 매개변수를 가져와 토큰 (액세스 토큰, 리프레시 토큰, ID 토큰)을 가져와 로그인 과정을 완료합니다.
+3. `refreshTokens`: 리프레시 토큰을 사용하여 새로운 액세스 토큰을 교환합니다.
+
+<GetAppSecret />
+
+```js
+// logto.js
+
+const {
+  withReservedScopes,
+  fetchOidcConfig,
+  discoveryPath,
+  generateSignInUri,
+  verifyAndParseCodeFromCallbackUri,
+  fetchTokenByAuthorizationCode,
+  fetchTokenByRefreshToken,
+} = require('@logto/js');
+const fetch = require('node-fetch');
+const { randomFillSync, createHash } = require('crypto');
+const { fromUint8Array } = require('js-base64');
+
+const config = {
+  endpoint: 'https://logto.dev',
+  appId: 'foo',
+  appSecret: '<your-app-secret-copied-from-console>',
+  redirectUri: 'http://localhost:3000/callback', // 애플리케이션의 프로덕션 주소로 교체해야 할 수 있습니다
+  scopes: withReservedScopes().split(' '),
+};
+
+const requester = (input, init) => {
+  const { appId, appSecret } = config;
+
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`, 'utf8').toString('base64')}`,
+    },
+  });
+};
+
+const generateRandomString = (length = 64) => {
+  return fromUint8Array(randomFillSync(new Uint8Array(length)), true);
+};
+
+const generateCodeChallenge = async (codeVerifier) => {
+  const encodedCodeVerifier = new TextEncoder().encode(codeVerifier);
+  const hash = createHash('sha256');
+  hash.update(encodedCodeVerifier);
+  const codeChallenge = hash.digest();
+  return fromUint8Array(codeChallenge, true);
+};
+
+const getOidcConfig = async () => {
+  return fetchOidcConfig(new URL(discoveryPath, config.endpoint).toString(), requester);
+};
+
+exports.getSignInUrl = async () => {
+  const { authorizationEndpoint } = await getOidcConfig();
+  const codeVerifier = generateRandomString();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateRandomString();
+
+  const { redirectUri, scopes, appId: clientId } = config;
+
+  const signInUri = generateSignInUri({
+    authorizationEndpoint,
+    clientId,
+    redirectUri: redirectUri,
+    codeChallenge,
+    state,
+    scopes,
+  });
+
+  return { redirectUri, codeVerifier, state, signInUri };
+};
+
+exports.handleSignIn = async (signInSession, callbackUri) => {
+  const { redirectUri, state, codeVerifier } = signInSession;
+  const code = verifyAndParseCodeFromCallbackUri(callbackUri, redirectUri, state);
+
+  const { appId: clientId } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const codeTokenResponse = await fetchTokenByAuthorizationCode(
+    {
+      clientId,
+      tokenEndpoint,
+      redirectUri,
+      codeVerifier,
+      code,
+    },
+    requester
+  );
+
+  return codeTokenResponse;
+};
+
+exports.refreshTokens = async (refreshToken) => {
+  const { appId: clientId, scopes } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const tokenResponse = await fetchTokenByRefreshToken(
+    {
+      clientId,
+      tokenEndpoint,
+      refreshToken,
+      scopes,
+    },
+    requester
+  );
+
+  return tokenResponse;
+};
+```
+
+## 로그인 \{#sign-in}
+
+<SignInFlowSummary />
+
+### 리디렉션 URI 구성하기 \{#configure-redirect-uri}
+
+<ConfigureRedirectUri figureSrc={redirectUriFigure} redirectUri="http://localhost:3000/callback" />
+
+### 로그인 경로 구현하기 \{#implement-sign-in-route}
+
+<SignInNote calling="getSignInUrl()" />
+
+Express에서 로그인 경로를 생성하세요:
+
+```js
+const { getSignInUrl } = require('./logto');
+
+app.get('/sign-in', async (req, res) => {
+  const { redirectUri, codeVerifier, state, signInUri } = await getSignInUrl();
+  req.session.signIn = { codeVerifier, state, redirectUri };
+  res.redirect(signInUri);
+});
+```
+
+그리고 콜백을 처리하는 경로를 생성하세요:
+
+```js
+app.get('/callback', async (req, res) => {
+  if (!req.session.signIn) {
+    res.send('잘못된 요청입니다.');
+    return;
+  }
+
+  const response = await handleSignIn(
+    req.session.signIn,
+    `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  );
+  req.session.tokens = {
+    ...response,
+    expiresAt: response.expiresIn + Date.now(),
+    idToken: decodeIdToken(response.idToken),
+  };
+  req.session.signIn = null;
+
+  res.redirect('/');
+});
+```
+
+## 로그아웃 \{#sign-out}
+
+TODO: 사용자 참조의 "세션 & 쿠키" 장으로 링크하세요.
+
+이 애플리케이션에서 사용자를 로그아웃하려면 세션에서 토큰을 지울 수 있습니다. "로그아웃"에 대한 자세한 내용을 읽으려면 이 링크를 확인하세요.
+
+```js
+app.get('/sign-out', (req, res) => {
+  req.session.tokens = null;
+  res.send('로그아웃 성공');
+});
+```
+
+## 보호된 리소스에 접근하기 \{#access-protected-resource}
+
+`withAuth`라는 미들웨어를 생성하여 `req`에 `auth` 객체를 첨부하고 사용자가 로그인했는지 확인합니다.
+
+```js
+// auth.js
+
+const { decodeIdToken } = require('@logto/js');
+const { refreshTokens } = require('./logto');
+
+const withAuth =
+  ({ requireAuth } = { requireAuth: true }) =>
+  async (req, res, next) => {
+    if (requireAuth && !req.session.tokens) {
+      res.redirect('/sign-in');
+      return;
+    }
+
+    if (req.session.tokens) {
+      if (req.session.tokens.expiresAt >= Date.now()) {
+        // 액세스 토큰이 만료되었으므로 새 토큰으로 갱신
+        try {
+          const response = await refreshTokens(req.session.tokens.refreshToken);
+          req.session.tokens = {
+            ...response,
+            expiresAt: response.expiresIn + Date.now(),
+            idToken: decodeIdToken(response.idToken),
+          };
+        } catch {
+          // 교환 실패, 로그인으로 리디렉션
+          res.redirect('/sign-in');
+          return;
+        }
+      }
+
+      req.auth = req.session.tokens.idToken.sub;
+    }
+
+    next();
+  };
+
+module.exports = withAuth;
+```
+
+`index` 페이지를 생성하여 게스트에게는 로그인 링크를, 이미 로그인한 사용자에게는 프로필로 이동하는 링크를 표시합니다:
+
+```js
+router.get('/', withAuth({ requireAuth: false }), function (req, res, next) {
+  res.render('index', { auth: Boolean(req.auth) });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  if auth
+    p: a(href="/user") 프로필로 이동
+  else
+    p: a(href="/sign-in") 여기를 클릭하여 로그인
+```
+
+`user` 페이지를 생성하여 `userId` (`주체`)를 표시합니다:
+
+```js
+app.get('/user', withAuth(), (req, res, next) => {
+  res.render('user', { userId: req.auth });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  p userId: #{userId}
+```
+
+## 추가 읽을거리 \{#further-readings}
+
+<FurtherReadings />
+
+<Url href="https://blog.logto.io/gpt-action-oauth">
+  GPT 액션에서 사용자 인증 (Authentication): 개인 일정 도우미 만들기
+</Url>
