@@ -178,6 +178,7 @@ const generator = async (sdks, connectors, template, type) => {
           .replaceAll('${connectorPath}', connectorPath)
           .replaceAll('${connectorConfigName}', connector.configName)
           .replaceAll('${connectorType}', type)
+          .replaceAll('${connectorTypeLowerCase}', (type ?? '').toLowerCase())
           .replaceAll(
             '${passwordlessSignUpIdentifier}',
             type === 'Email' ? 'Email address' : 'Phone number'

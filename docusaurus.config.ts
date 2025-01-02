@@ -7,7 +7,6 @@ import { themes } from 'prism-react-renderer';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
-import { generateConnectorGuides } from './docs/integrations/generate';
 import ogImageGenerator from './plugins/og-image-generator';
 
 const defaultLocale = 'en';
@@ -353,7 +352,6 @@ const config: Config = {
     prefixSvgIdsPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
-    ...generateConnectorGuides(),
     ogImageGenerator,
     [
       '@docusaurus/plugin-content-blog',
