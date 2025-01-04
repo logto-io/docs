@@ -1,7 +1,10 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { execa } from 'execa';
 import picocolors from 'picocolors';
+
+import { log } from './translate.openai.mjs';
 
 export const exit = (message) => {
   if (!message) {
@@ -40,4 +43,43 @@ export const walk = async (dir) => {
   );
 
   return entries.flat();
+};
+
+/**
+ * Given a list of files, filter out if the target locale file has a newer timestamp in Git.
+ * @type {(files: string[]) => Promise<string[]>}
+ */
+export const filterFiles = async (files, locale, sync, check) => {
+  if (!sync && !check) {
+    return files;
+  }
+
+  log('Checking for files that need to be translated by comparing timestamps in Git...');
+  const result = await Promise.all(
+    files.map(async (file) => {
+      const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
+      const [sourceTimestamp, targetTimestamp] = await Promise.all([
+        execa`git log -1 --format=%cd --date=iso-local -- ${file}`,
+        execa`git log -1 --format=%cd --date=iso-local -- ${targetFile}`,
+      ]);
+
+      return sourceTimestamp.stdout > targetTimestamp.stdout ? file : null;
+    })
+  );
+
+  if (check) {
+    const outdatedFiles = result.filter(Boolean);
+    if (outdatedFiles.length > 0) {
+      exit(
+        `The following files are outdated and need to be translated:\n${outdatedFiles
+          .map((file) => `  - ${file}`)
+          .join('\n')}`
+      );
+    }
+
+    log(picocolors.green('All files are up to date.'));
+    exit();
+  }
+
+  return result.filter(Boolean);
 };
