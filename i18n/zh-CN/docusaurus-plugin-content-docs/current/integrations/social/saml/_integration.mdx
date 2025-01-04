@@ -1,0 +1,145 @@
+{/* 用于生成 SAML 社交教程，仅为向后兼容目的。 */}
+
+### 创建社交 IdP 的账户并注册 SAML 应用程序 (IdP)
+
+让我们来看看 SAML 连接器的配置。
+
+在开始之前，你可以去支持 SAML 协议的社交身份提供商创建自己的账户。Okta、OneLogin、Salesforce 和其他一些平台支持基于 SAML 协议的认证 (Authentication)。
+
+如果你的 IdP 要求对 SAML 断言进行加密并接收签名的认证请求，你应该使用 RSA 算法生成你的私钥和相应的证书。保留私钥供你的 SP 使用，并将证书上传到 IdP。
+
+你还需要将 ACS (Assertion Consumer Service) URL 配置为 `${your_logto_origin}/api/authn/saml/${connector_id}` 以处理 IdP 的 SAML 断言。你可以在 Logto 管理控制台的 SAML 连接器详细信息页面找到你的 `connectorId`。
+
+:::note
+根据当前 Logto 的设计，我们仅支持用于发送认证请求的重定向绑定和用于接收 SAML 断言的 POST 绑定。虽然这听起来不太酷，但我们相信当前的设计可以处理大多数用例。如果你有任何问题，请随时联系我们！
+:::
+
+### 配置 SAML 连接器 (SP)
+
+在本节中，我们将详细介绍每个属性。
+
+#### entityID `必需`
+
+`entityID`（即 `issuer`）是实体标识符。它用于识别你的实体（SAML SP 实体），并在每个 SAML 请求/响应中匹配等效项。
+
+#### signInEndpoint `必需`
+
+你发送 SAML 认证请求的 IdP 端点。通常，你可以在 IdP 详细信息页面找到此值（即 IdP 的 `SSO URL` 或 `Login URL`）。
+
+#### x509Certificate `必需`
+
+从 IdP 私钥生成的 x509 证书，IdP 应该提供此值。
+
+证书的内容带有 `-----BEGIN CERTIFICATE-----` 头和 `-----END CERTIFICATE-----` 尾。
+
+#### idpMetadataXml `必需`
+
+此字段用于放置来自 IdP 元数据 XML 文件的内容。
+
+:::note
+
+我们使用的 XML 解析器不支持自定义命名空间。
+如果 IdP 元数据带有命名空间，你应该手动删除它们。
+有关 XML 文件的命名空间，请参阅 [参考](http://www.xmlmaster.org/en/article/d01/c10/)。
+
+:::
+
+#### assertionConsumerServiceUrl `必需`
+
+断言消费者服务 (ACS) URL 是 SP 接收 IdP 的 SAML 断言 POST 请求的端点。如我们在前面部分提到的，它通常在 IdP 设置中配置，但有些 IdP 从 SAML 认证请求中获取此值，因此我们也将此值添加为必需字段。它的值应类似于 `${your_logto_origin}/api/authn/saml/${connector_id}`。
+
+#### signAuthnRequest
+
+控制 SAML 认证请求是否应签名的布尔值，默认值为 `false`。
+
+#### encryptAssertion
+
+`encryptAssertion` 是一个布尔值，指示 IdP 是否会加密 SAML 断言，默认值为 `false`。
+
+:::note
+
+`signAuthnRequest` 和 `encryptAssertion` 属性应与 IdP 设置的相应参数一致，否则会抛出错误，显示配置不匹配。
+所有 SAML 响应都需要签名。
+
+:::
+
+#### requestSignatureAlgorithm
+
+这应该与 IdP 的签名算法一致，以便 Logto 可以验证 SAML 断言的签名。其值应为 `http://www.w3.org/2000/09/xmldsig#rsa-sha1`、`http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` 或 `http://www.w3.org/2001/04/xmldsig-more#rsa-sha512`，默认值为 `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`。
+
+#### messageSigningOrder
+
+`messageSigningOrder` 指示 IdP 的签名和加密顺序，其值应为 `sign-then-encrypt` 或 `encrypt-then-sign`，默认值为 `sign-then-encrypt`。
+
+#### privateKey 和 privateKeyPass
+
+`privateKey` 是一个可选值，当 `signAuthnRequest` 为 `true` 时是必需的。
+
+`privateKeyPass` 是你在创建 `privateKey` 时设置的密码，必要时需要。
+
+如果 `signAuthnRequest` 为 `true`，则 IdP 需要从 `privateKey` 生成的相应证书来检查签名。
+
+#### encPrivateKey 和 encPrivateKeyPass
+
+`encPrivateKey` 是一个可选值，当 `encryptAssertion` 为 `true` 时是必需的。
+
+`encPrivateKeyPass` 是你在创建 `encPrivateKey` 时设置的密码，必要时需要。
+
+如果 `encryptAssertion` 为 `true`，则 IdP 需要从 `encPrivateKey` 生成的相应证书来加密 SAML 断言。
+
+:::note
+
+对于密钥和证书的生成，`openssl` 是一个很好的工具。以下是可能有用的示例命令行：
+
+```bash
+openssl genrsa -passout pass:${privateKeyPassword} -out ${encryptPrivateKeyFilename}.pem 4096
+openssl req -new -x509 -key ${encryptPrivateKeyFilename}.pem -out ${encryptionCertificateFilename}.cer -days 3650
+```
+
+`privateKey` 和 `encPrivateKey` 文件被强制编码为 `pkcs1` 方案的 pem 字符串，这意味着私钥文件应以 `-----BEGIN RSA PRIVATE KEY-----` 开头并以 `-----END RSA PRIVATE KEY-----` 结尾。
+
+:::
+
+#### nameIDFormat
+
+`nameIDFormat` 是一个可选属性，用于声明响应的名称 ID 格式。其值可以是 `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified`、`urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`、`urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName`、`urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` 和 `urn:oasis:names:tc:SAML:2.0:nameid-format:transient`，默认值为 `urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified`。
+
+#### timeout
+
+`timeout` 是时间验证的时间容差，因为你的 SP 实体和 IdP 实体之间的时间可能不同，网络连接也可能带来一些延迟。单位为毫秒，默认值为 5000（即 5 秒）。
+
+#### profileMap
+
+Logto 还提供了一个 `profileMap` 字段，用户可以自定义从社交供应商的配置文件中映射，这些配置文件通常不是标准的。每个 `profileMap` 键是 Logto 的标准用户配置文件字段名称，相应的值应为社交配置文件字段名称。在当前阶段，Logto 只关注社交配置文件中的 'id'、'name'、'avatar'、'email' 和 'phone'，其中只有 'id' 是必需的，其他是可选字段。
+
+#### 配置类型
+
+| 名称                        | 类型                                                                                                                                                                                                                                                                                                  | 必需  | 默认值                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------- |
+| signInEndpoint              | string                                                                                                                                                                                                                                                                                                | true  |                                                         |
+| x509certificate             | string                                                                                                                                                                                                                                                                                                | true  |                                                         |
+| idpMetadataXml              | string                                                                                                                                                                                                                                                                                                | true  |                                                         |
+| entityID                    | string                                                                                                                                                                                                                                                                                                | true  |                                                         |
+| assertionConsumerServiceUrl | string                                                                                                                                                                                                                                                                                                | true  |                                                         |
+| messageSigningOrder         | `encrypt-then-sign` \| `sign-then-encrypt`                                                                                                                                                                                                                                                            | false | `sign-then-encrypt`                                     |
+| requestSignatureAlgorithm   | `http://www.w3.org/2000/09/xmldsig#rsa-sha1` \| `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` \| `http://www.w3.org/2001/04/xmldsig-more#rsa-sha512`                                                                                                                                            | false | `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`     |
+| signAuthnRequest            | boolean                                                                                                                                                                                                                                                                                               | false | false                                                   |
+| encryptAssertion            | boolean                                                                                                                                                                                                                                                                                               | false | false                                                   |
+| privateKey                  | string                                                                                                                                                                                                                                                                                                | false |                                                         |
+| privateKeyPass              | string                                                                                                                                                                                                                                                                                                | false |                                                         |
+| nameIDFormat                | `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` \| `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` \| `urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName` \| `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` \| `urn:oasis:names:tc:SAML:2.0:nameid-format:transient` | false | `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` |
+| timeout                     | number                                                                                                                                                                                                                                                                                                | false | 5000                                                    |
+| profileMap                  | ProfileMap                                                                                                                                                                                                                                                                                            | false |                                                         |
+
+| ProfileMap 字段 | 类型   | 必需  | 默认值 |
+| --------------- | ------ | ----- | ------ |
+| id              | string | false | id     |
+| name            | string | false | name   |
+| avatar          | string | false | avatar |
+| email           | string | false | email  |
+| phone           | string | false | phone  |
+
+### 参考
+
+- [OASIS 安全断言标记语言 (SAML) V2.0 的配置文件](http://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf)
+- [samlify - 高度可配置的 Node.js SAML 2.0 库，用于单点登录](https://github.com/tngan/samlify)

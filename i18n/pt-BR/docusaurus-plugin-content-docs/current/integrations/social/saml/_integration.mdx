@@ -1,0 +1,145 @@
+{/* Usado para gerar tutoriais sociais SAML, apenas para fins de compatibilidade retroativa. */}
+
+### Criar conta de IdP social e registrar aplicativo SAML (IdP)
+
+Vamos passar pelas configurações do conector SAML.
+
+Antes de começarmos, você pode ir a um provedor de identidade social que suporte o protocolo SAML e criar sua própria conta. Okta, OneLogin, Salesforce e algumas outras plataformas suportam autenticação baseada no protocolo SAML.
+
+Se o seu IdP exigir a criptografia da asserção SAML e o recebimento de solicitações de autenticação assinadas, você deve gerar sua chave privada e o certificado correspondente usando o algoritmo RSA. Mantenha a chave privada para uso do seu SP e carregue o certificado no IdP.
+
+Você também precisa configurar a URL do ACS (Assertion Consumer Service) como `${your_logto_origin}/api/authn/saml/${connector_id}` para lidar com a asserção SAML do IdP. Você pode encontrar seu `connectorId` na página de detalhes do conector SAML no Console de Administração do Logto.
+
+:::note
+De acordo com o design atual do Logto, só suportamos Redirect-binding para enviar solicitações de autenticação e POST-binding para receber asserções SAML. Embora isso possa não parecer legal, acreditamos que o design atual pode lidar com a maioria dos seus casos de uso. Se você tiver algum problema, sinta-se à vontade para entrar em contato!
+:::
+
+### Configurar conector SAML (SP)
+
+Nesta seção, vamos apresentar cada atributo em detalhe.
+
+#### entityID `Obrigatório`
+
+`entityID` (ou seja, `issuer`) é o identificador da Entidade. Ele é usado para identificar sua entidade (entidade SP SAML) e corresponder à equivalência em cada solicitação/resposta SAML.
+
+#### signInEndpoint `Obrigatório`
+
+O endpoint do IdP para o qual você envia solicitações de autenticação SAML. Normalmente, você pode encontrar esse valor na página de detalhes do IdP (ou seja, `SSO URL` ou `Login URL` do IdP).
+
+#### x509Certificate `Obrigatório`
+
+O certificado x509 gerado a partir da chave privada do IdP, espera-se que o IdP tenha esse valor disponível.
+
+O conteúdo do certificado vem com o cabeçalho `-----BEGIN CERTIFICATE-----` e o final `-----END CERTIFICATE-----`.
+
+#### idpMetadataXml `Obrigatório`
+
+O campo é usado para colocar conteúdos do arquivo XML de metadados do seu IdP.
+
+:::note
+
+O analisador XML que estamos usando não suporta namespace personalizado.
+Se os metadados do IdP vierem com namespace, você deve removê-los manualmente.
+Para namespace de arquivo XML, veja [referência](http://www.xmlmaster.org/en/article/d01/c10/).
+
+:::
+
+#### assertionConsumerServiceUrl `Obrigatório`
+
+A URL do serviço consumidor de asserção (ACS) é o endpoint do SP para receber solicitações POST de asserção SAML do IdP. Como mencionamos na parte anterior, geralmente é configurado nas configurações do IdP, mas alguns IdPs obtêm esse valor das solicitações de autenticação SAML, por isso também adicionamos esse valor como um campo OBRIGATÓRIO. Seu valor deve ser semelhante a `${your_logto_origin}/api/authn/saml/${connector_id}`.
+
+#### signAuthnRequest
+
+O valor booleano que controla se a solicitação de autenticação SAML deve ser assinada, cujo valor padrão é `false`.
+
+#### encryptAssertion
+
+`encryptAssertion` é um valor booleano que indica se o IdP irá criptografar a asserção SAML, com valor padrão `false`.
+
+:::note
+
+Os atributos `signAuthnRequest` e `encryptAssertion` devem estar alinhados com os parâmetros correspondentes da configuração do IdP, caso contrário, um erro será lançado para mostrar que a configuração não corresponde.
+Todas as respostas SAML precisam ser assinadas.
+
+:::
+
+#### requestSignatureAlgorithm
+
+Isso deve estar alinhado com os algoritmos de assinatura do IdP para que o Logto possa verificar a assinatura da asserção SAML. Seu valor deve ser `http://www.w3.org/2000/09/xmldsig#rsa-sha1`, `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` ou `http://www.w3.org/2001/04/xmldsig-more#rsa-sha512` e o valor padrão é `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`.
+
+#### messageSigningOrder
+
+`messageSigningOrder` indica a ordem de assinatura e criptografia do IdP, seu valor deve ser `sign-then-encrypt` ou `encrypt-then-sign` e o valor padrão é `sign-then-encrypt`.
+
+#### privateKey e privateKeyPass
+
+`privateKey` é um valor OPCIONAL e é necessário quando `signAuthnRequest` é `true`.
+
+`privateKeyPass` é a senha que você definiu ao criar `privateKey`, necessária quando necessário.
+
+Se `signAuthnRequest` for `true`, o certificado correspondente gerado a partir de `privateKey` é necessário pelo IdP para verificar a assinatura.
+
+#### encPrivateKey e encPrivateKeyPass
+
+`encPrivateKey` é um valor OPCIONAL e é necessário quando `encryptAssertion` é `true`.
+
+`encPrivateKeyPass` é a senha que você definiu ao criar `encPrivateKey`, necessária quando necessário.
+
+Se `encryptAssertion` for `true`, o certificado correspondente gerado a partir de `encPrivateKey` é necessário pelo IdP para criptografar a asserção SAML.
+
+:::note
+
+Para geração de chaves e certificados, `openssl` é uma ferramenta maravilhosa. Aqui está uma linha de comando de exemplo que pode ser útil:
+
+```bash
+openssl genrsa -passout pass:${privateKeyPassword} -out ${encryptPrivateKeyFilename}.pem 4096
+openssl req -new -x509 -key ${encryptPrivateKeyFilename}.pem -out ${encryptionCertificateFilename}.cer -days 3650
+```
+
+Os arquivos `privateKey` e `encPrivateKey` são obrigados a serem codificados no esquema `pkcs1` como string pem, o que significa que os arquivos de chave privada devem começar com `-----BEGIN RSA PRIVATE KEY-----` e terminar com `-----END RSA PRIVATE KEY-----`.
+
+:::
+
+#### nameIDFormat
+
+`nameIDFormat` é um atributo OPCIONAL que declara o formato do nome id que responderia. O valor pode estar entre `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified`, `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress`, `urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName`, `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` e `urn:oasis:names:tc:SAML:2.0:nameid-format:transient`, e o valor padrão é `urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified`.
+
+#### timeout
+
+`timeout` é a tolerância de tempo para validação de tempo, já que o tempo entre sua entidade SP e a entidade IdP pode ser diferente e a conexão de rede também pode trazer algum atraso. A unidade é em milissegundos, e o valor padrão é 5000 (ou seja, 5s).
+
+#### profileMap
+
+Logto também fornece um campo `profileMap` que os usuários podem personalizar o mapeamento dos perfis dos fornecedores sociais, que geralmente não são padrão. Cada chave `profileMap` é o nome do campo de perfil de usuário padrão do Logto e o valor correspondente deve ser o nome do campo de perfil social. No estágio atual, o Logto só se preocupa com 'id', 'name', 'avatar', 'email' e 'phone' do perfil social, apenas 'id' é OBRIGATÓRIO e os outros são campos opcionais.
+
+#### Tipos de configuração
+
+| Nome                        | Tipo                                                                                                                                                                                                                                                                                                  | Obrigatório | Valor Padrão                                            |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------- |
+| signInEndpoint              | string                                                                                                                                                                                                                                                                                                | true        |                                                         |
+| x509certificate             | string                                                                                                                                                                                                                                                                                                | true        |                                                         |
+| idpMetadataXml              | string                                                                                                                                                                                                                                                                                                | true        |                                                         |
+| entityID                    | string                                                                                                                                                                                                                                                                                                | true        |                                                         |
+| assertionConsumerServiceUrl | string                                                                                                                                                                                                                                                                                                | true        |                                                         |
+| messageSigningOrder         | `encrypt-then-sign` \| `sign-then-encrypt`                                                                                                                                                                                                                                                            | false       | `sign-then-encrypt`                                     |
+| requestSignatureAlgorithm   | `http://www.w3.org/2000/09/xmldsig#rsa-sha1` \| `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256` \| `http://www.w3.org/2001/04/xmldsig-more#rsa-sha512`                                                                                                                                            | false       | `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`     |
+| signAuthnRequest            | boolean                                                                                                                                                                                                                                                                                               | false       | false                                                   |
+| encryptAssertion            | boolean                                                                                                                                                                                                                                                                                               | false       | false                                                   |
+| privateKey                  | string                                                                                                                                                                                                                                                                                                | false       |                                                         |
+| privateKeyPass              | string                                                                                                                                                                                                                                                                                                | false       |                                                         |
+| nameIDFormat                | `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` \| `urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress` \| `urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName` \| `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent` \| `urn:oasis:names:tc:SAML:2.0:nameid-format:transient` | false       | `urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified` |
+| timeout                     | number                                                                                                                                                                                                                                                                                                | false       | 5000                                                    |
+| profileMap                  | ProfileMap                                                                                                                                                                                                                                                                                            | false       |                                                         |
+
+| Campos do ProfileMap | Tipo   | Obrigatório | Valor Padrão |
+| -------------------- | ------ | ----------- | ------------ |
+| id                   | string | false       | id           |
+| name                 | string | false       | name         |
+| avatar               | string | false       | avatar       |
+| email                | string | false       | email        |
+| phone                | string | false       | phone        |
+
+### Referência
+
+- [Perfis para a OASIS Security Assertion Markup Language (SAML) V2.0](http://docs.oasis-open.org/security/saml/v2.0/saml-profiles-2.0-os.pdf)
+- [samlify - Biblioteca Node.js SAML 2.0 altamente configurável para Single Sign On](https://github.com/tngan/samlify)
