@@ -8,6 +8,7 @@ import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
 import ogImageGenerator from './plugins/og-image-generator';
+import tutorialGenerator from './plugins/tutorial-generator';
 
 const defaultLocale = 'en';
 
@@ -352,6 +353,7 @@ const config: Config = {
     prefixSvgIdsPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
+    tutorialGenerator,
     ogImageGenerator,
     [
       '@docusaurus/plugin-content-blog',
