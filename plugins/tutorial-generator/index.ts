@@ -56,12 +56,23 @@ const tutorialGenerator: PluginConfig = () => {
 
       const outputDir = getAbsoluteOutputDir(docs[0]);
 
+      const socialTemplatePath = path.join(outputDir, '_template-social.mdx');
+      const passwordlessTemplatePath = path.join(outputDir, '_template-passwordless.mdx');
+
+      if (!existsSync(socialTemplatePath) || !existsSync(passwordlessTemplatePath)) {
+        console.log('No templates found. Skipping...');
+        return;
+      }
+
+      const [socialTemplate, passwordlessTemplate] = await Promise.all([
+        fs.readFile(socialTemplatePath, 'utf8'),
+        fs.readFile(passwordlessTemplatePath, 'utf8'),
+      ]);
+
       const { sdks, socialConnectors, emailConnectors, smsConnectors } = docs.reduce<DocGroups>(
         (acc, doc) => {
           const { sourceDirName } = doc;
           const absoluteDocDir = getAbsoluteDocDir(doc);
-          console.log('### sourceDirName', sourceDirName);
-          console.log('### absoluteDocDir', absoluteDocDir);
 
           if (
             sourceDirName.startsWith('quick-starts/framework/') &&
@@ -97,9 +108,6 @@ const tutorialGenerator: PluginConfig = () => {
         }
       );
 
-      console.log('### sdks', sdks.slice(0, 2));
-      console.log('### socialConnectors', socialConnectors.slice(0, 2));
-
       // Copy assets folders to output directory
       const assetsDir = path.join(__dirname, './assets');
       const targetAssetsDir = path.join(outputDir, 'assets');
@@ -113,17 +121,12 @@ const tutorialGenerator: PluginConfig = () => {
         )
       );
 
-      const [socialTemplate, passwordlessTemplate] = await Promise.all([
-        fs.readFile(path.join(outputDir, '_template-social.mdx'), 'utf8'),
-        fs.readFile(path.join(outputDir, '_template-passwordless.mdx'), 'utf8'),
-      ]);
-
       const generate = async (
         sdks: DocMetadata[],
         connectors: DocMetadata[],
         template: string,
         /**
-         * The type of the passwordless connector. Social connectors leave this empty.
+         * The type of the passwordless connector. Social connectors should leave this empty.
          */
         type?: 'Email' | 'SMS'
       ) => {
