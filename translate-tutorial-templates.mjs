@@ -8,65 +8,26 @@ import picocolors from 'picocolors';
 
 import { log, OpenAiTranslate } from './translate.openai.mjs';
 import { sampleTranslations } from './translate.samples.mjs';
-import {
-  walk,
-  exit,
-  docsBaseDir,
-  i18nBaseDir,
-  validExtensions,
-  translateDir,
-  filterFiles,
-} from './translate.shared.mjs';
+import { walk, exit, i18nBaseDir, filterFiles } from './translate.shared.mjs';
 
 dotenv.config();
 
 const args = arg({
-  '--file': [String],
   '--all': Boolean,
-  '--sync': Boolean,
-  '--check': Boolean,
   '--locale': String,
 });
 
+const tutorialBaseDir = 'tutorial';
+const translateDir = 'docusaurus-plugin-content-blog-tutorial';
+
 /**
- * The list of files to translate from the `--file` argument. File paths are relative to the
- * `docs` directory. It can be a single file or a directory.
- *
- * - This option is mutually exclusive with `--all`.
- *
- * @type {string[]}
- */
-const inputFiles = args['--file'];
-/**
- * Whether to translate all files in the `docs` directory.
- *
- * - This option is mutually exclusive with `--file`.
+ * Whether to translate all tutorial fragments and templates.
+ * Use this option when you want to translate all templates for a new locale.
  *
  * @type {boolean}
  */
 const all = args['--all'];
-/**
- * Whether to filter out files that are already translated in the target locale. This option
- * uses Git commit timestamps to compare the source and target files.
- *
- * - This option should be used in conjunction with `--file` or `--all`.
- * - This option is mutually exclusive with `--check`.
- *
- * @type {boolean}
- */
-const sync = args['--sync'];
-/**
- * Whether to check if files are outdated and need to be translated. If any file is outdated, the
- * script will exit with a non-zero status code; otherwise, it will exit with a zero status code.
- *
- * - This option should be used in conjunction with `--file` or `--all`.
- * - This option is mutually exclusive with `--sync`.
- *
- * Note: This option does not translate any files.
- *
- * @type {boolean}
- */
-const check = args['--check'];
+
 /**
  * The target locale to translate the files to. Note that the locale must exist in the `i18n`
  * directory. It's recommended to run the Docusaurus write translation command before running this
@@ -75,14 +36,6 @@ const check = args['--check'];
  * @type {string}
  */
 const locale = args['--locale'];
-
-if (sync && check) {
-  exit('Cannot use --sync and --check together.');
-}
-
-if (all && inputFiles?.length) {
-  exit('Cannot use --all and --file together.');
-}
 
 if (!locale) {
   exit('No locale specified. Use --locale to specify the target locale.');
@@ -95,39 +48,14 @@ await fs.readdir(path.join(i18nBaseDir, locale)).catch(() => {
 });
 
 const getFiles = async () => {
-  if (inputFiles?.length) {
-    const result = await Promise.all(
-      inputFiles.map(async (file) => {
-        const filePath = path.join(docsBaseDir, file);
-        const stats = await fs.stat(filePath);
-
-        if (stats.isDirectory()) {
-          return walk(filePath);
-        }
-
-        if (!validExtensions.has(path.extname(filePath))) {
-          exit(`Invalid file extension: ${file}. Only ${validExtensions.join(', ')} allowed.`);
-        }
-
-        return filePath;
-      })
-    );
-    return result.flat();
-  }
-
-  if (all) {
-    return walk(docsBaseDir);
-  }
-
-  return [];
+  const filePaths = await walk(tutorialBaseDir);
+  return filePaths.filter((file) => !file.startsWith('tutorial/build-with-logto/generated-'));
 };
 
-const files = await filterFiles(await getFiles(), locale, sync, check);
+const files = await filterFiles(await getFiles(), locale, !all);
 
 if (files.length === 0) {
-  exit(
-    'No files found to translate. Provide a list of files with --file or use --all to translate all files.'
-  );
+  exit('No generated tutorial found to translate.');
 }
 
 const sortedFiles = files.slice().sort();
@@ -173,7 +101,10 @@ for (const file of files) {
       task.title = `Translating ${file}...`;
       const content = await fs.readFile(file, 'utf8');
       const translated = await openAiTranslate.translate(content, locale, task);
-      const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
+      const targetFile = file.replace(
+        tutorialBaseDir,
+        path.join(i18nBaseDir, locale, translateDir)
+      );
       await fs.mkdir(path.dirname(targetFile), { recursive: true });
       await fs.writeFile(targetFile, translated, 'utf8');
       // eslint-disable-next-line @silverhand/fp/no-mutation
