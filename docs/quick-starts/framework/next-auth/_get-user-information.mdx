@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### Display user information \{#display-user-information}
+
+When user is signed in, the return value of `auth()` will be an object containing the user's information. You can display this information in your app:
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>Claims:</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### Request additional claims \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+To request additional scopes, you can configure the params of Logto provider:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### Claims that need network requests \{#claims-that-need-network-requests}
+
+To prevent bloating the ID token, some claims require network requests to fetch. For example, the `custom_data` claim is not included in the user object even if it's requested in the scopes. To access these claims, you need to make a network request to fetch the user info.
+
+#### Get access token \{#get-access-token}
+
+Update the `NextAuth` config so that we can get the access token:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Inject the access token into the session object
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### Fetch user info \{#fetch-user-info}
+
+Now access the OIDC user info endpoint with the access token:
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // Replace the URL with your Logto endpoint, should ends with `/oidc/me`
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+Above is a simple example. Remember to handle the error cases.
+
+#### Access token refresh \{#access-token-refresh}
+
+An access token is valid for a short period of time. By defualt, Next.js will only fetch one when the session is created. To implement auto access token refresh, see [Refresh token rotation](https://next-auth.js.org/v3/tutorials/refresh-token-rotation).
+
+### Scopes and claims \{#scopes-and-claims}
+
+<ScopesAndClaims />

@@ -1,0 +1,83 @@
+Auth.js はリソースパラメーターなしでアクセス トークンを一度だけ取得します。アクセス トークンの取得を自分で実装する必要があります。
+
+#### リフレッシュ トークンを取得する \{#get-refresh-token}
+
+Logto プロバイダーの設定を更新し、「prompt」パラメーターを追加して `consent` に設定し、`offline_access` スコープが含まれていることを確認します：
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  authorization: {
+    params: {
+      // highlight-next-line
+      prompt: 'consent',
+      scope: 'openid offline_access shopping:read shopping:write',
+      resource: 'https://shopping.your-app.com/api',
+      // ...
+    },
+  },
+  // ...
+});
+```
+
+次に、`refresh_token` をセッションに保存するコールバックを追加します：
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        // ...
+        // highlight-next-line
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ...
+      // highlight-next-line
+      session.refreshToken = token.refreshToken;
+      return session;
+    },
+  },
+});
+```
+
+#### アクセス トークンを取得する \{#fetch-access-token}
+
+`refresh_token` を使用して、Logto の OIDC トークンエンドポイントからアクセス トークンを取得できます。
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.refreshToken) {
+    // アプリ ID とシークレットを自分のものに置き換えてください。「Integration」セクションを確認できます。
+    const basicAuth = Buffer.from('<logto-app-id>:<logto-app-secret>').toString('base64');
+
+    // URL を Logto エンドポイントに置き換えてください。`/oidc/token` で終わる必要があります
+    const response = await fetch('https://xxx.logto.app/oidc/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basicAuth}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        resource: 'https://shopping.your-app.com/api',
+      }).toString(),
+    });
+
+    const data = await response.json();
+    console.log(data.access_token);
+  }
+
+  // ...
+}
+```

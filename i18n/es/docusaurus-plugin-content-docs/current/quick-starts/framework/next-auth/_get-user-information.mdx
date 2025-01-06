@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### Mostrar información del usuario \{#display-user-information}
+
+Cuando el usuario ha iniciado sesión, el valor de retorno de `auth()` será un objeto que contiene la información del usuario. Puedes mostrar esta información en tu aplicación:
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>Reclamos (Claims):</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### Solicitar reclamos adicionales \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+Para solicitar alcances adicionales, puedes configurar los parámetros del proveedor de Logto:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### Reclamos que necesitan solicitudes de red \{#claims-that-need-network-requests}
+
+Para evitar sobrecargar el Token de ID, algunos reclamos requieren solicitudes de red para ser obtenidos. Por ejemplo, el reclamo `custom_data` no está incluido en el objeto de usuario incluso si se solicita en los alcances. Para acceder a estos reclamos, necesitas hacer una solicitud de red para obtener la información del usuario.
+
+#### Obtener token de acceso \{#get-access-token}
+
+Actualiza la configuración de `NextAuth` para que podamos obtener el token de acceso:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Inyecta el token de acceso en el objeto de sesión
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### Obtener información del usuario \{#fetch-user-info}
+
+Ahora accede al endpoint de información del usuario OIDC con el token de acceso:
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // Reemplaza la URL con tu endpoint de Logto, debe terminar con `/oidc/me`
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+Arriba hay un ejemplo simple. Recuerda manejar los casos de error.
+
+#### Actualización del token de acceso \{#access-token-refresh}
+
+Un token de acceso es válido por un corto período de tiempo. Por defecto, Next.js solo obtendrá uno cuando se crea la sesión. Para implementar la actualización automática del token de acceso, consulta [Rotación de token de actualización](https://next-auth.js.org/v3/tutorials/refresh-token-rotation).
+
+### Alcances y reclamos \{#scopes-and-claims}
+
+<ScopesAndClaims />
