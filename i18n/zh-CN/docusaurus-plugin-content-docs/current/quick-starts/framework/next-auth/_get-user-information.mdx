@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### 显示用户信息 \{#display-user-information}
+
+当用户登录时，`auth()` 的返回值将是一个包含用户信息的对象。你可以在你的应用中显示这些信息：
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>声明 (Claims):</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>名称</th>
+                <th>值</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### 请求额外的声明 (Claims) \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+要请求额外的权限 (Scopes)，你可以配置 Logto provider 的参数：
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### 需要网络请求的声明 (Claims) \{#claims-that-need-network-requests}
+
+为了防止 ID 令牌 (ID token) 过大，某些声明 (Claims) 需要通过网络请求获取。例如，即使在权限 (Scopes) 中请求了 `custom_data` 声明 (Claim)，它也不会包含在用户对象中。要访问这些声明 (Claims)，你需要进行网络请求以获取用户信息。
+
+#### 获取访问令牌 (Access token) \{#get-access-token}
+
+更新 `NextAuth` 配置，以便我们可以获取访问令牌 (Access token)：
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // 将访问令牌 (Access token) 注入到会话对象中
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### 获取用户信息 \{#fetch-user-info}
+
+现在使用访问令牌 (Access token) 访问 OIDC 用户信息端点：
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // 将 URL 替换为你的 Logto 端点，应该以 `/oidc/me` 结尾
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+以上是一个简单的示例。记得处理错误情况。
+
+#### 访问令牌 (Access token) 刷新 \{#access-token-refresh}
+
+访问令牌 (Access token) 的有效期很短。默认情况下，Next.js 只会在会话创建时获取一次。要实现自动访问令牌 (Access token) 刷新，请参阅 [刷新令牌轮换](https://next-auth.js.org/v3/tutorials/refresh-token-rotation)。
+
+### 权限 (Scopes) 和声明 (Claims) \{#scopes-and-claims}
+
+<ScopesAndClaims />

@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### Afficher les informations de l'utilisateur \{#display-user-information}
+
+Lorsque l'utilisateur est connecté, la valeur de retour de `auth()` sera un objet contenant les informations de l'utilisateur. Vous pouvez afficher ces informations dans votre application :
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>Revendications :</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Valeur</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### Demander des revendications supplémentaires \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+Pour demander des portées supplémentaires, vous pouvez configurer les paramètres du fournisseur Logto :
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### Revendications nécessitant des requêtes réseau \{#claims-that-need-network-requests}
+
+Pour éviter de surcharger le jeton d’identifiant, certaines revendications nécessitent des requêtes réseau pour être récupérées. Par exemple, la revendication `custom_data` n'est pas incluse dans l'objet utilisateur même si elle est demandée dans les portées. Pour accéder à ces revendications, vous devez effectuer une requête réseau pour récupérer les informations de l'utilisateur.
+
+#### Obtenir le jeton d’accès \{#get-access-token}
+
+Mettez à jour la configuration `NextAuth` pour que nous puissions obtenir le jeton d’accès :
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // Injecter le jeton d’accès dans l'objet session
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### Récupérer les informations de l'utilisateur \{#fetch-user-info}
+
+Accédez maintenant au point de terminaison des informations utilisateur OIDC avec le jeton d’accès :
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // Remplacez l'URL par votre point de terminaison Logto, doit se terminer par `/oidc/me`
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+Ci-dessus est un exemple simple. N'oubliez pas de gérer les cas d'erreur.
+
+#### Rafraîchissement du jeton d’accès \{#access-token-refresh}
+
+Un jeton d’accès est valide pour une courte période de temps. Par défaut, Next.js n'en récupérera qu'un lorsque la session est créée. Pour implémenter le rafraîchissement automatique du jeton d’accès, voir [Rotation du jeton de rafraîchissement](https://next-auth.js.org/v3/tutorials/refresh-token-rotation).
+
+### Portées et revendications \{#scopes-and-claims}
+
+<ScopesAndClaims />

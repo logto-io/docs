@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### ユーザー情報を表示する \{#display-user-information}
+
+ユーザーがサインインすると、`auth()` の戻り値はユーザー情報を含むオブジェクトになります。この情報をアプリで表示できます：
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>クレーム (Claims):</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>名前</th>
+                <th>値</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### 追加のクレーム (Claims) をリクエストする \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+追加のスコープをリクエストするには、Logto プロバイダーのパラメータを設定します：
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### ネットワークリクエストが必要なクレーム (Claims) \{#claims-that-need-network-requests}
+
+ID トークンの肥大化を防ぐために、一部のクレーム (Claims) は取得するためにネットワークリクエストが必要です。例えば、`custom_data` クレーム (Claim) はスコープでリクエストされてもユーザーオブジェクトに含まれません。これらのクレーム (Claims) にアクセスするには、ユーザー情報を取得するためのネットワークリクエストを行う必要があります。
+
+#### アクセス トークンを取得する \{#get-access-token}
+
+`NextAuth` の設定を更新して、アクセス トークンを取得できるようにします：
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // アクセス トークンをセッションオブジェクトに注入する
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### ユーザー情報を取得する \{#fetch-user-info}
+
+次に、アクセス トークンを使用して OIDC ユーザー情報エンドポイントにアクセスします：
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // URL をあなたの Logto エンドポイントに置き換え、`/oidc/me` で終わる必要があります
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+上記は簡単な例です。エラーケースを処理することを忘れないでください。
+
+#### アクセス トークンのリフレッシュ \{#access-token-refresh}
+
+アクセス トークンは短期間のみ有効です。デフォルトでは、Next.js はセッションが作成されたときにのみ取得します。自動アクセス トークンリフレッシュを実装するには、[リフレッシュ トークンのローテーション](https://next-auth.js.org/v3/tutorials/refresh-token-rotation) を参照してください。
+
+### スコープとクレーム (Claims) \{#scopes-and-claims}
+
+<ScopesAndClaims />
