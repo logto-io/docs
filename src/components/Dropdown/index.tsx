@@ -12,6 +12,8 @@ import styles from './index.module.scss';
 
 export { default as DropdownItem } from './DropdownItem';
 
+ReactModal.setAppElement('#__docusaurus');
+
 type Props = {
   readonly children: ReactNode;
   readonly isOpen: boolean;

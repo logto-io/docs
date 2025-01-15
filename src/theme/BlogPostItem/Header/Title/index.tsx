@@ -6,6 +6,8 @@ import type { Props } from '@theme/BlogPostItem/Header/Title';
 import { clsx } from 'clsx';
 import { useCallback, useEffect } from 'react';
 
+import TitleWithSelectionDropdown from '../TitleWithSelectionDropdown';
+
 import styles from './styles.module.css';
 
 const Content = ({ className }: Props): JSX.Element => {
@@ -71,7 +73,7 @@ const Content = ({ className }: Props): JSX.Element => {
         itemProp="headline"
       >
         {isBlogPostPage ? (
-          title
+          <TitleWithSelectionDropdown title={title} metadata={metadata} />
         ) : (
           <Link itemProp="url" to={permalink}>
             {title}
