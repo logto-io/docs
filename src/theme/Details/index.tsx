@@ -7,7 +7,7 @@ import clsx from 'clsx';
 import styles from './index.module.scss';
 
 export default function Details({ ...props }: Props): JSX.Element {
-  const { isDarkTheme } = useColorMode();
+  const { colorMode } = useColorMode();
   const isBrowser = useIsBrowser();
 
   return (
@@ -16,7 +16,7 @@ export default function Details({ ...props }: Props): JSX.Element {
       className={clsx(
         styles.details,
         props.className,
-        isDarkTheme && styles.dark,
+        colorMode === 'dark' && styles.dark,
         isBrowser && styles.isBrowser
       )}
     />
