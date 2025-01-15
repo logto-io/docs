@@ -1,6 +1,7 @@
 import Translate, { translate } from '@docusaurus/Translate';
 import { type PropBlogPostMetadata } from '@docusaurus/plugin-content-blog';
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
+import { useHistory } from '@docusaurus/router';
 import { clsx } from 'clsx';
 import { useMemo, useRef, useState } from 'react';
 
@@ -48,6 +49,7 @@ const TitleWithSelectionDropdown = ({
   onSelectSdk,
   onSelectConnector,
 }: Props) => {
+  const history = useHistory();
   const slug = metadata.frontMatter.slug ?? '';
   const sdkName = String(metadata.frontMatter.sdk ?? '');
   const connectorName = String(metadata.frontMatter.connector ?? '');
@@ -111,8 +113,8 @@ const TitleWithSelectionDropdown = ({
             selectedSlugPart +
             slugLastPart
           : slugFirstPart + selectedSlugPart + slug.slice(slug.indexOf(slugMiddlePart));
-      // eslint-disable-next-line @silverhand/fp/no-mutation
-      window.location.href = `/tutorial/${targetSlug}`;
+      // eslint-disable-next-line @silverhand/fp/no-mutating-methods
+      history.push(`/tutorial/${targetSlug}`);
     }
   };
 
