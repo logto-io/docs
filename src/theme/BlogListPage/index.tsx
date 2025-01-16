@@ -1,3 +1,4 @@
+import Translate from '@docusaurus/Translate';
 import { useHistory, useLocation } from '@docusaurus/router';
 import { PageMetadata, HtmlClassNameProvider, ThemeClassNames } from '@docusaurus/theme-common';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -36,7 +37,6 @@ function BlogListPageMetadata(props: Props): JSX.Element {
 
 function BlogListPageContent(props: Props): JSX.Element {
   const { metadata, items, sidebar } = props;
-
   const { search } = useLocation();
   const { push } = useHistory();
   const searchParams = new URLSearchParams(search);
@@ -88,6 +88,11 @@ function BlogListPageContent(props: Props): JSX.Element {
           }}
         />
       </h1>
+      <h2 className={styles.subtitle}>
+        <Translate id="theme.blog.tutorial.subtitle">
+          Follow our step-by-step tutorial to set up an authentication system right away.
+        </Translate>
+      </h2>
       <BlogPostItems items={filteredItems} />
       <BlogListPaginator metadata={metadata} />
     </BlogLayout>

@@ -2,7 +2,7 @@ import Translate, { translate } from '@docusaurus/Translate';
 import { type PropBlogPostMetadata } from '@docusaurus/plugin-content-blog';
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { useHistory } from '@docusaurus/router';
-import { conditional } from '@silverhand/essentials';
+import { cond, conditional } from '@silverhand/essentials';
 import { clsx } from 'clsx';
 import { useMemo, useRef, useState } from 'react';
 
@@ -100,8 +100,6 @@ const TitleWithSelectionDropdown = (props: Props) => {
     .replace(sdkTemplateSlot, sdkName || sdkTemplateSlot)
     .replace(connectorTemplateSlot, connectorName || connectorTemplateSlot);
 
-  console.log('listViewTitle', listViewTitle);
-
   const normalizedTitle = blogPostProps?.title ?? listViewTitle;
 
   const titleParts = normalizedTitle
@@ -135,7 +133,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
       elementRef.current.textContent = displayName;
     }
     if (isBlogPost) {
-      const slug = metadata.frontMatter.slug ?? '';
+      const slug = blogPostProps?.metadata.frontMatter.slug ?? '';
       const selectedSlugPart = getPathFn(metadata);
       const targetSlug =
         type === 'sdk'
@@ -223,9 +221,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
-        onReset={() => {
-          onSelectSdk?.();
-        }}
+        onReset={cond(!isBlogPost && onSelectSdk)}
       />
       <Dropdown
         anchorRef={connectorNameRef}
@@ -244,9 +240,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
-        onReset={() => {
-          onSelectConnector?.();
-        }}
+        onReset={cond(!isBlogPost && onSelectConnector)}
       />
     </>
   );

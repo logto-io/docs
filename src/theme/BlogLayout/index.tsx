@@ -1,6 +1,7 @@
 import type { Props } from '@theme/BlogLayout';
 import BlogSidebar from '@theme/BlogSidebar';
 import Layout from '@theme/Layout';
+import clsx from 'clsx';
 import ReactModal from 'react-modal';
 
 import styles from './index.module.scss';
@@ -13,7 +14,7 @@ export default function BlogLayout(props: Props): JSX.Element {
 
   return (
     <Layout {...layoutProps}>
-      <div className={styles.container}>
+      <div className={clsx(styles.container, toc && styles.hasToc)}>
         <div className={styles.row}>
           {hasSidebar && <BlogSidebar sidebar={sidebar} />}
           <main className={styles.main}>{children}</main>
