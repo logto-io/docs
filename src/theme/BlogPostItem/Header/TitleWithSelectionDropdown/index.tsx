@@ -20,7 +20,6 @@ import Dropdown from '../SelectionDropdown';
 import styles from './index.module.scss';
 
 type BlogPostProps = {
-  readonly title: string;
   readonly metadata: PropBlogPostMetadata;
 };
 
@@ -53,7 +52,7 @@ const normalizeName = (name: string) =>
   name.replaceAll('(', '\\(').replaceAll(')', '\\)').replaceAll('$', '\\$');
 
 const TitleWithSelectionDropdown = (props: Props) => {
-  const isBlogPost = 'title' in props;
+  const isBlogPost = 'metadata' in props;
   const { onSelectSdk, onSelectConnector } = props;
   const listViewProps = conditional(!isBlogPost && props);
   const blogPostProps = conditional(isBlogPost && props);
@@ -90,7 +89,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
     : getConnectorDisplayName(defaultConnector);
 
   if (blogPostProps && (!sdkName || !connectorName)) {
-    return blogPostProps.title;
+    return blogPostProps.metadata.title;
   }
 
   const listViewTitle = translate({
@@ -100,12 +99,12 @@ const TitleWithSelectionDropdown = (props: Props) => {
     .replace(sdkTemplateSlot, sdkName || sdkTemplateSlot)
     .replace(connectorTemplateSlot, connectorName || connectorTemplateSlot);
 
-  const normalizedTitle = blogPostProps?.title ?? listViewTitle;
+  const normalizedTitle = blogPostProps?.metadata.title ?? listViewTitle;
 
   const titleParts = normalizedTitle
     .split(
       new RegExp(
-        `(${normalizeName(sdkName || sdkTemplateSlot)}|${normalizeName(connectorName || connectorTemplateSlot)})`,
+        `(${normalizeName(connectorName || connectorTemplateSlot)}|${normalizeName(sdkName || sdkTemplateSlot)})`,
         'g'
       )
     )
@@ -166,7 +165,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
             >
               {part === sdkTemplateSlot ? (
                 <span className={styles.placeholder}>
-                  <Translate id="theme.common.sdk.placeholder">Your SDK</Translate>
+                  <Translate id="theme.common.sdk.placeholder">your SDK</Translate>
                 </span>
               ) : (
                 part
@@ -194,7 +193,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
             >
               {part === connectorTemplateSlot ? (
                 <span className={styles.placeholder}>
-                  <Translate id="theme.common.connector.placeholder">Your provider</Translate>
+                  <Translate id="theme.common.connector.placeholder">your provider</Translate>
                 </span>
               ) : (
                 part
@@ -221,7 +220,13 @@ const TitleWithSelectionDropdown = (props: Props) => {
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
-        onReset={cond(!isBlogPost && onSelectSdk)}
+        onReset={cond(
+          !isBlogPost &&
+            (() => {
+              onSelectSdk?.(undefined);
+              setIsDropdownOpen(undefined);
+            })
+        )}
       />
       <Dropdown
         anchorRef={connectorNameRef}
@@ -240,7 +245,13 @@ const TitleWithSelectionDropdown = (props: Props) => {
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
-        onReset={cond(!isBlogPost && onSelectConnector)}
+        onReset={cond(
+          !isBlogPost &&
+            (() => {
+              onSelectConnector?.(undefined);
+              setIsDropdownOpen(undefined);
+            })
+        )}
       />
     </>
   );

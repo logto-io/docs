@@ -47,12 +47,9 @@ function Spacer() {
   return <>{' · '}</>;
 }
 
-export default function BlogPostItemHeaderInfo({ className }: Props): JSX.Element {
+export default function BlogPostItemHeaderInfo({ className }: Props) {
   const { metadata } = useBlogPost();
   const { date, readingTime } = metadata;
-
-  // Charles edited this to remove the time from generated "Build X with Y tutorials"
-  const isTutorial = metadata.frontMatter.slug?.startsWith('how-to-build-');
 
   const dateTimeFormat = useDateTimeFormat({
     day: 'numeric',
@@ -61,11 +58,18 @@ export default function BlogPostItemHeaderInfo({ className }: Props): JSX.Elemen
     timeZone: 'UTC',
   });
 
+  // Charles edited this to remove the time from generated "Build X with Y tutorials"
+  const isTutorial = metadata.frontMatter.slug?.startsWith('how-to-build-');
+
+  if (isTutorial) {
+    return null;
+  }
+
   const formatDate = (blogDate: string) => dateTimeFormat.format(new Date(blogDate));
 
   return (
     <div className={clsx(styles.container, 'margin-vert--md', className)}>
-      {!isTutorial && <DateTime date={date} formattedDate={formatDate(date)} />}
+      <DateTime date={date} formattedDate={formatDate(date)} />
       {readingTime !== undefined && (
         <>
           <Spacer />

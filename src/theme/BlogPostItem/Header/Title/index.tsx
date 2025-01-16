@@ -5,6 +5,7 @@ import type { Props } from '@theme/BlogPostItem/Header/Title';
 import { clsx } from 'clsx';
 import { useCallback, useEffect } from 'react';
 
+import TitleWithHighlights from '../TitleWithHighlights';
 import TitleWithSelectionDropdown from '../TitleWithSelectionDropdown';
 
 import styles from './styles.module.css';
@@ -71,7 +72,11 @@ const Content = ({ className }: Props): JSX.Element => {
         className={clsx(styles.title, !isBlogPostPage && styles.listTitle, className)}
         itemProp="headline"
       >
-        {isBlogPostPage ? <TitleWithSelectionDropdown title={title} metadata={metadata} /> : title}
+        {isBlogPostPage ? (
+          <TitleWithSelectionDropdown metadata={metadata} />
+        ) : (
+          <TitleWithHighlights metadata={metadata} />
+        )}
       </TitleHeading>
     </>
   );
