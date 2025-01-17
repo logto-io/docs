@@ -2,21 +2,23 @@ import Translate from '@docusaurus/Translate';
 import { useHistory, useLocation } from '@docusaurus/router';
 import { PageMetadata, HtmlClassNameProvider, ThemeClassNames } from '@docusaurus/theme-common';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import { conditional } from '@silverhand/essentials';
+import { conditional, condString } from '@silverhand/essentials';
 import BlogLayout from '@theme/BlogLayout';
 import type { Props } from '@theme/BlogListPage';
 import BlogListPageStructuredData from '@theme/BlogListPage/StructuredData';
-import BlogListPaginator from '@theme/BlogListPaginator';
 import BlogPostItems from '@theme/BlogPostItems';
 import SearchMetadata from '@theme/SearchMetadata';
 import clsx from 'clsx';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { getConnectorPath, getSdkPath } from '@site/plugins/tutorial-generator/utils';
+import Pagination from '@site/src/components/Pagination';
 
 import TitleWithSelectionDropdown from '../BlogPostItem/Header/TitleWithSelectionDropdown';
 
 import styles from './index.module.scss';
+
+const pageSize = 20;
 
 function BlogListPageMetadata(props: Props): JSX.Element {
   const { metadata } = props;
@@ -36,12 +38,22 @@ function BlogListPageMetadata(props: Props): JSX.Element {
 }
 
 function BlogListPageContent(props: Props): JSX.Element {
-  const { metadata, items, sidebar } = props;
+  const { items, sidebar } = props;
   const { search } = useLocation();
   const { push } = useHistory();
-  const searchParams = new URLSearchParams(search);
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const sdk = conditional(searchParams.get('sdk'));
   const connector = conditional(searchParams.get('connector'));
+  const pageParsed = Number.parseInt(condString(searchParams.get('page')), 10);
+  const isPageValid = !Number.isNaN(pageParsed) && pageParsed > 0;
+  const page = isPageValid ? pageParsed : 1;
+
+  useEffect(() => {
+    if (!isPageValid) {
+      searchParams.set('page', '1');
+      push({ search: searchParams.toString() });
+    }
+  }, [isPageValid, searchParams, push]);
 
   const filteredItems = useMemo(() => {
     if (!sdk && !connector) {
@@ -72,9 +84,8 @@ function BlogListPageContent(props: Props): JSX.Element {
             } else {
               searchParams.delete('connector');
             }
-            push({
-              search: searchParams.toString(),
-            });
+            searchParams.set('page', '1');
+            push({ search: searchParams.toString() });
           }}
           onSelectSdk={(selection) => {
             if (selection) {
@@ -82,9 +93,8 @@ function BlogListPageContent(props: Props): JSX.Element {
             } else {
               searchParams.delete('sdk');
             }
-            push({
-              search: searchParams.toString(),
-            });
+            searchParams.set('page', '1');
+            push({ search: searchParams.toString() });
           }}
         />
       </h1>
@@ -93,8 +103,16 @@ function BlogListPageContent(props: Props): JSX.Element {
           Follow our step-by-step tutorial to set up an authentication system right away.
         </Translate>
       </h2>
-      <BlogPostItems items={filteredItems} />
-      <BlogListPaginator metadata={metadata} />
+      <BlogPostItems items={filteredItems.slice((page - 1) * pageSize, page * pageSize)} />
+      <Pagination
+        page={page}
+        totalCount={filteredItems.length}
+        pageSize={pageSize}
+        onChange={(index) => {
+          searchParams.set('page', String(index));
+          push({ search: searchParams.toString() });
+        }}
+      />
     </BlogLayout>
   );
 }
