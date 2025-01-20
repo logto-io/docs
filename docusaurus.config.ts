@@ -267,13 +267,14 @@ const config: Config = {
             { label: 'Integrations', to: '/integrations' },
             {
               label: 'Account API',
-              to: 'https://openapi.logto.io/group/endpoint-account-center',
+              href: 'https://openapi.logto.io/group/endpoint-account-center',
             },
             {
               label: 'Experience API',
-              to: 'https://openapi.logto.io/group/endpoint-experience',
+              href: 'https://openapi.logto.io/group/endpoint-experience',
             },
-            { label: 'Management API', to: 'https://openapi.logto.io' },
+            { label: 'Management API', href: 'https://openapi.logto.io' },
+            { label: 'Build X with Y', href: 'pathname:///tutorial' },
           ],
         },
         {
