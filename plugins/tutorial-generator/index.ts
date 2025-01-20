@@ -7,6 +7,8 @@ import type { DocMetadata, LoadedContent } from '@docusaurus/plugin-content-docs
 import { type PluginConfig } from '@docusaurus/types';
 import { type Optional } from '@silverhand/essentials';
 
+import { getConnectorDisplayName, getConnectorPath, getSdkDisplayName, getSdkPath } from './utils';
+
 type DocGroups = {
   sdks: DocMetadata[];
   socialConnectors: DocMetadata[];
@@ -15,6 +17,9 @@ type DocGroups = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const getCurrentLocale = ({ permalink, slug }: DocMetadata) =>
+  permalink === slug ? undefined : permalink.split('/')[1];
 
 /**
  * A helper function to get the absolute path of a doc.
@@ -30,8 +35,7 @@ const getAbsoluteDocDir = (doc: DocMetadata) => {
 };
 
 const getAbsoluteOutputDir = (doc: DocMetadata) => {
-  const { permalink, slug } = doc;
-  const locale = permalink === slug ? undefined : permalink.split('/')[1];
+  const locale = getCurrentLocale(doc);
   const relativeOutputPath = locale
     ? `i18n/${locale}/docusaurus-plugin-content-blog-tutorial/build-with-logto`
     : 'tutorial/build-with-logto';
@@ -55,6 +59,7 @@ const tutorialGenerator: PluginConfig = () => {
       }
 
       const outputDir = getAbsoluteOutputDir(docs[0]);
+      const locale = getCurrentLocale(docs[0]);
 
       const socialTemplatePath = path.join(outputDir, '_template-social.mdx');
       const passwordlessTemplatePath = path.join(outputDir, '_template-passwordless.mdx');
@@ -69,7 +74,7 @@ const tutorialGenerator: PluginConfig = () => {
         fs.readFile(passwordlessTemplatePath, 'utf8'),
       ]);
 
-      const { sdks, socialConnectors, emailConnectors, smsConnectors } = docs.reduce<DocGroups>(
+      const tutorialMetadata = docs.reduce<DocGroups>(
         (acc, doc) => {
           const { sourceDirName } = doc;
           const absoluteDocDir = getAbsoluteDocDir(doc);
@@ -108,6 +113,16 @@ const tutorialGenerator: PluginConfig = () => {
         }
       );
 
+      if (!locale) {
+        // Write tutorial metadata of default locale to output folder as json
+        await fs.writeFile(
+          path.join(outputDir, 'metadata.json'),
+          JSON.stringify(tutorialMetadata, null, 2)
+        );
+      }
+
+      const { sdks, socialConnectors, emailConnectors, smsConnectors } = tutorialMetadata;
+
       // Copy assets folders to output directory
       const assetsDir = path.join(__dirname, './assets');
       const targetAssetsDir = path.join(outputDir, 'assets');
@@ -133,20 +148,12 @@ const tutorialGenerator: PluginConfig = () => {
         await Promise.all(
           sdks.map((sdk) =>
             connectors.map(async (connector) => {
-              const connectorName = String(
-                connector.frontMatter.tutorial_name ?? connector.frontMatter.sidebar_label ?? ''
-              );
-              const connectorPath = connectorName.replaceAll(' ', '-').toLowerCase();
-              const sdkPath =
-                String(sdk.frontMatter.tutorial_name ?? '')
-                  .replaceAll(' ', '-')
-                  .replaceAll(/[()]/g, '')
-                  .replaceAll('.', 'dot')
-                  .toLowerCase() || sdk.slug.split('/').slice(2).join('-');
+              const connectorPath = getConnectorPath(connector);
+              const sdkPath = getSdkPath(sdk);
 
               /* eslint-disable no-template-curly-in-string */
               const post = template
-                .replaceAll('${connector}', connectorName)
+                .replaceAll('${connector}', getConnectorDisplayName(connector))
                 .replaceAll('${connectorPath}', connectorPath)
                 .replaceAll(
                   '${connectorConfigName}',
@@ -160,10 +167,7 @@ const tutorialGenerator: PluginConfig = () => {
                 )
                 .replaceAll('${connectorDocDir}', getRelativeDocSourcePath(connector))
                 .replaceAll('${sdkDocDir}', getRelativeDocSourcePath(sdk))
-                .replaceAll(
-                  '${sdk}',
-                  String(sdk.frontMatter.tutorial_name ?? sdk.frontMatter.sidebar_label)
-                )
+                .replaceAll('${sdk}', getSdkDisplayName(sdk))
                 .replaceAll('${sdkPath}', sdkPath)
                 .replaceAll('${sdkOfficialLink}', String(sdk.frontMatter.official_link))
                 .replaceAll('${language}', String(sdk.frontMatter.language))
