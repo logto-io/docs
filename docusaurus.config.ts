@@ -373,6 +373,7 @@ const config: Config = {
         path: './tutorial',
         blogSidebarCount: 0,
         showReadingTime: false,
+        postsPerPage: 'ALL',
       },
     ],
     [

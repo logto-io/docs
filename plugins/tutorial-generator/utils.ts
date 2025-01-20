@@ -1,10 +1,10 @@
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 
-export const getSdkDisplayName = (sdk: DocMetadata) =>
-  String(sdk.frontMatter.tutorial_name ?? sdk.frontMatter.sidebar_label ?? '');
+export const getSdkDisplayName = (sdk?: DocMetadata) =>
+  String(sdk?.frontMatter.tutorial_name ?? sdk?.frontMatter.sidebar_label ?? '');
 
-export const getConnectorDisplayName = (connector: DocMetadata) =>
-  String(connector.frontMatter.tutorial_name ?? connector.frontMatter.sidebar_label ?? '');
+export const getConnectorDisplayName = (connector?: DocMetadata) =>
+  String(connector?.frontMatter.tutorial_name ?? connector?.frontMatter.sidebar_label ?? '');
 
 export const getSdkPath = (metadata: DocMetadata) => {
   const sdkName = String(metadata.frontMatter.tutorial_name ?? '');

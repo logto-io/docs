@@ -1,4 +1,5 @@
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
+import { useMemo } from 'react';
 
 import metadata from '@site/tutorial/build-with-logto/metadata.json';
 
@@ -47,16 +48,19 @@ const useCategorizedTutorialMetadata = () => {
     { nativeSdks: [], traditionalSdks: [], spaSdks: [] }
   );
 
-  return {
-    allSdks: sdks,
-    allConnectors: [...socialConnectors, ...emailConnectors, ...smsConnectors],
-    nativeSdks,
-    traditionalSdks,
-    spaSdks,
-    socialConnectors,
-    emailConnectors,
-    smsConnectors,
-  };
+  return useMemo(
+    () => ({
+      allSdks: sdks,
+      allConnectors: [...socialConnectors, ...emailConnectors, ...smsConnectors],
+      nativeSdks,
+      traditionalSdks,
+      spaSdks,
+      socialConnectors,
+      emailConnectors,
+      smsConnectors,
+    }),
+    [sdks, socialConnectors, emailConnectors, smsConnectors, nativeSdks, traditionalSdks, spaSdks]
+  );
 };
 
 export default useCategorizedTutorialMetadata;

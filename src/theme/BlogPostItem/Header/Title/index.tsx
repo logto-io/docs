@@ -1,18 +1,18 @@
 import BrowserOnly from '@docusaurus/BrowserOnly';
-import Link from '@docusaurus/Link';
 import { useBlogPost } from '@docusaurus/plugin-content-blog/client';
 import Admonition from '@theme/Admonition';
 import type { Props } from '@theme/BlogPostItem/Header/Title';
 import { clsx } from 'clsx';
 import { useCallback, useEffect } from 'react';
 
+import TitleWithHighlights from '../TitleWithHighlights';
 import TitleWithSelectionDropdown from '../TitleWithSelectionDropdown';
 
 import styles from './styles.module.css';
 
 const Content = ({ className }: Props): JSX.Element => {
   const { metadata, isBlogPostPage } = useBlogPost();
-  const { permalink, title } = metadata;
+  const { title } = metadata;
   const TitleHeading = isBlogPostPage ? 'h1' : 'h2';
   const shouldReplace = window.location.pathname.startsWith('/blog');
 
@@ -73,11 +73,9 @@ const Content = ({ className }: Props): JSX.Element => {
         itemProp="headline"
       >
         {isBlogPostPage ? (
-          <TitleWithSelectionDropdown title={title} metadata={metadata} />
+          <TitleWithSelectionDropdown metadata={metadata} />
         ) : (
-          <Link itemProp="url" to={permalink}>
-            {title}
-          </Link>
+          <TitleWithHighlights metadata={metadata} />
         )}
       </TitleHeading>
     </>

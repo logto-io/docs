@@ -1,3 +1,4 @@
+import Translate from '@docusaurus/Translate';
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { type Nullable } from '@silverhand/essentials';
 import { Fragment, type RefObject, useRef } from 'react';
@@ -14,9 +15,17 @@ type DropdownProps = {
   readonly options: Record<string, DocMetadata[]>;
   readonly onSelect: (option: { displayName: string; metadata: DocMetadata }) => void;
   readonly onClose: () => void;
+  readonly onReset?: () => void;
 };
 
-const SelectionDropdown = ({ isOpen, anchorRef, options, onSelect, onClose }: DropdownProps) => {
+const SelectionDropdown = ({
+  isOpen,
+  anchorRef,
+  options,
+  onSelect,
+  onClose,
+  onReset,
+}: DropdownProps) => {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   const { position, mutate } = usePosition({
@@ -75,6 +84,15 @@ const SelectionDropdown = ({ isOpen, anchorRef, options, onSelect, onClose }: Dr
             </Fragment>
           );
         })}
+        {onReset && (
+          <button
+            className={styles.clearButton}
+            onClick={onReset}
+            onKeyDown={onKeyDownHandler(onReset)}
+          >
+            <Translate id="theme.common.resetFilters">Reset filters</Translate>
+          </button>
+        )}
       </div>
     </ReactModal>
   );

@@ -2,6 +2,7 @@ import Translate, { translate } from '@docusaurus/Translate';
 import { type PropBlogPostMetadata } from '@docusaurus/plugin-content-blog';
 import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { useHistory } from '@docusaurus/router';
+import { cond, conditional } from '@silverhand/essentials';
 import { clsx } from 'clsx';
 import { useMemo, useRef, useState } from 'react';
 
@@ -18,14 +19,18 @@ import Dropdown from '../SelectionDropdown';
 
 import styles from './index.module.scss';
 
-type Props = {
-  readonly title: string;
+type BlogPostProps = {
   readonly metadata: PropBlogPostMetadata;
-  readonly isInListView?: boolean;
+};
+
+type ListViewProps = {
   readonly defaultSdkSlugPart?: string;
   readonly defaultConnectorSlugPart?: string;
-  readonly onSelectSdk?: (docMetadata: DocMetadata) => void;
-  readonly onSelectConnector?: (docMetadata: DocMetadata) => void;
+};
+
+type Props = (BlogPostProps | ListViewProps) & {
+  readonly onSelectSdk?: (docMetadata?: DocMetadata) => void;
+  readonly onSelectConnector?: (docMetadata?: DocMetadata) => void;
 };
 
 type DropdownType = 'sdk' | 'connector';
@@ -34,54 +39,75 @@ const slugFirstPart = 'how-to-build-';
 const slugMiddlePart = '-sign-in-with';
 const slugLastPart = '-and-logto';
 
+/* eslint-disable no-template-curly-in-string */
+const sdkTemplateSlot = '${sdk}';
+const connectorTemplateSlot = '${connector}';
+/* eslint-enable no-template-curly-in-string */
+
 /**
- * Escape potential parentheses in the SDK / connector name.
+ * Escape potential parentheses and dollar signs in the SDK / connector name.
  * The result will be used for the regex that splits the title into parts.
  */
-const normalizeName = (name: string) => name.replaceAll('(', '\\(').replaceAll(')', '\\)');
+const normalizeName = (name: string) =>
+  name.replaceAll('(', '\\(').replaceAll(')', '\\)').replaceAll('$', '\\$');
 
-const TitleWithSelectionDropdown = ({
-  title,
-  metadata,
-  isInListView,
-  defaultSdkSlugPart,
-  defaultConnectorSlugPart,
-  onSelectSdk,
-  onSelectConnector,
-}: Props) => {
-  const history = useHistory();
-  const slug = metadata.frontMatter.slug ?? '';
-  const sdkName = String(metadata.frontMatter.sdk ?? '');
-  const connectorName = String(metadata.frontMatter.connector ?? '');
-  const [isDropdownOpen, setIsDropdownOpen] = useState<DropdownType>();
+const TitleWithSelectionDropdown = (props: Props) => {
+  const isBlogPost = 'metadata' in props;
+  const { onSelectSdk, onSelectConnector } = props;
+  const listViewProps = conditional(!isBlogPost && props);
+  const blogPostProps = conditional(isBlogPost && props);
 
-  const allTutorialsMetadata = useCategorizedTutorialMetadata();
-
+  const { push } = useHistory();
   const sdkNameRef = useRef<HTMLSpanElement>(null);
   const connectorNameRef = useRef<HTMLSpanElement>(null);
+  const allTutorialsMetadata = useCategorizedTutorialMetadata();
+  const [isDropdownOpen, setIsDropdownOpen] = useState<DropdownType>();
 
   const defaultSdk = useMemo(() => {
-    if (!defaultSdkSlugPart) {
+    if (isBlogPost || !listViewProps?.defaultSdkSlugPart) {
       return;
     }
-    return allTutorialsMetadata.allSdks.find((data) => getSdkPath(data) === defaultSdkSlugPart);
-  }, [defaultSdkSlugPart, allTutorialsMetadata.allSdks]);
+    return allTutorialsMetadata.allSdks.find(
+      (data) => getSdkPath(data) === listViewProps.defaultSdkSlugPart
+    );
+  }, [isBlogPost, listViewProps?.defaultSdkSlugPart, allTutorialsMetadata.allSdks]);
 
   const defaultConnector = useMemo(() => {
-    if (!defaultConnectorSlugPart) {
+    if (isBlogPost || !listViewProps?.defaultConnectorSlugPart) {
       return;
     }
     return allTutorialsMetadata.allConnectors.find(
-      (data) => getConnectorPath(data) === defaultConnectorSlugPart
+      (data) => getConnectorPath(data) === listViewProps.defaultConnectorSlugPart
     );
-  }, [defaultConnectorSlugPart, allTutorialsMetadata.allConnectors]);
+  }, [isBlogPost, listViewProps?.defaultConnectorSlugPart, allTutorialsMetadata.allConnectors]);
 
-  if (!sdkName && !connectorName) {
-    return title;
+  const sdkName = isBlogPost
+    ? String(blogPostProps?.metadata.frontMatter.sdk ?? '')
+    : getSdkDisplayName(defaultSdk);
+  const connectorName = isBlogPost
+    ? String(blogPostProps?.metadata.frontMatter.connector ?? '')
+    : getConnectorDisplayName(defaultConnector);
+
+  if (blogPostProps && (!sdkName || !connectorName)) {
+    return blogPostProps.metadata.title;
   }
 
-  const titleParts = title
-    .split(new RegExp(`(${normalizeName(sdkName)}|${normalizeName(connectorName)})`, 'g'))
+  const listViewTitle = translate({
+    id: 'theme.blog.tutorial.title',
+    message: `Build ${connectorTemplateSlot} sign-in with ${sdkTemplateSlot}`,
+  })
+    .replace(sdkTemplateSlot, sdkName || sdkTemplateSlot)
+    .replace(connectorTemplateSlot, connectorName || connectorTemplateSlot);
+
+  const normalizedTitle = blogPostProps?.metadata.title ?? listViewTitle;
+
+  const titleParts = normalizedTitle
+    .split(
+      new RegExp(
+        `(${normalizeName(connectorName || connectorTemplateSlot)}|${normalizeName(sdkName || sdkTemplateSlot)})`,
+        'g'
+      )
+    )
     .filter(Boolean);
 
   const showDropdown = (type: DropdownType) => {
@@ -105,7 +131,8 @@ const TitleWithSelectionDropdown = ({
       // eslint-disable-next-line @silverhand/fp/no-mutation
       elementRef.current.textContent = displayName;
     }
-    if (!isInListView) {
+    if (isBlogPost) {
+      const slug = blogPostProps?.metadata.frontMatter.slug ?? '';
       const selectedSlugPart = getPathFn(metadata);
       const targetSlug =
         type === 'sdk'
@@ -113,19 +140,19 @@ const TitleWithSelectionDropdown = ({
             selectedSlugPart +
             slugLastPart
           : slugFirstPart + selectedSlugPart + slug.slice(slug.indexOf(slugMiddlePart));
-      // eslint-disable-next-line @silverhand/fp/no-mutating-methods
-      history.push(`/tutorial/${targetSlug}`);
+
+      push(`/tutorial/${targetSlug}`);
     }
   };
 
   return (
     <>
       {titleParts.map((part) => {
-        if (part === sdkName) {
+        if (part === sdkName || part === sdkTemplateSlot) {
           return (
             <span
               ref={sdkNameRef}
-              key={sdkName}
+              key={sdkName || sdkTemplateSlot}
               tabIndex={0}
               role="button"
               className={clsx(styles.dropdownAnchor, isDropdownOpen === 'sdk' && styles.active)}
@@ -136,25 +163,21 @@ const TitleWithSelectionDropdown = ({
                 showDropdown('sdk');
               })}
             >
-              {isInListView ? (
-                defaultSdk ? (
-                  getSdkDisplayName(defaultSdk)
-                ) : (
-                  <span className={styles.placeholder}>
-                    <Translate id="theme.common.sdk.placeholder">Your SDK</Translate>
-                  </span>
-                )
+              {part === sdkTemplateSlot ? (
+                <span className={styles.placeholder}>
+                  <Translate id="theme.common.sdk.placeholder">your SDK</Translate>
+                </span>
               ) : (
                 part
               )}
             </span>
           );
         }
-        if (part === connectorName) {
+        if (part === connectorName || part === connectorTemplateSlot) {
           return (
             <span
               ref={connectorNameRef}
-              key={connectorName}
+              key={connectorName || connectorTemplateSlot}
               tabIndex={0}
               role="button"
               className={clsx(
@@ -168,14 +191,10 @@ const TitleWithSelectionDropdown = ({
                 showDropdown('connector');
               })}
             >
-              {isInListView ? (
-                defaultConnector ? (
-                  getConnectorDisplayName(defaultConnector)
-                ) : (
-                  <span className={styles.placeholder}>
-                    <Translate id="theme.common.connector.placeholder">Your provider</Translate>
-                  </span>
-                )
+              {part === connectorTemplateSlot ? (
+                <span className={styles.placeholder}>
+                  <Translate id="theme.common.connector.placeholder">your provider</Translate>
+                </span>
               ) : (
                 part
               )}
@@ -201,6 +220,13 @@ const TitleWithSelectionDropdown = ({
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
+        onReset={cond(
+          !isBlogPost &&
+            (() => {
+              onSelectSdk?.(undefined);
+              setIsDropdownOpen(undefined);
+            })
+        )}
       />
       <Dropdown
         anchorRef={connectorNameRef}
@@ -219,6 +245,13 @@ const TitleWithSelectionDropdown = ({
         onClose={() => {
           setIsDropdownOpen(undefined);
         }}
+        onReset={cond(
+          !isBlogPost &&
+            (() => {
+              onSelectConnector?.(undefined);
+              setIsDropdownOpen(undefined);
+            })
+        )}
       />
     </>
   );
