@@ -48,44 +48,6 @@ const addAliasPlugin: PluginConfig = () => ({
   }),
 });
 
-/**
- * A workaround to override the docusaurus svgo config. By default docusaurus
- * does not prefix the svg ids, which can cause conflicts when multiple svgs
- * are used on the same page.
- * https://github.com/facebook/docusaurus/issues/8297
- *
- * TODO: @charles - Remove this once docusaurus 3.7 is released
- */
-// @ts-expect-error - No return value is expected
-const prefixSvgIdsPlugin: PluginConfig = () => ({
-  name: 'prefix-svg-ids',
-  configureWebpack(config) {
-    const svgRule = config.module?.rules?.find(
-      (
-        rule
-      ): rule is {
-        test: RegExp;
-        oneOf: Array<{ use: Array<{ options: { svgoConfig: { plugins: unknown[] } } }> }>;
-      } =>
-        rule !== null &&
-        typeof rule === 'object' &&
-        'test' in rule &&
-        rule.test instanceof RegExp &&
-        rule.test.source === '\\.svg$'
-    );
-
-    if (svgRule) {
-      const useRule = svgRule.oneOf[0]?.use?.[0];
-      const svgoConfig = useRule?.options.svgoConfig;
-
-      if (svgoConfig && Array.isArray(svgoConfig.plugins)) {
-        // eslint-disable-next-line @silverhand/fp/no-mutation
-        svgoConfig.plugins = [...svgoConfig.plugins, 'prefixIds'];
-      }
-    }
-  },
-});
-
 const gtagAwTrackingId = 'AW-11124811245';
 
 const injectHeadTagsPlugin: PluginConfig = () => ({
@@ -215,6 +177,13 @@ const config: Config = {
         theme: {
           customCss: './src/scss/custom.scss',
         },
+        svgr: {
+          svgrConfig: {
+            svgoConfig: {
+              plugins: ['preset-default', 'prefixIds'],
+            },
+          },
+        },
       } satisfies Options,
     ],
   ],
@@ -315,8 +284,8 @@ const config: Config = {
               icon: 'discord',
               hideExternalLinkIcon: true,
             },
-          ]
-        }
+          ],
+        },
       ],
       copyright: `Designed by Silverhand Inc.`,
     },
@@ -351,7 +320,6 @@ const config: Config = {
   } satisfies ThemeConfig,
   plugins: [
     addAliasPlugin,
-    prefixSvgIdsPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
     tutorialGenerator,
