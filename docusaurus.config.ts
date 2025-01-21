@@ -191,10 +191,7 @@ const config: Config = {
           changefreq: 'weekly',
           ignorePatterns: [
             '/blog/**',
-            '/tutorial/tags/**',
             // Some pages are not translated. Ignore them.
-            '/*/tutorial',
-            '/*/tutorial/**',
             '/*/terms',
             '/*/terms/**',
             '/*/about',
