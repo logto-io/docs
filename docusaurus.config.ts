@@ -180,7 +180,15 @@ const config: Config = {
         svgr: {
           svgrConfig: {
             svgoConfig: {
-              plugins: ['preset-default', 'prefixIds'],
+              plugins: [
+                {
+                  name: 'preset-default',
+                  params: {
+                    overrides: { removeViewBox: false },
+                  },
+                },
+                'prefixIds',
+              ],
             },
           },
         },
