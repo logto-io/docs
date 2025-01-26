@@ -17,11 +17,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Was ist die Logto Management API? {#what-is-logto-management-api}
 
-<<<<<<< HEAD
 Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack zu erfüllen. Sie ist vorgefertigt, im <CloudLink to="/api-resources">Konsole > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
-=======
-Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Tech-Stack zu erfüllen. Sie ist vorgefertigt, im <CloudLink to="/api-resources">Konsolenbereich > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
->>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 Ihr Bezeichner hat das Muster `https://[tenant-id].logto.app/api`
 
@@ -71,11 +67,7 @@ Weise nun M2M-Rollen zu, die Logto Management API-Berechtigungen für deine M2M-
 
 #### Zugangstoken-Antwort {#access-token-response}
 
-<<<<<<< HEAD
 Eine erfolgreiche Zugangstoken-Antwort sieht folgendermaßen aus:
-=======
-Ein erfolgreicher Antwortkörper für den Zugang wäre wie folgt:
->>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ```json
 {
@@ -100,11 +92,7 @@ Unsere Entwickler haben viele zusätzliche Funktionen mit der Logto Management A
 
 ### Benutzerprofil selbst implementieren {#implement-user-profile-on-your-own}
 
-<<<<<<< HEAD
 Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, schlagen wir vor, unsere APIs zu nutzen, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API verwenden, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
-=======
-Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, empfehlen wir, unsere APIs zu verwenden, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API nutzen, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
->>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ### Erweiterte Benutzersuche {#advanced-user-search}
 
@@ -167,7 +155,11 @@ Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gew
 </Url>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">M2M-Zugangstokens in Minuten mit Postman erhalten</Url>
 =======
 <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
 >>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
+=======
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
+>>>>>>> 1e4e6436ab6 (chore: fix lint)
