@@ -1,6 +1,6 @@
 ---
 description: Utiliza las Management APIs para acceder a los servicios de backend de Logto, escalando tu sistema CIAM con gestión de usuarios, configuraciones de cuenta, verificación de identidad y arquitectura multi-tenant.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -92,7 +92,7 @@ Nuestros desarrolladores han implementado muchas características adicionales us
 
 ### Implementar el perfil de usuario por tu cuenta {#implement-user-profile-on-your-own}
 
-Logto actualmente no proporciona una solución de interfaz de usuario preconstruida para perfiles de usuario. Reconocemos que los perfiles de usuario están estrechamente ligados a los atributos de negocio y producto. Mientras trabajamos en determinar el mejor enfoque, sugerimos usar nuestras APIs para crear tu propia solución. Por ejemplo, puedes utilizar nuestra API de interacción, API de perfil y API de código de verificación para desarrollar una solución personalizada que satisfaga tus necesidades.
+Logto actualmente no proporciona una solución de interfaz de usuario preconstruida para perfiles de usuario. Reconocemos que los perfiles de usuario están estrechamente relacionados con los atributos de negocio y producto. Mientras trabajamos en determinar el mejor enfoque, sugerimos usar nuestras APIs para crear tu propia solución. Por ejemplo, puedes utilizar nuestra API de interacción, API de perfil y API de código de verificación para desarrollar una solución personalizada que satisfaga tus necesidades.
 
 ### Búsqueda avanzada de usuarios {#advanced-user-search}
 
@@ -106,7 +106,11 @@ Si estás utilizando la función de [organizaciones](/organizations) para constr
 
 ### Gestionar respuestas de API paginadas {#managing-paginated-api-responses}
 
+<<<<<<< HEAD
 Algunas de las respuestas de la API pueden incluir muchos resultados, los resultados serán paginados. Logto proporciona 2 tipos de información de paginación.
+=======
+Algunas de las respuestas de API pueden incluir muchos resultados, los resultados serán paginados. Logto proporciona 2 tipos de información de paginación.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 #### Usando encabezados de enlace {#using-link-headers}
 
