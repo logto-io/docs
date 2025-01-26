@@ -1,6 +1,6 @@
 ---
 description: Utilisez les Management APIs pour accéder aux services backend de Logto, en faisant évoluer votre système CIAM avec la gestion des utilisateurs, les paramètres de compte, la vérification d'identité et l'architecture multi-locataires.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -17,7 +17,11 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Qu'est-ce que Logto Management API ? {#what-is-logto-management-api}
 
+<<<<<<< HEAD
 Le Logto Management API est un ensemble complet d'APIs qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins produits et technologiques. Il est pré-construit, listé dans le <CloudLink to="/api-resources">Console > Ressources API > Logto Management API</CloudLink>, et ne peut pas être supprimé ou modifié.
+=======
+Le Logto Management API est un ensemble complet d'API qui donne aux développeurs un contrôle total sur leur implémentation pour répondre à leurs besoins produits et technologiques. Il est pré-construit, listé dans le <CloudLink to="/api-resources">Console > Ressources API > Logto Management API</CloudLink>, et ne peut pas être supprimé ou modifié.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
@@ -27,7 +31,11 @@ Son identifiant suit le modèle `https://[tenant-id].logto.app/api`
 
 Avec le Logto Management API, vous pouvez accéder aux services backend robustes de Logto, qui sont hautement évolutifs et peuvent être utilisés dans une multitude de scénarios. Il va au-delà de ce qui est possible avec les capacités low-code de la Console Admin.
 
+<<<<<<< HEAD
 Voici quelques APIs fréquemment utilisées :
+=======
+Voici quelques API fréquemment utilisées :
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 - [Utilisateur](https://openapi.logto.io/operation/operation-getuser)
 - [Application](https://openapi.logto.io/operation/operation-listapplications)
@@ -44,7 +52,7 @@ Pour en savoir plus sur les APIs disponibles, veuillez visiter https://openapi.l
 ### Créer une application M2M {#create-an-m2m-app}
 
 :::note
-Si vous n'êtes pas familier avec le flux d'authentification M2M (Machine-to-Machine), nous vous recommandons de lire [Comprendre le flux d'authentification](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) d'abord pour comprendre les concepts de base.
+Si vous n'êtes pas familier avec le flux d'authentification M2M (Machine à Machine), nous vous recommandons de lire d'abord [Comprendre le flux d'authentification](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) pour comprendre les concepts de base.
 :::
 
 Allez dans <CloudLink to="/applications">Console > Applications</CloudLink>, sélectionnez le type d'application "Machine-to-machine" et commencez le processus de création.
@@ -92,7 +100,11 @@ Nos développeurs ont implémenté de nombreuses fonctionnalités supplémentair
 
 ### Implémenter le profil utilisateur par vous-même {#implement-user-profile-on-your-own}
 
+<<<<<<< HEAD
 Logto ne fournit actuellement pas de solution UI pré-construite pour les profils utilisateurs. Nous reconnaissons que les profils utilisateurs sont étroitement liés aux attributs commerciaux et produits. Pendant que nous travaillons à déterminer la meilleure approche, nous vous suggérons d'utiliser nos APIs pour créer votre propre solution. Par exemple, vous pouvez utiliser notre API d'interaction, API de profil, et API de code de vérification pour développer une solution personnalisée qui répond à vos besoins.
+=======
+Logto ne fournit actuellement pas de solution d'interface utilisateur pré-construite pour les profils utilisateurs. Nous reconnaissons que les profils utilisateurs sont étroitement liés aux attributs commerciaux et produits. Pendant que nous travaillons à déterminer la meilleure approche, nous vous suggérons d'utiliser nos API pour créer votre propre solution. Par exemple, vous pouvez utiliser notre API d'interaction, API de profil, et API de code de vérification pour développer une solution personnalisée qui répond à vos besoins.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ### Recherche avancée d'utilisateurs {#advanced-user-search}
 
@@ -100,7 +112,11 @@ La Console Admin Logto prend en charge les fonctions de recherche et de filtrage
 
 ### Implémenter la gestion des organisations par vous-même {#implement-organization-management-on-your-own}
 
+<<<<<<< HEAD
 Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-locataire, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le locataire, Logto Management API peut vous aider à créer un portail administrateur personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
+=======
+Si vous utilisez la fonctionnalité [organisations](/organizations) pour construire votre application multi-locataires, vous pourriez avoir besoin de Logto Management API pour des tâches comme les invitations d'organisation et la gestion des membres. Pour votre produit SaaS, où vous avez à la fois des administrateurs et des membres dans le locataire, Logto Management API peut vous aider à créer un portail administrateur personnalisé adapté à vos besoins commerciaux. Consultez [ceci](/end-user-flows/organization-experience/) pour plus de détails.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ## Conseils pour utiliser Logto Management API {#tips-for-using-logto-management-api}
 
@@ -146,7 +162,7 @@ Il y a 2 paramètres de requête optionnels :
 Ceci est uniquement pour Logto Cloud.
 :::
 
-Pour assurer la fiabilité et la sécurité de nos services pour tous les utilisateurs, nous employons un pare-feu général qui surveille et gère le trafic vers notre site Web. Bien que nous n'imposions pas de limite de taux stricte, nous recommandons aux utilisateurs de limiter leur activité à environ 200 requêtes toutes les 10 secondes pour éviter de déclencher nos mesures de protection.
+Pour assurer la fiabilité et la sécurité de nos services pour tous les utilisateurs, nous employons un pare-feu général qui surveille et gère le trafic vers notre site web. Bien que nous n'imposions pas de limite de taux stricte, nous recommandons aux utilisateurs de limiter leur activité à environ 200 requêtes toutes les 10 secondes pour éviter de déclencher nos mesures de protection.
 
 ## Ressources associées {#related-resources}
 
@@ -154,4 +170,8 @@ Pour assurer la fiabilité et la sécurité de nos services pour tous les utilis
   Utiliser Logto Management API : Un guide étape par étape
 </Url>
 
+<<<<<<< HEAD
 <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtenez des jetons d’accès M2M en quelques minutes avec Postman</Url>
+=======
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Obtenez des jetons d’accès M2M en quelques minutes avec Postman</Url>
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)

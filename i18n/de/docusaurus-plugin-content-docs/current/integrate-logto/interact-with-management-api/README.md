@@ -1,6 +1,6 @@
 ---
 description: Nutze Management APIs, um auf die Backend-Dienste von Logto zuzugreifen und dein CIAM-System mit Benutzerverwaltung, Kontoeinstellungen, Identitätsüberprüfung und Multi-Tenant-Architektur zu skalieren.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -17,7 +17,11 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Was ist die Logto Management API? {#what-is-logto-management-api}
 
+<<<<<<< HEAD
 Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack zu erfüllen. Sie ist vorgefertigt, im <CloudLink to="/api-resources">Konsole > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
+=======
+Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Tech-Stack zu erfüllen. Sie ist vorgefertigt, im <CloudLink to="/api-resources">Konsolenbereich > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 Ihr Bezeichner hat das Muster `https://[tenant-id].logto.app/api`
 
@@ -44,7 +48,7 @@ Um mehr über die verfügbaren APIs zu erfahren, besuche bitte https://openapi.l
 ### Erstelle eine M2M-App {#create-an-m2m-app}
 
 :::note
-Wenn du mit dem M2M (Maschine-zu-Maschine) Authentifizierungsfluss nicht vertraut bist, empfehlen wir, zuerst [Verständnis des Authentifizierungsflusses](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) zu lesen, um die grundlegenden Konzepte zu verstehen.
+Wenn du mit dem M2M (Machine-to-Machine) Authentifizierungsfluss nicht vertraut bist, empfehlen wir, zuerst [Verständnis des Authentifizierungsflusses](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) zu lesen, um die grundlegenden Konzepte zu verstehen.
 :::
 
 Gehe zu <CloudLink to="/applications">Konsole > Anwendungen</CloudLink>, wähle den Anwendungstyp "Maschine-zu-Maschine" und starte den Erstellungsprozess.
@@ -67,7 +71,11 @@ Weise nun M2M-Rollen zu, die Logto Management API-Berechtigungen für deine M2M-
 
 #### Zugangstoken-Antwort {#access-token-response}
 
+<<<<<<< HEAD
 Eine erfolgreiche Zugangstoken-Antwort sieht folgendermaßen aus:
+=======
+Ein erfolgreicher Antwortkörper für den Zugang wäre wie folgt:
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ```json
 {
@@ -92,7 +100,11 @@ Unsere Entwickler haben viele zusätzliche Funktionen mit der Logto Management A
 
 ### Benutzerprofil selbst implementieren {#implement-user-profile-on-your-own}
 
+<<<<<<< HEAD
 Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, schlagen wir vor, unsere APIs zu nutzen, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API verwenden, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
+=======
+Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, empfehlen wir, unsere APIs zu verwenden, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API nutzen, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 ### Erweiterte Benutzersuche {#advanced-user-search}
 
@@ -104,7 +116,7 @@ Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tena
 
 ## Tipps zur Nutzung der Logto Management API {#tips-for-using-logto-management-api}
 
-### Verwaltung von paginierten API-Antworten {#managing-paginated-api-responses}
+### Verwaltung paginierter API-Antworten {#managing-paginated-api-responses}
 
 Einige der API-Antworten können viele Ergebnisse enthalten, die Ergebnisse werden paginiert. Logto bietet 2 Arten von Paginierungsinformationen.
 
@@ -154,4 +166,8 @@ Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gew
   Verwendung der Logto Management API: Eine Schritt-für-Schritt-Anleitung
 </Url>
 
+<<<<<<< HEAD
 <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">M2M-Zugangstokens in Minuten mit Postman erhalten</Url>
+=======
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
+>>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
