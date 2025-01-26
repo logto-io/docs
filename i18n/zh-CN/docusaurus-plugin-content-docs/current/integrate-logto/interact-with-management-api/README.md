@@ -1,6 +1,6 @@
 ---
 description: 利用 Management API 访问 Logto 的后端服务，通过用户管理、账户设置、身份验证和多租户架构扩展你的 CIAM 系统。
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -17,7 +17,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## 什么是 Logto Management API？ {#what-is-logto-management-api}
 
-Logto Management API 是一套全面的 API，开发者可以通过它们完全控制实现，以满足产品需求和技术栈。它是预构建的，列在 <CloudLink to="/api-resources">控制台 > API 资源 > Logto Management API</CloudLink> 中，不能删除或修改。
+Logto Management API 是一套全面的 API，开发者可以通过它们完全控制实现，以满足产品需求和技术栈。它是预构建的，列在 <CloudLink to="/api-resources">控制台 > API 资源 > Logto Management API</CloudLink> 中，不能被删除或修改。
 
 其标识符的模式为 `https://[tenant-id].logto.app/api`
 

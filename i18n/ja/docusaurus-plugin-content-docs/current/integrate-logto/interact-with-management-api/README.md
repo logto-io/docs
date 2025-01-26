@@ -1,6 +1,6 @@
 ---
 description: Management API を利用して Logto のバックエンドサービスにアクセスし、ユーザー管理、アカウント設定、アイデンティティ検証、マルチテナントアーキテクチャで CIAM システムを拡張します。
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -25,9 +25,9 @@ Logto Management API は、開発者が製品のニーズや技術スタック�
 
 <img alt="Logto Management API Details" src={logtoManagementApiDetailsSrc} />
 
-Logto Management API を使用すると、Logto の強力なバックエンドサービスにアクセスできます。これらは非常にスケーラブルで、多くのシナリオで利用可能です。これは、Admin Console のローコード機能で可能なことを超えています。
+Logto Management API を使用すると、Logto の強力なバックエンドサービスにアクセスできます。これらは非常にスケーラブルで、多くのシナリオで利用できます。これは、Admin Console のローコード機能で可能なことを超えています。
 
-以下は、よく使用される API の一部です：
+よく使用される API のいくつかを以下に示します：
 
 - [User](https://openapi.logto.io/operation/operation-getuser)
 - [Application](https://openapi.logto.io/operation/operation-listapplications)
@@ -37,9 +37,9 @@ Logto Management API を使用すると、Logto の強力なバックエンド�
 - [Connectors](https://openapi.logto.io/operation/operation-listconnectors)
 - [Organizations](https://openapi.logto.io/operation/operation-listorganizations)
 
-利用可能な API について詳しく知るには、https://openapi.logto.io/ を訪問してください。
+利用可能な API について詳しく知るには、 https://openapi.logto.io/ を訪問してください。
 
-## Logto Management API へのアクセス方法 {#how-to-access-logto-management-api}
+## Logto Management API にアクセスする方法 {#how-to-access-logto-management-api}
 
 ### M2M アプリを作成する {#create-an-m2m-app}
 
