@@ -12,11 +12,11 @@ Aquí está la lista de alcances (Scopes) soportados y los reclamos (Claims) cor
 | ------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | name               | `string` | El nombre completo del usuario                                                                                                                                                                                                                                                                                                                                                                                              | No                  |
 | username           | `string` | El nombre de usuario del usuario                                                                                                                                                                                                                                                                                                                                                                                            | No                  |
-| picture            | `string` | URL de la foto de perfil del usuario final. Esta URL DEBE referirse a un archivo de imagen (por ejemplo, un archivo de imagen PNG, JPEG o GIF), en lugar de a una página web que contenga una imagen. Ten en cuenta que esta URL DEBERÍA referirse específicamente a una foto de perfil del usuario final adecuada para mostrar al describir al usuario final, en lugar de una foto arbitraria tomada por el usuario final. | No                  |
-| created_at         | `number` | Momento en que se creó el usuario final. El tiempo se representa como el número de milisegundos desde la época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                                                                 | No                  |
-| updated_at         | `number` | Momento en que se actualizó por última vez la información del usuario final. El tiempo se representa como el número de milisegundos desde la época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                             | No                  |
+| picture            | `string` | URL de la foto de perfil del Usuario Final. Esta URL DEBE referirse a un archivo de imagen (por ejemplo, un archivo de imagen PNG, JPEG o GIF), en lugar de a una página web que contenga una imagen. Ten en cuenta que esta URL DEBERÍA referirse específicamente a una foto de perfil del Usuario Final adecuada para mostrar al describir al Usuario Final, en lugar de una foto arbitraria tomada por el Usuario Final. | No                  |
+| created_at         | `number` | Momento en que se creó el Usuario Final. El tiempo se representa como el número de milisegundos desde la época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                                                                 | No                  |
+| updated_at         | `number` | Momento en que la información del Usuario Final fue actualizada por última vez. El tiempo se representa como el número de milisegundos desde la época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                          | No                  |
 
-Otros [reclamos estándar](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) incluyen `family_name`, `given_name`, `middle_name`, `nickname`, `preferred_username`, `profile`, `website`, `gender`, `birthdate`, `zoneinfo` y `locale` también se incluirán en el alcance `profile` sin necesidad de solicitar el endpoint de userinfo. Una diferencia en comparación con los reclamos anteriores es que estos reclamos solo se devolverán cuando sus valores no estén vacíos, mientras que los reclamos anteriores devolverán `null` si los valores están vacíos.
+Otros [reclamos estándar](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) incluyen `family_name`, `given_name`, `middle_name`, `nickname`, `preferred_username`, `profile`, `website`, `gender`, `birthdate`, `zoneinfo`, y `locale` también se incluirán en el alcance `profile` sin la necesidad de solicitar el endpoint de userinfo. Una diferencia en comparación con los reclamos anteriores es que estos reclamos solo se devolverán cuando sus valores no estén vacíos, mientras que los reclamos anteriores devolverán `null` si los valores están vacíos.
 
 :::note
 A diferencia de los reclamos estándar, los reclamos `created_at` y `updated_at` utilizan milisegundos en lugar de segundos.
@@ -53,6 +53,12 @@ Por favor, consulta el [OpenID Connect Core 1.0](https://openid.net/specs/openid
 | identities         | `object` | Las identidades vinculadas del usuario     | Sí                  |
 | sso_identities     | `array`  | Las identidades SSO vinculadas del usuario | Sí                  |
 
+**`roles`**
+
+| Nombre del reclamo | Tipo       | Descripción           | ¿Necesita userinfo? |
+| ------------------ | ---------- | --------------------- | ------------------- |
+| roles              | `string[]` | Los roles del usuario | No                  |
+
 **`urn:logto:scope:organizations`**
 
 | Nombre del reclamo | Tipo       | Descripción                                                    | ¿Necesita userinfo? |
@@ -62,10 +68,10 @@ Por favor, consulta el [OpenID Connect Core 1.0](https://openid.net/specs/openid
 
 **`urn:logto:scope:organization_roles`**
 
-| Nombre del reclamo | Tipo       | Descripción                                                                                             | ¿Necesita userinfo? |
-| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------- | ------------------- |
-| organization_roles | `string[]` | Los roles de organización a los que pertenece el usuario con el formato `<organization_id>:<role_name>` | No                  |
+| Nombre del reclamo | Tipo       | Descripción                                                                                                   | ¿Necesita userinfo? |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------- | ------------------- |
+| organization_roles | `string[]` | Los roles de las organizaciones a las que pertenece el usuario con el formato `<organization_id>:<role_name>` | No                  |
 
 ---
 
-Considerando el rendimiento y el tamaño de los datos, si "¿Necesita userinfo?" es "Sí", significa que el reclamo no aparecerá en el Token de ID, pero se devolverá en la respuesta del [endpoint de userinfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).
+Considerando el rendimiento y el tamaño de los datos, si "¿Necesita userinfo?" es "Sí", significa que el reclamo no aparecerá en el token de ID, pero se devolverá en la respuesta del [endpoint de userinfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).

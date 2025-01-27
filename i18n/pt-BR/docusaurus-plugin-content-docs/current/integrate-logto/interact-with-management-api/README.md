@@ -1,4 +1,5 @@
 ---
+description: Utilize as Management APIs para acessar os serviços de backend do Logto, escalando seu sistema CIAM com gerenciamento de usuários, configurações de conta, verificação de identidade e arquitetura multi-tenant.
 sidebar_position: 4
 ---
 
@@ -24,7 +25,7 @@ Seu identificador segue o padrão `https://[tenant-id].logto.app/api`
 
 <img alt="Detalhes da Logto Management API" src={logtoManagementApiDetailsSrc} />
 
-Com a Logto Management API, você pode acessar os robustos serviços de backend do Logto, que são altamente escaláveis e podem ser utilizados em uma variedade de cenários. Ela vai além do que é possível com as capacidades de baixo código do Admin Console.
+Com a Logto Management API, você pode acessar os robustos serviços de backend do Logto, que são altamente escaláveis e podem ser utilizados em uma variedade de cenários. Ela vai além do que é possível com as capacidades de low-code do Admin Console.
 
 Algumas APIs frequentemente usadas estão listadas abaixo:
 
@@ -52,15 +53,15 @@ Vá para <CloudLink to="/applications">Console > Applications</CloudLink>, selec
 
 No módulo de atribuição de papéis, você pode ver que todos os papéis M2M estão incluídos, e os papéis indicados por um ícone do Logto significam que esses papéis incluem permissões da Logto Management API.
 
-Agora atribua papéis M2M que incluem permissões da Logto Management API para o seu aplicativo M2M.
+Agora, atribua papéis M2M que incluem permissões da Logto Management API para o seu aplicativo M2M.
 
-### Obter um token de acesso {#fetch-an-access-token}
+### Buscar um token de acesso {#fetch-an-access-token}
 
 #### Noções básicas sobre solicitação de token de acesso {#basics-about-access-token-request}
 
 <BasicsAboutAccessTokenRequest />
 
-#### Obter token de acesso para a Logto Management API {#fetch-access-token-for-logto-management-api}
+#### Buscar token de acesso para a Logto Management API {#fetch-access-token-for-logto-management-api}
 
 <FetchAccessTokenForLogtoManagementApi />
 
@@ -97,9 +98,9 @@ Atualmente, o Logto não fornece uma solução de interface de usuário pré-con
 
 O Logto Admin Console suporta funções básicas de pesquisa e filtragem. Para opções de pesquisa avançada, como pesquisa difusa, correspondência exata e sensibilidade a maiúsculas e minúsculas, confira nossos tutoriais e guias de [Pesquisa Avançada de Usuários](/user-management/advanced-user-search).
 
-### Implementar gerenciamento de organizações por conta própria {#implement-organization-management-on-your-own}
+### Implementar gerenciamento de organização por conta própria {#implement-organization-management-on-your-own}
 
-Se você estiver usando o recurso de [organizações](/organizations) para construir seu aplicativo multi-tenant, pode precisar da Logto Management API para tarefas como convites para organizações e gerenciamento de membros. Para seu produto SaaS, onde você tem tanto administradores quanto membros no tenant, a Logto Management API pode ajudá-lo a criar um portal de administração personalizado adaptado às suas necessidades de negócios. Confira [este](/end-user-flows/organization-experience/) para mais detalhes.
+Se você estiver usando o recurso de [organizações](/organizations) para construir seu aplicativo multi-tenant, pode precisar da Logto Management API para tarefas como convites para organizações e gerenciamento de membros. Para seu produto SaaS, onde você tem tanto administradores quanto membros no tenant, a Logto Management API pode ajudá-lo a criar um portal de administração personalizado adaptado às suas necessidades de negócios. Confira [isto](/end-user-flows/organization-experience/) para mais detalhes.
 
 ## Dicas para usar a Logto Management API {#tips-for-using-logto-management-api}
 
@@ -122,7 +123,7 @@ O cabeçalho de link fornece a URL para a página anterior, próxima, primeira e
 - A URL para a última página é seguida por rel="last".
 - A URL para a primeira página é seguida por rel="first".
 
-#### Usando o cabeçalho total-number {#using-total-number-header}
+#### Usando cabeçalho de número total {#using-total-number-header}
 
 Além dos cabeçalhos de link padrão, o Logto também adicionará um cabeçalho `Total-Number`:
 

@@ -1,4 +1,4 @@
-以下是支持的权限（Scopes）及其对应的声明（Claims）列表：
+以下是支持的权限 (Scopes) 列表及相应的声明 (Claims)：
 
 **`openid`**
 
@@ -8,15 +8,15 @@
 
 **`profile`**
 
-| 声明名称   | 类型     | 描述                                                                                                                                                                                                                          | 需要用户信息吗？ |
-| ---------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| name       | `string` | 用户的全名                                                                                                                                                                                                                    | 否               |
-| username   | `string` | 用户名                                                                                                                                                                                                                        | 否               |
-| picture    | `string` | 终端用户的个人资料图片的 URL。此 URL 必须指向一个图像文件（例如，PNG、JPEG 或 GIF 图像文件），而不是包含图像的网页。请注意，此 URL 应特别引用适合在描述终端用户时显示的终端用户的个人资料照片，而不是终端用户拍摄的任意照片。 | 否               |
-| created_at | `number` | 终端用户创建的时间。时间表示为自 Unix 纪元（1970-01-01T00:00:00Z）以来的毫秒数。                                                                                                                                              | 否               |
-| updated_at | `number` | 终端用户信息最后更新的时间。时间表示为自 Unix 纪元（1970-01-01T00:00:00Z）以来的毫秒数。                                                                                                                                      | 否               |
+| 声明名称   | 类型     | 描述                                                                                                                                                                                                                         | 需要用户信息吗？ |
+| ---------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| name       | `string` | 用户的全名                                                                                                                                                                                                                   | 否               |
+| username   | `string` | 用户名                                                                                                                                                                                                                       | 否               |
+| picture    | `string` | 终端用户的个人资料图片的 URL。此 URL 必须指向一个图像文件（例如 PNG、JPEG 或 GIF 图像文件），而不是包含图像的网页。请注意，此 URL 应特别引用适合在描述终端用户时显示的终端用户的个人资料照片，而不是终端用户拍摄的任意照片。 | 否               |
+| created_at | `number` | 终端用户创建的时间。时间表示为自 Unix 纪元（1970-01-01T00:00:00Z）以来的毫秒数。                                                                                                                                             | 否               |
+| updated_at | `number` | 终端用户信息最后更新的时间。时间表示为自 Unix 纪元（1970-01-01T00:00:00Z）以来的毫秒数。                                                                                                                                     | 否               |
 
-其他 [标准声明](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) 包括 `family_name`、`given_name`、`middle_name`、`nickname`、`preferred_username`、`profile`、`website`、`gender`、`birthdate`、`zoneinfo` 和 `locale` 也将包含在 `profile` 权限中，而无需请求用户信息端点。与上述声明的区别在于，这些声明只有在其值不为空时才会返回，而上述声明在值为空时将返回 `null`。
+其他 [标准声明](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) 包括 `family_name`、`given_name`、`middle_name`、`nickname`、`preferred_username`、`profile`、`website`、`gender`、`birthdate`、`zoneinfo` 和 `locale` 也将包含在 `profile` 权限中，无需请求用户信息端点。与上述声明的区别在于，这些声明只有在其值不为空时才会返回，而上述声明在值为空时将返回 `null`。
 
 :::note
 与标准声明不同，`created_at` 和 `updated_at` 声明使用毫秒而不是秒。
@@ -38,7 +38,7 @@
 
 **`address`**
 
-请参阅 [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim) 以获取地址声明的详细信息。
+有关地址声明的详细信息，请参阅 [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim)。
 
 **`custom_data`**
 
@@ -52,6 +52,12 @@
 | -------------- | -------- | ------------------- | ---------------- |
 | identities     | `object` | 用户的关联身份      | 是               |
 | sso_identities | `array`  | 用户的关联 SSO 身份 | 是               |
+
+**`roles`**
+
+| 声明名称 | 类型       | 描述       | 需要用户信息吗？ |
+| -------- | ---------- | ---------- | ---------------- |
+| roles    | `string[]` | 用户的角色 | 否               |
 
 **`urn:logto:scope:organizations`**
 
