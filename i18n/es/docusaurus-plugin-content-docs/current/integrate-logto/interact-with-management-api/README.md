@@ -110,7 +110,8 @@ Si estás utilizando la función de [organizaciones](/organizations) para constr
 Algunas de las respuestas de la API pueden incluir muchos resultados, los resultados serán paginados. Logto proporciona 2 tipos de información de paginación.
 =======
 Algunas de las respuestas de API pueden incluir muchos resultados, los resultados serán paginados. Logto proporciona 2 tipos de información de paginación.
->>>>>>> 6aff339ec61 (chore: add saml app doc locale de,es,fr)
+
+> > > > > > > 6aff339ec61 (chore: add saml app doc locale de,es,fr)
 
 #### Usando encabezados de enlace {#using-link-headers}
 
