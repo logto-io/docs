@@ -53,6 +53,12 @@ Please refer to the [OpenID Connect Core 1.0](https://openid.net/specs/openid-co
 | identities     | `object` | The linked identities of the user     | Yes             |
 | sso_identities | `array`  | The linked SSO identities of the user | Yes             |
 
+**`roles`**
+
+| Claim name | Type       | Description           | Needs userinfo? |
+| ---------- | ---------- | --------------------- | --------------- |
+| roles      | `string[]` | The roles of the user | No              |
+
 **`urn:logto:scope:organizations`**
 
 | Claim name        | Type       | Description                               | Needs userinfo? |

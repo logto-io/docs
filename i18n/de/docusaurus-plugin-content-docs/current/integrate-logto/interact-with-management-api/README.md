@@ -1,4 +1,5 @@
 ---
+description: Nutze Management APIs, um auf die Backend-Dienste von Logto zuzugreifen und dein CIAM-System mit Benutzerverwaltung, Kontoeinstellungen, Identitätsüberprüfung und Multi-Tenant-Architektur zu skalieren.
 sidebar_position: 4
 ---
 
@@ -16,7 +17,7 @@ import M2mRoleAssignment from '../../quick-starts/generic/machine-to-machine/fra
 
 ## Was ist die Logto Management API? {#what-is-logto-management-api}
 
-Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack anzupassen. Sie ist vorgefertigt, in der <CloudLink to="/api-resources">Konsole > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
+Die Logto Management API ist eine umfassende Sammlung von APIs, die Entwicklern die volle Kontrolle über ihre Implementierung gibt, um ihre Produktanforderungen und ihren Technologie-Stack zu erfüllen. Sie ist vorgefertigt, im <CloudLink to="/api-resources">Konsole > API-Ressourcen > Logto Management API</CloudLink> aufgelistet und kann nicht gelöscht oder modifiziert werden.
 
 Ihr Bezeichner hat das Muster `https://[tenant-id].logto.app/api`
 
@@ -28,13 +29,13 @@ Mit der Logto Management API kannst du auf die robusten Backend-Dienste von Logt
 
 Einige häufig verwendete APIs sind unten aufgeführt:
 
-- [Benutzer](https://openapi.logto.io/operation/operation-getuser)
-- [Anwendung](https://openapi.logto.io/operation/operation-listapplications)
-- [Prüfprotokolle](https://openapi.logto.io/operation/operation-listlogs)
-- [Rollen](https://openapi.logto.io/operation/operation-listroles)
-- [Ressourcen](https://openapi.logto.io/operation/operation-listresources)
+- [User](https://openapi.logto.io/operation/operation-getuser)
+- [Application](https://openapi.logto.io/operation/operation-listapplications)
+- [Audit logs](https://openapi.logto.io/operation/operation-listlogs)
+- [Roles](https://openapi.logto.io/operation/operation-listroles)
+- [Resources](https://openapi.logto.io/operation/operation-listresources)
 - [Connectors](https://openapi.logto.io/operation/operation-listconnectors)
-- [Organisationen](https://openapi.logto.io/operation/operation-listorganizations)
+- [Organizations](https://openapi.logto.io/operation/operation-listorganizations)
 
 Um mehr über die verfügbaren APIs zu erfahren, besuche bitte https://openapi.logto.io/.
 
@@ -66,7 +67,7 @@ Weise nun M2M-Rollen zu, die Logto Management API-Berechtigungen für deine M2M-
 
 #### Zugangstoken-Antwort {#access-token-response}
 
-Ein erfolgreicher Antwortkörper sieht folgendermaßen aus:
+Eine erfolgreiche Zugangstoken-Antwort sieht folgendermaßen aus:
 
 ```json
 {
@@ -91,7 +92,7 @@ Unsere Entwickler haben viele zusätzliche Funktionen mit der Logto Management A
 
 ### Benutzerprofil selbst implementieren {#implement-user-profile-on-your-own}
 
-Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, empfehlen wir, unsere APIs zu nutzen, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API verwenden, um eine maßgeschneiderte Lösung zu entwickeln, die deinen Anforderungen entspricht.
+Logto bietet derzeit keine vorgefertigte UI-Lösung für Benutzerprofile. Wir erkennen an, dass Benutzerprofile eng mit Geschäfts- und Produktattributen verbunden sind. Während wir daran arbeiten, den besten Ansatz zu bestimmen, schlagen wir vor, unsere APIs zu nutzen, um deine eigene Lösung zu erstellen. Beispielsweise kannst du unsere Interaktions-API, Profil-API und Verifizierungscode-API verwenden, um eine benutzerdefinierte Lösung zu entwickeln, die deinen Anforderungen entspricht.
 
 ### Erweiterte Benutzersuche {#advanced-user-search}
 
@@ -99,7 +100,7 @@ Die Logto Admin-Konsole unterstützt grundlegende Such- und Filterfunktionen. F�
 
 ### Organisationsverwaltung selbst implementieren {#implement-organization-management-on-your-own}
 
-Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tenant-App zu erstellen, benötigst du möglicherweise die Logto Management API für Aufgaben wie Organisationseinladungen und Mitgliederverwaltung. Für dein SaaS-Produkt, bei dem du sowohl Administratoren als auch Mitglieder im Mandanten hast, kann die Logto Management API dir helfen, ein benutzerdefiniertes Admin-Portal zu erstellen, das auf deine Geschäftsanforderungen zugeschnitten ist. Schaue dir [dies](/end-user-flows/organization-experience/) für mehr Details an.
+Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tenant-App zu erstellen, benötigst du möglicherweise die Logto Management API für Aufgaben wie Organisationseinladungen und Mitgliederverwaltung. Für dein SaaS-Produkt, bei dem du sowohl Administratoren als auch Mitglieder im Tenant hast, kann die Logto Management API dir helfen, ein benutzerdefiniertes Admin-Portal zu erstellen, das auf deine Geschäftsanforderungen zugeschnitten ist. Schaue dir [dies](/end-user-flows/organization-experience/) für mehr Details an.
 
 ## Tipps zur Nutzung der Logto Management API {#tips-for-using-logto-management-api}
 
@@ -124,15 +125,15 @@ Der Link-Header bietet die URL für die vorherige, nächste, erste und letzte Se
 
 #### Verwendung des Total-Number-Headers {#using-total-number-header}
 
-Zusätzlich zu den Standard-Link-Headern wird Logto auch einen `Total-Number`-Header hinzufügen:
+Zusätzlich zu den Standard-Link-Headern fügt Logto auch einen `Total-Number`-Header hinzu:
 
 ```
 Total-Number: 216
 ```
 
-Das wäre sehr praktisch und nützlich, um Seitennummern anzuzeigen.
+Das wäre sehr praktisch und nützlich, um Seitenzahlen anzuzeigen.
 
-#### Ändern der Seitennummer und Seitengröße {#changing-page-number-and-page-size}
+#### Ändern der Seitennummer und der Seitengröße {#changing-page-number-and-page-size}
 
 Es gibt 2 optionale Abfrageparameter:
 
@@ -150,7 +151,7 @@ Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gew
 ## Verwandte Ressourcen {#related-resources}
 
 <Url href="https://blog.logto.io/management-api">
-  Nutzung der Logto Management API: Eine Schritt-für-Schritt-Anleitung
+  Verwendung der Logto Management API: Eine Schritt-für-Schritt-Anleitung
 </Url>
 
-<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
+<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">M2M-Zugangstokens in Minuten mit Postman erhalten</Url>
