@@ -62,7 +62,7 @@ const SelectionDropdown = ({
                   const { frontMatter, id } = metadata;
                   const displayName = String(
                     frontMatter.tutorial_name ?? frontMatter.sidebar_label ?? ''
-                  );
+                  ).replace(' enterprise SSO', '');
                   return (
                     <div
                       key={id}

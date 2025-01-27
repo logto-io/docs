@@ -8,6 +8,7 @@ type DocGroups = {
   socialConnectors: DocMetadata[];
   emailConnectors: DocMetadata[];
   smsConnectors: DocMetadata[];
+  ssoConnectors: DocMetadata[];
 };
 
 /**
@@ -20,8 +21,9 @@ export enum DocAppType {
 }
 
 const useCategorizedTutorialMetadata = () => {
-  // eslint-disable-next-line no-restricted-syntax
-  const { sdks, socialConnectors, emailConnectors, smsConnectors } = metadata as DocGroups;
+  const { sdks, socialConnectors, emailConnectors, smsConnectors, ssoConnectors } =
+    // eslint-disable-next-line no-restricted-syntax
+    metadata as DocGroups;
 
   const { nativeSdks, traditionalSdks, spaSdks } = sdks.reduce<{
     nativeSdks: DocMetadata[];
@@ -51,15 +53,25 @@ const useCategorizedTutorialMetadata = () => {
   return useMemo(
     () => ({
       allSdks: sdks,
-      allConnectors: [...socialConnectors, ...emailConnectors, ...smsConnectors],
+      allConnectors: [...socialConnectors, ...emailConnectors, ...smsConnectors, ...ssoConnectors],
       nativeSdks,
       traditionalSdks,
       spaSdks,
       socialConnectors,
       emailConnectors,
       smsConnectors,
+      ssoConnectors,
     }),
-    [sdks, socialConnectors, emailConnectors, smsConnectors, nativeSdks, traditionalSdks, spaSdks]
+    [
+      sdks,
+      socialConnectors,
+      emailConnectors,
+      smsConnectors,
+      ssoConnectors,
+      nativeSdks,
+      traditionalSdks,
+      spaSdks,
+    ]
   );
 };
 

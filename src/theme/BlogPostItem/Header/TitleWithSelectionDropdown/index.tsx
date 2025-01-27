@@ -232,6 +232,8 @@ const TitleWithSelectionDropdown = (props: Props) => {
         anchorRef={connectorNameRef}
         isOpen={isDropdownOpen === 'connector'}
         options={{
+          [translate({ id: 'theme.common.connector.sso', message: 'Enterprise SSO providers' })]:
+            allTutorialsMetadata.ssoConnectors,
           [translate({ id: 'theme.common.connector.social', message: 'Social providers' })]:
             allTutorialsMetadata.socialConnectors,
           [translate({ id: 'theme.common.connector.email', message: 'Email providers' })]:
