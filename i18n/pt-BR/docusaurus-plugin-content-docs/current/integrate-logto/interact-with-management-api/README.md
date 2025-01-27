@@ -1,6 +1,6 @@
 ---
 description: Utilize as Management APIs para acessar os serviços de backend do Logto, escalando seu sistema CIAM com gerenciamento de usuários, configurações de conta, verificação de identidade e arquitetura multi-tenant.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -51,7 +51,7 @@ Vá para <CloudLink to="/applications">Console > Applications</CloudLink>, selec
 
 <M2mRoleAssignment />
 
-No módulo de atribuição de papéis, você pode ver que todos os papéis M2M estão incluídos, e os papéis indicados por um ícone do Logto significam que esses papéis incluem permissões da Logto Management API.
+No módulo de atribuição de papéis, você pode ver que todos os papéis M2M estão incluídos, e papéis indicados por um ícone do Logto significam que esses papéis incluem permissões da Logto Management API.
 
 Agora, atribua papéis M2M que incluem permissões da Logto Management API para o seu aplicativo M2M.
 
@@ -74,7 +74,7 @@ Um corpo de resposta de acesso bem-sucedido seria assim:
   "access_token": "eyJhbG...2g", // Use este token para acessar a Logto Management API
   "expires_in": 3600, // Expiração do token em segundos
   "token_type": "Bearer", // Tipo de autenticação para sua solicitação ao usar o token de acesso
-  "scope": "all" // escopo `all` para a Logto Management API
+  "scope": "all" // escopo `all` para Logto Management API
 }
 ```
 
@@ -92,7 +92,7 @@ Nossos desenvolvedores implementaram muitos recursos adicionais usando a Logto M
 
 ### Implementar perfil de usuário por conta própria {#implement-user-profile-on-your-own}
 
-Atualmente, o Logto não fornece uma solução de interface de usuário pré-construída para perfis de usuário. Reconhecemos que os perfis de usuário estão intimamente ligados aos atributos de negócios e produtos. Enquanto trabalhamos para determinar a melhor abordagem, sugerimos usar nossas APIs para criar sua própria solução. Por exemplo, você pode utilizar nossa API de interação, API de perfil e API de código de verificação para desenvolver uma solução personalizada que atenda às suas necessidades.
+Atualmente, o Logto não fornece uma solução de interface de usuário pré-construída para perfis de usuário. Reconhecemos que perfis de usuário estão intimamente ligados a atributos de negócios e produtos. Enquanto trabalhamos para determinar a melhor abordagem, sugerimos usar nossas APIs para criar sua própria solução. Por exemplo, você pode utilizar nossa API de interação, API de perfil e API de código de verificação para desenvolver uma solução personalizada que atenda às suas necessidades.
 
 ### Pesquisa avançada de usuários {#advanced-user-search}
 
@@ -116,7 +116,7 @@ Um cabeçalho de resposta paginada será assim:
 Link: <https://logto.dev/users?page=1&page_size=20>; rel="first"
 ```
 
-O cabeçalho de link fornece a URL para a página anterior, próxima, primeira e última de resultados:
+O cabeçalho de link fornece a URL para a página anterior, próxima, primeira e última dos resultados:
 
 - A URL para a página anterior é seguida por rel="prev".
 - A URL para a próxima página é seguida por rel="next".
@@ -137,7 +137,7 @@ Isso seria muito conveniente e útil para mostrar números de página.
 
 Existem 2 parâmetros de consulta opcionais:
 
-- `page`: indica o número da página, começa a partir de 1, o valor padrão é 1.
+- `page`: indica o número da página, começa em 1, o valor padrão é 1.
 - `page_size`: indica o número de itens por página, o valor padrão é 20.
 
 ### Limite de taxa {#rate-limit}

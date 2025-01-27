@@ -1,6 +1,6 @@
 ---
 description: Utilize Management APIs to access Logto’s backend services, scaling your CIAM system with user management, account settings, identity verification, and multi-tenant architecture.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
