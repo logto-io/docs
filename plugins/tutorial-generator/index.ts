@@ -14,6 +14,7 @@ type DocGroups = {
   socialConnectors: DocMetadata[];
   emailConnectors: DocMetadata[];
   smsConnectors: DocMetadata[];
+  ssoConnectors: DocMetadata[];
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,15 +64,17 @@ const tutorialGenerator: PluginConfig = () => {
 
       const socialTemplatePath = path.join(outputDir, '_template-social.mdx');
       const passwordlessTemplatePath = path.join(outputDir, '_template-passwordless.mdx');
+      const ssoTemplatePath = path.join(outputDir, '_template-sso.mdx');
 
       if (!existsSync(socialTemplatePath) || !existsSync(passwordlessTemplatePath)) {
         console.log('No templates found. Skipping...');
         return;
       }
 
-      const [socialTemplate, passwordlessTemplate] = await Promise.all([
+      const [socialTemplate, passwordlessTemplate, ssoTemplate] = await Promise.all([
         fs.readFile(socialTemplatePath, 'utf8'),
         fs.readFile(passwordlessTemplatePath, 'utf8'),
+        fs.readFile(ssoTemplatePath, 'utf8'),
       ]);
 
       const tutorialMetadata = docs.reduce<DocGroups>(
@@ -103,6 +106,12 @@ const tutorialGenerator: PluginConfig = () => {
           ) {
             return { ...acc, smsConnectors: [...acc.smsConnectors, doc] };
           }
+          if (
+            sourceDirName.startsWith('integrations/sso/') &&
+            existsSync(path.join(absoluteDocDir, '_integration.mdx'))
+          ) {
+            return { ...acc, ssoConnectors: [...acc.ssoConnectors, doc] };
+          }
           return acc;
         },
         {
@@ -110,6 +119,7 @@ const tutorialGenerator: PluginConfig = () => {
           socialConnectors: [],
           emailConnectors: [],
           smsConnectors: [],
+          ssoConnectors: [],
         }
       );
 
@@ -121,7 +131,8 @@ const tutorialGenerator: PluginConfig = () => {
         );
       }
 
-      const { sdks, socialConnectors, emailConnectors, smsConnectors } = tutorialMetadata;
+      const { sdks, socialConnectors, emailConnectors, smsConnectors, ssoConnectors } =
+        tutorialMetadata;
 
       // Copy assets folders to output directory
       const assetsDir = path.join(__dirname, './assets');
@@ -155,6 +166,7 @@ const tutorialGenerator: PluginConfig = () => {
               const post = template
                 .replaceAll('${connector}', getConnectorDisplayName(connector))
                 .replaceAll('${connectorPath}', connectorPath)
+                // How the connector service provider call it. E.g. GitHub calls it "GitHub OAuth app"
                 .replaceAll(
                   '${connectorConfigName}',
                   String(connector.frontMatter.tutorial_config_name ?? '')
@@ -189,6 +201,7 @@ const tutorialGenerator: PluginConfig = () => {
         generate(sdks, socialConnectors, socialTemplate),
         generate(sdks, emailConnectors, passwordlessTemplate, 'Email'),
         generate(sdks, smsConnectors, passwordlessTemplate, 'SMS'),
+        generate(sdks, ssoConnectors, ssoTemplate),
       ]);
     },
   };
