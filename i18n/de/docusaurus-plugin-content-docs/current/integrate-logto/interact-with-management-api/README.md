@@ -1,6 +1,6 @@
 ---
 description: Nutze Management APIs, um auf die Backend-Dienste von Logto zuzugreifen und dein CIAM-System mit Benutzerverwaltung, Kontoeinstellungen, Identitätsüberprüfung und Multi-Tenant-Architektur zu skalieren.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -44,7 +44,7 @@ Um mehr über die verfügbaren APIs zu erfahren, besuche bitte https://openapi.l
 ### Erstelle eine M2M-App {#create-an-m2m-app}
 
 :::note
-Wenn du mit dem M2M (Maschine-zu-Maschine) Authentifizierungsfluss nicht vertraut bist, empfehlen wir, zuerst [Verständnis des Authentifizierungsflusses](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) zu lesen, um die grundlegenden Konzepte zu verstehen.
+Wenn du mit dem M2M (Machine-to-Machine) Authentifizierungsfluss nicht vertraut bist, empfehlen wir, zuerst [Verständnis des Authentifizierungsflusses](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) zu lesen, um die grundlegenden Konzepte zu verstehen.
 :::
 
 Gehe zu <CloudLink to="/applications">Konsole > Anwendungen</CloudLink>, wähle den Anwendungstyp "Maschine-zu-Maschine" und starte den Erstellungsprozess.
@@ -104,7 +104,7 @@ Wenn du die [Organisationen](/organizations) Funktion nutzt, um deine Multi-Tena
 
 ## Tipps zur Nutzung der Logto Management API {#tips-for-using-logto-management-api}
 
-### Verwaltung von paginierten API-Antworten {#managing-paginated-api-responses}
+### Verwaltung paginierter API-Antworten {#managing-paginated-api-responses}
 
 Einige der API-Antworten können viele Ergebnisse enthalten, die Ergebnisse werden paginiert. Logto bietet 2 Arten von Paginierungsinformationen.
 

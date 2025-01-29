@@ -1,6 +1,6 @@
 ---
 description: Utilisez les Management APIs pour accéder aux services backend de Logto, en faisant évoluer votre système CIAM avec la gestion des utilisateurs, les paramètres de compte, la vérification d'identité et l'architecture multi-locataires.
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 import logtoManagementApiResourceSrc from './assets/logto-management-api-resource.webp';
@@ -44,7 +44,7 @@ Pour en savoir plus sur les APIs disponibles, veuillez visiter https://openapi.l
 ### Créer une application M2M {#create-an-m2m-app}
 
 :::note
-Si vous n'êtes pas familier avec le flux d'authentification M2M (Machine-to-Machine), nous vous recommandons de lire [Comprendre le flux d'authentification](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) d'abord pour comprendre les concepts de base.
+Si vous n'êtes pas familier avec le flux d'authentification M2M (Machine à Machine), nous vous recommandons de lire d'abord [Comprendre le flux d'authentification](/integrate-logto/integrate-logto-into-your-application/understand-authentication-flow/#machine-to-machine-authentication-flow) pour comprendre les concepts de base.
 :::
 
 Allez dans <CloudLink to="/applications">Console > Applications</CloudLink>, sélectionnez le type d'application "Machine-to-machine" et commencez le processus de création.
@@ -146,7 +146,7 @@ Il y a 2 paramètres de requête optionnels :
 Ceci est uniquement pour Logto Cloud.
 :::
 
-Pour assurer la fiabilité et la sécurité de nos services pour tous les utilisateurs, nous employons un pare-feu général qui surveille et gère le trafic vers notre site Web. Bien que nous n'imposions pas de limite de taux stricte, nous recommandons aux utilisateurs de limiter leur activité à environ 200 requêtes toutes les 10 secondes pour éviter de déclencher nos mesures de protection.
+Pour assurer la fiabilité et la sécurité de nos services pour tous les utilisateurs, nous employons un pare-feu général qui surveille et gère le trafic vers notre site web. Bien que nous n'imposions pas de limite de taux stricte, nous recommandons aux utilisateurs de limiter leur activité à environ 200 requêtes toutes les 10 secondes pour éviter de déclencher nos mesures de protection.
 
 ## Ressources associées {#related-resources}
 
