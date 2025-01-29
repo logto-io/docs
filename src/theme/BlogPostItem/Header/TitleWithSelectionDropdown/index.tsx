@@ -13,6 +13,7 @@ import {
   getSdkPath,
 } from '@site/plugins/tutorial-generator/utils';
 import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tutorial-metadata';
+import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
 import { onKeyDownHandler } from '@site/src/utils/a11y';
 
 import Dropdown from '../SelectionDropdown';
@@ -58,6 +59,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
   const blogPostProps = conditional(isBlogPost && props);
 
   const { push } = useHistory();
+  const locale = useCurrentLocalePrefix();
   const sdkNameRef = useRef<HTMLSpanElement>(null);
   const connectorNameRef = useRef<HTMLSpanElement>(null);
   const allTutorialsMetadata = useCategorizedTutorialMetadata();
@@ -141,7 +143,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
             slugLastPart
           : slugFirstPart + selectedSlugPart + slug.slice(slug.indexOf(slugMiddlePart));
 
-      push(`/tutorial/${targetSlug}`);
+      push(`${locale}/tutorial/${targetSlug}`);
     }
   };
 
