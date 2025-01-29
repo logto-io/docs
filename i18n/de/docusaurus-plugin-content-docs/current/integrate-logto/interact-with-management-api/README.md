@@ -154,13 +154,4 @@ Um die Zuverlässigkeit und Sicherheit unserer Dienste für alle Benutzer zu gew
   Verwendung der Logto Management API: Eine Schritt-für-Schritt-Anleitung
 </Url>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">M2M-Zugangstokens in Minuten mit Postman erhalten</Url>
-=======
-<Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
-
-> > > > > > > # 6aff339ec61 (chore: add saml app doc locale de,es,fr)
-> > > > > > >
-> > > > > > > <Url href="https://blog.logto.io/use-postman-to-obtain-m2m-access-token">Erhalte M2M-Zugangstokens in Minuten mit Postman</Url>
-> > > > > > > 1e4e6436ab6 (chore: fix lint)
