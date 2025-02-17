@@ -1,0 +1,110 @@
+---
+sidebar_position: 3
+---
+
+# Руководство: Node (Express)
+
+## Шаг 1: Извлечение токена Bearer из заголовка запроса \{#step-1-extract-the-bearer-token-from-request-header}
+
+Авторизованный запрос должен содержать заголовок `Authorization` с содержимым `Bearer <access_token>`. Извлеките токен авторизации из заголовка запроса:
+
+```tsx
+// auth_middleware.ts
+
+import { IncomingHttpHeaders } from 'http';
+
+const extractBearerTokenFromHeaders = ({ authorization }: IncomingHttpHeaders) => {
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error({ code: 'auth.authorization_header_missing', status: 401 });
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error({ code: 'auth.authorization_token_type_not_supported', status: 401 });
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+```
+
+## Шаг 2: Валидация токена \{#step-2-token-validation}
+
+Для демонстрации мы используем пакет [jose](https://github.com/panva/jose) для проверки подписи токена, статуса истечения срока действия и необходимых утверждений.
+
+### Установите `jose` как зависимость \{#install-jose-as-your-dependency}
+
+```bash
+npm i jose --save
+```
+
+### Получите OIDC конфигурации Logto \{#retrieve-logtos-oidc-configurations}
+
+Вам понадобится набор открытых ключей JWK и эмитент токена для проверки подписи и источника полученного JWS токена. Все последние публичные конфигурации авторизации Logto можно найти по адресу `https://<your-logto-domain>/oidc/.well-known/openid-configuration`.
+
+Например, вызовите `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`. И найдите следующие два поля в теле ответа:
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### Добавьте middleware для аутентификации \{#add-auth-middleware}
+
+Метод `jwtVerify` из Jose может помочь вам проверить формат JWS токена, подпись токена, эмитента, аудиторию и статус истечения срока действия. Исключение будет выброшено, если проверка не удалась.
+
+:::warning
+
+Если вы используете [управление доступом на основе ролей (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac), также требуется проверка области действия.
+
+:::
+
+```tsx
+// auth-middleware.ts
+
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (req, res, next) => {
+  // Извлечение токена
+  const token = extractBearerTokenFromHeaders(req.headers);
+
+  const { payload } = await jwtVerify(
+    token, // Исходный токен Bearer, извлеченный из заголовка запроса
+    createRemoteJWKSet(new URL('https://<your-logto-domain>/oidc/jwks')), // создание jwks с использованием jwks_uri, запрошенного с сервера Logto
+    {
+      // ожидаемый эмитент токена, должен быть выдан сервером Logto
+      issuer: 'https://<your-logto-domain>/oidc',
+      // ожидаемая аудитория токена, должна быть индикатором ресурса текущего API
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // если вы используете RBAC
+  assert(payload.scope.includes('some_scope'));
+
+  // пользовательская логика payload
+  userId = payload.sub;
+
+  return next();
+};
+```
+
+## Примените middleware к вашему API \{#apply-middleware-to-your-api}
+
+```tsx
+import { verifyAuthFromRequest } from '/middleware/auth-middleware.ts';
+
+app.get('/user/:id', verifyAuthFromRequest, (req, res, next) => {
+  // Пользовательский код
+});
+```
+
+## Связанные ресурсы \{#related-resources}
+
+<Url href="https://blog.logto.io/protect-your-express-js-api">
+  Защита вашего Express.js API с помощью JWT и Logto
+</Url>

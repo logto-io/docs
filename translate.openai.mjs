@@ -40,6 +40,8 @@ const buildInstructions = (locale, asIsTerms, terms, patterns) => {
     `For all the patterns in the keys of the following JSON object (case-insensitive matching), use the values as translations. For example, if the JSON object is \`{ "${pattern1[0]}": "${pattern1[1]}", "${pattern2[0]}": "${pattern2[1]}" }\`, then translate "${pattern1[0].replaceAll(matchPattern, 'Logto')}" to "${pattern1[1].replaceAll(matchPattern, 'Logto')}" and "${pattern2[0].replaceAll(matchPattern, 'Logto')}" to "${pattern2[1].replaceAll(matchPattern, 'Logto')}". The JSON object is \`${JSON.stringify(patterns)}\`.`,
     'Ensure all import statements are not translated and copied as-is.',
     'For mermaid diagrams, translate only the text within the diagram, keeping the diagram type and structure unchanged.',
+    locale.startsWith('ja') &&
+      'Avoid direct translating "you" or "your" to "あなた" or "あなたの" when translating into Japanese.',
     locale.startsWith('zh') && 'Prefer "你" over "您" when translating into Chinese.',
     isCJK &&
       'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',
