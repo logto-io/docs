@@ -1,0 +1,194 @@
+---
+slug: /quick-starts/python
+sidebar_label: Python
+sidebar_custom_props:
+  description: Интеграция Logto в ваше веб-приложение на Python, такое как Django и Flask.
+language: python
+official_link: https://www.python.org
+app_type: Traditional web
+framework: Flask
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import ClaimsNeedNetworkRequest from '../../fragments/_claims-need-network-request.mdx';
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import PythonGuideTip from './_guide-tip.md';
+import HandleAuthenticationStatus from './_handle-authentication-status.md';
+import ImplementSignInAndSignOutRoutes from './_implement-sign-in-and-sign-out.mdx';
+import InitLogtoClient from './_init-logto-client.mdx';
+import Installation from './_installation.md';
+import ConfigApiResources from './api-resources/_config-api-resources.mdx';
+import FetchAccessTokenForApiResources from './api-resources/_fetch-access-token-for-api-resources.mdx';
+import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-token-for-user.mdx';
+
+# Добавление аутентификации в ваше веб-приложение на Python
+
+Это руководство покажет вам, как интегрировать Logto в ваше веб-приложение на Python.
+
+<PythonGuideTip />
+
+## Предварительные требования \{#prerequisites}
+
+- Аккаунт [Logto Cloud](https://cloud.logto.io) или [самостоятельно размещенный Logto](/introduction/set-up-logto-oss).
+- Созданное традиционное веб-приложение Logto.
+
+## Установка \{#installation}
+
+<Installation />
+
+## Интеграция \{#integration}
+
+### Инициализация LogtoClient \{#init-logtoclient}
+
+<InitLogtoClient />
+
+### Настройка перенаправления URI \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Реализация маршрутов входа и выхода \{#implement-sign-in-and-sign-out-routes}
+
+<ImplementSignInAndSignOutRoutes />
+
+### Обработка статуса аутентификации \{#handle-authentication-status}
+
+<HandleAuthenticationStatus />
+
+<Checkpoint />
+
+## Получение информации о пользователе \{#get-user-information}
+
+### Отображение информации о пользователе \{#display-user-information}
+
+Чтобы отобразить информацию о пользователе, вы можете использовать метод `getIdTokenClaims` или метод `fetchUserInfo` для получения информации о пользователе. В то время как `getIdTokenClaims` возвращает информацию о пользователе, содержащуюся в ID токене, `fetchUserInfo` извлекает информацию о пользователе из конечной точки userinfo.
+
+Как вы можете видеть, мы используем декоратор `@authenticated`, чтобы предоставить контекст информации о пользователе API приложения Flask.
+
+<CodeBlock title="authenticated.py" language="python">
+  {`from functools import wraps
+from flask import g, jsonify, redirect
+from samples.client import client
+def authenticated(shouldRedirect: bool = False, fetchUserInfo: bool = False):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            if client.isAuthenticated() is False:
+                if shouldRedirect:
+                    return redirect("/sign-in")
+                return jsonify({"error": "Not authenticated"}), 401
+            # Сохранение информации о пользователе в контексте приложения Flask
+            g.user = (
+                await client.fetchUserInfo()
+                if fetchUserInfo
+                else client.getIdTokenClaims()
+            )
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+`}
+</CodeBlock>
+
+Например, чтобы отобразить информацию о пользователе в API, вы можете использовать следующий код:
+
+<CodeBlock title="flask.py" language="python">
+  {`@app.route("/protected/userinfo")
+@authenticated(shouldRedirect=True, fetchUserInfo=True)
+async def protectedUserinfo():
+    try:
+        return (
+            "<h2>User info</h2>"
+            + g.user.model_dump_json(indent=2, exclude_unset=True).replace("\\n", "<br>")
+            + navigationHtml
+        )
+    except LogtoException as e:
+        return "<h2>Error</h2>" + str(e) + "<br>" + navigationHtml
+`}
+</CodeBlock>
+
+Наши модели данных основаны на [pydantic](https://docs.pydantic.dev/), поэтому вы можете использовать `model_dump_json` для преобразования модели данных в JSON.
+
+Добавление `exclude_unset=True` исключит неустановленные поля из вывода JSON, что делает вывод более точным.
+
+Например, если мы не запрашивали область `email` при входе, поле `email` будет исключено из вывода JSON. Однако, если мы запрашивали область `email`, но у пользователя нет адреса электронной почты, поле `email` будет включено в вывод JSON со значением `null`.
+
+Чтобы узнать больше об областях и утверждениях, смотрите [Получение информации о пользователе](#get-user-information).
+
+### Запрос дополнительных утверждений \{#request-additional-claims}
+
+<FindUserInfoMissing method="client.getIdTokenClaims()" />
+
+<ScopesAndClaimsIntroduction />
+
+Чтобы запросить дополнительные области, вы можете передать области в объект `LogtoConfig`. Например:
+
+```python title="client.py"
+# highlight-next-line
+from logto import UserInfoScope
+
+client = LogtoClient(
+    LogtoConfig(
+        # ...другие настройки
+        # highlight-start
+        scopes = [
+            UserInfoScope.email,
+            UserInfoScope.phone,
+        ],
+        # highlight-end
+    ),
+    storage=SessionStorage(),
+)
+```
+
+Затем вы можете получить доступ к дополнительным утверждениям в возвращаемом значении `client.getIdTokenClaims()`:
+
+```python
+idTokenClaims = await client.getIdTokenClaims();
+```
+
+<ClaimsNeedNetworkRequest
+  type="method"
+  method="client.fetchUserInfo()"
+  codeSnippet={
+    <CodeBlock language="python" title="flask.py">
+      (await client.fetchUserInfo()).custom_data
+    </CodeBlock>
+  }
+/>
+
+### Области и утверждения \{#scopes-and-claims}
+
+<ScopesAndClaims />
+
+## Ресурсы API и организации \{#api-resources-and-organizations}
+
+<ApiResourcesDescription />
+
+### Настройка клиента Logto \{#configure-logto-client}
+
+<ConfigApiResources />
+
+### Получение токена доступа для ресурса API \{#fetch-access-token-for-the-api-resource}
+
+<FetchAccessTokenForApiResources />
+
+### Получение токенов организации \{#fetch-organization-tokens}
+
+<FetchOrganizationTokenForUser />
+
+## Дополнительные материалы \{#further-readings}
+
+<FurtherReadings />

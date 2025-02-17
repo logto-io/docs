@@ -1,0 +1,372 @@
+---
+slug: /quick-starts/traditional-web
+sidebar_label: Traditional web
+sidebar_custom_props:
+  description: Интеграция Logto с традиционными веб-приложениями, работающими на сервере.
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import redirectUriFigure from '../../assets/web-redirect-uri.png';
+import AppNote from '../../fragments/_app-note.mdx';
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+# Добавление аутентификации в ваше традиционное веб-приложение
+
+<AppNote type="Traditional web" />
+
+Ваше приложение может работать на стороне сервера, а не в браузере, используя такие фреймворки, как Django, Laravel и т. д. Это называется традиционным веб-приложением. Если вы не можете найти подходящий SDK на этой странице, вам, вероятно, нужно интегрировать вручную.
+
+Эта статья проведет вас через процесс шаг за шагом. Мы возьмем Express в Node.js в качестве примера.
+
+:::tip
+
+Эта статья не только для Express, и если вы используете другие фреймворки или даже другие языки, вы можете заменить `@logto/js` на основной SDK другого языка и затем настроить некоторые из шагов.
+
+:::
+
+## Получение исходного кода \{#get-source-code}
+
+Вы можете перейти на [GitHub](https://github.com/logto-io/express-example), чтобы получить финальный код для этого руководства.
+
+## Начало проекта Express \{#start-an-express-project}
+
+С помощью `express-generator` вы можете быстро начать проект Express.
+
+```bash
+mkdir express-logto
+cd express-logto
+npx express-generator
+```
+
+## Установка зависимостей \{#install-dependencies}
+
+Демо-приложению понадобятся 4 зависимости:
+
+1. **@logto/js**: основной SDK Logto для JavaScript.
+2. **node-fetch**: минимальный код для API, совместимого с `window.fetch` в среде Node.js.
+3. **express-session**: промежуточное ПО для сессий, мы будем использовать сессию для хранения токенов пользователей.
+4. **js-base64**: еще один кодировщик Base64.
+
+<Tabs>
+
+<TabItem value="npm" label="npm">
+
+```bash
+npm i @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="yarn" label="Yarn">
+
+```bash
+yarn add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+
+</Tabs>
+
+## Использование сессии \{#use-session}
+
+Когда пользователи входят в систему, они получают набор токенов (Токен доступа, ID токен, Токен обновления) и данные взаимодействия, и сессия — отличное место для их хранения.
+
+Мы установили [express-session](https://github.com/expressjs/session) на предыдущем шаге, поэтому теперь давайте просто добавим следующий код для его настройки:
+
+```js
+// app.js
+
+const session = require('express-session');
+
+app.use(
+  session({
+    secret: 'keyboard cat', // Измените на ваш собственный секретный ключ
+    cookie: { maxAge: 86400 },
+  })
+);
+```
+
+## Реализация функций для аутентификации пользователей \{#implement-functions-to-authenticate-users}
+
+:::tip
+
+Мы предполагаем, что приложение работает на `http://localhost:3000` в следующих фрагментах кода.
+
+:::
+
+На этом этапе нам нужно реализовать следующие функции аутентификации:
+
+1. `getSignInUrl`: создает и возвращает полный URL сервера авторизации Logto, на который будут перенаправлены пользователи.
+2. `handleSignIn`: анализирует URL обратного вызова после завершения процесса аутентификации, получает параметр запроса кода, а затем получает токены (токен доступа, токен обновления и ID токен), чтобы завершить процесс входа.
+3. `refreshTokens`: обменивает новый токен доступа, используя токен обновления.
+
+<GetAppSecret />
+
+```js
+// logto.js
+
+const {
+  withReservedScopes,
+  fetchOidcConfig,
+  discoveryPath,
+  generateSignInUri,
+  verifyAndParseCodeFromCallbackUri,
+  fetchTokenByAuthorizationCode,
+  fetchTokenByRefreshToken,
+} = require('@logto/js');
+const fetch = require('node-fetch');
+const { randomFillSync, createHash } = require('crypto');
+const { fromUint8Array } = require('js-base64');
+
+const config = {
+  endpoint: 'https://logto.dev',
+  appId: 'foo',
+  appSecret: '<your-app-secret-copied-from-console>',
+  redirectUri: 'http://localhost:3000/callback', // Возможно, вам нужно заменить его на адрес вашего приложения в продакшене
+  scopes: withReservedScopes().split(' '),
+};
+
+const requester = (input, init) => {
+  const { appId, appSecret } = config;
+
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`, 'utf8').toString('base64')}`,
+    },
+  });
+};
+
+const generateRandomString = (length = 64) => {
+  return fromUint8Array(randomFillSync(new Uint8Array(length)), true);
+};
+
+const generateCodeChallenge = async (codeVerifier) => {
+  const encodedCodeVerifier = new TextEncoder().encode(codeVerifier);
+  const hash = createHash('sha256');
+  hash.update(encodedCodeVerifier);
+  const codeChallenge = hash.digest();
+  return fromUint8Array(codeChallenge, true);
+};
+
+const getOidcConfig = async () => {
+  return fetchOidcConfig(new URL(discoveryPath, config.endpoint).toString(), requester);
+};
+
+exports.getSignInUrl = async () => {
+  const { authorizationEndpoint } = await getOidcConfig();
+  const codeVerifier = generateRandomString();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateRandomString();
+
+  const { redirectUri, scopes, appId: clientId } = config;
+
+  const signInUri = generateSignInUri({
+    authorizationEndpoint,
+    clientId,
+    redirectUri: redirectUri,
+    codeChallenge,
+    state,
+    scopes,
+  });
+
+  return { redirectUri, codeVerifier, state, signInUri };
+};
+
+exports.handleSignIn = async (signInSession, callbackUri) => {
+  const { redirectUri, state, codeVerifier } = signInSession;
+  const code = verifyAndParseCodeFromCallbackUri(callbackUri, redirectUri, state);
+
+  const { appId: clientId } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const codeTokenResponse = await fetchTokenByAuthorizationCode(
+    {
+      clientId,
+      tokenEndpoint,
+      redirectUri,
+      codeVerifier,
+      code,
+    },
+    requester
+  );
+
+  return codeTokenResponse;
+};
+
+exports.refreshTokens = async (refreshToken) => {
+  const { appId: clientId, scopes } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const tokenResponse = await fetchTokenByRefreshToken(
+    {
+      clientId,
+      tokenEndpoint,
+      refreshToken,
+      scopes,
+    },
+    requester
+  );
+
+  return tokenResponse;
+};
+```
+
+## Вход в систему \{#sign-in}
+
+<SignInFlowSummary />
+
+### Настройка Redirect URI \{#configure-redirect-uri}
+
+<ConfigureRedirectUri figureSrc={redirectUriFigure} redirectUri="http://localhost:3000/callback" />
+
+### Реализация маршрута входа \{#implement-sign-in-route}
+
+<SignInNote calling="getSignInUrl()" />
+
+Создайте маршрут в Express для входа:
+
+```js
+const { getSignInUrl } = require('./logto');
+
+app.get('/sign-in', async (req, res) => {
+  const { redirectUri, codeVerifier, state, signInUri } = await getSignInUrl();
+  req.session.signIn = { codeVerifier, state, redirectUri };
+  res.redirect(signInUri);
+});
+```
+
+и маршрут для обработки обратного вызова:
+
+```js
+app.get('/callback', async (req, res) => {
+  if (!req.session.signIn) {
+    res.send('Bad request.');
+    return;
+  }
+
+  const response = await handleSignIn(
+    req.session.signIn,
+    `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  );
+  req.session.tokens = {
+    ...response,
+    expiresAt: response.expiresIn + Date.now(),
+    idToken: decodeIdToken(response.idToken),
+  };
+  req.session.signIn = null;
+
+  res.redirect('/');
+});
+```
+
+## Выход из системы \{#sign-out}
+
+TODO: ссылка на главу "сессии и куки" в справочнике пользователей.
+
+Вы можете очистить токены в сессии, чтобы выйти из этого приложения. И проверьте эту ссылку, чтобы узнать больше о "выходе из системы".
+
+```js
+app.get('/sign-out', (req, res) => {
+  req.session.tokens = null;
+  res.send('Sign out successful');
+});
+```
+
+## Доступ к защищенному ресурсу \{#access-protected-resource}
+
+Создайте промежуточное ПО с именем `withAuth`, чтобы прикрепить объект `auth` к `req` и проверить, вошел ли пользователь в систему.
+
+```js
+// auth.js
+
+const { decodeIdToken } = require('@logto/js');
+const { refreshTokens } = require('./logto');
+
+const withAuth =
+  ({ requireAuth } = { requireAuth: true }) =>
+  async (req, res, next) => {
+    if (requireAuth && !req.session.tokens) {
+      res.redirect('/sign-in');
+      return;
+    }
+
+    if (req.session.tokens) {
+      if (req.session.tokens.expiresAt >= Date.now()) {
+        // Токен доступа истек, обновляем для новых токенов
+        try {
+          const response = await refreshTokens(req.session.tokens.refreshToken);
+          req.session.tokens = {
+            ...response,
+            expiresAt: response.expiresIn + Date.now(),
+            idToken: decodeIdToken(response.idToken),
+          };
+        } catch {
+          // Обмен не удался, перенаправляем на вход
+          res.redirect('/sign-in');
+          return;
+        }
+      }
+
+      req.auth = req.session.tokens.idToken.sub;
+    }
+
+    next();
+  };
+
+module.exports = withAuth;
+```
+
+создайте страницу `index`, покажите ссылку на вход для гостей и ссылку на профиль для пользователей, которые уже вошли в систему:
+
+```js
+router.get('/', withAuth({ requireAuth: false }), function (req, res, next) {
+  res.render('index', { auth: Boolean(req.auth) });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  if auth
+    p: a(href="/user") Go to profile
+  else
+    p: a(href="/sign-in") Click here to sign in
+```
+
+создайте страницу `user`, чтобы отображать `userId` (`субъект`):
+
+```js
+app.get('/user', withAuth(), (req, res, next) => {
+  res.render('user', { userId: req.auth });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  p userId: #{userId}
+```
+
+## Дополнительные материалы \{#further-readings}
+
+<FurtherReadings />
+
+<Url href="https://blog.logto.io/gpt-action-oauth">
+  Аутентификация пользователей в действиях GPT: Создание личного помощника по расписанию
+</Url>

@@ -1,0 +1,83 @@
+Auth.js будет запрашивать токен доступа только один раз без параметра ресурса. Нам нужно реализовать получение токена доступа самостоятельно.
+
+#### Получение токена обновления \{#get-refresh-token}
+
+Обновите конфигурацию провайдера Logto, добавьте параметр "prompt" и установите его в `consent`, и убедитесь, что область действия `offline_access` включена:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  authorization: {
+    params: {
+      // highlight-next-line
+      prompt: 'consent',
+      scope: 'openid offline_access shopping:read shopping:write',
+      resource: 'https://shopping.your-app.com/api',
+      // ...
+    },
+  },
+  // ...
+});
+```
+
+Затем добавьте callback для сохранения `refresh_token` в сессии:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        // ...
+        // highlight-next-line
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ...
+      // highlight-next-line
+      session.refreshToken = token.refreshToken;
+      return session;
+    },
+  },
+});
+```
+
+#### Получение токена доступа \{#fetch-access-token}
+
+С `refresh_token` мы можем получить токен доступа с OIDC токен-эндпоинта Logto.
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.refreshToken) {
+    // Замените ID приложения и секрет на свои собственные, вы можете проверить раздел "Интеграция".
+    const basicAuth = Buffer.from('<logto-app-id>:<logto-app-secret>').toString('base64');
+
+    // Замените URL на ваш Logto эндпоинт, он должен заканчиваться на `/oidc/token`
+    const response = await fetch('https://xxx.logto.app/oidc/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basicAuth}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        resource: 'https://shopping.your-app.com/api',
+      }).toString(),
+    });
+
+    const data = await response.json();
+    console.log(data.access_token);
+  }
+
+  // ...
+}
+```

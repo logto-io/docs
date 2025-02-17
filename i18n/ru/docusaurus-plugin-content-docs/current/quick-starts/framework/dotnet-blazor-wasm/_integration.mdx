@@ -1,0 +1,148 @@
+import CodeBlock from '@theme/CodeBlock';
+
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris, {
+  defaultBaseUrl,
+  defaultRedirectUri,
+} from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+### Добавление ссылок на скрипты \{#add-script-references}
+
+Включите `Blorc.Core/injector.js` в файл `index.html`:
+
+```html title="index.html"
+<head>
+  <!-- ... -->
+  <script src="_content/Blorc.Core/injector.js"></script>
+  <!-- ... -->
+</head>
+```
+
+### Регистрация сервисов \{#register-services}
+
+Добавьте следующий код в файл `Program.cs`:
+
+```csharp title="Program.cs"
+using Blorc.OpenIdConnect;
+using Blorc.Services;
+
+builder.Services.AddBlorcCore();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddBlorcOpenIdConnect(
+    options =>
+    {
+        builder.Configuration.Bind("IdentityServer", options);
+    });
+
+var webAssemblyHost = builder.Build();
+
+await webAssemblyHost
+    .ConfigureDocumentAsync(async documentService =>
+    {
+        await documentService.InjectBlorcCoreJsAsync();
+        await documentService.InjectOpenIdConnectAsync();
+    });
+
+await webAssemblyHost.RunAsync();
+```
+
+:::info
+Нет необходимости использовать пакет `Microsoft.AspNetCore.Components.WebAssembly.Authentication`. Пакет `Blorc.OpenIdConnect` позаботится о процессе аутентификации.
+:::
+
+### Настройка перенаправления URI \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Настройка приложения \{#configure-application}
+
+Добавьте следующий код в файл `appsettings.json`:
+
+<CodeBlock language="json5" title="appsettings.json">
+  {`{
+  // ...
+  IdentityServer: {
+    Authority: 'https://<your-logto-endpoint>/oidc',
+    ClientId: '<your-logto-app-id>',
+    PostLogoutRedirectUri: '${defaultBaseUrl}',
+    RedirectUri: '${defaultRedirectUri}',
+    ResponseType: 'code',
+    Scope: 'openid profile', // Добавьте больше областей, если необходимо
+  },
+}`}
+</CodeBlock>
+
+Не забудьте добавить `RedirectUri` и `PostLogoutRedirectUri` в список разрешенных URI перенаправления в настройках приложения Logto. Они оба являются URL вашего WASM приложения.
+
+### Добавление компонента `AuthorizeView` \{#add-authorizeview-component}
+
+На страницах Razor, требующих аутентификации, добавьте компонент `AuthorizeView`. Предположим, это страница `Home.razor`:
+
+```cshtml title="Pages/Home.razor"
+@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        @* Вид для вошедших пользователей *@
+        <button @onclick="OnLogoutButtonClickAsync">
+            Выйти
+        </button>
+    </Authorized>
+    <NotAuthorized>
+        @* Вид для неаутентифицированных пользователей *@
+        <button @onclick="OnLoginButtonClickAsync">
+            Войти
+        </button>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### Настройка аутентификации \{#set-up-authentication}
+
+В файле `Home.razor.cs` (создайте его, если он не существует) добавьте следующий код:
+
+```csharp title="Pages/Home.razor.cs"
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Blorc.OpenIdConnect;
+using Microsoft.AspNetCore.Components.Authorization;
+
+[Authorize]
+public partial class Home : ComponentBase
+{
+    [Inject]
+    public required IUserManager UserManager { get; set; }
+
+    public User<Profile>? User { get; set; }
+
+    [CascadingParameter]
+    protected Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await UserManager.GetUserAsync<User<Profile>>(AuthenticationStateTask!);
+    }
+
+    private async Task OnLoginButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignInRedirectAsync();
+    }
+
+    private async Task OnLogoutButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignOutRedirectAsync();
+    }
+}
+```
+
+После аутентификации пользователя свойство `User` будет заполнено информацией о пользователе.
+
+<Checkpoint />
