@@ -1,0 +1,2 @@
+- [Logto Cloud](https://cloud.logto.io) 계정 또는 자체 호스팅 Logto (아직 없다면 [소개](/introduction) 가이드를 참조하여 하나를 생성하세요).
+- Logto 전통적인 웹 애플리케이션이 생성되었습니다.
