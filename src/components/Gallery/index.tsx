@@ -103,12 +103,12 @@ const Gallery = ({ path }: Props) => {
                   className={styles.logo}
                   alt="Logo"
                   sources={{
-                    light: `${prefix}/img/logo/${item.logoFilename}`,
-                    dark: `${prefix}/img/logo/${item.darkLogoFilename ?? item.logoFilename}`,
+                    light: `/img/logo/${item.logoFilename}`,
+                    dark: `/img/logo/${item.darkLogoFilename ?? item.logoFilename}`,
                   }}
                   onError={({ currentTarget }) => {
                     // eslint-disable-next-line @silverhand/fp/no-mutation
-                    currentTarget.src = prefix + '/img/logo/broken-image.svg';
+                    currentTarget.src = '/img/logo/broken-image.svg';
                   }}
                 />
                 <span className={styles.title}>{item.label}</span>
