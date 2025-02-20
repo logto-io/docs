@@ -11,7 +11,6 @@ import clsx from 'clsx';
 
 import { getConnectorDisplayName, getSdkDisplayName } from '@site/plugins/tutorial-generator/utils';
 import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tutorial-metadata';
-import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
 
 import styles from './index.module.scss';
 
@@ -21,7 +20,7 @@ import styles from './index.module.scss';
 //   return !isBlogPostPage ? 'margin-bottom--xl' : undefined;
 // }
 
-const getLogoFilenames = (locale: string, data?: DocMetadata) => {
+const getLogoFilenames = (data?: DocMetadata) => {
   const lastSegmentInSlug = data?.slug.slice(data.slug.lastIndexOf('/') + 1) ?? '';
   const logoFilename = condString(
     data?.frontMatter.sidebar_custom_props?.logoFilename ?? lastSegmentInSlug + '.svg'
@@ -31,14 +30,13 @@ const getLogoFilenames = (locale: string, data?: DocMetadata) => {
   );
 
   return {
-    logoFilename: `${locale}/img/logo/${logoFilename}`,
-    darkLogoFilename: `${locale}/img/logo/${darkLogoFilename}`,
-    fallbackLogoFilename: `${locale}/img/logo/broken-image.svg`,
+    logoFilename: `/img/logo/${logoFilename}`,
+    darkLogoFilename: `/img/logo/${darkLogoFilename}`,
+    fallbackLogoFilename: `/img/logo/broken-image.svg`,
   };
 };
 
 export default function BlogPostItem({ children, className }: Props): JSX.Element {
-  const locale = useCurrentLocalePrefix();
   const { isBlogPostPage, frontMatter } = useBlogPost();
   const { allConnectors, allSdks } = useCategorizedTutorialMetadata();
 
@@ -53,8 +51,8 @@ export default function BlogPostItem({ children, className }: Props): JSX.Elemen
   );
   const sdkMetadata = allSdks.find((data) => getSdkDisplayName(data) === blogSdkName);
 
-  const sdkLogos = getLogoFilenames(locale, sdkMetadata);
-  const connectorLogos = getLogoFilenames(locale, connectorMetadata);
+  const sdkLogos = getLogoFilenames(sdkMetadata);
+  const connectorLogos = getLogoFilenames(connectorMetadata);
 
   return (
     <BlogPostItemContainer

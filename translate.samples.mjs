@@ -15,7 +15,7 @@ For a complete customer identity and access management (CIAM) introduction, you 
 - [CIAM 101: Authentication, Identity, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: Authorization & Role-based Access Control](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## Authentication
+## Authentication \\{#authentication}
 
 Logto supports various interactive and non-interactive authentication methods, for example:
 
@@ -24,7 +24,7 @@ Logto supports various interactive and non-interactive authentication methods, f
 
 The ultimate goal of authentication is dramatically simple: to verify and get the unique identifier of the entity (in Logto, a user or an application).
 
-## Authorization
+## Authorization \\{#authorization}
 
 In Logto, authorization is done through role-based access control (RBAC). It gives you the complete control to manage the access of your users or M2M applications to the following:
 
@@ -55,13 +55,13 @@ graph TD
 
 In a nutshell, authorization is about defining the rules that determine what entities in the "Identities" group can access the entities in the "Resources" group.
 
-## Frequently asked questions
+## Frequently asked questions \\{#frequently-asked-questions}
 
-### I need to specify which users can sign in to an application
+### I need to specify which users can sign in to an application \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 Due to the nature of single sign-on (SSO), Logto currently does not support using applications as resources. Instead, you can define API resources and permissions to control access to your resources.
 
-### I need my users to sign in to an organization
+### I need my users to sign in to an organization \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 As mentioned earlier, authentication involves verifying the identity of an entity, while access control is handled through authorization. Therefore:
 
@@ -74,7 +74,7 @@ This model is efficient and clear, as it separates the concerns of authenticatio
 
 However, there are some cases where you need to establish 1-1 mappings between user sources and organizations. In this case, [enterprise SSO](/end-user-flows/enterprise-sso) and [organization Just-in-Time (JIT) provisioning](/organizations/just-in-time-provisioning) can be helpful.
 
-### Our customers need custom branding for their sign-in pages
+### Our customers need custom branding for their sign-in pages \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 Please check out [app-specific branding](/customization/match-your-brand/#app-specific-branding) and [organization-specific branding](/customization/match-your-brand/#organization-specific-branding) for related configurations.
 `;
@@ -97,7 +97,7 @@ Für eine vollständige Einführung in das Customer Identity and Access Manageme
 - [CIAM 101: Authentication, Identity, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: Authorization & Role-based Access Control](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## Authentifizierung
+## Authentifizierung \\{#authentication}
 
 Logto unterstützt verschiedene interaktive und nicht-interaktive Authentifizierungsmethoden, zum Beispiel:
 
@@ -106,7 +106,7 @@ Logto unterstützt verschiedene interaktive und nicht-interaktive Authentifizier
 
 Das ultimative Ziel der Authentifizierung ist denkbar einfach: die Überprüfung und das Erhalten des eindeutigen Identifikators der Entität (in Logto, ein Benutzer oder eine Anwendung).
 
-## Autorisierung
+## Autorisierung \\{#authorization}
 
 In Logto erfolgt die Autorisierung durch rollenbasierte Zugangskontrolle (RBAC). Sie gibt dir die vollständige Kontrolle über die Verwaltung des Zugangs deiner Benutzer oder M2M-Anwendungen zu den folgenden:
 
@@ -137,13 +137,13 @@ graph TD
 
 Kurz gesagt, bei der Autorisierung geht es darum, die Regeln festzulegen, die bestimmen, welche Entitäten in der Gruppe "Identitäten" auf die Entitäten in der Gruppe "Ressourcen" zugreifen können.
 
-## Häufig gestellte Fragen
+## Häufig gestellte Fragen \\{#frequently-asked-questions}
 
-### Ich muss angeben, welche Benutzer sich bei einer Anwendung anmelden können
+### Ich muss angeben, welche Benutzer sich bei einer Anwendung anmelden können \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 Aufgrund der Natur von Single Sign-On (SSO) unterstützt Logto derzeit nicht die Verwendung von Anwendungen als Ressourcen. Stattdessen kannst du API-Ressourcen und Berechtigungen definieren, um den Zugriff auf deine Ressourcen zu steuern.
 
-### Ich benötige, dass sich meine Benutzer bei einer Organisation anmelden
+### Ich benötige, dass sich meine Benutzer bei einer Organisation anmelden \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 Wie bereits erwähnt, beinhaltet die Authentifizierung die Überprüfung der Identität einer Entität, während die Zugangskontrolle durch Autorisierung gehandhabt wird. Daher:
 
@@ -156,7 +156,7 @@ Dieses Modell ist effizient und klar, da es die Anliegen der Authentifizierung u
 
 Es gibt jedoch einige Fälle, in denen du 1-1-Zuordnungen zwischen Benutzerquellen und Organisationen herstellen musst. In diesem Fall können [Enterprise SSO](/end-user-flows/enterprise-sso) und [Organisation Just-in-Time (JIT) Bereitstellung](/organizations/just-in-time-provisioning) hilfreich sein.
 
-### Unsere Kunden benötigen ein individuelles Branding für ihre Anmeldeseiten
+### Unsere Kunden benötigen ein individuelles Branding für ihre Anmeldeseiten \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 Bitte schaue dir [App-spezifisches Branding](/customization/match-your-brand/#app-specific-branding) und [Organisationsspezifisches Branding](/customization/match-your-brand/#organization-specific-branding) für verwandte Konfigurationen an.
 `,
@@ -176,7 +176,7 @@ Para una introducción completa a la gestión de identidad y acceso del cliente 
 - [CIAM 101: Authentication, Identity, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: Authorization & Role-based Access Control](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## Autenticación
+## Autenticación \\{#authentication}
 
 Logto admite varios métodos de autenticación interactivos y no interactivos, por ejemplo:
 
@@ -185,7 +185,7 @@ Logto admite varios métodos de autenticación interactivos y no interactivos, p
 
 El objetivo final de la autenticación es extremadamente simple: verificar y obtener el identificador único de la entidad (en Logto, un usuario o una aplicación).
 
-## Autorización
+## Autorización \\{#authorization}
 
 En Logto, la autorización se realiza a través del control de acceso basado en roles (RBAC). Te da el control completo para gestionar el acceso de tus usuarios o aplicaciones M2M a lo siguiente:
 
@@ -216,13 +216,14 @@ graph TD
 
 En resumen, la autorización se trata de definir las reglas que determinan qué entidades en el grupo "Identidades" pueden acceder a las entidades en el grupo "Recursos".
 
-## Preguntas frecuentes
+## Preguntas frecuentes \\{#frequently-asked-questions}
 
-### Necesito especificar qué usuarios pueden iniciar sesión en una aplicación
+### Necesito especificar qué usuarios pueden iniciar sesión en una aplicación \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
+
 
 Debido a la naturaleza del inicio de sesión único (SSO), Logto actualmente no admite el uso de aplicaciones como recursos. En su lugar, puedes definir recursos de API y permisos para controlar el acceso a tus recursos.
 
-### Necesito que mis usuarios inicien sesión en una organización
+### Necesito que mis usuarios inicien sesión en una organización \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 Como se mencionó anteriormente, la autenticación implica verificar la identidad de una entidad, mientras que el control de acceso se maneja a través de la autorización. Por lo tanto:
 
@@ -235,7 +236,7 @@ Este modelo es eficiente y claro, ya que separa las preocupaciones de autenticac
 
 Sin embargo, hay algunos casos en los que necesitas establecer mapeos 1-1 entre fuentes de usuarios y organizaciones. En este caso, el [SSO empresarial](/end-user-flows/enterprise-sso) y el [aprovisionamiento Just-in-Time (JIT) de la organización](/organizations/just-in-time-provisioning) pueden ser útiles.
 
-### Nuestros clientes necesitan personalización de marca para sus páginas de inicio de sesión
+### Nuestros clientes necesitan personalización de marca para sus páginas de inicio de sesión \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 Por favor, consulta [personalización específica de la aplicación](/customization/match-your-brand/#app-specific-branding) y [personalización específica de la organización](/customization/match-your-brand/#organization-specific-branding) para configuraciones relacionadas.`,
   fr: `---
@@ -254,7 +255,7 @@ Pour une introduction complète à la gestion des identités et des accès des c
 - [CIAM 101 : Authentification, Identité, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102 : Autorisation & Contrôle d’accès basé sur les rôles (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## Authentification
+## Authentification \\{#authentication}
 
 Logto prend en charge diverses méthodes d'authentification interactives et non interactives, par exemple :
 
@@ -263,7 +264,7 @@ Logto prend en charge diverses méthodes d'authentification interactives et non 
 
 L'objectif ultime de l'authentification est extrêmement simple : vérifier et obtenir l'identifiant unique de l'entité (dans Logto, un utilisateur ou une application).
 
-## Autorisation
+## Autorisation \\{#authorization}
 
 Dans Logto, l'autorisation est effectuée via le contrôle d’accès basé sur les rôles (RBAC). Cela vous donne un contrôle complet pour gérer l'accès de vos utilisateurs ou applications M2M aux éléments suivants :
 
@@ -294,13 +295,13 @@ graph TD
 
 En résumé, l'autorisation consiste à définir les règles qui déterminent quelles entités du groupe "Identités" peuvent accéder aux entités du groupe "Resources".
 
-## Questions fréquemment posées
+## Questions fréquemment posées \\{#frequently-asked-questions}
 
-### Je dois spécifier quels utilisateurs peuvent se connecter à une application
+### Je dois spécifier quels utilisateurs peuvent se connecter à une application \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 En raison de la nature de l'authentification unique (SSO), Logto ne prend actuellement pas en charge l'utilisation des applications en tant que ressources. Au lieu de cela, vous pouvez définir des ressources API et des permissions pour contrôler l'accès à vos ressources.
 
-### Je veux que mes utilisateurs se connectent à une organisation
+### Je veux que mes utilisateurs se connectent à une organisation \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 Comme mentionné précédemment, l'authentification implique la vérification de l'identité d'une entité, tandis que le contrôle d'accès est géré par l'autorisation. Par conséquent :
 
@@ -313,7 +314,7 @@ Ce modèle est efficace et clair, car il sépare les préoccupations de l'authen
 
 Cependant, il existe certains cas où vous devez établir des correspondances 1-1 entre les sources d'utilisateurs et les organisations. Dans ce cas, [SSO d’entreprise](/end-user-flows/enterprise-sso) et [approvisionnement Just-in-Time (JIT) d'organisation](/organizations/just-in-time-provisioning) peuvent être utiles.
 
-### Nos clients ont besoin d'une personnalisation de marque pour leurs pages de connexion
+### Nos clients ont besoin d'une personnalisation de marque pour leurs pages de connexion \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 Veuillez consulter [personnalisation spécifique à l'application](/customization/match-your-brand/#app-specific-branding) et [personnalisation spécifique à l'organisation](/customization/match-your-brand/#organization-specific-branding) pour les configurations associées.
 `,
@@ -333,7 +334,7 @@ Para uma introdução completa ao gerenciamento de identidade e acesso do client
 - [CIAM 101: Authentication, Identity, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: Authorization & Role-based Access Control](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## Autenticação (Authentication)
+## Autenticação (Authentication) \\{#authentication}
 
 Logto suporta vários métodos de autenticação interativos e não interativos, por exemplo:
 
@@ -342,7 +343,7 @@ Logto suporta vários métodos de autenticação interativos e não interativos,
 
 O objetivo final da autenticação é dramaticamente simples: verificar e obter o identificador único da entidade (no Logto, um usuário ou um aplicativo).
 
-## Autorização (Authorization)
+## Autorização (Authorization) \\{#authorization}
 
 No Logto, a autorização é feita através do controle de acesso baseado em papel (RBAC). Ele oferece controle total para gerenciar o acesso de seus usuários ou aplicativos M2M aos seguintes:
 
@@ -373,13 +374,13 @@ graph TD
 
 Em resumo, a autorização é sobre definir as regras que determinam quais entidades no grupo "Identities" podem acessar as entidades no grupo "Resources".
 
-## Perguntas frequentes
+## Perguntas frequentes \\{#frequently-asked-questions}
 
-### Preciso especificar quais usuários podem fazer login em um aplicativo
+### Preciso especificar quais usuários podem fazer login em um aplicativo \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 Devido à natureza da autenticação única (SSO), o Logto atualmente não suporta o uso de aplicativos como recursos. Em vez disso, você pode definir recursos de API e permissões para controlar o acesso aos seus recursos.
 
-### Preciso que meus usuários façam login em uma organização
+### Preciso que meus usuários façam login em uma organização \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 Como mencionado anteriormente, a autenticação envolve verificar a identidade de uma entidade, enquanto o controle de acesso é tratado através da autorização. Portanto:
 
@@ -392,7 +393,7 @@ Esse modelo é eficiente e claro, pois separa as preocupações de autenticaçã
 
 No entanto, há alguns casos em que você precisa estabelecer mapeamentos 1-1 entre fontes de usuários e organizações. Nesse caso, [SSO corporativo (Enterprise SSO)](/end-user-flows/enterprise-sso) e [provisionamento Just-in-Time (JIT) da organização](/organizations/just-in-time-provisioning) podem ser úteis.
 
-### Nossos clientes precisam de personalização de marca para suas páginas de login
+### Nossos clientes precisam de personalização de marca para suas páginas de login \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 Por favor, confira [personalização específica do aplicativo](/customization/match-your-brand/#app-specific-branding) e [personalização específica da organização](/customization/match-your-brand/#organization-specific-branding) para configurações relacionadas.`,
   ja: `---
@@ -411,7 +412,7 @@ sidebar_position: 2
 - [CIAM 101: 認証 (Authentication)、アイデンティティ、シングルサインオン (SSO)](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: 認可 (Authorization) とロールベースのアクセス制御 (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## 認証 (Authentication)
+## 認証 (Authentication) \\{#authentication}
 
 Logto は、さまざまなインタラクティブおよび非インタラクティブな認証 (Authentication) 方法をサポートしています。例えば：
 
@@ -420,7 +421,7 @@ Logto は、さまざまなインタラクティブおよび非インタラク�
 
 認証 (Authentication) の究極の目標は非常にシンプルです：エンティティ（Logto ではユーザーまたはアプリケーション）の一意の識別子を確認し取得することです。
 
-## 認可 (Authorization)
+## 認可 (Authorization) \\{#authorization}
 
 Logto では、認可 (Authorization) はロールベースのアクセス制御 (RBAC) を通じて行われます。これにより、次のアクセスを管理するための完全なコントロールが可能になります：
 
@@ -451,13 +452,13 @@ graph TD
 
 要するに、認可 (Authorization) は「Identities」グループのエンティティが「Resources」グループのエンティティにアクセスできるかどうかを決定するルールを定義することです。
 
-## よくある質問
+## よくある質問 \\{#frequently-asked-questions}
 
-### アプリケーションにサインインできるユーザーを指定する必要があります
+### アプリケーションにサインインできるユーザーを指定する必要があります \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 シングルサインオン (SSO) の性質上、Logto は現在、アプリケーションをリソースとして使用することをサポートしていません。代わりに、API リソースと権限を定義してリソースへのアクセスを制御できます。
 
-### ユーザーが組織にサインインする必要があります
+### ユーザーが組織にサインインする必要があります \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 前述のように、認証 (Authentication) はエンティティのアイデンティティを確認することであり、アクセス制御は認可 (Authorization) によって処理されます。したがって：
 
@@ -470,7 +471,7 @@ graph TD
 
 ただし、ユーザーソースと組織の間に 1 対 1 のマッピングを確立する必要がある場合もあります。この場合、[エンタープライズシングルサインオン (SSO)](/end-user-flows/enterprise-sso) と [組織のジャストインタイム (JIT) プロビジョニング](/organizations/just-in-time-provisioning) が役立ちます。
 
-### 顧客はサインインページにカスタムブランディングを必要としています
+### 顧客はサインインページにカスタムブランディングを必要としています \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 関連する設定については、[アプリ固有のブランディング](/customization/match-your-brand/#app-specific-branding) と [組織固有のブランディング](/customization/match-your-brand/#organization-specific-branding) を確認してください。
 `,
@@ -490,7 +491,7 @@ sidebar_position: 2
 - [CIAM 101: 认证 (Authentication)、身份、单点登录 (SSO)](https://blog.logto.io/ciam-101-intro-authn-sso/)
 - [CIAM 102: 授权 (Authorization) 与基于角色的访问控制 (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
 
-## 认证 (Authentication)
+## 认证 (Authentication) \\{#authentication}
 
 Logto 支持多种交互式和非交互式的认证 (Authentication) 方法，例如：
 
@@ -499,7 +500,7 @@ Logto 支持多种交互式和非交互式的认证 (Authentication) 方法，�
 
 认证 (Authentication) 的最终目标非常简单：验证并获取实体的唯一标识符（在 Logto 中，是用户或应用程序）。
 
-## 授权 (Authorization)
+## 授权 (Authorization) \\{#authorization}
 
 在 Logto 中，授权 (Authorization) 是通过基于角色的访问控制 (RBAC) 完成的。它让你可以完全控制用户或 M2M 应用程序对以下内容的访问：
 
@@ -530,13 +531,13 @@ graph TD
 
 简而言之，授权 (Authorization) 是关于定义规则，以确定“Identities”组中的实体可以访问“Resources”组中的哪些实体。
 
-## 常见问题解答
+## 常见问题解答 \\{#frequently-asked-questions}
 
-### 我需要指定哪些用户可以登录到应用程序
+### 我需要指定哪些用户可以登录到应用程序 \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
 
 由于单点登录 (SSO) 的特性，Logto 目前不支持将应用程序用作资源。相反，你可以定义 API 资源和权限来控制对资源的访问。
 
-### 我需要我的用户登录到一个组织
+### 我需要我的用户登录到一个组织 \\{#i-need-my-users-to-sign-in-to-an-organization}
 
 如前所述，认证 (Authentication) 涉及验证实体的身份，而访问控制是通过授权 (Authorization) 处理的。因此：
 
@@ -549,9 +550,88 @@ graph TD
 
 然而，在某些情况下，你需要在用户来源和组织之间建立 1-1 映射。在这种情况下，[企业单点登录 (SSO)](/end-user-flows/enterprise-sso) 和 [组织即时 (JIT) 供应](/organizations/just-in-time-provisioning) 可能会有所帮助。
 
-### 我们的客户需要为他们的登录页面定制品牌
+### 我们的客户需要为他们的登录页面定制品牌 \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
 
 请查看 [应用程序特定品牌](/customization/match-your-brand/#app-specific-branding) 和 [组织特定品牌](/customization/match-your-brand/#organization-specific-branding) 以获取相关配置。
+`,
+  ko: `---
+sidebar_position: 2
+---
+
+# 인증 (Authentication) vs. 인가 (Authorization)
+
+**인증 (Authentication)**과 **인가 (Authorization)**의 차이는 다음과 같이 요약할 수 있습니다:
+
+- **인증 (Authentication)**은 "어떤 아이덴티티를 소유하고 있습니까?"라는 질문에 답합니다.
+- **인가 (Authorization)**는 "무엇을 할 수 있습니까?"라는 질문에 답합니다.
+
+고객 아이덴티티 및 접근 관리 (CIAM)에 대한 완전한 소개는 우리의 CIAM 시리즈를 참조할 수 있습니다:
+
+- [CIAM 101: 인증 (Authentication), 아이덴티티, SSO](https://blog.logto.io/ciam-101-intro-authn-sso/)
+- [CIAM 102: 인가 (Authorization) & 역할 기반 접근 제어 (RBAC)](https://blog.logto.io/ciam-102-authz-and-rbac/)
+
+## 인증(Authentication) \\{#authentication}
+
+Logto는 다양한 상호작용 및 비상호작용 인증 방법을 지원합니다. 예를 들어:
+
+- **로그인 경험**: 최종 사용자를 위한 인증 과정.
+- **기계 간 (M2M) 인증**: 서비스 또는 애플리케이션을 위한 인증 과정.
+
+인증의 궁극적인 목표는 매우 간단합니다: 엔티티 (Logto에서는 사용자 또는 애플리케이션)의 고유 식별자를 확인하고 얻는 것입니다.
+
+## 권한 부여(Authorization) \\{#authorization}
+
+Logto에서 인가는 역할 기반 접근 제어 (RBAC)를 통해 이루어집니다. 이를 통해 사용자의 접근을 다음과 같이 완전히 관리할 수 있습니다:
+
+- **API 리소스**: 절대 URI로 표현되는 글로벌 엔티티.
+- **조직**: 사용자 또는 애플리케이션의 그룹.
+- **조직 API 리소스**: 조직에 속한 API 리소스.
+
+이 개념들에 대해 더 알고 싶다면 다음 리소스를 참조하세요:
+
+- [역할 기반 접근 제어 (RBAC)](/authorization/role-based-access-control)
+- [조직 (다중 테넌시)](/organizations)
+
+다음은 이러한 개념들 간의 관계를 시각적으로 표현한 것입니다:
+
+\`\`\`mermaid
+graph TD
+  subgraph Resources
+    R(API 리소스)
+    O(조직)
+    OR(조직 API 리소스)
+  end
+
+  subgraph Identities
+    U(사용자)
+    A(M2M 애플리케이션)
+  end
+\`\`\`
+
+요약하자면, 인가는 "Identities" 그룹의 엔티티가 "Resources" 그룹의 엔티티에 접근할 수 있는지를 결정하는 규칙을 정의하는 것입니다.
+
+## 자주 묻는 질문 \\{#frequently-asked-questions}
+
+### 애플리케이션에 로그인할 수 있는 사용자를 지정해야 합니다 \\{#i-need-to-specify-which-users-can-sign-in-to-an-application}
+
+싱글 사인온 (SSO)의 특성상, Logto는 현재 애플리케이션을 리소스로 사용하는 것을 지원하지 않습니다. 대신, API 리소스와 권한을 정의하여 리소스에 대한 접근을 제어할 수 있습니다.
+
+### 사용자가 조직에 로그인해야 합니다 \\{#i-need-my-users-to-sign-in-to-an-organization}
+
+앞서 언급했듯이, 인증은 엔티티의 아이덴티티를 확인하는 것이며, 접근 제어는 인가를 통해 처리됩니다. 따라서:
+
+- 사용자가 속한 조직을 결정하는 것은 인가 문제입니다.
+- 로그인 과정은 인증 문제입니다.
+
+이는 Logto에서 "조직에 로그인"하는 개념이 없음을 의미합니다. 사용자가 인증되면, 정의된 권한에 따라 모든 리소스 (조직 리소스를 포함)에 접근할 수 있도록 인가될 수 있습니다.
+
+이 모델은 인증과 인가의 문제를 분리하여 효율적이고 명확합니다. GitHub 및 Notion과 같은 모든 현대 SaaS 애플리케이션은 이 모델을 따릅니다.
+
+그러나 사용자 소스와 조직 간의 1-1 매핑을 설정해야 하는 경우가 있습니다. 이 경우, [엔터프라이즈 SSO](/end-user-flows/enterprise-sso) 및 [조직 Just-in-Time (JIT) 프로비저닝](/organizations/just-in-time-provisioning)이 도움이 될 수 있습니다.
+
+### 고객이 로그인 페이지에 맞춤형 브랜딩이 필요합니다 \\{#our-customers-need-custom-branding-for-their-sign-in-pages}
+
+관련 설정에 대해서는 [앱별 브랜딩](/customization/match-your-brand/#app-specific-branding) 및 [조직별 브랜딩](/customization/match-your-brand/#organization-specific-branding)을 확인하세요.
 `,
 });
 /* eslint-enable max-lines */

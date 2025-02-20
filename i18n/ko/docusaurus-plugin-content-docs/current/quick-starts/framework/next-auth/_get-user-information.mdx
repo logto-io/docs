@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### 사용자 정보 표시 \{#display-user-information}
+
+사용자가 로그인하면, `auth()`의 반환 값은 사용자의 정보를 포함하는 객체가 됩니다. 이 정보를 앱에서 표시할 수 있습니다:
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>클레임 (Claims):</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>값</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### 추가 클레임 요청 \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+추가 스코프를 요청하려면, Logto provider의 매개변수를 구성할 수 있습니다:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    {
+      id: 'logto',,
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    },
+  ],
+});
+```
+
+### 네트워크 요청이 필요한 클레임 \{#claims-that-need-network-requests}
+
+ID 토큰의 비대화를 방지하기 위해, 일부 클레임은 네트워크 요청을 통해 가져와야 합니다. 예를 들어, `custom_data` 클레임은 스코프에서 요청하더라도 사용자 객체에 포함되지 않습니다. 이러한 클레임에 접근하려면 사용자 정보를 가져오기 위해 네트워크 요청을 해야 합니다.
+
+#### 액세스 토큰 얻기 \{#get-access-token}
+
+액세스 토큰을 얻을 수 있도록 `NextAuth` 구성을 업데이트하세요:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // 세션 객체에 액세스 토큰을 주입합니다
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### 사용자 정보 가져오기 \{#fetch-user-info}
+
+이제 액세스 토큰을 사용하여 OIDC 사용자 정보 엔드포인트에 접근하세요:
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // URL을 Logto 엔드포인트로 교체하세요, `/oidc/me`로 끝나야 합니다
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+위는 간단한 예제입니다. 오류 사례를 처리하는 것을 잊지 마세요.
+
+#### 액세스 토큰 갱신 \{#access-token-refresh}
+
+액세스 토큰은 짧은 기간 동안만 유효합니다. 기본적으로, Next.js는 세션이 생성될 때만 하나를 가져옵니다. 자동 액세스 토큰 갱신을 구현하려면, [리프레시 토큰 회전](https://next-auth.js.org/v3/tutorials/refresh-token-rotation)을 참조하세요.
+
+### 스코프와 클레임 \{#scopes-and-claims}
+
+<ScopesAndClaims />

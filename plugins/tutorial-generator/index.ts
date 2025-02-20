@@ -19,8 +19,8 @@ type DocGroups = {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const getCurrentLocale = ({ permalink, slug }: DocMetadata) =>
-  permalink === slug ? undefined : permalink.split('/')[1];
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const locale = process.env.DOCUSAURUS_CURRENT_LOCALE ?? 'en';
 
 /**
  * A helper function to get the absolute path of a doc.
@@ -35,11 +35,11 @@ const getAbsoluteDocDir = (doc: DocMetadata) => {
   return path.join(__dirname, '../../', relativeSourceDirPath);
 };
 
-const getAbsoluteOutputDir = (doc: DocMetadata) => {
-  const locale = getCurrentLocale(doc);
-  const relativeOutputPath = locale
-    ? `i18n/${locale}/docusaurus-plugin-content-blog-tutorial/build-with-logto`
-    : 'tutorial/build-with-logto';
+const getAbsoluteOutputDir = () => {
+  const relativeOutputPath =
+    locale === 'en'
+      ? 'tutorial/build-with-logto'
+      : `i18n/${locale}/docusaurus-plugin-content-blog-tutorial/build-with-logto`;
   return path.join(__dirname, '../../', relativeOutputPath);
 };
 
@@ -47,6 +47,11 @@ const tutorialGenerator: PluginConfig = () => {
   return {
     name: 'programmatic-seo-tutorial-generator',
     async allContentLoaded({ allContent }) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Skipping tutorials generation in development...');
+        return;
+      }
+
       // eslint-disable-next-line no-restricted-syntax
       const docsPlugin = allContent['docusaurus-plugin-content-docs']
         ?.default as Optional<LoadedContent>;
@@ -55,12 +60,11 @@ const tutorialGenerator: PluginConfig = () => {
 
       const { docs } = docsPlugin?.loadedVersions[0] ?? {};
 
-      if (!docs || !docs[0]) {
+      if (!docs) {
         return;
       }
 
-      const outputDir = getAbsoluteOutputDir(docs[0]);
-      const locale = getCurrentLocale(docs[0]);
+      const outputDir = getAbsoluteOutputDir();
 
       const socialTemplatePath = path.join(outputDir, '_template-social.mdx');
       const passwordlessTemplatePath = path.join(outputDir, '_template-passwordless.mdx');
@@ -134,18 +138,18 @@ const tutorialGenerator: PluginConfig = () => {
       const { sdks, socialConnectors, emailConnectors, smsConnectors, ssoConnectors } =
         tutorialMetadata;
 
-      // Copy assets folders to output directory
-      const assetsDir = path.join(__dirname, './assets');
-      const targetAssetsDir = path.join(outputDir, 'assets');
+      // // Copy assets folders to output directory
+      // const assetsDir = path.join(__dirname, './assets');
+      // const targetAssetsDir = path.join(outputDir, 'assets');
 
-      await fs.mkdir(targetAssetsDir, { recursive: true });
-      const assetFiles = await fs.readdir(assetsDir);
+      // await fs.mkdir(targetAssetsDir, { recursive: true });
+      // const assetFiles = await fs.readdir(assetsDir);
 
-      await Promise.all(
-        assetFiles.map(async (file) =>
-          fs.copyFile(path.join(assetsDir, file), path.join(targetAssetsDir, file))
-        )
-      );
+      // await Promise.all(
+      //   assetFiles.map(async (file) =>
+      //     fs.copyFile(path.join(assetsDir, file), path.join(targetAssetsDir, file))
+      //   )
+      // );
 
       const generate = async (
         sdks: DocMetadata[],

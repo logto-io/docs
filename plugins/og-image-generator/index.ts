@@ -12,18 +12,24 @@ import sharp from 'sharp';
 import { getFonts } from './fonts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const outputDir = path.join(__dirname, '../../static/img/og');
+const currentLocale = String(process.env.DOCUSAURUS_CURRENT_LOCALE ?? 'en');
+const outputDir = path.join(__dirname, `../../staticLocalized/${currentLocale}/img/og`);
 const templateImagePath = path.join(__dirname, './template.png');
 
 const ogImageGenerator: PluginConfig = () => {
   return {
     name: 'og-image-generator',
     async allContentLoaded({ allContent }) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Skipping OG images generation in development...');
+        return;
+      }
+
       // eslint-disable-next-line no-restricted-syntax
       const docsPlugin = allContent['docusaurus-plugin-content-docs']
         ?.default as Optional<LoadedContent>;
 
-      console.log('Generating OG images for docs...');
+      console.log(`Generating OG images for docs in locale ${currentLocale}...`);
 
       const { docs } = docsPlugin?.loadedVersions[0] ?? {};
 
@@ -34,7 +40,7 @@ const ogImageGenerator: PluginConfig = () => {
       const fonts = await getFonts();
 
       if (!existsSync(outputDir)) {
-        await fs.mkdir(outputDir);
+        await fs.mkdir(outputDir, { recursive: true });
       }
 
       await Promise.all(
