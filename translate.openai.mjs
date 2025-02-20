@@ -33,13 +33,15 @@ const buildInstructions = (locale, asIsTerms, terms, patterns) => {
   const isCJK = ['zh', 'ja', 'ko'].includes(locale);
 
   return [
-    'Keep frontmatter keys unchanged. Translate values, except for the `slug` value.',
+    'Keep frontmatter keys unchanged. Translate values, except for the `slug` and `tutorial_name` values.',
     'Do not translate JSON keys, inline code, component names, keys, URLs, or file paths.',
     `Do not translate the following terms, including their plural forms: ${asIsTerms.join(', ')}.`,
     `For all the keys in the following JSON object (case-insensitive matching), use the values as translations and append the untranslated content in parentheses. For example, if the JSON object is \`{ "${term1[0]}": "${term1[1]}", "${term2[0]}": "${term2[1]}" }\`, then translate "${term1[0]}" to "${term1[1]} (${term1[0]})" and "${term2[0]}" to "${term2[1]} (${term2[0]})". The JSON object is \`${JSON.stringify(terms)}\`.`,
     `For all the patterns in the keys of the following JSON object (case-insensitive matching), use the values as translations. For example, if the JSON object is \`{ "${pattern1[0]}": "${pattern1[1]}", "${pattern2[0]}": "${pattern2[1]}" }\`, then translate "${pattern1[0].replaceAll(matchPattern, 'Logto')}" to "${pattern1[1].replaceAll(matchPattern, 'Logto')}" and "${pattern2[0].replaceAll(matchPattern, 'Logto')}" to "${pattern2[1].replaceAll(matchPattern, 'Logto')}". The JSON object is \`${JSON.stringify(patterns)}\`.`,
-    'Ensure all import statements are not translated and copied as-is.',
+    'Ensure all "import" statements are copied and kept as-is. E.g. `import { Button } from "@site/components"`.',
     'For mermaid diagrams, translate only the text within the diagram, keeping the diagram type and structure unchanged.',
+    locale.startsWith('ja') &&
+      'Avoid direct translating "you" or "your" to "あなた" or "あなたの" when translating into Japanese. E.g. "Add authentication to your {framework} application" should be translated to "アプリケーションへ認証機能の追加".',
     locale.startsWith('zh') && 'Prefer "你" over "您" when translating into Chinese.',
     isCJK &&
       'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',

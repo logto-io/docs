@@ -1,0 +1,370 @@
+---
+slug: /quick-starts/traditional-web
+sidebar_label: 傳統網頁
+sidebar_custom_props:
+  description: 將 Logto 整合到在伺服器上運行的傳統網頁應用程式中。
+---
+
+import redirectUriFigure from '@site/docs/quick-starts/assets/web-redirect-uri.png';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import AppNote from '../../fragments/_app-note.mdx';
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+# 為你的傳統網頁應用程式新增驗證 (Authentication)
+
+<AppNote type="Traditional web" />
+
+你的應用程式可能運行在伺服器端而非瀏覽器上，使用像 Django、Laravel 等框架。這稱為傳統網頁應用程式。如果你在此頁面找不到合適的 SDK，可能需要手動整合。
+
+本文將逐步指導你完成整合。我們以 Node.js 中的 Express 為例。
+
+:::tip
+
+本文不僅適用於 Express，如果你使用其他框架甚至其他語言，可以將 `@logto/js` 替換為其他語言的核心 SDK，然後調整部分步驟。
+
+:::
+
+## 獲取原始碼 \{#get-source-code}
+
+你可以前往 [GitHub](https://github.com/logto-io/express-example) 獲取本指南的最終程式碼。
+
+## 開始一個 Express 專案 \{#start-an-express-project}
+
+使用 `express-generator`，你可以快速開始一個 Express 專案。
+
+```bash
+mkdir express-logto
+cd express-logto
+npx express-generator
+```
+
+## 安裝相依套件 \{#install-dependencies}
+
+範例應用程式需要 4 個相依套件：
+
+1. **@logto/js**：Logto 的 JavaScript 核心 SDK。
+2. **node-fetch**：在 Node.js 執行環境中提供 `window.fetch` 相容 API 的最小代碼。
+3. **express-session**：一個 session 中介軟體，我們將使用 session 來儲存使用者權杖。
+4. **js-base64**：另一個 Base64 編解碼器。
+
+<Tabs>
+
+<TabItem value="npm" label="npm">
+
+```bash
+npm i @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="yarn" label="Yarn">
+
+```bash
+yarn add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+
+</Tabs>
+
+## 使用 session \{#use-session}
+
+當使用者登入時，他們將獲得一組權杖（存取權杖 (Access Token)、ID 權杖 (ID Token)、重新整理權杖 (Refresh Token)）和互動數據，而 session 是儲存它們的絕佳位置。
+
+我們在前一步已安裝 [express-session](https://github.com/expressjs/session)，現在讓我們簡單地添加以下代碼來設置它：
+
+```js
+// app.js
+
+const session = require('express-session');
+
+app.use(
+  session({
+    secret: 'keyboard cat', // 更改為你自己的密鑰
+    cookie: { maxAge: 86400 },
+  })
+);
+```
+
+## 實作用戶驗證功能 \{#implement-functions-to-authenticate-users}
+
+:::tip
+
+我們假設應用程式運行在 `http://localhost:3000`。
+
+:::
+
+在此步驟中，我們需要實作以下驗證功能：
+
+1. `getSignInUrl`：構建並返回 Logto 授權伺服器的完整 URL，使用者將被重定向至該 URL。
+2. `handleSignIn`：解析驗證流程完成後的回調 URL，獲取 code 查詢參數，然後獲取權杖（存取權杖、重新整理權杖和 ID 權杖）以完成登入流程。
+3. `refreshTokens`：使用重新整理權杖交換新的存取權杖。
+
+<GetAppSecret />
+
+```js
+// logto.js
+
+const {
+  withReservedScopes,
+  fetchOidcConfig,
+  discoveryPath,
+  generateSignInUri,
+  verifyAndParseCodeFromCallbackUri,
+  fetchTokenByAuthorizationCode,
+  fetchTokenByRefreshToken,
+} = require('@logto/js');
+const fetch = require('node-fetch');
+const { randomFillSync, createHash } = require('crypto');
+const { fromUint8Array } = require('js-base64');
+
+const config = {
+  endpoint: 'https://logto.dev',
+  appId: 'foo',
+  appSecret: '<your-app-secret-copied-from-console>',
+  redirectUri: 'http://localhost:3000/callback', // 你可能需要將其替換為應用程式的生產地址
+  scopes: withReservedScopes().split(' '),
+};
+
+const requester = (input, init) => {
+  const { appId, appSecret } = config;
+
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`, 'utf8').toString('base64')}`,
+    },
+  });
+};
+
+const generateRandomString = (length = 64) => {
+  return fromUint8Array(randomFillSync(new Uint8Array(length)), true);
+};
+
+const generateCodeChallenge = async (codeVerifier) => {
+  const encodedCodeVerifier = new TextEncoder().encode(codeVerifier);
+  const hash = createHash('sha256');
+  hash.update(encodedCodeVerifier);
+  const codeChallenge = hash.digest();
+  return fromUint8Array(codeChallenge, true);
+};
+
+const getOidcConfig = async () => {
+  return fetchOidcConfig(new URL(discoveryPath, config.endpoint).toString(), requester);
+};
+
+exports.getSignInUrl = async () => {
+  const { authorizationEndpoint } = await getOidcConfig();
+  const codeVerifier = generateRandomString();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateRandomString();
+
+  const { redirectUri, scopes, appId: clientId } = config;
+
+  const signInUri = generateSignInUri({
+    authorizationEndpoint,
+    clientId,
+    redirectUri: redirectUri,
+    codeChallenge,
+    state,
+    scopes,
+  });
+
+  return { redirectUri, codeVerifier, state, signInUri };
+};
+
+exports.handleSignIn = async (signInSession, callbackUri) => {
+  const { redirectUri, state, codeVerifier } = signInSession;
+  const code = verifyAndParseCodeFromCallbackUri(callbackUri, redirectUri, state);
+
+  const { appId: clientId } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const codeTokenResponse = await fetchTokenByAuthorizationCode(
+    {
+      clientId,
+      tokenEndpoint,
+      redirectUri,
+      codeVerifier,
+      code,
+    },
+    requester
+  );
+
+  return codeTokenResponse;
+};
+
+exports.refreshTokens = async (refreshToken) => {
+  const { appId: clientId, scopes } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const tokenResponse = await fetchTokenByRefreshToken(
+    {
+      clientId,
+      tokenEndpoint,
+      refreshToken,
+      scopes,
+    },
+    requester
+  );
+
+  return tokenResponse;
+};
+```
+
+## 登入 \{#sign-in}
+
+<SignInFlowSummary />
+
+### 配置重定向 URI \{#configure-redirect-uri}
+
+<ConfigureRedirectUri figureSrc={redirectUriFigure} redirectUri="http://localhost:3000/callback" />
+
+### 實作登入路由 \{#implement-sign-in-route}
+
+<SignInNote calling="getSignInUrl()" />
+
+在 Express 中創建一個登入路由：
+
+```js
+const { getSignInUrl } = require('./logto');
+
+app.get('/sign-in', async (req, res) => {
+  const { redirectUri, codeVerifier, state, signInUri } = await getSignInUrl();
+  req.session.signIn = { codeVerifier, state, redirectUri };
+  res.redirect(signInUri);
+});
+```
+
+以及一個處理回調的路由：
+
+```js
+app.get('/callback', async (req, res) => {
+  if (!req.session.signIn) {
+    res.send('Bad request.');
+    return;
+  }
+
+  const response = await handleSignIn(
+    req.session.signIn,
+    `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  );
+  req.session.tokens = {
+    ...response,
+    expiresAt: response.expiresIn + Date.now(),
+    idToken: decodeIdToken(response.idToken),
+  };
+  req.session.signIn = null;
+
+  res.redirect('/');
+});
+```
+
+## 登出 \{#sign-out}
+
+TODO: 連結到用戶參考中的「session & cookies」章節。
+
+你可以清除 session 中的權杖來讓使用者從此應用程式登出。並檢查此連結以了解更多關於「登出」的資訊。
+
+```js
+app.get('/sign-out', (req, res) => {
+  req.session.tokens = null;
+  res.send('Sign out successful');
+});
+```
+
+## 存取受保護的資源 \{#access-protected-resource}
+
+創建一個名為 `withAuth` 的中介軟體，將 `auth` 物件附加到 `req`，並驗證使用者是否已登入。
+
+```js
+// auth.js
+
+const { decodeIdToken } = require('@logto/js');
+const { refreshTokens } = require('./logto');
+
+const withAuth =
+  ({ requireAuth } = { requireAuth: true }) =>
+  async (req, res, next) => {
+    if (requireAuth && !req.session.tokens) {
+      res.redirect('/sign-in');
+      return;
+    }
+
+    if (req.session.tokens) {
+      if (req.session.tokens.expiresAt >= Date.now()) {
+        // 存取權杖過期，刷新以獲取新權杖
+        try {
+          const response = await refreshTokens(req.session.tokens.refreshToken);
+          req.session.tokens = {
+            ...response,
+            expiresAt: response.expiresIn + Date.now(),
+            idToken: decodeIdToken(response.idToken),
+          };
+        } catch {
+          // 交換失敗，重定向至登入
+          res.redirect('/sign-in');
+          return;
+        }
+      }
+
+      req.auth = req.session.tokens.idToken.sub;
+    }
+
+    next();
+  };
+
+module.exports = withAuth;
+```
+
+創建 `index` 頁面，為訪客顯示登入連結，為已登入的使用者顯示前往個人資料的連結：
+
+```js
+router.get('/', withAuth({ requireAuth: false }), function (req, res, next) {
+  res.render('index', { auth: Boolean(req.auth) });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  if auth
+    p: a(href="/user") Go to profile
+  else
+    p: a(href="/sign-in") Click here to sign in
+```
+
+創建 `user` 頁面，顯示 `userId`（`主體 (subject)`）：
+
+```js
+app.get('/user', withAuth(), (req, res, next) => {
+  res.render('user', { userId: req.auth });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  p userId: #{userId}
+```
+
+## 進一步閱讀 \{#further-readings}
+
+<FurtherReadings />
+
+<Url href="https://blog.logto.io/gpt-action-oauth">在 GPT 操作中驗證使用者：構建個人議程助理</Url>

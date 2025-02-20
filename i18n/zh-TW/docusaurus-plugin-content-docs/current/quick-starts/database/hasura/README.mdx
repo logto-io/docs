@@ -1,0 +1,115 @@
+---
+slug: /quick-starts/hasura
+sidebar_label: Hasura
+sidebar_custom_props:
+  description: 將 Logto 與 Hasura 整合。
+---
+
+import hasuraApiWithScopesImage from '@site/docs/quick-starts/database/hasura/hasura-api-with-scopes.webp';
+import hasuraApiImage from '@site/docs/quick-starts/database/hasura/hasura-api.webp';
+import hasuraJwtConfigImage from '@site/docs/quick-starts/database/hasura/hasura-jwt-config.webp';
+import userAccessTokenScriptImage from '@site/docs/quick-starts/database/hasura/user-access-token-script.webp';
+import userMaintainerRoleImage from '@site/docs/quick-starts/database/hasura/user-maintainer-role.webp';
+import userReaderRoleImage from '@site/docs/quick-starts/database/hasura/user-reader-role.webp';
+import userWithRolesImage from '@site/docs/quick-starts/database/hasura/user-with-roles.webp';
+
+# 為你的 Hasura 應用程式新增驗證 (Authentication)
+
+[Hasura](https://hasura.io/) 是一個能快速為你的資料提供對應 GraphQL 和 REST API 的工具。考量到資料安全性，Hasura 也提供了針對每個不同 API 進行細緻存取控制的能力。
+
+通常，Hasura 使用者會利用其他身分管理和驗證服務，其中 Logto 是非常受歡迎的一個。
+
+在這篇文章中，我們假設你已經在使用 Hasura 服務。我們將介紹如何整合 Hasura 和 Logto，以最大化你的資料安全性。如果你還沒有 Logto 帳戶，立即註冊並開始使用吧！
+
+## 背景 \{#background}
+
+Hasura 採用 [角色型存取管理](https://hasura.io/docs/latest/auth/overview/)，而 Logto 使用標準的 [角色型存取控制 (RBAC)](/authorization/role-based-access-control)。
+
+在 Logto 的 RBAC 模型和最佳實踐中，我們建議使用者使用 `scope` 來對應最細緻的權限，使用 `role` 作為一組 `scope` 以便於批量操作，最終在資源提供者端檢查 `scope` 以驗證使用者是否能執行特定操作。
+
+在 Hasura 中，`role` 對應於最細緻的權限粒度，並且權限檢查是針對 `role` 進行的。因此，在配置 Logto 時，我們建議將一個 `role` 映射到一個 `scope`。這種方法可以將 Logto 和 Hasura 的權限連接起來，以避免混淆和誤用。
+
+Hasura 可以使用 Webhook 或 JWT 來支持存取控制。我們之前的 [文章](https://blog.logto.io/logto-x-hasura) 介紹了如何使用 Webhook，接下來的部分將說明如何利用 Hasura 的 JWT 模式存取控制。
+
+## 開始使用 \{#get-started}
+
+讓我們從一個簡單的例子開始。假設使用者已經在 Hasura 中擁有兩個 API，`GET /user` 和 `PATCH /user`，分別對應兩個角色：`user:reader` 和 `user:maintainer`。
+
+### 1. 在 Logto 中建立 Hasura API 資源 \{#1-create-hasura-api-resource-in-logto}
+
+在 Logto 中建立一個 Hasura API 資源。
+
+<img src={hasuraApiImage} alt="Hasura API" />
+
+### 2. 根據 Hasura 設定在 Logto 中建立角色 \{#2-create-roles-according-to-hasura-setup-in-logto}
+
+我們需要為步驟 1 中提到的 Hasura API 資源建立兩個 `scope`，即 `read:user` 和 `maintain:user`，然後建立兩個角色：`user:reader`（包含 `read:user` scope）和 `user:maintainer`（包含 `maintain:user` scope），以一對一對應 Hasura 的角色。並根據需要將這些角色分配給 Logto 使用者。
+
+<img src={hasuraApiWithScopesImage} alt="Hasura API with scopes" />
+
+<img src={userReaderRoleImage} alt="User reader role" />
+
+<img src={userMaintainerRoleImage} alt="User maintainer role" />
+
+### 3. 配置 Hasura 環境變數 `HASURA_GRAPHQL_JWT_SECRET` 以啟用 JWT 模式 \{#3-configure-hasura-environment-variable-hasura_graphql_jwt_secret-to-enable-jwt-mode}
+
+根據 [Hasura JWT 配置選項](https://hasura.io/docs/latest/auth/authentication/jwt/#hasura-jwt-configuration-options)，我們需要新增並配置環境變數 `HASURA_GRAPHQL_JWT_SECRET`，才能使用 JWT 進行存取控制。
+
+有許多不同的選項可以配置，但這裡介紹最簡單的情況：只需配置 `jwk_url`。此值可以從你的 Logto 的 OpenID 配置端點（https://your.logto.domain/oidc/.well-known/openid-configuration）獲得。
+
+<img src={hasuraJwtConfigImage} alt="Hasura JWT config" />
+
+### 4. 自訂使用者存取權杖的額外宣告 (Claims) \{#4-customize-user-access-token-extra-claims}
+
+使用 Logto 的自訂權杖宣告功能，自訂邏輯以在使用者存取權杖中新增額外宣告。
+
+<img src={userAccessTokenScriptImage} alt="User access token script" />
+
+自訂 `getCustomJwtClaims` 方法以在 JWT 中新增 Hasura 依賴的資料來實現存取控制。這可以包括與當前授權使用者相關的資料，包括他們擁有的 `role`，這些可以透過 `context` 訪問。
+
+我們還定義了一個環境變數 `USER_DEFAULT_ROLE_NAMES` 以避免硬編碼。
+
+### 5. 整合 Logto SDK \{#5-integrate-logto-sdk}
+
+配置完 Logto 和 Hasura 後，將你的應用程式與 Logto SDK 整合。這裡我們使用一個 React 範例來預覽使用者登入後由 Logto 發行的使用者存取權杖。
+
+<img src={userWithRolesImage} alt="User with roles" />
+
+首先，我們將先前建立的 `user:reader` 和 `user:maintainer` 角色分配給使用者，然後以該使用者身份登入。
+
+```tsx
+const config: LogtoConfig = {
+  endpoint: 'http://localhost:3001',
+  appId: '<your-application-id>',
+  appSecret: '<your-application-secret>',
+  scopes: [
+    ...// existing scopes
+    'read:user',
+    'maintain:user',
+  ],
+  resources: [
+    ...// existing resources
+    'https://*.hasura.app/api',
+  ],
+};
+```
+
+獲取使用者存取權杖並請求 Hasura API：
+
+```tsx
+const accessToken = await logto.getAccessToken('https://*.hasura.app/api');
+
+// 在發送請求到 Hasura 之前
+request.headers.set('Authorization', `Bearer ${accessToken}`);
+request.headers.set('x-Hasura-Role', '<required-role-for-the-endpoint>');
+```
+
+## 結論 \{#conclusion}
+
+在本文中，我們提供了 Hasura 支持的另一種基於 JWT 的存取控制方法，除了 Webhook 之外。
+
+通過比較 Hasura 的 [Webhook](https://hasura.io/docs/latest/auth/authentication/webhook/) 和 [JWT](https://hasura.io/docs/latest/auth/authentication/jwt/) 存取控制的過程，我們可以看到 Webhook 方法在每次 Hasura 請求時都會向 Logto 發送 Webhook 並等待回應；而基於 JWT 的方法可以持續使用直到 JWT 過期。
+
+JWT 方法可以減少網路負載並消除 Webhook 帶來的網路延遲；同時，Webhook 方法可以實時同步使用者權限的變更。
+
+使用者可以根據這些結論，結合實際業務需求選擇合適的方法。
