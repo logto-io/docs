@@ -1,0 +1,125 @@
+---
+sidebar_position: 2
+---
+
+# 指南：Python
+
+## 步驟 1：從請求標頭中提取 Bearer 權杖 \{#step-1-extract-the-bearer-token-from-request-header}
+
+一個授權請求應包含一個 `Authorization` 標頭，其內容為 `Bearer <access_token>`。從請求標頭中提取授權權杖：
+
+```python
+"""requires-auth.py
+"""
+def get_auth_token():
+  auth = request.headers.get("Authorization", None)
+
+  if not auth:
+    raise Error({ code: 'auth.authorization_header_missing', status: 401 })
+
+  contents = auth.split()
+
+  if len(contents) < 2
+    raise Error({code: 'auth.authorization_token_invalid_format', status: 401})
+
+  elif contents[0] != 'Bearer'
+    raise Error({code: 'auth.authorization_token_type_not_supported', status: 401})
+
+  return contents[1]
+```
+
+## 步驟 2：權杖驗證 \{#step-2-token-validation}
+
+為了演示，我們使用 Flask 應用程式和 [jose](https://github.com/mpdavis/python-jose) 套件來創建 require_auth 裝飾器，以驗證權杖的簽名、過期狀態和所需宣告 (Claims)。
+
+### 安裝 `python-jose` 作為你的依賴項 \{#install-python-jose-as-your-dependency}
+
+選擇你在 Logto 中使用的加密技術。（預設為 `ecdsa`）
+
+```
+pip install python-jose[ecdsa]
+
+```
+
+### 獲取 Logto 的 OIDC 配置 \{#retrieve-logtos-oidc-configurations}
+
+你將需要一組 JWK 公鑰和權杖簽發者來驗證接收到的 JWS 權杖的簽名和來源。所有最新的公共 Logto 授權配置可以在 `https://<your-logto-domain>/oidc/.well-known/openid-configuration` 找到。
+
+例如，調用 `https://tenant-id.logto.app/oidc/.well-known/openid-configuration`。並在回應正文中找到以下兩個欄位：
+
+```json
+{
+  "jwks_uri": "https://tenant-id.logto.app/oidc/jwks",
+  "issuer": "https://tenant-id.logto.app/oidc"
+}
+```
+
+### 創建授權驗證裝飾器 \{#create-the-authorization-validation-decorator}
+
+:::warning
+
+如果你使用 [基於角色的存取控制 (RBAC)](/authorization/role-based-access-control/protect-api-resources-with-rbac)，也需要進行權限範圍 (Scope) 驗證。
+
+:::
+
+```python
+"""requires-auth.py
+"""
+
+import json
+from flask import request,  _request_ctx_stack
+from six.moves.urllib.request import urlopen
+from functools import wraps
+from jose import jwt
+
+def requires_auth(f):
+  @wraps(f)
+  def decorated(*args, **kwargs):
+    token = get_token_auth_header()
+
+# 從 Logto 獲取的 jwks_uri 端點
+    jwks_uri = urlopen('https://<your-logto-domain>/oidc/jwks')
+
+# 從 Logto 獲取的簽發者
+    issuer = 'https://<your-logto-domain>/oidc'
+
+    jwks = json.loads(jwks_uri.read())
+
+    try:
+      payload = jwt.decode(
+        token,
+        jwks,
+# 與 jwks 一起獲取的 jwt 編碼算法。預設為 ES384
+        algorithms=jwt.get_unverified_header(token).get('alg'),
+# 在 Logto 中註冊的 API 資源標示符
+        audience='<your request listener resource indicator>',
+        issuer=issuer,
+        options={
+          'verify_at_hash': False
+        }
+      )
+    except Exception:
+# 異常處理
+      raise Error({code: 'invalid_token', status: 401})
+
+# 自訂代碼處理 payload
+    _request_ctx_stack.top.user_id = payload.get('sub')
+
+    return f(*args, **kwargs)
+  return decorated
+```
+
+## 將裝飾器應用於你的 API \{#apply-decorator-to-your-api}
+
+```python
+from flask import Flask
+from flask_cors import cross_origin
+
+APP = Flask(__name__)
+
+@APP.route("/user/info")
+@cross_origin(headers=["Content-Type", "Authorization"])
+@requires_auth
+def api:
+# 你的 API 邏輯
+```

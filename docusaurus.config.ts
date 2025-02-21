@@ -136,7 +136,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale: 'en',
-    locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN'],
+    locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
   },
 
   staticDirectories: [
@@ -196,6 +196,15 @@ const config: Config = {
         },
       } satisfies Options,
     ],
+  ],
+  // To enabled math formula rendering
+  // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
+  stylesheets: [
+    {
+      href: 'https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css',
+      type: 'text/css',
+      crossorigin: 'anonymous',
+    },
   ],
   themeConfig: {
     navbar: {

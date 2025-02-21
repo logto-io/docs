@@ -1,0 +1,110 @@
+---
+sidebar_position: 1
+---
+
+# 配置組織範本
+
+我們將通過 Logto Console 來配置組織範本功能。
+
+首先，導航到 <CloudLink to="/organization-template">Console > 組織範本</CloudLink>。你會看到組織範本包含兩個部分：[組織角色](/authorization/organization-template#organization-role) 和 [組織權限](/authorization/organization-template#organization-permission)。組織範本為多個組織定義了共享的存取控制策略（權限和角色）。
+
+## 通過 Logto Console 配置 \{#configure-via-logto-console}
+
+### 創建組織權限 \{#create-organization-permission}
+
+組織權限是組織範本的重要組成部分。這些權限專為產品中的組織設計。以下是管理它們的方法：
+
+- **找到組織權限標籤頁：** 前往「組織權限」標籤頁查看現有權限。
+- **新增、刪除和編輯：** 你可以輕鬆新增新的組織權限，刪除不需要的權限，並根據需要編輯現有權限。
+
+### 創建組織角色 \{#create-organization-role}
+
+Logto 支援兩種類型的組織角色，這與使用者/系統層級的 RBAC 相同：
+
+- **使用者**：分配給使用者的角色。
+- **機器對機器**：分配給 [機器對機器應用程式](/quick-starts/m2m) 的角色。
+
+<br />
+
+Logto 允許你以多種方式定義組織角色，以適應系統結構：
+
+**選項 1：僅組織權限的組織角色**
+
+- **何時使用：** 你有獨立的使用者/系統端點和組織端點。
+- **解釋：** 如果產品的技術架構和 API 設計明確區分 [使用者/系統層級資源](/authorization/role-based-access-control#permissionsscopes) 與 [組織資源](/authorization/organization-template#organization-permission)，這是最簡單的方法。你的組織角色將僅包含你為組織定義的權限。
+
+**選項 2：僅 API 權限的組織角色**
+
+- **何時使用：** 使用者/系統層級和組織層級的存取控制由相同的端點處理。
+- **解釋：** 如果你希望通過統一的 [API 資源](/authorization/api-resources) 管理所有權限，請選擇此選項。
+
+**選項 3：組織角色中的混合 API 和組織權限**
+
+- **何時使用：** 你的產品為使用者/系統層級和組織層級定義了獨立的端點，但某些使用者角色需要混合 [使用者層級](/authorization/role-based-access-control#permissionsscopes) 和 [組織層級權限](/authorization/organization-template#organization-permission)。
+- **解釋：** 這提供了最大的靈活性，但管理起來也可能最為複雜。
+
+## 通過 Logto Management API 配置 \{#configure-via-logto-management-api}
+
+Console 中可以完成的所有操作也可以通過 [Management API](/integrate-logto/interact-with-management-api) 完成，包括：管理組織範本以創建、刪除或編輯組織權限和角色。
+
+完整的功能列表，請參閱我們的 API 參考：
+
+<Url href="https://openapi.logto.io/operation/operation-updateorganizationrole">
+  Logto Management API - 組織角色
+</Url>
+
+<Url href="https://openapi.logto.io/operation/operation-listorganizationscopes">
+  Logto Management API - 組織權限
+</Url>
+
+使用 Logto Management API，你可以創建自定義的組織體驗，例如允許組織管理員自助創建組織。查看 [此部分](/end-user-flows/organization-experience/) 以啟用更多組織層級的功能和管理。
+
+## 處理成員權限變更 \{#handle-member-permission-change}
+
+類似於 API RBAC，成員權限可能在會話期間發生變更——例如，他們可能被分配新的角色或現有角色權限被修改。
+
+當成員權限變更時會發生什麼？有兩種情況。
+
+#### 系統中未引入新權限 \{#no-new-permissions-introduced-into-the-system}
+
+即使使用者的組織權限發生變更，當前的組織存取權杖（即組織權杖）將保持有效，直到它們過期。然而，新權限將在後續的組織權杖中反映，任何被撤銷的權限將被省略。
+
+:::note
+
+組織權杖有固定的到期時間，無法更改，與一般的存取權杖不同。
+
+:::
+
+定期調用 [Logto Management API](/integrate-logto/interact-with-management-api/) 端點或建立長期連接（例如使用 WebSocket）以動態獲取使用者的組織權限。檢測到變更時，清除現有的組織權杖，新發行的權杖將自動反映組織權限範圍的變更。
+
+```bash
+curl \
+ -X GET https://[tenant_id].logto.app/api/organizations/{id}/users/{userId}/scopes \
+ -H "Authorization: Bearer $ORGANIZATION_TOKEN"
+```
+
+當檢測到權限變更時，首先從存儲中清除組織權杖，然後調用 SDK 方法 `getOrganizationToken(organizationId)` 獲取新的權杖。新發行的組織權杖應反映權限變更。
+
+#### 系統中引入新權限並分配給成員 \{#new-permission-is-introduced-into-the-system-and-assigned-to-a-member}
+
+當新權限被引入到你的組織範本中時會發生這種情況。在這種情況下，你需要在初始化 Logto 客戶端時首先包含新引入的權限範圍。例如：
+
+```tsx
+new LogtoClient({
+  appId: 'your-app-id',
+  endpoint: 'your-logto-endpoint',
+  scopes: [
+    'urn:logto:scope:organizations',
+    // ... 你的其他現有組織權限範圍,
+    'new-organization-permission-scope',
+  ],
+});
+```
+
+其次，每個客戶端應用程式需要重新同意或重新登入使用者，以接收新的權限變更。然後，新權限範圍將在新的組織權杖中反映。
+
+重新同意的代碼示例：
+
+```tsx
+signIn({ redirectUri: 'your-redirect-url', prompt: 'consent' });
+```

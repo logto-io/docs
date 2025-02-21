@@ -1,0 +1,347 @@
+---
+id: platform-sdk-convention
+title: 平台 SDK 規範
+sidebar_label: 平台 SDK 規範
+sidebar_position: 4
+---
+
+# 平台 SDK 規範
+
+平台 SDK 提供了一種標準方式，將客戶端與 Logto 服務整合到特定平台中，加速整合過程。
+
+- 平台 SDK 封裝了 [核心](/developers/sdk-conventions/core-sdk-convention) 與平台特定的實作。
+- 平台 SDK 應提供基本類型，使 SDK 更易於使用。
+- 平台 SDK 應作為名為 `LogtoClient` 的類匯出。
+
+## 基本類型 \{#basic-types}
+
+<details>
+  <summary>
+
+### LogtoConfig \{#logtoconfig}
+
+</summary>
+
+| 名稱                | 類型       | 必需 | 預設值                              | 備註                                                     |
+| ------------------- | ---------- | ---- | ----------------------------------- | -------------------------------------------------------- |
+| endpoint            | `string`   | ✅   |                                     | OIDC 服務端點。                                          |
+| appId               | `string`   | ✅   |                                     | 應用程式 ID 來自我們在 Logto 服務中註冊的應用程式。      |
+| scopes              | `string[]` |      | `[openid, offline_access, profile]` | 此欄位始終包含 `openid`、`offline_access` 和 `profile`。 |
+| resources           | `string[]` |      |                                     | 我們想要使用的受保護資源標示符。                         |
+| prompt              | `string`   |      | `consent`                           | 在 `generateSignInUri` 中使用的 prompt 值。              |
+| usingPersistStorage | `boolean`  |      | `true`                              | 決定是否在本地機器上儲存憑證。                           |
+
+**\*備註**
+
+- 如果需要，可以擴展此 `LogtoConfig`。
+- `usingPersistStorage` 僅在客戶端 SDK 中提供。例如，iOS、Android 和 SPA。
+
+</details>
+
+<details>
+  <summary>
+
+### 存取權杖 (AccessToken) \{#accesstoken}
+
+</summary>
+
+| 名稱      | 類型     | 備註               |
+| --------- | -------- | ------------------ |
+| token     | `string` |                    |
+| scope     | `string` |                    |
+| expiresAt | `number` | 以秒為單位的時間戳 |
+
+</details>
+
+## LogtoClient \{#logtoclient}
+
+### 屬性 \{#properties}
+
+<details>
+  <summary>
+
+### logtoConfig \{#logtoconfig-1}
+
+</summary>
+
+**類型**
+
+`LogtoConfig`
+
+</details>
+
+<details>
+  <summary>
+
+### oidcConfig \{#oidcconfig}
+
+</summary>
+
+**類型**
+
+`OidcConfigResponse?`
+
+</details>
+
+<details>
+  <summary>
+
+### accessTokenMap \{#accesstokenmap}
+
+</summary>
+
+**類型**
+
+`Map<string, AccessToken>`
+
+**鍵**
+
+- 鍵應由 `scope` 和 `resource` 構成。
+- `scope` 中的值應按字母順序排序並以空格連接。
+- 鍵應按以下模式構建：`${scope}@${resource}`。
+- 如果 `scope` 或 `resource` 為空或為 null，則其值應視為空。
+
+例如，`"offline_access openid read:usr@https://logto.dev/api"`、`"@https://logto.dev/api"`、`"openid@"`、`"@"`。
+
+**值**
+
+- `AccessToken`，使用 `expiresAt` 屬性指示存取權杖過期的確切時間。
+
+**備註**
+
+- 在 Logto V1 中，我們不支援自訂權限範圍，因此 `scope` 將始終為 null 值。
+- 當構建存取權杖鍵以儲存存取權杖時：
+  - `scope` 將始終為 null 值。
+  - 如果存取權杖不是 jwt，則將 `resource` 視為 null 值。
+  - 如果存取權杖是 jwt，則解碼存取權杖並使用有效負載的 `aud` 宣告值作為存取權杖鍵的 `resource` 部分。
+
+</details>
+
+<details>
+  <summary>
+
+### 重新整理權杖 (RefreshToken) \{#refreshtoken}
+
+</summary>
+
+**類型**
+
+`string?`
+
+**備註**
+
+`refreshToken` 將在以下情況下設置或更新：
+
+- 從儲存中載入 `refreshToken`。
+- 伺服器在成功獲取權杖的回應中返回 `refreshToken`。
+- 登出（將設置為 `null`）。
+
+</details>
+
+<details>
+  <summary>
+
+### ID 權杖 (IdToken) \{#idtoken}
+
+</summary>
+
+**類型**
+
+`string?`
+
+**備註**
+
+- 如果 `idToken` 來自後端，應進行驗證。
+- `idToken` 將在以下情況下設置或更新：
+  - 從儲存中載入 `idToken`。
+  - 伺服器在成功獲取權杖的回應中返回 `idToken`。
+  - 登出（將設置為 `null`）。
+
+</details>
+
+### 方法 \{#methods}
+
+<details>
+  <summary>
+
+### 建構函數 (constructor) \{#constructor}
+
+</summary>
+
+**參數**
+
+| 參數        | 類型          |
+| ----------- | ------------- |
+| logtoConfig | `LogtoConfig` |
+
+**返回類型**
+
+`LogtoClient`
+
+**備註**
+
+- 如果需要，可以添加額外的參數。
+- 如果在 logtoConfig 中啟用了 usePersistStorage，平台 SDK 將提供以下功能：
+  - 使用基於 `clientId` 的唯一鍵儲存持久性資料。
+  - 在初始化時從本地機器載入 `refreshToken` 和 `idToken`。
+  - 在 `Core.fetchTokenByAuthorizationCode` 和 `Core.fetchTokenByRefreshToken` 中本地儲存 `refreshToken` 和 `idToken`。
+
+</details>
+
+<details>
+  <summary>
+
+### 是否已驗證 (isAuthenticated) \{#isauthenticated}
+
+</summary>
+
+用於判斷使用者是否已驗證。  
+這也可以定義為一個 getter。
+
+當以下情況成立時，使用者被視為已驗證：
+
+- 我們已成功獲取 ID 權杖。
+- 我們已從本地機器載入 ID 權杖。
+
+**參數**
+
+無。
+
+**返回類型**
+
+`boolean`
+
+</details>
+
+<details>
+  <summary>
+
+### 登入 (SignIn) \{#signin}
+
+</summary>
+
+此方法應啟動登入流程，平台 SDK 應處理授權所需完成的所有步驟，包括登入重定向過程。
+
+在此方法成功調用後，使用者將被驗證。
+
+登入過程將依賴於核心 SDK 函數：
+
+- `generateSignInUri`
+- `verifyAndParseCodeFromCallbackUri`
+- `fetchTokenByAuthorizationCode`
+
+備註：
+
+- 因為 generateSignInUri 包含我們需要的資源，所以我們不需要將資源傳遞給 fetchTokenByAuthorizationCode 函數。
+
+**參數**
+
+| 參數        | 類型     |
+| ----------- | -------- |
+| redirectUri | `string` |
+
+**返回類型**
+
+`void`
+
+**拋出**
+
+- 在此登入過程中發生的任何錯誤。
+
+</details>
+
+<details>
+  <summary>
+
+### 登出 (SignOut) \{#signout}
+
+</summary>
+
+登出過程應遵循以下步驟：
+
+1. 清除本地儲存、cookie、持久性資料或其他內容。
+2. 通過 `Core.revoke` 撤銷獲得的重新整理權杖（如果重新整理權杖被撤銷，Logto 服務將撤銷所有相關權杖）。
+3. 將使用者重定向到 Logto 的登出端點，除非步驟 1 清除了登入頁面的會話。
+
+備註：
+
+- 在步驟 2 中，`Core.revoke` 是一個異步調用，即使失敗也不會阻塞登出過程。
+- 步驟 3 依賴於 `Core.generateSignOutUri` 生成 Logto 的登出端點。
+
+**參數**
+
+| 參數                  | 類型     | 必需 | 預設值 |
+| --------------------- | -------- | ---- | ------ |
+| postLogoutRedirectUri | `string` |      | `null` |
+
+**返回類型**
+
+`void`
+
+**拋出**
+
+- 在此登出過程中發生的任何錯誤。
+
+</details>
+
+<details>
+  <summary>
+
+### 取得存取權杖 (getAccessToken) \{#getaccesstoken}
+
+</summary>
+
+`getAccessToken` 通過 `resource` 和 `scope` 從 `accessTokenMap` 中檢索 `AccessToken`，然後返回該 `AccessToken` 的 `token` 值。
+
+在構建 `accessTokenMap` 的鍵時，我們將 `scope` 設置為 null，因為在 Logto V1 中我們不支援自訂權限範圍。
+
+**備註**
+
+- 如果找不到對應的 `AccessToken`，則執行 `Core.fetchTokenByRefreshToken` 操作以獲取所需的權杖。
+- 如果 `accessToken` 未過期，則返回其中的 `token` 值。
+- 如果 `accessToken` 已過期，則執行 `Core.fetchTokenByRefreshToken` 操作以檢索新的 `accessToken`，更新本地 `accessTokenMap` 並返回新的 `token` 值。
+- 如果 `Core.fetchTokenByRefreshToken` 失敗，則通知使用者發生的異常。
+- 如果找不到 refreshToken，則通知使用者未授權的異常。
+- 只有在登入後獲得 `refreshToken`，我們才能執行 `Core.fetchTokenByRefreshToken` 操作。
+
+**參數**
+
+| 參數     | 類型     | 必需 | 預設值 |
+| -------- | -------- | ---- | ------ |
+| resource | `string` |      | `null` |
+
+**返回類型**
+
+`string`
+
+**拋出**
+
+- 使用者未驗證。
+- 輸入的 `resource` 未在 `logtoConfig` 中設置。
+- 在 `Core.fetchTokenByRefreshToken` 之前找不到重新整理權杖。
+- `Core.fetchTokenByRefreshToken` 失敗。
+
+</details>
+
+<details>
+  <summary>
+
+### 取得 ID 權杖宣告 (getIdTokenClaims) \{#getidtokenclaims}
+
+</summary>
+
+`getIdTokenClaims` 返回一個物件，攜帶 `idToken` 屬性的宣告。
+
+**參數**
+
+無。
+
+**返回類型**
+
+`IdTokenClaims`
+
+**拋出**
+
+- 使用者未驗證。
+
+</details>

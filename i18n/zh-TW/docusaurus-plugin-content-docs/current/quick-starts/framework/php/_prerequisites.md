@@ -1,0 +1,2 @@
+- 一個 [Logto Cloud](https://cloud.logto.io) 帳戶或自託管的 Logto（如果你還沒有，請查看[介紹](/introduction)指南來創建一個）。
+- 一個已創建的 Logto 傳統網頁應用程式。

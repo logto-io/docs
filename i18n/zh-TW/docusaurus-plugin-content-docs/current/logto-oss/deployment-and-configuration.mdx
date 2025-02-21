@@ -1,0 +1,174 @@
+---
+sidebar_position: 2
+---
+
+# 部署與配置
+
+在上一篇文章中，我們介紹了[快速開始使用 Logto](/logto-oss/get-started-with-oss)的基礎知識。本篇文章將深入探討，重點介紹在生產環境中部署 Logto 的最佳實踐和詳細配置步驟。
+
+## 環境變數 \{#environment-variables}
+
+我們在示範中使用了一組預設的環境變數（`docker-compose.yml`），你應該用自己的變數替換並在多個 Logto 實例中保持一致。
+
+你可以直接設置環境變數或將 `.env` 文件放在 Logto 專案的根目錄中。如果你使用 Docker 進行測試，請查看映像生成的 `.env` 文件位於 `/etc/logto`。
+
+### 基本要素 \{#essentials}
+
+- `DB_URL` Logto 資料庫的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
+- `PORT` Logto 監聽的端口。預設為 `3001`。
+- `ENDPOINT` 你可以為生產環境指定一個自訂域名的 URL（例如 `ENDPOINT=https://logto.domain.com`）。這也會影響 [OIDC 簽發者識別符](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 的值。
+
+**啟用管理控制台**
+
+- `ADMIN_PORT` Logto 管理控制台監聽的端口。預設為 `3002`。
+- `ADMIN_ENDPOINT` 你可以為生產環境指定一個自訂域名的 URL（例如 `ADMIN_ENDPOINT=https://admin.domain.com`）。這也會影響管理控制台重定向 URI 的值。
+
+**禁用管理控制台**
+
+- `ADMIN_DISABLE_LOCALHOST` 設置為 `1` 或 `true` 以關閉管理控制台的端口。如果未設置 `ADMIN_ENDPOINT`，將完全禁用管理控制台。
+
+有關環境變數的更多詳細資訊，請參閱[配置](/concepts/core-service/configuration/)。
+
+### HTTPS \{#https}
+
+你可以使用 Node.js 直接提供 HTTPS 服務，或在 Node.js 前設置 HTTPS 代理 / 負載平衡器。詳情請參閱[啟用 HTTPS](/concepts/core-service/configuration/#enabling-https)。
+
+### 反向代理 \{#reverse-proxy}
+
+如果你想在伺服器上使用反向代理，例如 Nginx 或 Apache，你需要在代理傳遞設置中分別映射 3001 和 3002 端口。假設你使用 Nginx，Logto 驗證端點運行在 3001 端口，Logto 管理控制台運行在 3002 端口，請在 nginx.conf 中加入以下配置：
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // 例如 auth.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+然後為你的管理控制台添加類似的配置：
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // 例如 admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
+}
+```
+
+重新加載 Nginx 配置以應用最新更改：
+
+```
+nginx -s reload
+```
+
+一切就緒。打開瀏覽器並訪問 `https://admin.your-domain.com`，你應該能看到 Logto 歡迎頁面。
+
+## 容器化 \{#containerization}
+
+在生產環境中，你可以使用 Docker 將 Logto 容器化。你可以在專案的根目錄中找到 Dockerfile。如果你想運行多個 Logto 實例，例如在 Kubernetes 集群中部署 Logto，則需要採取一些額外步驟。
+
+### 共享連接器資料夾 \{#shared-connectors-folder}
+
+預設情況下，Logto 會在 `core` 資料夾的根目錄中創建一個 `connectors` 資料夾。我們建議在多個 Logto 實例之間共享該資料夾，你需要將 `packages/core/connectors` 資料夾掛載到容器中，並運行 `npm run cli connector add -- --official` 來部署連接器。
+
+以下是 Kubernetes 的一個最小範例 `deployment`：
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+在此範例中，我們創建了一個空目錄作為卷並掛載到容器中。然後我們在初始化容器中運行 `npm run cli connector add -- --official` 來下載連接器。最後，每個容器將共享相同的連接器資料夾，其中已包含我們的官方連接器。
+
+:::note
+
+這是一個範例 yaml，為了運行 Logto，你需要正確設置環境變數。
+
+:::
+
+在生產環境中，你可以將 "empty dir" 卷替換為持久卷，並以自己的方式完成 "init" 任務，你知道你在做什麼！
+
+### 資料庫變更 \{#database-alteration}
+
+與連接器類似，資料庫變更需要在單個實例中運行。你可以使用一個任務來運行變更腳本。
+
+當變更以非互動方式運行時，`CI=true` 環境變數是必要的。
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+有關變更命令的詳細資訊，請參閱[資料庫變更](/logto-oss/using-cli/database-alteration/)。

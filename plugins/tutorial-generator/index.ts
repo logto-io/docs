@@ -70,7 +70,11 @@ const tutorialGenerator: PluginConfig = () => {
       const passwordlessTemplatePath = path.join(outputDir, '_template-passwordless.mdx');
       const ssoTemplatePath = path.join(outputDir, '_template-sso.mdx');
 
-      if (!existsSync(socialTemplatePath) || !existsSync(passwordlessTemplatePath)) {
+      if (
+        !existsSync(socialTemplatePath) ||
+        !existsSync(passwordlessTemplatePath) ||
+        !existsSync(ssoTemplatePath)
+      ) {
         console.log('No templates found. Skipping...');
         return;
       }
