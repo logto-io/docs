@@ -142,19 +142,6 @@ const tutorialGenerator: PluginConfig = () => {
       const { sdks, socialConnectors, emailConnectors, smsConnectors, ssoConnectors } =
         tutorialMetadata;
 
-      // // Copy assets folders to output directory
-      // const assetsDir = path.join(__dirname, './assets');
-      // const targetAssetsDir = path.join(outputDir, 'assets');
-
-      // await fs.mkdir(targetAssetsDir, { recursive: true });
-      // const assetFiles = await fs.readdir(assetsDir);
-
-      // await Promise.all(
-      //   assetFiles.map(async (file) =>
-      //     fs.copyFile(path.join(assetsDir, file), path.join(targetAssetsDir, file))
-      //   )
-      // );
-
       const generate = async (
         sdks: DocMetadata[],
         connectors: DocMetadata[],
