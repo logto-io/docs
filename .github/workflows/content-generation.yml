@@ -1,0 +1,76 @@
+name: Content generation
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  content-generation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BOT_PAT }}
+
+      - name: Setup Node and pnpm
+        uses: silverhand-io/actions-node-pnpm-run-steps@v5
+        with:
+          pnpm-version: 9
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.BOT_GPG_KEY }}
+          passphrase: ${{ secrets.BOT_GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Configure Git user
+        run: |
+          git config --global user.email bot@silverhand.io
+          git config --global user.name silverhand-bot
+
+      - name: Write heading IDs
+        run: |
+          node write-heading-ids.mjs
+
+      - name: Translate documentations
+        run: |
+          node translate.mjs --sync --all --silent
+      
+      - name: Build
+        run: pnpm build
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          branch: master
+          committer: silverhand-bot <bot@silverhand.io>
+          title: "chore: update translations and generated content"
+          commit-message: "chore: update translations and generated content"
+          body: |
+            This is an automatic pull request to update the i18n translations and programmatic SEO content to the latest commit hash.
+            If you want to debug the PR manually, please run the following command:
+              
+            ```bash
+            node write-heading-ids.mjs
+            node translate.mjs --sync --all
+            pnpm build
+            ```
+
+            And then commit all generated resources.
+          labels: |
+            i18n
+            tutorial
+            bot
+          draft: false
+          delete-branch: true
+      
