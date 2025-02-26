@@ -9,8 +9,12 @@ import remarkMath from 'remark-math';
 
 import ogImageGenerator from './plugins/og-image-generator';
 import tutorialGenerator from './plugins/tutorial-generator';
+import { cond } from '@silverhand/essentials';
 
 const defaultLocale = 'en';
+
+// Supported locales for the "Build X with Y" tutorials
+const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 
 // A workaround for locale-specific values in the config
 // https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
@@ -343,7 +347,7 @@ const config: Config = {
     'docusaurus-plugin-sass',
     tutorialGenerator,
     ogImageGenerator,
-    [
+    cond(tutorialLocales.includes(currentLocale) && [
       '@docusaurus/plugin-content-blog',
       {
         /**
@@ -363,7 +367,7 @@ const config: Config = {
         showReadingTime: false,
         postsPerPage: 'ALL',
       },
-    ],
+    ]),
     [
       '@docusaurus/plugin-content-blog',
       {
@@ -386,7 +390,7 @@ const config: Config = {
         feedOptions: {},
       },
     ],
-  ],
+  ].filter(Boolean),
   themes: ['@docusaurus/theme-mermaid'],
 };
 
