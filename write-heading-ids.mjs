@@ -114,10 +114,10 @@ async function updateTranslations(translationDocPath, sourceDocHeadingIds) {
         continue;
       }
 
-      const [_full, hashes, text, existingIdMark] = match;
+      const [_full, hashes, text, existingIdMark, existingId] = match;
+      const headingId = sourceDocHeadingIds[idIndex];
 
-      if (!existingIdMark) {
-        const headingId = sourceDocHeadingIds[idIndex];
+      if (!existingIdMark || existingId !== headingId) {
         const idStr = ext === '.mdx' ? `\\{#${headingId}}` : `{#${headingId}}`;
         lines[i] = `${hashes} ${text} ${idStr}`;
         modified = true;
