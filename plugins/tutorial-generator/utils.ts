@@ -21,8 +21,7 @@ export const getConnectorPath = (metadata: DocMetadata) => {
 
   return connectorName
     .toLowerCase()
-    .replaceAll(/[^\s\w-]/g, '')
-    .replaceAll(/\s+/g, '-')
-    .replaceAll(/-+/g, '-')
-    .replaceAll(/^-+|-+$/g, '');
+    .split(/[^\da-z-]/gi) // Remove non-alphanumeric characters
+    .filter(Boolean)
+    .join('-');
 };

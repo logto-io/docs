@@ -7,10 +7,9 @@ const headingRegex = /^(#+)\s+(.*?)(\s*{#(.*?)})?$/;
 const generateHeadingId = (text) =>
   text
     .toLowerCase()
-    .replaceAll(/[^\s\w-]/g, '')
-    .replaceAll(/\s+/g, '-')
-    .replaceAll(/-+/g, '-')
-    .replaceAll(/^-+|-+$/g, '');
+    .split(/[^\da-z-]/gi)
+    .filter(Boolean)
+    .join('-');
 
 async function getFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
