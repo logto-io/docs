@@ -19,5 +19,9 @@ export const getConnectorPath = (metadata: DocMetadata) => {
     metadata.frontMatter.tutorial_name ?? metadata.frontMatter.sidebar_label ?? ''
   );
 
-  return connectorName.replaceAll(' ', '-').toLowerCase();
+  return connectorName
+    .toLowerCase()
+    .split(/[^\da-z-]/gi) // Remove non-alphanumeric characters
+    .filter(Boolean)
+    .join('-');
 };
