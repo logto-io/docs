@@ -137,9 +137,10 @@ const translate = async (locale, files) => {
   const filteredFiles = await filterFiles(files, locale, sync, check);
 
   if (filteredFiles.length === 0) {
-    exit(
-      'No files found to translate. Provide a list of files with --file or use --all to translate all files.'
+    log(
+      'No files found to translate. You can provide a list of files with --file or use --all to force translate all files.'
     );
+    exit();
   }
   const sortedFiles = filteredFiles.slice().sort();
   log(`The following files will be translated:`);
