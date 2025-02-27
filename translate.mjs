@@ -26,6 +26,7 @@ const args = arg({
   '--sync': Boolean,
   '--check': Boolean,
   '--locale': String,
+  '--silent': Boolean,
 });
 
 /**
@@ -76,6 +77,13 @@ const check = args['--check'];
  */
 const locale = args['--locale'];
 
+/**
+ * Whether to suppress user confirmations.
+ *
+ * @type {boolean}
+ */
+const silent = args['--silent'];
+
 if (sync && check) {
   exit('Cannot use --sync and --check together.');
 }
@@ -84,15 +92,13 @@ if (all && inputFiles?.length) {
   exit('Cannot use --all and --file together.');
 }
 
-if (!locale) {
-  exit('No locale specified. Use --locale to specify the target locale.');
+if (locale) {
+  await fs.readdir(path.join(i18nBaseDir, locale)).catch(() => {
+    exit(
+      `Locale ${locale} does not exist. Did you forget to run the Docusaurus write translation command?`
+    );
+  });
 }
-
-await fs.readdir(path.join(i18nBaseDir, locale)).catch(() => {
-  exit(
-    `Locale ${locale} does not exist. Did you forget to run the Docusaurus write translation command?`
-  );
-});
 
 const getFiles = async () => {
   if (inputFiles?.length) {
@@ -122,68 +128,78 @@ const getFiles = async () => {
   return [];
 };
 
-const files = await filterFiles(await getFiles(), locale, sync, check);
-
-if (files.length === 0) {
-  exit(
-    'No files found to translate. Provide a list of files with --file or use --all to translate all files.'
-  );
-}
-
-const sortedFiles = files.slice().sort();
-log(`The following files will be translated:`);
-for (const slug of sortedFiles) {
-  log(`  - ${picocolors.blue(slug)}`);
-}
-
 const confirm = async () =>
   new Promise((resolve) => {
     process.stdin.once('data', (data) => resolve(data.toString().trim()));
   });
 
-if (files.length > 1) {
-  log(`${files.length} files will be translated. Enter "y" to confirm.`);
-  const confirmation = await confirm();
+const translate = async (locale, files) => {
+  const filteredFiles = await filterFiles(files, locale, sync, check);
 
-  if (confirmation.toLowerCase() !== 'y') {
-    exit('Translation cancelled.');
+  if (filteredFiles.length === 0) {
+    exit(
+      'No files found to translate. Provide a list of files with --file or use --all to translate all files.'
+    );
   }
-}
-
-if (!sampleTranslations[locale]) {
-  log(
-    picocolors.yellow(
-      `No sample translation found for locale "${locale}", the translation quality may vary. Enter "y" to confirm.`
-    )
-  );
-  const confirmation = await confirm();
-
-  if (confirmation.toLowerCase() !== 'y') {
-    exit('Translation cancelled.');
+  const sortedFiles = filteredFiles.slice().sort();
+  log(`The following files will be translated:`);
+  for (const slug of sortedFiles) {
+    log(`  - ${picocolors.blue(slug)}`);
   }
+
+  if (filteredFiles.length > 1 && !silent) {
+    log(`${filteredFiles.length} files will be translated. Enter "y" to confirm.`);
+    const confirmation = await confirm();
+
+    if (confirmation.toLowerCase() !== 'y') {
+      exit('Translation cancelled.');
+    }
+  }
+
+  if (!sampleTranslations[locale] && !silent) {
+    log(
+      picocolors.yellow(
+        `No sample translation found for locale "${locale}", the translation quality may vary. Enter "y" to confirm.`
+      )
+    );
+    const confirmation = await confirm();
+
+    if (confirmation.toLowerCase() !== 'y') {
+      exit('Translation cancelled.');
+    }
+  }
+
+  const openAiTranslate = new OpenAiTranslate(locale);
+  const listr = new Listr([], { concurrent: 8 });
+
+  for (const file of filteredFiles) {
+    listr.add({
+      async task(_, task) {
+        // eslint-disable-next-line @silverhand/fp/no-mutation
+        task.title = `Translating ${file}...`;
+        const content = await fs.readFile(file, 'utf8');
+        const translated = await openAiTranslate.translate(content, locale, task);
+        const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
+        await fs.mkdir(path.dirname(targetFile), { recursive: true });
+        await fs.writeFile(targetFile, translated, 'utf8');
+        // eslint-disable-next-line @silverhand/fp/no-mutation
+        task.title = `Done: ${targetFile}`;
+      },
+      retry: 1,
+    });
+  }
+
+  await listr.run();
+
+  log(picocolors.green(`✅ Completed translation for "${locale}".`));
+};
+
+const locales = locale ? [locale] : await fs.readdir(path.join(i18nBaseDir));
+const files = await getFiles();
+
+for (const locale of locales) {
+  // eslint-disable-next-line no-await-in-loop
+  await translate(locale, files);
 }
 
-const openAiTranslate = new OpenAiTranslate(locale);
-const listr = new Listr([], { concurrent: 8 });
-
-for (const file of files) {
-  listr.add({
-    async task(_, task) {
-      // eslint-disable-next-line @silverhand/fp/no-mutation
-      task.title = `Translating ${file}...`;
-      const content = await fs.readFile(file, 'utf8');
-      const translated = await openAiTranslate.translate(content, locale, task);
-      const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
-      await fs.mkdir(path.dirname(targetFile), { recursive: true });
-      await fs.writeFile(targetFile, translated, 'utf8');
-      // eslint-disable-next-line @silverhand/fp/no-mutation
-      task.title = `Done: ${targetFile}`;
-    },
-    retry: 1,
-  });
-}
-
-await listr.run();
-
-log(picocolors.green('✓ Completed translation.'));
 exit();
