@@ -19,5 +19,10 @@ export const getConnectorPath = (metadata: DocMetadata) => {
     metadata.frontMatter.tutorial_name ?? metadata.frontMatter.sidebar_label ?? ''
   );
 
-  return connectorName.replaceAll(' ', '-').toLowerCase();
+  return connectorName
+    .toLowerCase()
+    .replaceAll(/[^\s\w-]/g, '')
+    .replaceAll(/\s+/g, '-')
+    .replaceAll(/-+/g, '-')
+    .replaceAll(/^-+|-+$/g, '');
 };
