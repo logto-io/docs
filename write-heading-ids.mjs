@@ -83,7 +83,7 @@ async function processFile(filePath) {
 
     const newId = generateHeadingId(text);
     const idStr = ext === '.mdx' ? `\\{#${newId}}` : `{#${newId}}`;
-    lines[i] = `${hashes} ${text} ${idStr}`;
+    lines[i] = `${hashes} ${text.replace(' \\', '')} ${idStr}`;
     generatedIds.push(newId);
     modified = true;
   }
@@ -119,7 +119,7 @@ async function updateTranslations(translationDocPath, sourceDocHeadingIds) {
 
       if (!existingIdMark || existingId !== headingId) {
         const idStr = ext === '.mdx' ? `\\{#${headingId}}` : `{#${headingId}}`;
-        lines[i] = `${hashes} ${text} ${idStr}`;
+        lines[i] = `${hashes} ${text.replace(' \\', '')} ${idStr}`;
         modified = true;
       }
 
