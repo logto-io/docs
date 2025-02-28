@@ -131,7 +131,7 @@ const tutorialGenerator: PluginConfig = () => {
         }
       );
 
-      if (!locale) {
+      if (locale === 'en') {
         // Write tutorial metadata of default locale to output folder as json
         await fs.writeFile(
           path.join(outputDir, 'metadata.json'),
