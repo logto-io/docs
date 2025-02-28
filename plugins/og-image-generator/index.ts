@@ -13,7 +13,7 @@ import { getFonts } from './fonts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const currentLocale = String(process.env.DOCUSAURUS_CURRENT_LOCALE ?? 'en');
-const outputDir = path.join(__dirname, `../../staticLocalized/${currentLocale}/img/og`);
+const outputDir = path.join(__dirname, `../../static-localized/${currentLocale}/img/og`);
 const templateImagePath = path.join(__dirname, './template.png');
 
 const ogImageGenerator: PluginConfig = () => {

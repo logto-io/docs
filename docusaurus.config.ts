@@ -145,7 +145,7 @@ const config: Config = {
 
   staticDirectories: [
     'static',
-    'staticLocalized/' + currentLocale,
+    'static-localized/' + currentLocale,
   ],
 
   markdown: {
