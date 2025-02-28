@@ -141,6 +141,10 @@ const config: Config = {
   i18n: {
     defaultLocale: 'en',
     locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
+    localeConfigs: {
+      'zh-CN': { label: '简体中文' },
+      'zh-TW': { label: '繁體中文（台灣）' },
+    },
   },
 
   staticDirectories: [
