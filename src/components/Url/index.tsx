@@ -59,7 +59,7 @@ const Url = (props: Props): JSX.Element => {
     <span className={clsx(wrapperClassName, styles.linkWrapper, styles[type])}>
       <Link className={clsx(className, styles.link)} {...rest}>
         {IconComponent && <IconComponent />}
-        {children ?? props.href}
+        {(typeof children === 'string' ? children.trim() : children) ?? props.href}
         {!isInternal && <ExternalLinkIcon className={styles.externalLink} />}
       </Link>
     </span>
