@@ -38,6 +38,8 @@ These are all necessary variables that are injected into the tutorial template b
 | framework     | The name of the SDK used in Logto console.                                                     |
 | tutorial_name | (OPTIONAL) The customized alias of the SDK. If not provided, the `sidebar_label` will be used. |
 
+Re-generate the tutorials using `pnpm build` after you have made changes to the SDK guide.
+
 ## Add a new connector
 
 1. Create a new connector guide folder in "/docs/integrations". For example: "/docs/integrations/social/google".
@@ -60,6 +62,8 @@ These are all necessary variables that are injected into the tutorial template b
 | tutorial_name               | The name of the connector used in the tutorial.                                                                       |
 | tutorial_config_name        | The name of configuration used in the 3rd party service platform.                                                     |
 | tutorial_sign_up_identifier | (OPTIONAL) The sign-up identifier used in email or SMS template. Available options: `Email address` or `Phone number` |
+
+Re-generate the tutorials using `pnpm build` after you have made changes to the connector guide.
 
 ## Add i18n translations
 
