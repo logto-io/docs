@@ -1,0 +1,245 @@
+ユーザーがサインインした後にアプリケーションにリダイレクトするためには、前のステップで `client.registration.logto.redirect-uri` プロパティを使用してリダイレクト URI を設定する必要があります。
+
+### WebSecurityConfig の実装 \{#implement-the-websecurityconfig}
+
+#### プロジェクトに新しいクラス `WebSecurityConfig` を作成する \{#create-a-new-class-websecurityconfig-in-your-project}
+
+`WebSecurityConfig` クラスは、アプリケーションのセキュリティ設定を構成するために使用されます。このクラスは、認証 (Authentication) と認可 (Authorization) のフローを処理する主要なクラスです。詳細については、 [Spring Security のドキュメント](https://spring.io/guides/topicals/spring-security-architecture) を確認してください。
+
+```java title="WebSecurityConfig.java"
+package com.example.securingweb;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+
+@Configuration
+@EnableWebSecurity
+
+public class WebSecurityConfig {
+ // ...
+}
+```
+
+#### `idTokenDecoderFactory` ビーンを作成する \{#create-a-idtokendecoderfactory-bean}
+
+これは、Logto がデフォルトのアルゴリズムとして `ES384` を使用しているため、同じアルゴリズムを使用するようにデフォルトの `OidcIdTokenDecoderFactory` を上書きする必要があります。
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.client.oidc.authentication.OidcIdTokenDecoderFactory;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoderFactory;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public JwtDecoderFactory<ClientRegistration> idTokenDecoderFactory() {
+    OidcIdTokenDecoderFactory idTokenDecoderFactory = new OidcIdTokenDecoderFactory();
+    idTokenDecoderFactory.setJwsAlgorithmResolver(clientRegistration -> SignatureAlgorithm.ES384);
+    return idTokenDecoderFactory;
+  }
+}
+```
+
+#### ログイン成功イベントを処理するための LoginSuccessHandler クラスを作成する \{#create-a-loginsuccesshandler-class-to-handle-the-login-success-event}
+
+ログインが成功した後、ユーザーを `/user` ページにリダイレクトします。
+
+```java title="CustomSuccessHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class CustomSuccessHandler implements AuthenticationSuccessHandler {
+  @Override
+  public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+      Authentication authentication) throws IOException, ServletException {
+    response.sendRedirect("/user");
+  }
+}
+```
+
+#### ログアウト成功イベントを処理するための LogoutSuccessHandler クラスを作成する \{#create-a-logoutsuccesshandler-class-to-handle-the-logout-success-event}
+
+セッションをクリアし、ユーザーをホームページにリダイレクトします。
+
+```java title="CustomLogoutHandler.java"
+package com.example.securingweb;
+
+import java.io.IOException;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
+public class CustomLogoutHandler implements LogoutSuccessHandler {
+  @Override
+  public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+      throws IOException, ServletException {
+    HttpSession session = request.getSession();
+
+    if (session != null) {
+      session.invalidate();
+    }
+
+    response.sendRedirect("/home");
+  }
+}
+```
+
+#### `securityFilterChain` を使用して `WebSecurityConfig` クラスを更新する \{#update-the-websecurityconfig-class-with-a-securityfilterchain}
+
+[securityFilterChain](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/web/DefaultSecurityFilterChain.html) は、受信リクエストとレスポンスを処理する責任を持つフィルタのチェーンです。
+
+`securityFilterChain` を構成して、ホームページへのアクセスを許可し、他のすべてのリクエストには認証 (Authentication) を要求します。ログインとログアウトイベントを処理するために `CustomSuccessHandler` と `CustomLogoutHandler` を使用します。
+
+```java title="WebSecurityConfig.java"
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.DefaultSecurityFilterChain;
+
+public class WebSecurityConfig {
+  // ...
+
+  @Bean
+  public DefaultSecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+      .authorizeRequests(authorizeRequests ->
+        authorizeRequests
+          .antMatchers("/", "/home").permitAll() // ホームページへのアクセスを許可
+          .anyRequest().authenticated() // 他のすべてのリクエストには認証 (Authentication) を要求
+      )
+      .oauth2Login(oauth2Login ->
+        oauth2Login
+          .successHandler(new CustomSuccessHandler())
+      )
+      .logout(logout ->
+        logout
+          .logoutSuccessHandler(new CustomLogoutHandler())
+      );
+    return http.build();
+  }
+}
+```
+
+### ホームページを作成する \{#create-a-home-page}
+
+（プロジェクトにすでにホームページがある場合は、このステップをスキップできます）
+
+```java title="HomeController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+  @GetMapping({ "/", "/home" })
+  public String home(Principal principal) {
+    return principal != null ? "redirect:/user" : "home";
+  }
+}
+```
+
+このコントローラーは、ユーザーが認証 (Authentication) されている場合はユーザーページにリダイレクトし、そうでない場合はホームページを表示します。ホームページにサインインリンクを追加します。
+
+```html title="resources/templates/home.html"
+<body>
+  <h1>Welcome!</h1>
+
+  <p><a th:href="@{/oauth2/authorization/logto}">Login with Logto</a></p>
+</body>
+```
+
+### ユーザーページを作成する \{#create-a-user-page}
+
+ユーザーページを処理するための新しいコントローラーを作成します：
+
+```java title="UserController.java"
+package com.example.securingweb;
+
+import java.security.Principal;
+import java.util.Map;
+
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/user")
+public class UserController {
+
+  @GetMapping
+  public String user(Model model, Principal principal) {
+    if (principal instanceof OAuth2AuthenticationToken) {
+      OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) principal;
+      OAuth2User oauth2User = token.getPrincipal();
+      Map<String, Object> attributes = oauth2User.getAttributes();
+
+      model.addAttribute("username", attributes.get("username"));
+      model.addAttribute("email", attributes.get("email"));
+      model.addAttribute("sub", attributes.get("sub"));
+    }
+
+    return "user";
+  }
+}
+```
+
+ユーザーが認証 (Authentication) されると、認証されたプリンシパルオブジェクトから `OAuth2User` データを取得します。詳細については、 [OAuth2AuthenticationToken](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/client/authentication/OAuth2AuthenticationToken.html) と [OAuth2User](https://docs.spring.io/spring-security/site/docs/current/api/org/springframework/security/oauth2/core/user/OAuth2User.html) を参照してください。
+
+ユーザーデータを読み取り、 `user.html` テンプレートに渡します。
+
+```html title="resources/templates/user.html"
+<body>
+  <h1>User Details</h1>
+  <div>
+    <p>
+    <div><strong>name:</strong> <span th:text="${username}"></span></div>
+    <div><strong>email:</strong> <span th:text="${email}"></span></div>
+    <div><strong>id:</strong> <span th:text="${sub}"></span></div>
+    </p>
+  </div>
+
+  <form th:action="@{/logout}" method="post">
+    <input type="submit" value="Logout" />
+  </form>
+</body>
+```
+
+#### 追加のクレームをリクエストする \{#request-additional-claims}
+
+追加のユーザー情報を取得するために、 `application.properties` ファイルに追加のスコープを追加できます。例えば、 `email`、 `phone`、および `urn:logto:scope:organizations` スコープをリクエストするには、次の行を `application.properties` ファイルに追加します：
+
+```properties title="application.properties"
+  spring.security.oauth2.client.registration.logto.scope=openid,profile,offline_access,email,phone,urn:logto:scope:organizations
+```
+
+その後、 `OAuth2User` オブジェクトで追加のクレームにアクセスできます。
+
+### アプリケーションを実行してテストする \{#run-and-test-the-application}
+
+アプリケーションを実行し、 `http://localhost:8080` にアクセスします。
+
+- サインインリンクがあるホームページが表示されます。
+- リンクをクリックして Logto でサインインします。
+- 認証 (Authentication) が成功すると、ユーザーページにリダイレクトされ、ユーザーの詳細が表示されます。
+- ログアウトボタンをクリックしてサインアウトします。ホームページにリダイレクトされます。
