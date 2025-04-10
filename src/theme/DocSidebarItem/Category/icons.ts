@@ -10,6 +10,7 @@ import Integrate from '@site/src/assets/integrate.svg';
 import Introduction from '@site/src/assets/introduction.svg';
 import OpenSource from '@site/src/assets/open-source.svg';
 import Organization from '@site/src/assets/organization.svg';
+import Security from '@site/src/assets/security.svg';
 import UserFlows from '@site/src/assets/user-flows.svg';
 import UserManagement from '@site/src/assets/user-management.svg';
 
@@ -34,6 +35,7 @@ const icons: IconMap = Object.freeze({
   'logto-cloud': Cloud,
   'logto-oss': OpenSource,
   concepts: Concepts,
+  security: Security,
 });
 
 export default icons;
