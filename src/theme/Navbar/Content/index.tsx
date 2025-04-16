@@ -1,14 +1,15 @@
+import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useThemeConfig, ErrorCauseBoundary } from '@docusaurus/theme-common';
 import { splitNavbarItems, useNavbarMobileSidebar } from '@docusaurus/theme-common/internal';
+import { InkeepSearchBar } from '@inkeep/cxkit-react';
 import NavbarColorModeToggle from '@theme/Navbar/ColorModeToggle';
 import NavbarLogo from '@theme/Navbar/Logo';
 import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
-import NavbarSearch from '@theme/Navbar/Search';
 import NavbarItem, { type Props as NavbarItemConfig } from '@theme/NavbarItem';
-import SearchBar from '@theme/SearchBar';
 import { type ReactNode } from 'react';
 
 import Button from '@site/src/components/Button';
+import useInkeepConfigs from '@site/src/hooks/use-inkeep-configs';
 
 import styles from './styles.module.css';
 
@@ -61,8 +62,7 @@ export default function NavbarContent(): JSX.Element {
 
   const items = useNavbarItems();
   const [leftItems, rightItems] = splitNavbarItems(items);
-
-  const searchBarItem = items.find((item) => item.type === 'search');
+  const { searchBarConfigs } = useInkeepConfigs();
 
   return (
     <NavbarContentLayout
@@ -80,11 +80,10 @@ export default function NavbarContent(): JSX.Element {
         <>
           <NavbarItems items={rightItems} />
           <NavbarColorModeToggle className={styles.colorModeToggle} />
-          {!searchBarItem && (
-            <NavbarSearch>
-              <SearchBar />
-            </NavbarSearch>
-          )}
+          {/* Charles ejected the component and added the inkeep search bar here */}
+          <BrowserOnly fallback={<div />}>
+            {() => <InkeepSearchBar {...searchBarConfigs} />}
+          </BrowserOnly>
           {/* Charles ejected the component and added the Cloud button here */}
           <Button
             className={styles.cloudButton}
