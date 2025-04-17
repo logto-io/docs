@@ -1,17 +1,21 @@
 import BrowserOnly from '@docusaurus/BrowserOnly';
-import { useThemeConfig, ErrorCauseBoundary } from '@docusaurus/theme-common';
+import { useThemeConfig, ErrorCauseBoundary, useColorMode } from '@docusaurus/theme-common';
 import { splitNavbarItems, useNavbarMobileSidebar } from '@docusaurus/theme-common/internal';
-import { InkeepSearchBar } from '@inkeep/cxkit-react';
+import { InkeepModalChat, InkeepModalSearchAndChat } from '@inkeep/cxkit-react';
 import NavbarColorModeToggle from '@theme/Navbar/ColorModeToggle';
 import NavbarLogo from '@theme/Navbar/Logo';
 import NavbarMobileSidebarToggle from '@theme/Navbar/MobileSidebar/Toggle';
 import NavbarItem, { type Props as NavbarItemConfig } from '@theme/NavbarItem';
-import { type ReactNode } from 'react';
+import clsx from 'clsx';
+import { useState, type ReactNode } from 'react';
 
 import Button from '@site/src/components/Button';
+import SearchBar from '@site/src/components/SearchBar';
 import useInkeepConfigs from '@site/src/hooks/use-inkeep-configs';
+import LogtoAiBotDark from '@site/static/img/logto-ai-bot-dark.svg';
+import LogtoAiBot from '@site/static/img/logto-ai-bot.svg';
 
-import styles from './styles.module.css';
+import styles from './index.module.scss';
 
 function useNavbarItems() {
   // TODO temporary casting until ThemeConfig type is improved
@@ -59,10 +63,12 @@ function NavbarContentLayout({
 
 export default function NavbarContent(): JSX.Element {
   const mobileSidebar = useNavbarMobileSidebar();
+  const { colorMode } = useColorMode();
 
   const items = useNavbarItems();
   const [leftItems, rightItems] = splitNavbarItems(items);
-  const { searchBarConfigs } = useInkeepConfigs();
+  const inkeepConfigs = useInkeepConfigs();
+  const [openModal, setOpenModal] = useState<'chat' | 'search'>();
 
   return (
     <NavbarContentLayout
@@ -82,14 +88,52 @@ export default function NavbarContent(): JSX.Element {
           <NavbarColorModeToggle className={styles.colorModeToggle} />
           {/* Charles ejected the component and added the inkeep search bar here */}
           <BrowserOnly fallback={<div />}>
-            {() => <InkeepSearchBar {...searchBarConfigs} />}
+            {() => (
+              <>
+                <SearchBar
+                  className={styles.searchBar}
+                  onClick={() => {
+                    setOpenModal('search');
+                  }}
+                />
+                <Button
+                  className={clsx(styles.button, styles.askAi)}
+                  type="outline"
+                  size="medium"
+                  onClick={() => {
+                    setOpenModal('chat');
+                  }}
+                >
+                  {colorMode === 'dark' ? <LogtoAiBotDark /> : <LogtoAiBot />}
+                  Ask AI
+                </Button>
+                <InkeepModalSearchAndChat
+                  {...inkeepConfigs}
+                  modalSettings={{
+                    isOpen: openModal === 'search',
+                    onOpenChange: (isOpen) => {
+                      setOpenModal(isOpen ? 'search' : undefined);
+                    },
+                  }}
+                />
+                <InkeepModalChat
+                  {...inkeepConfigs}
+                  modalSettings={{
+                    isOpen: openModal === 'chat',
+                    onOpenChange: (isOpen) => {
+                      setOpenModal(isOpen ? 'chat' : undefined);
+                    },
+                  }}
+                />
+              </>
+            )}
           </BrowserOnly>
+
           {/* Charles ejected the component and added the Cloud button here */}
           <Button
-            className={styles.cloudButton}
+            className={styles.button}
             type="secondary"
             size="medium"
-            style={{ padding: '8px 16px' }}
             href="https://cloud.logto.io"
           >
             Logto Cloud

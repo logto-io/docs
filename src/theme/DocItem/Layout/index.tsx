@@ -1,7 +1,5 @@
-import BrowserOnly from '@docusaurus/BrowserOnly';
 import { useDoc } from '@docusaurus/plugin-content-docs/client';
 import { useWindowSize } from '@docusaurus/theme-common';
-import { InkeepChatButton } from '@inkeep/cxkit-react';
 import ContentVisibility from '@theme/ContentVisibility';
 import DocBreadcrumbs from '@theme/DocBreadcrumbs';
 import DocItemContent from '@theme/DocItem/Content';
@@ -13,8 +11,6 @@ import DocItemTOCMobile from '@theme/DocItem/TOC/Mobile';
 import DocVersionBadge from '@theme/DocVersionBadge';
 import DocVersionBanner from '@theme/DocVersionBanner';
 import clsx from 'clsx';
-
-import useInkeepConfigs from '@site/src/hooks/use-inkeep-configs';
 
 import styles from './index.module.scss';
 
@@ -43,7 +39,6 @@ function useDocTOC() {
 }
 
 export default function DocItemLayout({ children }: Props): JSX.Element {
-  const { chatButtonConfigs } = useInkeepConfigs();
   const { hidden, mobile: mobileToc, desktop: desktopToc } = useDocTOC();
   const { metadata } = useDoc();
   const hasDesktopToc = !hidden && !!desktopToc;
@@ -64,9 +59,6 @@ export default function DocItemLayout({ children }: Props): JSX.Element {
         </div>
       </div>
       {hasDesktopToc && <div className={styles.desktopToc}>{desktopToc}</div>}
-      <BrowserOnly fallback={<div />}>
-        {() => <InkeepChatButton {...chatButtonConfigs} />}
-      </BrowserOnly>
     </div>
   );
 }
