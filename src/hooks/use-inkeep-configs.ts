@@ -71,38 +71,25 @@ const useInkeepConfigs = () => {
             ],
           },
           transformSource: (source) => {
-            const urlPatterns = {
-              docs: 'docs.logto.io',
-              blog: 'blog.logto.io',
-              apis: 'openapi.logto.io',
-              authWiki: 'auth.wiki',
-              websites: 'https://logto.io',
-            };
-
-            const tabConfig = {
-              [urlPatterns.docs]: { tab: 'Docs' },
-              [urlPatterns.blog]: { tab: 'Blogs' },
-              [urlPatterns.apis]: { tab: 'APIs' },
-              [urlPatterns.authWiki]: { tab: 'Auth Wiki' },
-              [urlPatterns.websites]: { tab: 'Websites' },
+            const urlConfig = {
+              'docs.logto.io': 'Docs',
+              'blog.logto.io': 'Blogs',
+              'openapi.logto.io': 'APIs',
+              'auth-wiki.logto.io': 'Auth Wiki',
+              'logto.io': 'Websites',
             } as const;
 
-            // Find matching config based on URL
-            const matchingPattern = Object.keys(tabConfig).find((pattern) =>
+            const tab = Object.entries(urlConfig).find(([pattern]) =>
               source.url.includes(pattern)
-            );
-            const config = matchingPattern
-              ? // eslint-disable-next-line no-restricted-syntax
-                tabConfig[matchingPattern as keyof typeof tabConfig]
-              : null;
+            )?.[1];
 
-            if (!config) {
+            if (!tab) {
               return source;
             }
 
             return {
               ...source,
-              tabs: [...(source.tabs || []), config.tab],
+              tabs: [...(source.tabs || []), tab],
             };
           },
         },
@@ -113,8 +100,44 @@ const useInkeepConfigs = () => {
           exampleQuestions: [
             'Quickstart guide for Logto setup',
             'Configure multi-tenancy architecture',
-            'How to integrate AI agent with my product?',
             'How to integrate user profile?',
+          ],
+          disclaimerSettings: {
+            isEnabled: true,
+            label: 'Logto AI disclaimer',
+            tooltip: 'Responses are AI-generated and may require verification.',
+          },
+          toolbarButtonLabels: {
+            clear: 'Start Over',
+            stop: 'Stop',
+            copyChat: 'Copy Chat',
+            getHelp: 'Get Help',
+          },
+          getHelpOptions: [
+            {
+              icon: { builtIn: 'IoChatbubblesOutline' },
+              name: 'Contact',
+              action: {
+                type: 'open_link',
+                url: 'https://logto.io/contact',
+              },
+            },
+            {
+              icon: { builtIn: 'FaDiscord' },
+              name: 'Discord',
+              action: {
+                type: 'open_link',
+                url: 'https://discord.com/invite/UEPaF3j5e6',
+              },
+            },
+            {
+              icon: { builtIn: 'FaGithub' },
+              name: 'GitHub',
+              action: {
+                type: 'open_link',
+                url: 'https://github.com/logto-io/logto/issues/new/choose',
+              },
+            },
           ],
         },
         searchSettings: {
@@ -123,10 +146,10 @@ const useInkeepConfigs = () => {
             ['Docs', { isAlwaysVisible: true }],
             'APIs',
             'GitHub',
-            'Blog',
+            'Blogs',
             'Auth Wiki',
             'Websites',
-            ['All', { isAlwaysVisible: true }],
+            'All',
           ],
         },
       }) satisfies InkeepSettings,

@@ -109,8 +109,10 @@ export default function NavbarContent(): JSX.Element {
                 </Button>
                 <InkeepModalSearchAndChat
                   {...inkeepConfigs}
+                  shouldAutoFocusInput
                   modalSettings={{
                     isOpen: openModal === 'search',
+                    shortcutKey: 'k',
                     onOpenChange: (isOpen) => {
                       setOpenModal(isOpen ? 'search' : undefined);
                     },
@@ -118,8 +120,10 @@ export default function NavbarContent(): JSX.Element {
                 />
                 <InkeepModalChat
                   {...inkeepConfigs}
+                  shouldAutoFocusInput
                   modalSettings={{
                     isOpen: openModal === 'chat',
+                    shortcutKey: null,
                     onOpenChange: (isOpen) => {
                       setOpenModal(isOpen ? 'chat' : undefined);
                     },
@@ -131,7 +135,7 @@ export default function NavbarContent(): JSX.Element {
 
           {/* Charles ejected the component and added the Cloud button here */}
           <Button
-            className={styles.button}
+            className={clsx(styles.button, styles.cloud)}
             type="secondary"
             size="medium"
             href="https://cloud.logto.io"
