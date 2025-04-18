@@ -11,7 +11,12 @@ export type Props = Omit<HTMLProps<HTMLAnchorElement>, 'size' | 'title' | 'ref'>
 
 const Button = ({ className, children, size = 'medium', type = 'outline', ...rest }: Props) => {
   return (
-    <Link className={clsx(styles.button, styles[type], styles[size], className)} {...rest}>
+    <Link
+      tabIndex={0}
+      role="button"
+      className={clsx(styles.button, styles[type], styles[size], className)}
+      {...rest}
+    >
       <div className={styles.children}>{children}</div>
     </Link>
   );

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import 'dotenv/config';
 
 import type { ThemeConfig, Options } from '@docusaurus/preset-classic';
 import type { Config, PluginConfig } from '@docusaurus/types';
@@ -145,6 +146,10 @@ const config: Config = {
       'zh-CN': { label: '简体中文' },
       'zh-TW': { label: '繁體中文（台灣）' },
     },
+  },
+
+  customFields: {
+    inkeepApiKey: process.env.INKEEP_API_KEY,
   },
 
   staticDirectories: [
