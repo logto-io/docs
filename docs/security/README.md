@@ -17,7 +17,7 @@ Modern authentication security battles threats ranging from phishing, credential
 
 Logto delivers robust secure access management designed to counter these risks head-on. By prioritizing proactive threat prevention and resilience, we ensure your systems stay shielded without compromising usability. With Logto, security isn’t an afterthought—it’s the foundation, empowering businesses to thrive in an era where threats evolve, but defenses evolve faster.
 
-## Set up advanced security protection
+## Set up advanced security protection {#set-up-advanced-security-protection}
 
 <DocCardList
 items={[
@@ -73,7 +73,7 @@ icon: <BlockUserIcon />,
 ]}
 />
 
-## Discover more ways to protect your apps
+## Discover more ways to protect your apps {#discover-more-ways-to-protect-your-apps}
 
 <DocCardList
 items={[

@@ -4,3 +4,22 @@ sidebar_label: Password Policy
 ---
 
 # Password Policy
+
+## Set up password policy \{#set-up-password-policy}
+
+For new users or users who are updating their password, you can set a password policy to enforce password strength requirements. Visit the <CloudLink to="/security/password-policy"> Console > Security > Password policy</CloudLink> to configure the password policy settings.
+
+1. **Minimum password length**: Set the minimum number of characters required for the password. (NIST suggests using at least 8 [characters](https://pages.nist.gov/800-63-3/sp800-63b.html#sec5))
+2. **Minimum required character types**: Set the minimum number of character types required for the password. The available character types are:
+   1. Uppercase letters: `(A-Z)`
+   2. Lowercase letters: `(a-z)`
+   3. Numbers: `(0-9)`
+   4. Special characters: ``(!"#$%&'()\*+,-./:;<>=?@[]^\_`|{}~ )``
+3. **Breach history check**: Enable this setting to reject passwords that have been previously exposed in data breaches. (Powered by [Have I Been Pwned](https://haveibeenpwned.com/Passwords))
+4. **Repetition check**: Enable this setting to reject passwords that contain repetitive characters. (e.g., "11111111" or "password123")
+5. **User information check**: Enable this setting to reject passwords that contain user information such as username, email address, or phone number.
+6. **Custom words**: Provide a list of custom words (case-insensitive) that you want to reject in the password.
+
+## Related resources \{#related-resources}
+
+<Url href="https://blog.logto.io/design-your-password-policy">Design your password policy</Url>
