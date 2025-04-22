@@ -1,4 +1,5 @@
 import BrowserOnly from '@docusaurus/BrowserOnly';
+import { translate } from '@docusaurus/Translate';
 import { useThemeConfig, ErrorCauseBoundary, useColorMode } from '@docusaurus/theme-common';
 import { splitNavbarItems, useNavbarMobileSidebar } from '@docusaurus/theme-common/internal';
 import { InkeepModalChat, InkeepModalSearchAndChat } from '@inkeep/cxkit-react';
@@ -105,7 +106,7 @@ export default function NavbarContent(): JSX.Element {
                   }}
                 >
                   {colorMode === 'dark' ? <LogtoAiBotDark /> : <LogtoAiBot />}
-                  Ask AI
+                  {translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
                 </Button>
                 <InkeepModalSearchAndChat
                   {...inkeepConfigs}
@@ -117,6 +118,8 @@ export default function NavbarContent(): JSX.Element {
                       setOpenModal(isOpen ? 'search' : undefined);
                     },
                   }}
+                  askAILabel={translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
+                  searchLabel={translate({ id: 'theme.SearchBar.label', message: 'Search' })}
                 />
                 <InkeepModalChat
                   {...inkeepConfigs}

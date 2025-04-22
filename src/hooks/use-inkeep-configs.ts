@@ -1,4 +1,5 @@
 import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
+import { translate } from '@docusaurus/Translate';
 import { useColorMode } from '@docusaurus/theme-common';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { type InkeepSettings } from '@inkeep/cxkit-react';
@@ -32,6 +33,30 @@ const customStyles = `
     height: 20px;
     background: var(--inkeep-logto-icon) center/60px 20px no-repeat;
   }
+}
+
+.ikp-ai-chat-header__toolbar-header-wrapper {
+  visibility: hidden;
+}
+
+.ikp-codeblock-header {
+  background-color: var(--ikp-color-gray-dark-800);
+
+  .ikp-codeblock-header-language {
+    color: var(--ikp-color-gray-400);
+  }
+
+  .ikp-codeblock-copy-button {
+    color: var(--ikp-color-white-alpha-700);
+    
+    &:hover {
+      color: var(--ikp-color-white-alpha-950);
+    }
+  }
+}
+
+.ikp-codeblock-highlighter {
+  background-color: var(--ikp-color-gray-dark-900);
 }`;
 
 const useInkeepConfigs = () => {
@@ -42,7 +67,7 @@ const useInkeepConfigs = () => {
   const apiKey = String(customFields?.inkeepApiKey ?? '');
 
   return useMemo(
-    (): InkeepSettings =>
+    () =>
       ({
         baseSettings: {
           apiKey,
@@ -72,11 +97,11 @@ const useInkeepConfigs = () => {
           },
           transformSource: (source) => {
             const urlConfig = {
-              'docs.logto.io': 'Docs',
-              'blog.logto.io': 'Blogs',
+              'docs.logto.io': translate({ id: 'inkeep.search.tabs.docs', message: 'Docs' }),
+              'blog.logto.io': translate({ id: 'inkeep.search.tabs.blogs', message: 'Blogs' }),
               'openapi.logto.io': 'APIs',
               'auth-wiki.logto.io': 'Auth Wiki',
-              'logto.io': 'Websites',
+              'logto.io': translate({ id: 'inkeep.search.tabs.websites', message: 'Websites' }),
             } as const;
 
             const tab = Object.entries(urlConfig).find(([pattern]) =>
@@ -97,26 +122,47 @@ const useInkeepConfigs = () => {
           aiAssistantAvatar:
             colorMode === 'dark' ? '/img/logto-ai-bot-dark.svg' : '/img/logto-ai-bot.svg',
           aiAssistantName: 'Logto AI',
+          introMessage: translate({
+            id: 'inkeep.intro.message',
+            message:
+              "Hi, I'm Logto AI!\n\nI'm an AI assistant trained on documentation, help articles, and other content.\n\nAsk me anything about `Logto`.",
+          }),
+          placeholder: translate({
+            id: 'inkeep.chat.placeholder',
+            message: 'Ask Logto AI your question for a step-by-step guide',
+          }),
           exampleQuestions: [
-            'Quickstart guide for Logto setup',
-            'Configure multi-tenancy architecture',
-            'How to integrate user profile?',
+            translate({
+              id: 'inkeep.example.question.1',
+              message: 'Quickstart guide for Logto setup',
+            }),
+            translate({
+              id: 'inkeep.example.question.2',
+              message: 'Configure multi-tenancy architecture',
+            }),
+            translate({
+              id: 'inkeep.example.question.3',
+              message: 'How to integrate user profile?',
+            }),
           ],
           disclaimerSettings: {
             isEnabled: true,
-            label: 'Logto AI disclaimer',
-            tooltip: 'Responses are AI-generated and may require verification.',
+            label: translate({ id: 'inkeep.disclaimer.label', message: 'Logto AI disclaimer' }),
+            tooltip: translate({
+              id: 'inkeep.disclaimer.tooltip',
+              message: 'Responses are AI-generated and may require verification.',
+            }),
           },
           toolbarButtonLabels: {
-            clear: 'Start Over',
-            stop: 'Stop',
-            copyChat: 'Copy Chat',
-            getHelp: 'Get Help',
+            clear: translate({ id: 'inkeep.toolbar.clear', message: 'Start over' }),
+            stop: translate({ id: 'inkeep.toolbar.stop', message: 'Stop' }),
+            copyChat: translate({ id: 'inkeep.toolbar.copy', message: 'Copy' }),
+            getHelp: translate({ id: 'inkeep.toolbar.help', message: 'Get help' }),
           },
           getHelpOptions: [
             {
               icon: { builtIn: 'IoChatbubblesOutline' },
-              name: 'Contact',
+              name: translate({ id: 'inkeep.help.options.contact', message: 'Contact' }),
               action: {
                 type: 'open_link',
                 url: 'https://logto.io/contact',
@@ -124,7 +170,7 @@ const useInkeepConfigs = () => {
             },
             {
               icon: { builtIn: 'FaDiscord' },
-              name: 'Discord',
+              name: translate({ id: 'inkeep.help.options.discord', message: 'Discord' }),
               action: {
                 type: 'open_link',
                 url: 'https://discord.com/invite/UEPaF3j5e6',
@@ -142,14 +188,18 @@ const useInkeepConfigs = () => {
         },
         searchSettings: {
           debounceTimeMs: 300,
+          placeholder: translate({ id: 'inkeep.search.placeholder', message: 'Search...' }),
           tabs: [
-            ['Docs', { isAlwaysVisible: true }],
+            [
+              translate({ id: 'inkeep.search.tabs.docs', message: 'Docs' }),
+              { isAlwaysVisible: true },
+            ],
             'APIs',
             'GitHub',
-            'Blogs',
+            translate({ id: 'inkeep.search.tabs.blogs', message: 'Blogs' }),
             'Auth Wiki',
-            'Websites',
-            'All',
+            translate({ id: 'inkeep.search.tabs.websites', message: 'Websites' }),
+            translate({ id: 'inkeep.search.tabs.all', message: 'All' }),
           ],
         },
       }) satisfies InkeepSettings,
