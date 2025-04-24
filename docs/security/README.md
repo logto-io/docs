@@ -44,7 +44,7 @@ icon: <CheckboxIcon />,
 {
 type: 'link',
 label: 'Identifier lockout',
-href: '/security/lockout',
+href: '/security/identifier-lockout',
 description: 'Temporarily lock an identifier after multiple failed authentication attempts to prevent brute force access.',
 customProps: {
 icon: <LockIcon />,
