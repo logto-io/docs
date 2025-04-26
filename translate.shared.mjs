@@ -63,7 +63,11 @@ export const filterFiles = async (files, locale, sync, check) => {
         execa`git log -1 --format=%cd --date=unix -- ${targetFile}`,
       ]);
 
-      return Number(sourceTimestamp.stdout) > Number(targetTimestamp.stdout) ? file : null;
+      const sourceDate = Number(sourceTimestamp.stdout);
+      const targetDate = Number(targetTimestamp.stdout);
+      log(`${file}: ${sourceDate} - ${targetDate}`);
+
+      return Number(sourceDate) > Number(targetDate) ? file : null;
     })
   );
 
