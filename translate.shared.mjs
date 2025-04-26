@@ -59,11 +59,11 @@ export const filterFiles = async (files, locale, sync, check) => {
     files.map(async (file) => {
       const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
       const [sourceTimestamp, targetTimestamp] = await Promise.all([
-        execa`git log -1 --format=%cd --date=iso-local -- ${file}`,
-        execa`git log -1 --format=%cd --date=iso-local -- ${targetFile}`,
+        execa`git log -1 --format=%cd --date=unix -- ${file}`,
+        execa`git log -1 --format=%cd --date=unix -- ${targetFile}`,
       ]);
 
-      return sourceTimestamp.stdout > targetTimestamp.stdout ? file : null;
+      return Number(sourceTimestamp.stdout) > Number(targetTimestamp.stdout) ? file : null;
     })
   );
 
