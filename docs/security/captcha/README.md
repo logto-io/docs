@@ -7,7 +7,7 @@ sidebar_label: CAPTCHA
 
 CAPTCHA bot protection helps secure your user flows by verifying that users are human, significantly reducing bot attacks. Logto supports leading providers such as Google reCAPTCHA Enterprise and Cloudflare Turnstile.
 
-## Enabling CAPTCHA bot protection
+## Enabling CAPTCHA bot protection {#enabling-captcha-bot-protection}
 
 Follow these steps to activate CAPTCHA for your user flows (sign-in, registration, and password recovery):
 
@@ -17,7 +17,7 @@ Follow these steps to activate CAPTCHA for your user flows (sign-in, registratio
 4. **Save**: Click **Save and done** to apply your settings.
 5. **(Optional) Enable CAPTCHA**: CAPTCHA will automatically be enabled on the security page once a provider is configured. However, you can manually verify or adjust settings as needed.
 
-## Previewing CAPTCHA integration
+## Previewing CAPTCHA integration {#previewing-captcha-integration}
 
 You have two options to preview and test CAPTCHA integration:
 
@@ -26,7 +26,7 @@ You have two options to preview and test CAPTCHA integration:
 
 Ensure the CAPTCHA challenge appears as expected in either option.
 
-## Supported providers
+## Supported providers {#supported-providers}
 
 Currently, we support:
 
