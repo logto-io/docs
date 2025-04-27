@@ -7,11 +7,11 @@ sidebar_label: reCAPTCHA Enterprise
 
 reCAPTCHA Enterprise is a Google service that protects websites from fraud and abuse using advanced bot detection without disrupting user experience. This guide will walk you through the process of setting up reCAPTCHA Enterprise with Logto.
 
-## Prerequisites
+## Prerequisites {#prerequisites}
 
 - A Google Cloud project
 
-## Setup a reCAPTCHA key
+## Setup a reCAPTCHA key {#setup-a-recaptcha-key}
 
 1. Go to the [reCAPTCHA page of Google Cloud Console](https://console.cloud.google.com/security/recaptcha).
 2. Click **Create key** button near "reCAPTCHA keys".
@@ -21,7 +21,7 @@ reCAPTCHA Enterprise is a Google service that protects websites from fraud and a
    - **Domain list**: Add Logto's endpoint domain
 4. After creating the key, you will be redirected to the key details page, copy the **ID**.
 
-## Setup an API key
+## Setup an API key {#setup-an-api-key}
 
 1. Go to the [Credentials page of Google Cloud Console](https://console.cloud.google.com/apis/credentials).
 2. Click **Create credentials** button and select **API key**.
@@ -29,11 +29,11 @@ reCAPTCHA Enterprise is a Google service that protects websites from fraud and a
 4. Optionally, you can restrict the API key to **reCAPTCHA Enterprise API** to make it more secure.
 5. Remember to leave "Application restrictions" to **None** if you don't understand what it is.
 
-## Get project ID
+## Get project ID {#get-project-id}
 
 1. Copy the **Project ID** from the [home page of Google Cloud Console](https://console.cloud.google.com/welcome).
 
-## Enable CAPTCHA
+## Enable CAPTCHA {#enable-captcha}
 
 Remember to enable CAPTCHA bot protection after you have set up the CAPTCHA provider.
 
