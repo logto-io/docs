@@ -53,8 +53,6 @@ const addAliasPlugin: PluginConfig = () => ({
   }),
 });
 
-const gtagAwTrackingId = 'AW-11124811245';
-
 const injectHeadTagsPlugin: PluginConfig = () => ({
   name: 'inject-head-tags-plugin',
   injectHtmlTags: () => ({
@@ -83,37 +81,6 @@ const injectHeadTagsPlugin: PluginConfig = () => ({
         innerHTML: `
           if (shouldTrack) {
             window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) };
-          }
-        `,
-      },
-      {
-        tagName: 'script',
-        attributes: {
-          async: true,
-          crossorigin: 'anonymous',
-          src: `https://www.googletagmanager.com/gtag/js?id=${gtagAwTrackingId}`,
-        },
-      },
-      {
-        tagName: 'script',
-        innerHTML: `
-          if (shouldTrack) {
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${gtagAwTrackingId}');
-          }
-        `,
-      },
-      {
-        tagName: 'script',
-        innerHTML: `
-          if (shouldTrack) {
-            (function(c,l,a,r,i,t,y){
-                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-            })(window, document, "clarity", "script", "o9cb961ir0");
           }
         `,
       },
