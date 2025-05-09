@@ -35,6 +35,14 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
+  scripts: [
+    {
+      src: 'https://accounts.google.com/gsi/client',
+      async: true,
+      defer: true,
+    },
+  ],
+
   i18n: {
     defaultLocale,
     locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
@@ -43,6 +51,7 @@ const config: Config = {
 
   customFields: {
     inkeepApiKey: process.env.INKEEP_API_KEY,
+    logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
