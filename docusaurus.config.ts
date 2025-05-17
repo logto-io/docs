@@ -218,6 +218,12 @@ const config: Config = {
           position: 'left',
           label: 'API',
         },
+        {
+          type: 'doc',
+          docId: 'use-cases/README',
+          position: 'left',
+          label: 'Use cases',
+        },
       ],
     },
     footer: {
