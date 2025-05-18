@@ -1,24 +1,24 @@
-import { useColorMode } from '@docusaurus/theme-common';
+import ThemedImage from '@theme/ThemedImage';
 
 import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
 
 import styles from './index.module.scss';
 
 const Topbar = () => {
-  const { colorMode } = useColorMode();
   const prefix = useCurrentLocalePrefix();
 
   return (
     <div className={styles.section}>
       <div className={styles.container}>
-        <div className="col col--offset-1">
-          <a href={new URL(prefix, 'https://logto.io').href}>
-            <img
-              src={`/img/logto${colorMode === 'dark' ? '_dark' : ''}.svg`}
-              alt="Logto logo"
-            ></img>
-          </a>
-        </div>
+        <a href={new URL(prefix, 'https://logto.io').href}>
+          <ThemedImage
+            alt="Logto logo"
+            sources={{
+              light: '/img/logto.svg',
+              dark: '/img/logto_dark.svg',
+            }}
+          />
+        </a>
       </div>
     </div>
   );
