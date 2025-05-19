@@ -1,5 +1,10 @@
 // Test all redirects under `/static/_redirects` are reachable
 
+if (process.env.BUILD_TARGET === 'tutorial') {
+  console.log('Skipping test-redirects because BUILD_TARGET is tutorial');
+  process.exit(0);
+}
+
 import fs from 'node:fs/promises';
 
 const content = await fs.readFile('./static/_redirects', 'utf8');
