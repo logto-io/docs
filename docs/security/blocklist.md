@@ -1,6 +1,7 @@
 ---
 slug: /security/blocklist
 sidebar_label: Blocklist
+sidebar_position: 3
 ---
 
 # Blocklist
