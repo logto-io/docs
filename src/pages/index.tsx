@@ -6,7 +6,7 @@ const HomeRedirect = () => {
     siteConfig: { customFields },
   } = useDocusaurusContext();
 
-  const buildTarget = customFields?.buildTarget;
+  const buildTarget = String(customFields?.buildTarget ?? '');
 
   return <Redirect to={buildTarget === 'tutorial' ? 'tutorial' : 'introduction'} />;
 };

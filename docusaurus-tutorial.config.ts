@@ -33,7 +33,7 @@ const getCloudflareSubdomain = (branchName: string) =>
 
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-tutorial.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula } = themes;

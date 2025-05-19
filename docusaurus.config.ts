@@ -10,12 +10,8 @@ import remarkMath from 'remark-math';
 
 import ogImageGenerator from './plugins/og-image-generator';
 import tutorialGenerator from './plugins/tutorial-generator';
-import { cond } from '@silverhand/essentials';
 
 const defaultLocale = 'en';
-
-// Supported locales for the "Build X with Y" tutorials
-const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 
 // A workaround for locale-specific values in the config
 // https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
@@ -35,7 +31,7 @@ const getCloudflareSubdomain = (branchName: string) =>
 
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-tutorial.pages.dev/`
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula } = themes;
@@ -323,27 +319,6 @@ const config: Config = {
     'docusaurus-plugin-sass',
     tutorialGenerator,
     ogImageGenerator,
-    cond(tutorialLocales.includes(currentLocale) && [
-      '@docusaurus/plugin-content-blog',
-      {
-        /**
-         * Required for any multi-instance plugin
-         */
-        id: 'tutorial',
-        /**
-         * URL route for the blog section of your site.
-         * *DO NOT* include a trailing slash.
-         */
-        routeBasePath: 'tutorial',
-        /**
-         * Path to data on filesystem relative to site dir.
-         */
-        path: './tutorial',
-        blogSidebarCount: 0,
-        showReadingTime: false,
-        postsPerPage: 'ALL',
-      },
-    ]),
     [
       '@docusaurus/plugin-content-blog',
       {
