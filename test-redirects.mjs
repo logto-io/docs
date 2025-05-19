@@ -1,9 +1,6 @@
 // Test all redirects under `/static/_redirects` are reachable
 
-if (process.env.BUILD_TARGET === 'tutorial') {
-  console.log('Skipping test-redirects because BUILD_TARGET is tutorial');
-  process.exit(0);
-}
+const isTutorialBuild = process.env.BUILD_TARGET === 'tutorial';
 
 import fs from 'node:fs/promises';
 
@@ -18,6 +15,16 @@ for (const line of content.split('\n')) {
   }
 
   const [from, to] = line.split(' ');
+
+  if (isTutorialBuild && !to.startsWith('/tutorial')) {
+    console.log(`Skipping ${from} because it's not a tutorial redirect in the tutorial only build`);
+    continue;
+  }
+
+  if (!isTutorialBuild && to.startsWith('/tutorial')) {
+    console.log(`Skipping ${from} because it's a tutorial redirect in the non-tutorial build`);
+    continue;
+  }
 
   if (to.includes(':')) {
     console.warn(`Ignoring ${to} because it has a placeholder`);
