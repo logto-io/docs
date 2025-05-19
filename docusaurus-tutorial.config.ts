@@ -8,10 +8,12 @@ import { themes } from 'prism-react-renderer';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
-import ogImageGenerator from './plugins/og-image-generator';
-import tutorialGenerator from './plugins/tutorial-generator';
+import { cond } from '@silverhand/essentials';
 
 const defaultLocale = 'en';
+
+// Supported locales for the "Build X with Y" tutorials
+const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 
 // A workaround for locale-specific values in the config
 // https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
@@ -31,7 +33,7 @@ const getCloudflareSubdomain = (branchName: string) =>
 
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-tutorial.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula } = themes;
@@ -95,9 +97,9 @@ const config: Config = {
   title: 'Logto docs',
   url: getLogtoDocsUrl(),
   baseUrl: '/',
-  onBrokenLinks: 'throw',
-  onBrokenAnchors: 'throw',
-  onBrokenMarkdownLinks: 'throw',
+  onBrokenLinks: 'warn',
+  onBrokenAnchors: 'warn',
+  onBrokenMarkdownLinks: 'warn',
   favicon: '/img/favicon.ico',
   organizationName: 'logto-io', // Usually your GitHub org/user name.
   projectName: 'docs', // Usually your repo name.
@@ -113,12 +115,10 @@ const config: Config = {
 
   customFields: {
     inkeepApiKey: process.env.INKEEP_API_KEY,
+    buildTarget: process.env.BUILD_TARGET,
   },
 
-  staticDirectories: [
-    'static',
-    'static-localized/' + currentLocale,
-  ],
+  staticDirectories: ['static', 'static-localized/' + currentLocale],
 
   markdown: {
     mermaid: true,
@@ -144,13 +144,15 @@ const config: Config = {
         docs: {
           routeBasePath: '/',
           breadcrumbs: true,
-          sidebarPath: './src/sidebar/index.ts',
           editUrl: 'https://github.com/logto-io/docs/tree/master',
           editLocalizedFiles: true,
           // To enabled math formula rendering
           // See https://docusaurus.io/docs/markdown-features/math-equations#configuration
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
+          exclude: [
+            '*/**',
+          ],
         },
         theme: {
           customCss: './src/scss/custom.scss',
@@ -192,20 +194,17 @@ const config: Config = {
       },
       items: [
         {
-          type: 'doc',
-          docId: 'introduction/README',
+          to: 'https://docs.logto.io/introduction',
           position: 'left',
           label: 'Docs',
         },
         {
-          type: 'doc',
-          docId: 'quick-starts/README',
+          to: 'https://docs.logto.io/quick-starts',
           position: 'left',
           label: 'Quick starts',
         },
         {
-          type: 'doc',
-          docId: 'integrations/README',
+          to: 'https://docs.logto.io/integrations',
           position: 'left',
           label: 'Connectors',
         },
@@ -226,9 +225,9 @@ const config: Config = {
         {
           title: 'Developers',
           items: [
-            { label: 'Docs', to: '/' },
-            { label: 'Quick starts', to: '/quick-starts' },
-            { label: 'Integrations', to: '/integrations' },
+            { label: 'Docs', href: 'https://docs.logto.io' },
+            { label: 'Quick starts', href: 'https://docs.logto.io/quick-starts' },
+            { label: 'Integrations', href: 'https://docs.logto.io/integrations' },
             {
               label: 'Account API',
               href: 'https://openapi.logto.io/group/endpoint-account-center',
@@ -317,30 +316,29 @@ const config: Config = {
     addAliasPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
-    tutorialGenerator,
-    ogImageGenerator,
-    [
-      '@docusaurus/plugin-content-blog',
-      {
-        id: 'terms',
-        routeBasePath: 'terms',
-        path: './terms',
-        blogSidebarCount: 0,
-        showReadingTime: false,
-        feedOptions: {},
-      },
-    ],
-    [
-      '@docusaurus/plugin-content-blog',
-      {
-        id: 'about',
-        routeBasePath: 'about',
-        path: './about',
-        blogSidebarCount: 0,
-        showReadingTime: false,
-        feedOptions: {},
-      },
-    ],
+    cond(
+      tutorialLocales.includes(currentLocale) && [
+        '@docusaurus/plugin-content-blog',
+        {
+          /**
+           * Required for any multi-instance plugin
+           */
+          id: 'tutorial',
+          /**
+           * URL route for the blog section of your site.
+           * *DO NOT* include a trailing slash.
+           */
+          routeBasePath: 'tutorial',
+          /**
+           * Path to data on filesystem relative to site dir.
+           */
+          path: './tutorial',
+          blogSidebarCount: 0,
+          showReadingTime: false,
+          postsPerPage: 'ALL',
+        },
+      ]
+    ),
   ].filter(Boolean),
   themes: ['@docusaurus/theme-mermaid'],
 };
