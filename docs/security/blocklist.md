@@ -24,4 +24,4 @@ For instance, adding `@example.com` to the blocklist will block all email addres
 
 ### Block disposable email addresses {#block-disposable-email-addresses}
 
-This is a <b>cloud-only</b> feature. Once enabled, the system will automatically validates the domain of the provided email address against a list of known disposable email domains. If the domain is found in the list, the request will be rejected. The list of disposable email domains is regularly updated to ensure its effectiveness.
+This is a **cloud-only** feature. Once enabled, the system will automatically validates the domain of the provided email address against a list of known disposable email domains. If the domain is found in the list, the request will be rejected. The list of disposable email domains is regularly updated to ensure its effectiveness.
