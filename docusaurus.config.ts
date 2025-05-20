@@ -1,8 +1,7 @@
+// eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 import type { Config } from '@docusaurus/types';
 
-import ogImageGenerator from './plugins/og-image-generator';
-import tutorialGenerator from './plugins/tutorial-generator';
 import {
   addAliasPlugin,
   cfPagesBranch,
@@ -16,6 +15,8 @@ import {
   injectHeadTagsPlugin,
   isCfPagesPreview,
 } from './docusaurus-common.config';
+import ogImageGenerator from './plugins/og-image-generator';
+import tutorialGenerator from './plugins/tutorial-generator';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
@@ -39,19 +40,13 @@ const config: Config = {
     inkeepApiKey: process.env.INKEEP_API_KEY,
   },
 
-
-  staticDirectories: [
-    'static',
-    'static-localized/' + currentLocale,
-  ],
+  staticDirectories: ['static', 'static-localized/' + currentLocale],
 
   markdown: commonMarkdown,
 
   trailingSlash: false,
 
-  presets: [
-    ['classic', classicPresetConfig],
-  ],
+  presets: [['classic', classicPresetConfig]],
 
   stylesheets: commonStylesheets,
 

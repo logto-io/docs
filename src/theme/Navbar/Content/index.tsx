@@ -88,53 +88,55 @@ export default function NavbarContent(): JSX.Element {
           <NavbarItems items={rightItems} />
           <NavbarColorModeToggle className={styles.colorModeToggle} />
           {/* Charles ejected the component and added the inkeep search bar here */}
-          <BrowserOnly fallback={<div />}>
-            {() => (
-              <>
-                <SearchBar
-                  className={styles.searchBar}
-                  onClick={() => {
-                    setOpenModal('search');
-                  }}
-                />
-                <Button
-                  className={clsx(styles.button, styles.askAi)}
-                  type="outline"
-                  size="medium"
-                  onClick={() => {
-                    setOpenModal('chat');
-                  }}
-                >
-                  {colorMode === 'dark' ? <LogtoAiBotDark /> : <LogtoAiBot />}
-                  {translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
-                </Button>
-                <InkeepModalSearchAndChat
-                  {...inkeepConfigs}
-                  shouldAutoFocusInput
-                  modalSettings={{
-                    isOpen: openModal === 'search',
-                    shortcutKey: 'k',
-                    onOpenChange: (isOpen) => {
-                      setOpenModal(isOpen ? 'search' : undefined);
-                    },
-                  }}
-                  askAILabel={translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
-                  searchLabel={translate({ id: 'theme.SearchBar.label', message: 'Search' })}
-                />
-                <InkeepModalChat
-                  {...inkeepConfigs}
-                  shouldAutoFocusInput
-                  modalSettings={{
-                    isOpen: openModal === 'chat',
-                    shortcutKey: null,
-                    onOpenChange: (isOpen) => {
-                      setOpenModal(isOpen ? 'chat' : undefined);
-                    },
-                  }}
-                />
-              </>
-            )}
-          </BrowserOnly>
+          {inkeepConfigs.baseSettings.apiKey && (
+            <BrowserOnly fallback={<div />}>
+              {() => (
+                <>
+                  <SearchBar
+                    className={styles.searchBar}
+                    onClick={() => {
+                      setOpenModal('search');
+                    }}
+                  />
+                  <Button
+                    className={clsx(styles.button, styles.askAi)}
+                    type="outline"
+                    size="medium"
+                    onClick={() => {
+                      setOpenModal('chat');
+                    }}
+                  >
+                    {colorMode === 'dark' ? <LogtoAiBotDark /> : <LogtoAiBot />}
+                    {translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
+                  </Button>
+                  <InkeepModalSearchAndChat
+                    {...inkeepConfigs}
+                    shouldAutoFocusInput
+                    modalSettings={{
+                      isOpen: openModal === 'search',
+                      shortcutKey: 'k',
+                      onOpenChange: (isOpen) => {
+                        setOpenModal(isOpen ? 'search' : undefined);
+                      },
+                    }}
+                    askAILabel={translate({ id: 'inkeep.ask.ai', message: 'Ask AI' })}
+                    searchLabel={translate({ id: 'theme.SearchBar.label', message: 'Search' })}
+                  />
+                  <InkeepModalChat
+                    {...inkeepConfigs}
+                    shouldAutoFocusInput
+                    modalSettings={{
+                      isOpen: openModal === 'chat',
+                      shortcutKey: null,
+                      onOpenChange: (isOpen) => {
+                        setOpenModal(isOpen ? 'chat' : undefined);
+                      },
+                    }}
+                  />
+                </>
+              )}
+            </BrowserOnly>
+          )}
 
           {/* Charles ejected the component and added the Cloud button here */}
           <Button

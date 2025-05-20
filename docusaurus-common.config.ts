@@ -16,6 +16,7 @@ export const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
+export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
 
 // https://community.cloudflare.com/t/algorithm-to-generate-a-preview-dns-subdomain-from-a-branch-name/477633/2
 export const getCloudflareSubdomain = (branchName: string) =>

@@ -1,8 +1,9 @@
+// eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 
+import ssrTemplate from '@docusaurus/core/lib/ssg/ssgTemplate.html';
 import type { Config, PluginConfig } from '@docusaurus/types';
 import { cond } from '@silverhand/essentials';
-import ssrTemplate from '@docusaurus/core/lib/ssg/ssgTemplate.html';
 
 import {
   addAliasPlugin,
@@ -22,17 +23,17 @@ import {
  * The public path for the static files. Since docusaurus does not have a built-in way to set the
  * public path for the static files, we have to use the workaround from
  * https://github.com/facebook/docusaurus/discussions/4123#discussioncomment-8850455
- * 
+ *
  * If it's a preview environment, no need to set the public path, since the static files are served
  * directly from the root of the domain (e.g. https://some-branch.logto-docs-tutorials.pages.dev/foo.js).
- * 
+ *
  * If it's a production environment, we need to set the public path to the base URL to a special
  * directory to avoid conflicts with the static files from the main site (e.g. https://docs.logto.io/tutorials/public/foo.js).
  * In this way, we can set up a rewrite rule in the CDN to serve the static files from this directory
  * without messing with the main site.
  */
-const publicPath = '/tutorials/public/';
-// const publicPath = isCfPagesPreview ? '' : '/tutorials/public/';
+const publicPath =
+  isCfPagesPreview || process.env.NODE_ENV !== 'production' ? '' : '/tutorials/public/';
 
 const publicPathPlugin: PluginConfig = () => ({
   name: 'public-path-plugin',
@@ -67,7 +68,8 @@ const config: Config = {
   i18n: commonI18n,
 
   customFields: {
-    inkeepApiKey: process.env.INKEEP_API_KEY,
+    // Remove this on purpose to avoid rendering search bar in the tutorials site
+    // inkeepApiKey: process.env.INKEEP_API_KEY,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
@@ -77,14 +79,17 @@ const config: Config = {
   trailingSlash: false,
 
   presets: [
-    ['classic', {
-      ...classicPresetConfig,
-      docs: {
-        ...classicPresetConfig.docs,
-        sidebarPath: undefined,
-        exclude: ['*/**'],
+    [
+      'classic',
+      {
+        ...classicPresetConfig,
+        docs: {
+          ...classicPresetConfig.docs,
+          sidebarPath: undefined,
+          exclude: ['*/**'],
+        },
       },
-    }],
+    ],
   ],
 
   stylesheets: commonStylesheets,
@@ -95,19 +100,19 @@ const config: Config = {
       ...commonThemeConfig.navbar,
       items: [
         {
-          to: 'https://docs.logto.io/introduction',
+          to: '/introduction',
           position: 'left',
           label: 'Docs',
         },
         {
-          to: 'https://docs.logto.io/quick-starts',
+          to: '/quick-starts',
           position: 'left',
           label: 'Quick starts',
         },
         {
-          to: 'https://docs.logto.io/integrations',
+          to: '/integrations',
           position: 'left',
-          label: 'Connectors',
+          label: 'Integrations',
         },
         {
           to: 'https://openapi.logto.io',
