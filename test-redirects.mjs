@@ -1,7 +1,5 @@
 // Test all redirects under `/static/_redirects` are reachable
 
-const isTutorialsBuild = process.env.BUILD_TARGET === 'tutorials';
-
 import fs from 'node:fs/promises';
 
 const content = await fs.readFile('./static/_redirects', 'utf8');
@@ -15,16 +13,6 @@ for (const line of content.split('\n')) {
   }
 
   const [from, to] = line.split(' ');
-
-  if (isTutorialsBuild && !to.startsWith('/tutorial')) {
-    console.log(`Skipping ${from} because it's not a tutorial redirect in the tutorials only build`);
-    continue;
-  }
-
-  if (!isTutorialsBuild && to.startsWith('/tutorial')) {
-    console.log(`Skipping ${from} because it's a tutorial redirect in the non-tutorials build`);
-    continue;
-  }
 
   if (to.includes(':')) {
     console.warn(`Ignoring ${to} because it has a placeholder`);

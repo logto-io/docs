@@ -2,8 +2,6 @@ import 'dotenv/config';
 
 import type { Config } from '@docusaurus/types';
 import { cond } from '@silverhand/essentials';
-import rehypeKatex from 'rehype-katex';
-import remarkMath from 'remark-math';
 
 import {
   addAliasPlugin,
@@ -41,7 +39,6 @@ const config: Config = {
 
   customFields: {
     inkeepApiKey: process.env.INKEEP_API_KEY,
-    buildTarget: process.env.BUILD_TARGET,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],

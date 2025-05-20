@@ -1,7 +1,5 @@
 import 'dotenv/config';
 import type { Config } from '@docusaurus/types';
-import rehypeKatex from 'rehype-katex';
-import remarkMath from 'remark-math';
 
 import ogImageGenerator from './plugins/og-image-generator';
 import tutorialGenerator from './plugins/tutorial-generator';
