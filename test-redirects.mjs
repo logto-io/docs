@@ -1,6 +1,6 @@
 // Test all redirects under `/static/_redirects` are reachable
 
-const isTutorialBuild = process.env.BUILD_TARGET === 'tutorial';
+const isTutorialsBuild = process.env.BUILD_TARGET === 'tutorials';
 
 import fs from 'node:fs/promises';
 
@@ -16,13 +16,13 @@ for (const line of content.split('\n')) {
 
   const [from, to] = line.split(' ');
 
-  if (isTutorialBuild && !to.startsWith('/tutorial')) {
-    console.log(`Skipping ${from} because it's not a tutorial redirect in the tutorial only build`);
+  if (isTutorialsBuild && !to.startsWith('/tutorial')) {
+    console.log(`Skipping ${from} because it's not a tutorial redirect in the tutorials only build`);
     continue;
   }
 
-  if (!isTutorialBuild && to.startsWith('/tutorial')) {
-    console.log(`Skipping ${from} because it's a tutorial redirect in the non-tutorial build`);
+  if (!isTutorialsBuild && to.startsWith('/tutorial')) {
+    console.log(`Skipping ${from} because it's a tutorial redirect in the non-tutorials build`);
     continue;
   }
 

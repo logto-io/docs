@@ -238,7 +238,7 @@ const config: Config = {
               href: 'https://openapi.logto.io/group/endpoint-experience',
             },
             { label: 'Management API', href: 'https://openapi.logto.io' },
-            { label: 'Build X with Y', href: 'pathname:///tutorial' },
+            { label: 'Build X with Y', href: 'pathname:///tutorials' },
           ],
         },
         {

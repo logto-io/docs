@@ -33,7 +33,7 @@ const getCloudflareSubdomain = (branchName: string) =>
 
 const getLogtoDocsUrl = () =>
   cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-tutorial.pages.dev/`
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
     : 'https://docs.logto.io/';
 
 const { dracula } = themes;
@@ -237,7 +237,7 @@ const config: Config = {
               href: 'https://openapi.logto.io/group/endpoint-experience',
             },
             { label: 'Management API', href: 'https://openapi.logto.io' },
-            { label: 'Build X with Y', href: 'pathname:///tutorial' },
+            { label: 'Build X with Y', href: 'pathname:///tutorials' },
           ],
         },
         {
@@ -323,12 +323,12 @@ const config: Config = {
           /**
            * Required for any multi-instance plugin
            */
-          id: 'tutorial',
+          id: 'tutorials',
           /**
            * URL route for the blog section of your site.
            * *DO NOT* include a trailing slash.
            */
-          routeBasePath: 'tutorial',
+          routeBasePath: 'tutorials',
           /**
            * Path to data on filesystem relative to site dir.
            */

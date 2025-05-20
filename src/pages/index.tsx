@@ -8,7 +8,7 @@ const HomeRedirect = () => {
 
   const buildTarget = String(customFields?.buildTarget ?? '');
 
-  return <Redirect to={buildTarget === 'tutorial' ? 'tutorial' : 'introduction'} />;
+  return <Redirect to={buildTarget === 'tutorials' ? 'tutorials' : 'introduction'} />;
 };
 
 export default HomeRedirect;
