@@ -61,8 +61,10 @@ const configs = [
     rules: {
       'max-lines': 'off',
     },
-    env: {
-      node: true,
+    languageOptions: {
+      globals: {
+        node: true,
+      },
     },
   },
   {
