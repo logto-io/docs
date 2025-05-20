@@ -9,7 +9,7 @@ import {
   commonI18n,
   commonMarkdown,
   commonStylesheets,
-  commonThemeConfig,
+  createCommonThemeConfig,
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
@@ -49,38 +49,7 @@ const config: Config = {
   presets: [['classic', classicPresetConfig]],
 
   stylesheets: commonStylesheets,
-
-  themeConfig: {
-    ...commonThemeConfig,
-    navbar: {
-      ...commonThemeConfig.navbar,
-      items: [
-        {
-          type: 'doc',
-          docId: 'introduction/README',
-          position: 'left',
-          label: 'Docs',
-        },
-        {
-          type: 'doc',
-          docId: 'quick-starts/README',
-          position: 'left',
-          label: 'Quick starts',
-        },
-        {
-          type: 'doc',
-          docId: 'integrations/README',
-          position: 'left',
-          label: 'Connectors',
-        },
-        {
-          to: 'https://openapi.logto.io',
-          position: 'left',
-          label: 'API',
-        },
-      ],
-    },
-  },
+  themeConfig: createCommonThemeConfig(true),
 
   plugins: [
     addAliasPlugin,

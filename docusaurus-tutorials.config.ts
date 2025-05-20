@@ -12,11 +12,12 @@ import {
   commonI18n,
   commonMarkdown,
   commonStylesheets,
-  commonThemeConfig,
+  createCommonThemeConfig,
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
   isCfPagesPreview,
+  mainSiteUrl,
 } from './docusaurus-common.config';
 
 /**
@@ -50,7 +51,7 @@ const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
-    : 'https://docs.logto.io/';
+    : mainSiteUrl;
 
 const config: Config = {
   title: 'Logto docs',
@@ -93,35 +94,7 @@ const config: Config = {
   ],
 
   stylesheets: commonStylesheets,
-
-  themeConfig: {
-    ...commonThemeConfig,
-    navbar: {
-      ...commonThemeConfig.navbar,
-      items: [
-        {
-          to: '/introduction',
-          position: 'left',
-          label: 'Docs',
-        },
-        {
-          to: '/quick-starts',
-          position: 'left',
-          label: 'Quick starts',
-        },
-        {
-          to: '/integrations',
-          position: 'left',
-          label: 'Integrations',
-        },
-        {
-          to: 'https://openapi.logto.io',
-          position: 'left',
-          label: 'API',
-        },
-      ],
-    },
-  },
+  themeConfig: createCommonThemeConfig(false),
 
   plugins: [
     addAliasPlugin,

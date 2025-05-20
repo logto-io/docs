@@ -15,6 +15,7 @@ export const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+export const mainSiteUrl = 'https://docs.logto.io/';
 export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
 export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
 
@@ -82,112 +83,150 @@ export const injectHeadTagsPlugin: PluginConfig = () => ({
   }),
 });
 
-export const commonThemeConfig = {
-  navbar: {
-    logo: {
-      alt: 'Logto Logo',
-      src: 'img/logto.svg',
-      srcDark: 'img/logto_dark.svg',
-      href: new URL(localePath, 'https://logto.io/').href,
+/**
+ * Create a common theme config for a Docusaurus site.
+ *
+ * If `isMainSite` is true, the config will generate relative URLs when possible; otherwise, it will
+ * generate absolute URLs. This is useful when deploying multiple Docusaurus sites under the same
+ * domain.
+ *
+ * For example, the main site is deployed at `https://docs.logto.io`, and the
+ * tutorials site is deployed at `https://docs.logto.io/tutorials`. A relative URL for the main site
+ * in the tutorials site would result 404 errors if the URL is not prefixed with the main site
+ * domain, as each site is a standalone single-page application.
+ */
+export const createCommonThemeConfig = (isMainSite: boolean) => {
+  const buildUrl = (pathname: string) =>
+    isMainSite ? pathname : new URL(pathname, mainSiteUrl).href;
+  return Object.freeze({
+    navbar: {
+      logo: {
+        alt: 'Logto Logo',
+        src: 'img/logto.svg',
+        srcDark: 'img/logto_dark.svg',
+        href: new URL(localePath, 'https://logto.io/').href,
+      },
+      items: [
+        {
+          to: buildUrl('/'),
+          position: 'left',
+          label: 'Docs',
+        },
+        {
+          to: buildUrl('/quick-starts'),
+          position: 'left',
+          label: 'Quick starts',
+        },
+        {
+          to: buildUrl('/integrations'),
+          position: 'left',
+          label: 'Integrations',
+        },
+        {
+          to: new URL('https://openapi.logto.io', mainSiteUrl).href,
+          position: 'left',
+          label: 'API',
+        },
+      ],
     },
-  },
-  footer: {
-    logo: {
-      alt: 'Logo',
-      src: '/img/silverhand.svg',
+    footer: {
+      logo: {
+        alt: 'Logo',
+        src: '/img/silverhand.svg',
+      },
+      style: 'dark',
+      links: [
+        {
+          title: 'Developers',
+          items: [
+            { label: 'Docs', to: buildUrl('/') },
+            { label: 'Quick starts', to: buildUrl('/quick-starts') },
+            { label: 'Integrations', to: buildUrl('/integrations') },
+            {
+              label: 'Account API',
+              href: 'https://openapi.logto.io/group/endpoint-account-center',
+            },
+            {
+              label: 'Experience API',
+              href: 'https://openapi.logto.io/group/endpoint-experience',
+            },
+            { label: 'Management API', href: 'https://openapi.logto.io' },
+            { label: 'Build X with Y', href: 'pathname:///tutorials' },
+          ],
+        },
+        {
+          title: 'Resources',
+          items: [
+            { label: 'Pricing', href: 'https://logto.io/pricing' },
+            { label: 'Blogs', href: 'https://blog.logto.io' },
+            { label: 'Auth Wiki', href: 'https://auth.wiki' },
+            { label: "What's new", href: 'https://blog.logto.io/categories/changelogs/#all' },
+            { label: 'YouTube', href: 'https://youtube.com/@logto-io' },
+            { label: 'GitHub', href: 'https://github.com/logto-io/logto' },
+          ],
+        },
+        {
+          title: 'Need help?',
+          items: [
+            {
+              label: 'Contact support',
+              href: 'https://logto.io/contact',
+              icon: 'email',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Open a GitHub issue',
+              href: 'https://github.com/logto-io/logto/issues/new/choose',
+              icon: 'github',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Request a new feature',
+              href: 'https://logto.productlane.com/roadmap',
+              icon: 'roadmap',
+              hideExternalLinkIcon: true,
+            },
+            {
+              label: 'Ask the Discord community',
+              href: 'https://discord.com/invite/UEPaF3j5e6',
+              icon: 'discord',
+              hideExternalLinkIcon: true,
+            },
+          ],
+        },
+      ],
+      copyright: `Designed by Silverhand Inc.`,
     },
-    style: 'dark',
-    links: [
-      {
-        title: 'Developers',
-        items: [
-          { label: 'Docs', to: '/' },
-          { label: 'Quick starts', to: '/quick-starts' },
-          { label: 'Integrations', to: '/integrations' },
-          {
-            label: 'Account API',
-            href: 'https://openapi.logto.io/group/endpoint-account-center',
-          },
-          {
-            label: 'Experience API',
-            href: 'https://openapi.logto.io/group/endpoint-experience',
-          },
-          { label: 'Management API', href: 'https://openapi.logto.io' },
-          { label: 'Build X with Y', href: 'pathname:///tutorials' },
-        ],
-      },
-      {
-        title: 'Resources',
-        items: [
-          { label: 'Pricing', href: 'https://logto.io/pricing' },
-          { label: 'Blogs', href: 'https://blog.logto.io' },
-          { label: 'Auth Wiki', href: 'https://auth.wiki' },
-          { label: "What's new", href: 'https://blog.logto.io/categories/changelogs/#all' },
-          { label: 'YouTube', href: 'https://youtube.com/@logto-io' },
-          { label: 'GitHub', href: 'https://github.com/logto-io/logto' },
-        ],
-      },
-      {
-        title: 'Need help?',
-        items: [
-          {
-            label: 'Contact support',
-            href: 'https://logto.io/contact',
-            icon: 'email',
-            hideExternalLinkIcon: true,
-          },
-          {
-            label: 'Open a GitHub issue',
-            href: 'https://github.com/logto-io/logto/issues/new/choose',
-            icon: 'github',
-            hideExternalLinkIcon: true,
-          },
-          {
-            label: 'Request a new feature',
-            href: 'https://logto.productlane.com/roadmap',
-            icon: 'roadmap',
-            hideExternalLinkIcon: true,
-          },
-          {
-            label: 'Ask the Discord community',
-            href: 'https://discord.com/invite/UEPaF3j5e6',
-            icon: 'discord',
-            hideExternalLinkIcon: true,
-          },
-        ],
-      },
-    ],
-    copyright: `Designed by Silverhand Inc.`,
-  },
-  prism: {
-    theme: dracula,
-    darkTheme: dracula,
-    additionalLanguages: [
-      'swift',
-      'kotlin',
-      'groovy',
-      'java',
-      'php',
-      'json',
-      'bash',
-      'csharp',
-      'cshtml',
-      'json5',
-      'dart',
-      'ruby',
-      'erb',
-      'http',
-    ],
-  },
-  colorMode: {
-    respectPrefersColorScheme: true,
-  },
-  algolia: {
-    appId: 'DE7QZWOVO6',
-    apiKey: '4c64ad7f3b8622f59d8121dbac801337',
-    indexName: 'logto',
-  },
-} satisfies ThemeConfig;
+    prism: {
+      theme: dracula,
+      darkTheme: dracula,
+      additionalLanguages: [
+        'swift',
+        'kotlin',
+        'groovy',
+        'java',
+        'php',
+        'json',
+        'bash',
+        'csharp',
+        'cshtml',
+        'json5',
+        'dart',
+        'ruby',
+        'erb',
+        'http',
+      ],
+    },
+    colorMode: {
+      respectPrefersColorScheme: true,
+    },
+    algolia: {
+      appId: 'DE7QZWOVO6',
+      apiKey: '4c64ad7f3b8622f59d8121dbac801337',
+      indexName: 'logto',
+    },
+  } satisfies ThemeConfig);
+};
 
 export const commonI18n = {
   defaultLocale: 'en',
