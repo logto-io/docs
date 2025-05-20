@@ -1,7 +1,8 @@
 import 'dotenv/config';
 
-import type { Config } from '@docusaurus/types';
+import type { Config, PluginConfig } from '@docusaurus/types';
 import { cond } from '@silverhand/essentials';
+import ssrTemplate from '@docusaurus/core/lib/ssg/ssgTemplate.html';
 
 import {
   addAliasPlugin,
@@ -14,13 +15,39 @@ import {
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
-} from './docusaurus-common';
+  isCfPagesPreview,
+} from './docusaurus-common.config';
+
+/**
+ * The public path for the static files. Since docusaurus does not have a built-in way to set the
+ * public path for the static files, we have to use the workaround from
+ * https://github.com/facebook/docusaurus/discussions/4123#discussioncomment-8850455
+ * 
+ * If it's a preview environment, no need to set the public path, since the static files are served
+ * directly from the root of the domain (e.g. https://some-branch.logto-docs-tutorials.pages.dev/foo.js).
+ * 
+ * If it's a production environment, we need to set the public path to the base URL to a special
+ * directory to avoid conflicts with the static files from the main site (e.g. https://docs.logto.io/tutorials/public/foo.js).
+ * In this way, we can set up a rewrite rule in the CDN to serve the static files from this directory
+ * without messing with the main site.
+ */
+const publicPath = '/tutorials/public/';
+// const publicPath = isCfPagesPreview ? '' : '/tutorials/public/';
+
+const publicPathPlugin: PluginConfig = () => ({
+  name: 'public-path-plugin',
+  configureWebpack: () => ({
+    output: {
+      publicPath,
+    },
+  }),
+});
 
 // Supported locales for the "Build X with Y" tutorials
 const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 
 const getLogtoDocsUrl = () =>
-  cfPagesBranch && cfPagesBranch !== 'master'
+  isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
     : 'https://docs.logto.io/';
 
@@ -35,6 +62,8 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
+  ssrTemplate: ssrTemplate.replaceAll('<%= it.baseUrl %>', publicPath + '<%= it.baseUrl %>'),
+
   i18n: commonI18n,
 
   customFields: {
@@ -48,14 +77,14 @@ const config: Config = {
   trailingSlash: false,
 
   presets: [
-    [ 'classic', {
+    ['classic', {
       ...classicPresetConfig,
       docs: {
         ...classicPresetConfig.docs,
         sidebarPath: undefined,
         exclude: ['*/**'],
       },
-    } ],
+    }],
   ],
 
   stylesheets: commonStylesheets,
@@ -116,6 +145,7 @@ const config: Config = {
         },
       ]
     ),
+    publicPathPlugin,
   ].filter(Boolean),
   themes: ['@docusaurus/theme-mermaid'],
 };

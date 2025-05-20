@@ -14,10 +14,11 @@ import {
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
-} from './docusaurus-common';
+  isCfPagesPreview,
+} from './docusaurus-common.config';
 
 const getLogtoDocsUrl = () =>
-  cfPagesBranch && cfPagesBranch !== 'master'
+  isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
     : 'https://docs.logto.io/';
 
@@ -49,7 +50,7 @@ const config: Config = {
   trailingSlash: false,
 
   presets: [
-    [ 'classic', classicPresetConfig ],
+    ['classic', classicPresetConfig],
   ],
 
   stylesheets: commonStylesheets,
