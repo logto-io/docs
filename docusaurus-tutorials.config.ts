@@ -20,6 +20,11 @@ import {
   mainSiteUrl,
 } from './docusaurus-common.config';
 
+const getLogtoDocsUrl = () =>
+  isCfPagesPreview
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
+    : mainSiteUrl;
+
 /**
  * The public path for the static files. Since docusaurus does not have a built-in way to set the
  * public path for the static files, we have to use the workaround from
@@ -33,8 +38,7 @@ import {
  * In this way, we can set up a rewrite rule in the CDN to serve the static files from this directory
  * without messing with the main site.
  */
-const publicPath =
-  isCfPagesPreview || process.env.NODE_ENV !== 'production' ? '' : '/tutorials/public/';
+const publicPath = isCfPagesPreview ? getLogtoDocsUrl() : '/tutorials/public/';
 
 const publicPathPlugin: PluginConfig = () => ({
   name: 'public-path-plugin',
@@ -47,11 +51,6 @@ const publicPathPlugin: PluginConfig = () => ({
 
 // Supported locales for the "Build X with Y" tutorials
 const tutorialLocales = ['en', 'es', 'fr', 'ja'];
-
-const getLogtoDocsUrl = () =>
-  isCfPagesPreview
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
-    : mainSiteUrl;
 
 const config: Config = {
   title: 'Logto docs',
