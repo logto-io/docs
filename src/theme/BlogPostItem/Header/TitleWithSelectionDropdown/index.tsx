@@ -143,7 +143,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
             slugLastPart
           : slugFirstPart + selectedSlugPart + slug.slice(slug.indexOf(slugMiddlePart));
 
-      push(`${locale}/tutorial/${targetSlug}`);
+      push(`${locale}/tutorials/${targetSlug}`);
     }
   };
 
