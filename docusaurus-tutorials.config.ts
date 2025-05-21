@@ -67,7 +67,7 @@ const config: Config = {
   ],
 
   stylesheets: commonStylesheets,
-  themeConfig: createCommonThemeConfig(false),
+  themeConfig: createCommonThemeConfig('tutorials'),
 
   plugins: [
     addAliasPlugin,

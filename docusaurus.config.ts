@@ -50,7 +50,7 @@ const config: Config = {
   presets: [['classic', classicPresetConfig]],
 
   stylesheets: commonStylesheets,
-  themeConfig: createCommonThemeConfig(true),
+  themeConfig: createCommonThemeConfig('main'),
 
   plugins: [
     addAliasPlugin,

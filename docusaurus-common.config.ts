@@ -15,8 +15,15 @@ export const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const mainSiteUrl = 'https://docs.logto.io/';
+export const tutorialsSiteUrl = 'https://tutorials.logto.io/';
 export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
 export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
+export const siteUrls = Object.freeze({
+  main: mainSiteUrl,
+  tutorials: tutorialsSiteUrl,
+});
+
+type Site = keyof typeof siteUrls;
 
 // https://community.cloudflare.com/t/algorithm-to-generate-a-preview-dns-subdomain-from-a-branch-name/477633/2
 export const getCloudflareSubdomain = (branchName: string) =>
@@ -94,9 +101,10 @@ export const injectHeadTagsPlugin: PluginConfig = () => ({
  * in the tutorials site would result 404 errors if the URL is not prefixed with the main site
  * domain, as each site is a standalone single-page application.
  */
-export const createCommonThemeConfig = (isMainSite: boolean) => {
-  const buildUrl = (pathname: string) =>
-    isMainSite ? pathname : new URL(pathname, mainSiteUrl).href;
+export const createCommonThemeConfig = (site: Site) => {
+  const buildUrl = (pathname: string, forSite: Site) =>
+    site === forSite ? pathname : new URL(pathname, siteUrls[forSite]).href;
+
   return Object.freeze({
     navbar: {
       logo: {
@@ -107,17 +115,17 @@ export const createCommonThemeConfig = (isMainSite: boolean) => {
       },
       items: [
         {
-          to: buildUrl('/'),
+          to: buildUrl('/introduction', 'main'),
           position: 'left',
           label: 'Docs',
         },
         {
-          to: buildUrl('/quick-starts'),
+          to: buildUrl('/quick-starts', 'main'),
           position: 'left',
           label: 'Quick starts',
         },
         {
-          to: buildUrl('/integrations'),
+          to: buildUrl('/integrations', 'main'),
           position: 'left',
           label: 'Integrations',
         },
@@ -138,9 +146,9 @@ export const createCommonThemeConfig = (isMainSite: boolean) => {
         {
           title: 'Developers',
           items: [
-            { label: 'Docs', to: buildUrl('/') },
-            { label: 'Quick starts', to: buildUrl('/quick-starts') },
-            { label: 'Integrations', to: buildUrl('/integrations') },
+            { label: 'Docs', to: buildUrl('/introduction', 'main') },
+            { label: 'Quick starts', to: buildUrl('/quick-starts', 'main') },
+            { label: 'Integrations', to: buildUrl('/integrations', 'main') },
             {
               label: 'Account API',
               href: 'https://openapi.logto.io/group/endpoint-account-center',
@@ -150,7 +158,7 @@ export const createCommonThemeConfig = (isMainSite: boolean) => {
               href: 'https://openapi.logto.io/group/endpoint-experience',
             },
             { label: 'Management API', href: 'https://openapi.logto.io' },
-            { label: 'Build X with Y', href: 'pathname:///tutorials' },
+            { label: 'Build X with Y', to: tutorialsSiteUrl + 'tutorials' }, // TODO: @gao temporarily hardcode the URL, we'll update it later
           ],
         },
         {
