@@ -62,9 +62,10 @@ const customStyles = `
 const useInkeepConfigs = () => {
   const { colorMode } = useColorMode();
   const {
-    siteConfig: { customFields },
+    siteConfig: { customFields = {} },
   } = useDocusaurusContext();
-  const apiKey = String(customFields?.inkeepApiKey ?? '');
+  const { inkeepApiKey } = customFields;
+  const apiKey: string | undefined = cond(typeof inkeepApiKey === 'string' && inkeepApiKey);
 
   return useMemo(
     () =>

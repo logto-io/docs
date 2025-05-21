@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 
 import type { Config } from '@docusaurus/types';
@@ -10,27 +11,29 @@ import {
   commonI18n,
   commonMarkdown,
   commonStylesheets,
-  commonThemeConfig,
+  createCommonThemeConfig,
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
-} from './docusaurus-common';
+  isCfPagesPreview,
+  mainSiteUrl,
+} from './docusaurus-common.config';
+
+const getLogtoDocsUrl = () =>
+  isCfPagesPreview
+    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
+    : mainSiteUrl;
 
 // Supported locales for the "Build X with Y" tutorials
 const tutorialLocales = ['en', 'es', 'fr', 'ja'];
-
-const getLogtoDocsUrl = () =>
-  cfPagesBranch && cfPagesBranch !== 'master'
-    ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
-    : 'https://docs.logto.io/';
 
 const config: Config = {
   title: 'Logto docs',
   url: getLogtoDocsUrl(),
   baseUrl: '/',
-  onBrokenLinks: 'warn',
-  onBrokenAnchors: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  onBrokenMarkdownLinks: 'throw',
   favicon: '/img/favicon.ico',
   organizationName: 'logto-io',
   projectName: 'docs',
@@ -38,7 +41,9 @@ const config: Config = {
   i18n: commonI18n,
 
   customFields: {
-    inkeepApiKey: process.env.INKEEP_API_KEY,
+    mainSiteUrl,
+    // Remove this on purpose to avoid rendering search bar in the tutorials site
+    // inkeepApiKey: process.env.INKEEP_API_KEY,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
@@ -48,46 +53,21 @@ const config: Config = {
   trailingSlash: false,
 
   presets: [
-    [ 'classic', {
-      ...classicPresetConfig,
-      docs: {
-        ...classicPresetConfig.docs,
-        sidebarPath: undefined,
-        exclude: ['*/**'],
+    [
+      'classic',
+      {
+        ...classicPresetConfig,
+        docs: {
+          ...classicPresetConfig.docs,
+          sidebarPath: undefined,
+          exclude: ['*/**'],
+        },
       },
-    } ],
+    ],
   ],
 
   stylesheets: commonStylesheets,
-
-  themeConfig: {
-    ...commonThemeConfig,
-    navbar: {
-      ...commonThemeConfig.navbar,
-      items: [
-        {
-          to: 'https://docs.logto.io/introduction',
-          position: 'left',
-          label: 'Docs',
-        },
-        {
-          to: 'https://docs.logto.io/quick-starts',
-          position: 'left',
-          label: 'Quick starts',
-        },
-        {
-          to: 'https://docs.logto.io/integrations',
-          position: 'left',
-          label: 'Connectors',
-        },
-        {
-          to: 'https://openapi.logto.io',
-          position: 'left',
-          label: 'API',
-        },
-      ],
-    },
-  },
+  themeConfig: createCommonThemeConfig('tutorials'),
 
   plugins: [
     addAliasPlugin,
@@ -100,7 +80,7 @@ const config: Config = {
           /**
            * Required for any multi-instance plugin
            */
-          id: 'tutorials',
+          id: 'tutorial',
           /**
            * URL route for the blog section of your site.
            * *DO NOT* include a trailing slash.

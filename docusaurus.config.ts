@@ -1,8 +1,7 @@
+// eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 import type { Config } from '@docusaurus/types';
 
-import ogImageGenerator from './plugins/og-image-generator';
-import tutorialGenerator from './plugins/tutorial-generator';
 import {
   addAliasPlugin,
   cfPagesBranch,
@@ -10,16 +9,20 @@ import {
   commonI18n,
   commonMarkdown,
   commonStylesheets,
-  commonThemeConfig,
+  createCommonThemeConfig,
   currentLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
-} from './docusaurus-common';
+  isCfPagesPreview,
+  mainSiteUrl,
+} from './docusaurus-common.config';
+import ogImageGenerator from './plugins/og-image-generator';
+import tutorialGenerator from './plugins/tutorial-generator';
 
 const getLogtoDocsUrl = () =>
-  cfPagesBranch && cfPagesBranch !== 'master'
+  isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
-    : 'https://docs.logto.io/';
+    : mainSiteUrl;
 
 const config: Config = {
   title: 'Logto docs',
@@ -38,53 +41,16 @@ const config: Config = {
     inkeepApiKey: process.env.INKEEP_API_KEY,
   },
 
-
-  staticDirectories: [
-    'static',
-    'static-localized/' + currentLocale,
-  ],
+  staticDirectories: ['static', 'static-localized/' + currentLocale],
 
   markdown: commonMarkdown,
 
   trailingSlash: false,
 
-  presets: [
-    [ 'classic', classicPresetConfig ],
-  ],
+  presets: [['classic', classicPresetConfig]],
 
   stylesheets: commonStylesheets,
-
-  themeConfig: {
-    ...commonThemeConfig,
-    navbar: {
-      ...commonThemeConfig.navbar,
-      items: [
-        {
-          type: 'doc',
-          docId: 'introduction/README',
-          position: 'left',
-          label: 'Docs',
-        },
-        {
-          type: 'doc',
-          docId: 'quick-starts/README',
-          position: 'left',
-          label: 'Quick starts',
-        },
-        {
-          type: 'doc',
-          docId: 'integrations/README',
-          position: 'left',
-          label: 'Connectors',
-        },
-        {
-          to: 'https://openapi.logto.io',
-          position: 'left',
-          label: 'API',
-        },
-      ],
-    },
-  },
+  themeConfig: createCommonThemeConfig('main'),
 
   plugins: [
     addAliasPlugin,
