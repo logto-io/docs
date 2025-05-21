@@ -31,9 +31,9 @@ const config: Config = {
   title: 'Logto docs',
   url: getLogtoDocsUrl(),
   baseUrl: '/',
-  onBrokenLinks: 'warn',
-  onBrokenAnchors: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  onBrokenMarkdownLinks: 'throw',
   favicon: '/img/favicon.ico',
   organizationName: 'logto-io',
   projectName: 'docs',
@@ -41,6 +41,7 @@ const config: Config = {
   i18n: commonI18n,
 
   customFields: {
+    mainSiteUrl,
     // Remove this on purpose to avoid rendering search bar in the tutorials site
     // inkeepApiKey: process.env.INKEEP_API_KEY,
   },
@@ -79,7 +80,7 @@ const config: Config = {
           /**
            * Required for any multi-instance plugin
            */
-          id: 'tutorials',
+          id: 'tutorial',
           /**
            * URL route for the blog section of your site.
            * *DO NOT* include a trailing slash.

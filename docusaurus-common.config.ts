@@ -12,7 +12,6 @@ export const defaultLocale = 'en';
 // https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
 export const currentLocale = String(process.env.DOCUSAURUS_CURRENT_LOCALE ?? defaultLocale);
 export const localePath = currentLocale === defaultLocale ? '' : currentLocale;
-
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const mainSiteUrl = 'https://docs.logto.io/';

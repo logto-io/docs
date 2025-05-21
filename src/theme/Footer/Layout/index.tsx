@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import Globe from '@site/src/assets/globe-i18n.svg';
 import Select from '@site/src/components/Select';
 import useLocalizedUrl from '@site/src/hooks/use-localized-url';
+import useMainSiteUrl from '@site/src/hooks/use-main-site-url';
 
 import styles from './index.module.scss';
 
@@ -16,6 +17,7 @@ export default function FooterLayout({ style, links, logo, copyright }: Props): 
     i18n: { currentLocale, localeConfigs },
   } = useDocusaurusContext();
   const getLocalizedPageUrl = useLocalizedUrl();
+  const { getMainSiteLink } = useMainSiteUrl();
 
   const languageOptions = useMemo(
     () =>
@@ -41,10 +43,10 @@ export default function FooterLayout({ style, links, logo, copyright }: Props): 
           <Link className="footer__link-item" to="https://logto.io/trust-and-security">
             <Translate>Hosted in 🇪🇺🇺🇸🇦🇺</Translate>
           </Link>
-          <Link className="footer__link-item" to="/terms/of-service">
+          <Link className="footer__link-item" to={getMainSiteLink('/terms/of-service')}>
             <Translate>Terms</Translate>
           </Link>
-          <Link className="footer__link-item" to="/terms/privacy-policy">
+          <Link className="footer__link-item" to={getMainSiteLink('/terms/privacy-policy')}>
             <Translate>Privacy</Translate>
           </Link>
           <Select
