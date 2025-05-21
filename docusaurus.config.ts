@@ -14,6 +14,7 @@ import {
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
   isCfPagesPreview,
+  mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
 import tutorialGenerator from './plugins/tutorial-generator';
@@ -21,7 +22,7 @@ import tutorialGenerator from './plugins/tutorial-generator';
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs.pages.dev/`
-    : 'https://docs.logto.io/';
+    : mainSiteUrl;
 
 const config: Config = {
   title: 'Logto docs',
