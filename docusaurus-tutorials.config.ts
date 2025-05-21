@@ -14,12 +14,12 @@ import {
   currentLocale,
   defaultLocale,
   getCloudflareSubdomain,
-  howToBasePath,
   injectHeadTagsPlugin,
   isCfPagesPreview,
   localeConfigs,
   mainSiteUrl,
 } from './docusaurus-common.config';
+import { howToBasePath } from './src/theme/BlogPostItem/utils';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview

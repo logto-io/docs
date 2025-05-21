@@ -6,6 +6,8 @@ import { themes } from 'prism-react-renderer';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
 
+import { howToBasePath } from './src/theme/BlogPostItem/utils';
+
 export const defaultLocale = 'en';
 
 // A workaround for locale-specific values in the config
@@ -16,7 +18,6 @@ export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const mainSiteUrl = 'https://docs.logto.io/';
 export const tutorialsSiteUrl = 'https://tutorials.logto.io/';
-export const howToBasePath = 'how-to';
 export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
 export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
 export const siteUrls = Object.freeze({
