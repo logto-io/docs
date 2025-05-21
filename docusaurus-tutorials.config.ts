@@ -8,14 +8,16 @@ import {
   addAliasPlugin,
   cfPagesBranch,
   classicPresetConfig,
-  commonI18n,
   commonMarkdown,
   commonStylesheets,
   createCommonThemeConfig,
   currentLocale,
+  defaultLocale,
   getCloudflareSubdomain,
+  howToBasePath,
   injectHeadTagsPlugin,
   isCfPagesPreview,
+  localeConfigs,
   mainSiteUrl,
 } from './docusaurus-common.config';
 
@@ -38,7 +40,11 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
-  i18n: commonI18n,
+  i18n: {
+    defaultLocale,
+    locales: ['en', 'es', 'fr', 'ja'],
+    localeConfigs,
+  },
 
   customFields: {
     mainSiteUrl,
@@ -85,7 +91,7 @@ const config: Config = {
            * URL route for the blog section of your site.
            * *DO NOT* include a trailing slash.
            */
-          routeBasePath: 'tutorials',
+          routeBasePath: howToBasePath,
           /**
            * Path to data on filesystem relative to site dir.
            */

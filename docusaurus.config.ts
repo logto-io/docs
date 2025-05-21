@@ -6,14 +6,15 @@ import {
   addAliasPlugin,
   cfPagesBranch,
   classicPresetConfig,
-  commonI18n,
   commonMarkdown,
   commonStylesheets,
   createCommonThemeConfig,
   currentLocale,
+  defaultLocale,
   getCloudflareSubdomain,
   injectHeadTagsPlugin,
   isCfPagesPreview,
+  localeConfigs,
   mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
@@ -35,7 +36,11 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
-  i18n: commonI18n,
+  i18n: {
+    defaultLocale,
+    locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
+    localeConfigs,
+  },
 
   customFields: {
     inkeepApiKey: process.env.INKEEP_API_KEY,

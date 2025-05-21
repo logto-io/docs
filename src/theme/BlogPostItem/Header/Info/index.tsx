@@ -5,6 +5,8 @@ import { useDateTimeFormat } from '@docusaurus/theme-common/internal';
 import type { Props } from '@theme/BlogPostItem/Header/Info';
 import clsx from 'clsx';
 
+import { isHowToTutorial } from '../../utils';
+
 import styles from './styles.module.css';
 
 // Very simple pluralization: probably good enough for now
@@ -59,7 +61,7 @@ export default function BlogPostItemHeaderInfo({ className }: Props) {
   });
 
   // Charles edited this to remove the time from generated "Build X with Y tutorials"
-  const isTutorial = metadata.frontMatter.slug?.startsWith('how-to-build-');
+  const isTutorial = isHowToTutorial(metadata.frontMatter.slug);
 
   if (isTutorial) {
     return null;

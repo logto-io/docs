@@ -16,6 +16,7 @@ export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const mainSiteUrl = 'https://docs.logto.io/';
 export const tutorialsSiteUrl = 'https://tutorials.logto.io/';
+export const howToBasePath = 'how-to';
 export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
 export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
 export const siteUrls = Object.freeze({
@@ -96,8 +97,8 @@ export const injectHeadTagsPlugin: PluginConfig = () => ({
  * generate absolute URLs. This is useful when deploying multiple Docusaurus sites under the same
  * domain.
  *
- * For example, the main site is deployed at `https://docs.logto.io`, and the
- * tutorials site is deployed at `https://docs.logto.io/tutorials`. A relative URL for the main site
+ * For example, the main site is deployed at `https://docs.logto.io/`, and the
+ * tutorials site is deployed at `https://tutorials.logto.io/`. A relative URL for the main site
  * in the tutorials site would result 404 errors if the URL is not prefixed with the main site
  * domain, as each site is a standalone single-page application.
  */
@@ -158,7 +159,7 @@ export const createCommonThemeConfig = (site: Site) => {
               href: 'https://openapi.logto.io/group/endpoint-experience',
             },
             { label: 'Management API', href: 'https://openapi.logto.io' },
-            { label: 'Build X with Y', to: tutorialsSiteUrl + 'tutorials' }, // TODO: @gao temporarily hardcode the URL, we'll update it later
+            { label: 'Build X with Y', to: buildUrl('/' + howToBasePath, 'tutorials') },
           ],
         },
         {
@@ -235,14 +236,10 @@ export const createCommonThemeConfig = (site: Site) => {
   } satisfies ThemeConfig);
 };
 
-export const commonI18n = {
-  defaultLocale: 'en',
-  locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
-  localeConfigs: {
-    'zh-CN': { label: '简体中文' },
-    'zh-TW': { label: '繁體中文（台灣）' },
-  },
-};
+export const localeConfigs = Object.freeze({
+  'zh-CN': { label: '简体中文' },
+  'zh-TW': { label: '繁體中文（台灣）' },
+});
 
 export const commonMarkdown = {
   mermaid: true,

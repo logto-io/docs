@@ -36,7 +36,7 @@ type Props = (BlogPostProps | ListViewProps) & {
 
 type DropdownType = 'sdk' | 'connector';
 
-const slugFirstPart = 'how-to-build-';
+const slugFirstPart = 'build-';
 const slugMiddlePart = '-sign-in-with';
 const slugLastPart = '-and-logto';
 
