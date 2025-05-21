@@ -1,6 +1,7 @@
 ---
 slug: /security/captcha
 sidebar_label: CAPTCHA
+sidebar_position: 2
 ---
 
 # CAPTCHA bot protection
