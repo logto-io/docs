@@ -16,6 +16,7 @@ import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tuto
 import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
 import { onKeyDownHandler } from '@site/src/utils/a11y';
 
+import { howToBasePath } from '../../utils';
 import Dropdown from '../SelectionDropdown';
 
 import styles from './index.module.scss';
@@ -36,7 +37,7 @@ type Props = (BlogPostProps | ListViewProps) & {
 
 type DropdownType = 'sdk' | 'connector';
 
-const slugFirstPart = 'how-to-build-';
+const slugFirstPart = 'build-';
 const slugMiddlePart = '-sign-in-with';
 const slugLastPart = '-and-logto';
 
@@ -143,7 +144,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
             slugLastPart
           : slugFirstPart + selectedSlugPart + slug.slice(slug.indexOf(slugMiddlePart));
 
-      push(`${locale}/tutorials/${targetSlug}`);
+      push(`${locale}/${howToBasePath}/${targetSlug}`);
     }
   };
 

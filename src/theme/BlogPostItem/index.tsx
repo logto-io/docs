@@ -13,6 +13,7 @@ import { getConnectorDisplayName, getSdkDisplayName } from '@site/plugins/tutori
 import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tutorial-metadata';
 
 import styles from './index.module.scss';
+import { isHowToTutorial } from './utils';
 
 // Apply a bottom margin in list view - Charles commented out
 // function useContainerClassName() {
@@ -40,7 +41,8 @@ export default function BlogPostItem({ children, className }: Props): JSX.Elemen
   const { isBlogPostPage, frontMatter } = useBlogPost();
   const { allConnectors, allSdks } = useCategorizedTutorialMetadata();
 
-  const isGeneratedTutorial = frontMatter.slug?.startsWith('how-to-build-');
+  // The slug should match the "build-x-with-y" format
+  const isGeneratedTutorial = isHowToTutorial(frontMatter.slug);
   const isTutorialListView = isGeneratedTutorial && !isBlogPostPage;
 
   const blogSdkName = condString('sdk' in frontMatter && frontMatter.sdk);
