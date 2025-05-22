@@ -1,10 +1,10 @@
 ---
-sidebar_label: Einführung
+sidebar_label: Logto-Integrationen
 ---
 
 # Einführung
 
-Willkommen zur Logto Connectors-Dokumentation. Diese Dokumentation enthält nützliche Anleitungen zur Integration eines Drittanbieter-Authentifizierungsdienstes mit Logto über Logto Connectors.
+Willkommen zur Logto-Integrationsdokumentation. Diese Dokumentation enthält nützliche Anleitungen zur Integration eines Drittanbieter-Authentifizierungsdienstes mit Logto über Logto-Connectors.
 
 ---
 
