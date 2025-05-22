@@ -5,7 +5,7 @@ import picocolors from 'picocolors';
 import { sampleInput, sampleTranslations } from './translate.samples.mjs';
 import { asIsTerms, patterns, terms } from './translate.terms.mjs';
 
-const model = 'gpt-4.1';
+const getModel = () => process.env.OPENAI_MODEL_NAME || 'gpt-4.1';
 
 /** @type {typeof console.log} */
 export const log = (...args) => {
@@ -98,7 +98,7 @@ export class OpenAiTranslate {
     }
 
     const stream = await this.openai.chat.completions.create({
-      model,
+      model: getModel(),
       messages: [
         {
           role: 'system',
