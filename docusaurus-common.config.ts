@@ -132,14 +132,14 @@ export const createCommonThemeConfig = (site: Site) => {
           label: 'Integrations',
         },
         {
-          to: buildUrl('/use-cases', 'main'),
-          position: 'left',
-          label: 'Use cases',
-        },
-        {
           to: new URL('https://openapi.logto.io', mainSiteUrl).href,
           position: 'left',
           label: 'API',
+        },
+        {
+          to: buildUrl('/use-cases', 'main'),
+          position: 'left',
+          label: 'Use cases',
         },
       ],
     },
