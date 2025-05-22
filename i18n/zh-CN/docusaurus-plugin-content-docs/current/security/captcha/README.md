@@ -1,11 +1,12 @@
 ---
 slug: /security/captcha
 sidebar_label: CAPTCHA
+sidebar_position: 2
 ---
 
 # CAPTCHA 机器人保护
 
-CAPTCHA 机器人保护通过验证用户是否为人类来帮助保护你的用户流程，显著减少机器人攻击。Logto 支持领先的提供商，如 Google reCAPTCHA Enterprise 和 Cloudflare Turnstile。
+CAPTCHA 机器人保护通过验证用户是否为人类来帮助保护你的用户流程，从而显著减少机器人攻击。Logto 支持领先的提供商，如 Google reCAPTCHA Enterprise 和 Cloudflare Turnstile。
 
 ## 启用 CAPTCHA 机器人保护 {#enabling-captcha-bot-protection}
 
@@ -24,7 +25,7 @@ CAPTCHA 机器人保护通过验证用户是否为人类来帮助保护你的用
 1. **使用你的应用程序**：导航到你的应用程序的登录、注册或密码恢复页面，并尝试相应的用户操作。
 2. **演示应用**：前往 **Get started** 并使用提供的演示应用程序测试 CAPTCHA 功能。
 
-确保在任一选项中 CAPTCHA 挑战按预期出现。
+确保在任一选项中 CAPTCHA 挑战如预期出现。
 
 ## 支持的提供商 {#supported-providers}
 

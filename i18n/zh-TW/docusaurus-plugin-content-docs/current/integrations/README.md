@@ -1,10 +1,10 @@
 ---
-sidebar_label: Introduction
+sidebar_label: Logto 整合
 ---
 
 # 介紹
 
-歡迎來到 Logto 連接器文件。此文件包含透過 Logto 連接器將第三方驗證服務整合至 Logto 的實用指南。
+歡迎來到 Logto 整合文件。此文件包含透過 Logto 連接器將第三方驗證服務與 Logto 整合的實用指南。
 
 ---
 

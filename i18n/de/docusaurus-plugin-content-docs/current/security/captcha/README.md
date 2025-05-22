@@ -1,11 +1,12 @@
 ---
 slug: /security/captcha
 sidebar_label: CAPTCHA
+sidebar_position: 2
 ---
 
 # CAPTCHA-Botschutz
 
-Der CAPTCHA-Botschutz hilft, deine Benutzerflüsse zu sichern, indem er überprüft, dass Benutzer menschlich sind, und so Bot-Angriffe erheblich reduziert. Logto unterstützt führende Anbieter wie Google reCAPTCHA Enterprise und Cloudflare Turnstile.
+Der CAPTCHA-Botschutz hilft, deine Benutzerflüsse zu sichern, indem er überprüft, dass Benutzer menschlich sind, und reduziert so Bot-Angriffe erheblich. Logto unterstützt führende Anbieter wie Google reCAPTCHA Enterprise und Cloudflare Turnstile.
 
 ## Aktivierung des CAPTCHA-Botschutzes {#enabling-captcha-bot-protection}
 
