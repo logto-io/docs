@@ -5,7 +5,7 @@ import picocolors from 'picocolors';
 import { sampleInput, sampleTranslations } from './translate.samples.mjs';
 import { asIsTerms, patterns, terms } from './translate.terms.mjs';
 
-const model = 'gpt-4o';
+const model = 'gpt-4.1';
 
 /** @type {typeof console.log} */
 export const log = (...args) => {
