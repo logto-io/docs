@@ -18,13 +18,14 @@ import {
   isCfPagesPreview,
   localeConfigs,
   mainSiteUrl,
+  tutorialsSiteUrl,
 } from './docusaurus-common.config';
 import { howToBasePath } from './src/theme/BlogPostItem/utils';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
     ? `https://${getCloudflareSubdomain(cfPagesBranch)}.logto-docs-tutorials.pages.dev/`
-    : mainSiteUrl;
+    : tutorialsSiteUrl;
 
 // Supported locales for the "Build X with Y" tutorials
 const tutorialLocales = ['en', 'es', 'fr', 'ja'];
