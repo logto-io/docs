@@ -1,0 +1,229 @@
+## 在微信開放平台建立行動應用程式 \{#create-a-mobile-app-in-the-wechat-open-platform}
+
+:::tip
+
+如果你已經完成部分步驟，可以跳過相關章節。
+
+:::
+
+### 建立帳號 \{#create-an-account}
+
+前往 https://open.weixin.qq.com/，點擊右上角的「註冊」按鈕，完成註冊流程。
+
+### 建立行動應用程式 \{#create-a-mobile-app}
+
+使用剛剛建立的帳號登入。在「移動應用」分頁，點擊綠色大按鈕「創建移動應用」。
+
+<img src="/img/assets/app-tabs.png" alt="App tabs" />
+
+接下來填寫應用程式申請表中的必要資訊。
+
+<img src="/img/assets/create-mobile-app.png" alt="Create mobile app" />
+
+#### 基本資訊 \{#basic-info}
+
+大部分欄位都很直觀，這裡有幾個小提示：
+
+- 如果你只是想測試微信登入，且 App 尚未上架 App Store，請在「App 是否已上架」選擇「否」，即可略過「App 下載連結」。
+- 「App 運營流程圖」看起來有點棘手。根據經驗，你需要準備一個簡單的流程圖和幾張 App 截圖，以提高審核通過的機率。
+
+點擊「下一步」繼續。
+
+#### 平台資訊 \{#platform-info}
+
+你可以設定 iOS 和 / 或 Android 平台，將 Logto 與微信原生登入整合。
+
+**iOS 應用程式**
+
+勾選「iOS 應用」（iOS 应用），然後根據你的 App 勾選目標裝置類型。
+
+<img src="/img/assets/platform.png" alt="App platform" />
+
+如果你在 App Store 上架狀態選擇「否」，這裡可以略過「AppStore 下載地址」。
+
+填寫 _Bundle ID_、_測試版 Bundle ID_ 和 _Universal Links_（其實只需要填一個連結 😂）。
+
+:::note
+
+_Bundle ID_ 和 _測試版 Bundle ID_ 可以填相同的值。
+
+:::
+
+:::tip
+
+微信要求原生登入必須設置 universal link。如果你還沒設好或不知道怎麼設，請參考 [Apple 官方文件](https://developer.apple.com/ios/universal-links/)。
+
+:::
+
+**Android 應用程式**
+
+勾選「Android 應用」（Android 应用）。
+
+<img src="/img/assets/platform-android-app.png" alt="Android app platform" />
+
+填寫 _應用簽名_（应用签名）和 _應用包名_（应用包名）。
+
+:::note
+
+你需要簽署你的 App 才能取得簽名。詳情請參考 [簽署你的 App](https://developer.android.com/studio/publish/app-signing)。
+
+:::
+
+完成簽署後，可以執行 `signingReport` 任務來取得簽名。
+
+```bash
+./gradlew your-android-project:signingReport
+```
+
+對應 build variant 報告中的 `MD5` 值即為 _應用簽名_（应用签名），但記得移除所有分號並轉為小寫。
+
+例如：`1A:2B:3C:4D` -> `1a2b3c4d`。
+
+#### 等待審核結果 \{#waiting-for-the-review-result}
+
+完成平台資訊後，點擊「提交審核」繼續。通常審核速度很快，1-2 天內會有結果。
+
+我們推測每次送審分配的審核員是隨機的，因此標準會有浮動。你可能第一次會被拒絕，但別灰心！說明你的現況並詢問審核員如何修改即可。
+
+## 在你的 App 啟用微信原生登入 \{#enable-wechat-native-sign-in-in-your-app}
+
+### iOS \{#ios}
+
+假設你已在 App 中整合 [Logto iOS SDK](/quick-starts/swift)。這種情況下操作非常簡單，甚至不用看微信 SDK 文件：
+
+**1. 在 Xcode 專案中設定 universal link 與 URL scheme**
+
+在 Xcode 專案 -> Signing & Capabilities 分頁，新增「Associated Domains」功能，並填入你先前設定的 universal link。
+
+<img src="/img/assets/universal-link.png" alt="Universal link" />
+
+接著到「Info」分頁，新增一個 [自訂 URL scheme](https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app)，內容為微信 App ID。
+
+<img src="/img/assets/custom-url-scheme.png" alt="Custom URL scheme" />
+
+最後打開你的 `Info.plist`，在 `LSApplicationQueriesSchemes` 下新增 `weixinULAPI` 和 `weixin`。
+
+<img src="/img/assets/plist.png" alt="Plist" />
+
+:::note
+
+我們知道這些設定看起來不太合理，但這是我們找到的最小可行解。詳情請參考 [神奇的官方指南](https://developers.weixin.qq.com/doc/oplatform/en/Mobile_App/Access_Guide/iOS.html)。
+
+:::
+
+**2. 將 `LogtoSocialPluginWechat` 加入 Xcode 專案**
+
+新增 framework：
+
+<img src="/img/assets/add-framework.png" alt="Add framework" />
+
+並在 Build Settings > Linking > Other Linker Flags 加入 `-ObjC`：
+
+<img src="/img/assets/linker-flags.png" alt="Linker flags" />
+
+:::note
+
+此插件已內含 WeChat Open SDK 1.9.2。匯入插件後可直接使用 `import WechatOpenSDK`。
+
+:::
+
+**3. 在 `LogtoClient` 初始化選項中加入插件**
+
+```swift
+let logtoClient = LogtoClient(
+  useConfig: config,
+  socialPlugins: [LogtoSocialPluginWechat()]
+)
+```
+
+**4. 正確處理 `onOpenURL`**
+
+:::note
+
+`LogtoClient.handle(url:)` 會處理你啟用的所有原生連接器。你只需呼叫一次即可。
+
+:::
+
+```swift
+// SwiftUI
+YourRootView()
+  .onOpenURL { url in
+      LogtoClient.handle(url: url)
+  }
+
+// 或 AppDelegate
+func application(_ app: UIApplication, open url: URL, options: /*...*/) -> Bool {
+  LogtoClient.handle(url: url)
+}
+```
+
+### Android \{#android}
+
+假設你已在 App 中整合 [Logto Android SDK](/quick-starts/android)。這種情況下操作非常簡單，甚至不用看微信 SDK 文件：
+
+**1. 將 `Wechat Open SDK` 加入專案**
+
+確保你的 Gradle 專案 repositories 中有 `mavenCentral()`：
+
+```kotlin
+repositories {
+  // ...
+  mavenCentral()
+}
+```
+
+將 Wechat Open SDK 加入 dependencies：
+
+```kotlin
+dependencies {
+  // ...
+  api("com.tencent.mm.opensdk:wechat-sdk-android:6.8.0")  // kotlin-script
+  // 或
+  api 'com.tencent.mm.opensdk:wechat-sdk-android:6.8.0'   // groovy-script
+}
+```
+
+**2. 在專案中新增 `WXEntryActivity`**
+
+在你的 package root 下建立 `wxapi` 套件，並在 `wxapi` 套件下新增 `WXEntryActivity`（以 `com.sample.app` 為例）：
+
+```kotlin
+// WXEntryActivity.kt
+package com.sample.app.wxapi
+
+import io.logto.sdk.android.auth.social.wechat.WechatSocialResultActivity
+
+class WXEntryActivity: WechatSocialResultActivity()
+```
+
+```java
+// WXEntryActivity.java
+package com.sample.app.wxapi
+
+import io.logto.sdk.android.auth.social.wechat.WechatSocialResultActivity
+
+public class WXEntryActivity extends WechatSocialResultActivity {}
+```
+
+`WXEntryActivity` 在專案中的最終位置應如下（以 Kotlin 為例）：
+
+```bash
+src/main/kotlin/com/sample/app/wxapi/WXEntryActivity.kt
+```
+
+**3. 修改 `AndroidManifest.xml`**
+
+在你的 `AndroidManifest.xml` 中加入下列內容：
+
+```xml
+\<?xml version="1.0" encoding="utf-8"?>
+\<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.sample.app">
+
+  \<application>
+    \<!-- 要新增的行 -->
+    \<activity android:name=".wxapi.WXEntryActivity" android:exported="true"/>
+  \</application>
+
+\</manifest>
+```
