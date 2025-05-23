@@ -8,7 +8,7 @@ import type { Props } from '@theme/DocCard';
 import clsx from 'clsx';
 import { type ReactNode } from 'react';
 
-import styles from './styles.module.css';
+import styles from './styles.module.scss';
 
 function useCategoryItemsPlural() {
   const { selectMessage } = usePluralForm();

@@ -136,6 +136,11 @@ export const createCommonThemeConfig = (site: Site) => {
           position: 'left',
           label: 'API',
         },
+        {
+          to: buildUrl('/use-cases', 'main'),
+          position: 'left',
+          label: 'Use cases',
+        },
       ],
     },
     footer: {
