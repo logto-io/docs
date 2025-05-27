@@ -29,7 +29,8 @@ const CACHE_EXPIRY_KEY = '_logto_google_one_tap_config_expiry';
 const CACHE_EXPIRY_TIME = 1 * 60 * 60 * 1000; // 1 hour
 
 // Default API base URL
-const DEFAULT_API_BASE_URL = 'https://auth.logto.io';
+const DEFAULT_API_BASE_PROD_URL = 'https://auth.logto.io';
+const DEFAULT_API_BASE_DEV_URL = 'https://auth.logto.dev';
 
 export default function LayoutWrapper(props: Props): ReactNode {
   const [config, setConfig] = useState<GoogleOneTapConfig | undefined>(undefined);
@@ -37,7 +38,12 @@ export default function LayoutWrapper(props: Props): ReactNode {
 
   // Get the API base URL from customFields, or use the default value if it doesn't exist
   const logtoApiBaseUrl = siteConfig.customFields?.logtoApiBaseUrl;
-  const apiBaseUrl = typeof logtoApiBaseUrl === 'string' ? logtoApiBaseUrl : DEFAULT_API_BASE_URL;
+  const apiBaseUrl =
+    typeof logtoApiBaseUrl === 'string'
+      ? logtoApiBaseUrl
+      : siteConfig.customFields?.isDevFeatureEnabled
+        ? DEFAULT_API_BASE_DEV_URL
+        : DEFAULT_API_BASE_PROD_URL;
 
   useEffect(() => {
     const fetchConfig = async () => {
