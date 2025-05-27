@@ -18,6 +18,8 @@ import {
   mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
+import tutorialGenerator from './plugins/tutorial-generator';
+import { yes } from '@silverhand/essentials';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
@@ -52,6 +54,7 @@ const config: Config = {
   customFields: {
     inkeepApiKey: process.env.INKEEP_API_KEY,
     logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
+    isDevFeatureEnabled: yes(process.env.IS_DEV_FEATURE_ENABLED),
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
