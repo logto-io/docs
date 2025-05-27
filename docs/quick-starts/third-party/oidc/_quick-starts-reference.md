@@ -8,4 +8,4 @@ A few things to keep in mind:
 2. Most our quick start guides are written for first-party apps, but you can still use them as a reference for third-party app integration.
 3. The main difference is that third-party apps will show a consent screen, asking users for explicit permission to access their data.
 
-You can find more information in our [quick start guides](https://docs.logto.io/quick-starts).
+You can find more information in our [quick start guides](/quick-starts).
