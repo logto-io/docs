@@ -1,0 +1,207 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+## MCP サーバーのセットアップ \{#set-up-the-mcp-server}
+
+### プロジェクトの作成と依存関係のインストール \{#create-project-and-install-dependencies}
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+uv init # または独自のプロジェクト構成を使用
+uv add "mcp[cli]" starlette uvicorn mcpauth # または任意のパッケージマネージャーを使用
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk express mcp-auth # または任意のパッケージマネージャーを使用
+```
+
+</TabItem>
+</Tabs>
+
+### Logto で MCP 認証 (Authentication) を構成する \{#configure-mcp-auth-with-logto}
+
+先ほどコピーした発行者 (Issuer) エンドポイント `<your-logto-issuer-endpoint>` を忘れずに置き換えてください。
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+**`whoami.py` 内：**
+
+```python
+from mcpauth import MCPAuth
+from mcpauth.config import AuthServerType
+from mcpauth.utils import fetch_server_config
+
+auth_issuer = '<your-logto-issuer-endpoint>'
+auth_server_config = fetch_server_config(auth_issuer, type=AuthServerType.OIDC)
+mcp_auth = MCPAuth(server=auth_server_config)
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+**`whoami.js` 内：**
+
+```js
+import { MCPAuth, fetchServerConfig } from 'mcp-auth';
+
+const authIssuer = '<your-logto-issuer-endpoint>';
+const mcpAuth = new MCPAuth({
+  server: await fetchServerConfig(authIssuer, { type: 'oidc' }),
+});
+```
+
+</TabItem>
+</Tabs>
+
+### トークン検証の実装 \{#implement-token-verification}
+
+アクセス トークン (Access token) を検証しユーザー情報を取得するため、次のようにアクセス トークン (Access token) 検証を実装します：
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+import requests
+from mcpauth.types import AuthInfo
+
+def verify_access_token(token: str) -> AuthInfo:
+    endpoint = auth_server_config.metadata.userinfo_endpoint
+    response = requests.get(
+        endpoint,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    data = response.json()
+    return AuthInfo(
+        token=token,
+        subject=data.get("sub"),
+        issuer=auth_server_config.metadata.issuer,
+        claims=data,
+    )
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+const verifyToken = async (token) => {
+  const { userinfoEndpoint, issuer } = mcpAuth.config.server.metadata;
+  const response = await fetch(userinfoEndpoint, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Token verification failed');
+  const userInfo = await response.json();
+  return {
+    token,
+    issuer,
+    subject: userInfo.sub,
+    claims: userInfo,
+  };
+};
+```
+
+</TabItem>
+</Tabs>
+
+### "whoami" ツールの実装 \{#implement-the-whoami-tool}
+
+次に、クライアントから送信されたアクセス トークン (Access token) を使用して userinfo エンドポイントにリクエストし、現在のユーザーのアイデンティティ クレーム (Claims) を返す "whoami" ツールを実装します。
+
+:::note
+現時点の SDK バージョンでは Streamable HTTP トランスポートの公式サポートがないため、例として SSE トランスポートを使用しています。理論的には、HTTP 互換の任意のトランスポートを利用できます。
+:::
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.middleware import Middleware
+
+mcp = FastMCP("WhoAmI")
+
+@mcp.tool()
+def whoami() -> dict:
+    """
+    現在のユーザーのアイデンティティ情報を返します。
+    """
+    return (
+        mcp_auth.auth_info.claims
+        if mcp_auth.auth_info
+        else {"error": "Not authenticated"}
+    )
+
+bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
+app = Starlette(
+    routes=[
+        mcp_auth.metadata_route(),  # 発見用の OIDC メタデータを提供
+        Mount('/', app=mcp.sse_app(), middleware=[bearer_auth]),
+    ],
+)
+```
+
+サーバーの起動：
+
+```bash
+uvicorn whoami:app --host 0.0.0.0 --port 3001
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import express from 'express';
+
+// MCP サーバーを作成し、whoami ツールを登録
+const server = new McpServer({ name: 'WhoAmI', version: '0.0.0' });
+server.tool('whoami', ({ authInfo }) => ({
+  content: [
+    { type: 'text', text: JSON.stringify(authInfo?.claims ?? { error: 'Not authenticated' }) },
+  ],
+}));
+
+// Express アプリ & MCP Auth ミドルウェア
+const app = express();
+app.use(mcpAuth.delegatedRouter());
+app.use(mcpAuth.bearerAuth(verifyToken));
+
+// SSE トランスポート（SDK ドキュメント通り）
+const transports = {};
+app.get('/sse', async (_req, res) => {
+  const transport = new SSEServerTransport('/messages', res);
+  transports[transport.sessionId] = transport;
+  res.on('close', () => delete transports[transport.sessionId]);
+  await server.connect(transport);
+});
+app.post('/messages', async (req, res) => {
+  const sessionId = String(req.query.sessionId);
+  const transport = transports[sessionId];
+  if (transport) await transport.handlePostMessage(req, res, req.body);
+  else res.status(400).send('No transport found for sessionId');
+});
+
+app.listen(3001);
+```
+
+サーバーの起動：
+
+```bash
+node whoami.js
+```
+
+</TabItem>
+</Tabs>

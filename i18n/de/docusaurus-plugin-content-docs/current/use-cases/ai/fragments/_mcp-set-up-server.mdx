@@ -1,0 +1,207 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+## Richte den MCP-Server ein \{#set-up-the-mcp-server}
+
+### Projekt erstellen und Abhängigkeiten installieren \{#create-project-and-install-dependencies}
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+uv init # Oder verwende deine eigene Projektstruktur
+uv add "mcp[cli]" starlette uvicorn mcpauth # Oder verwende einen beliebigen Paketmanager
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk express mcp-auth # Oder verwende einen beliebigen Paketmanager
+```
+
+</TabItem>
+</Tabs>
+
+### MCP-Authentifizierung mit Logto konfigurieren \{#configure-mcp-auth-with-logto}
+
+Denke daran, `<your-logto-issuer-endpoint>` durch den zuvor kopierten Aussteller-Endpunkt zu ersetzen.
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+**In `whoami.py`:**
+
+```python
+from mcpauth import MCPAuth
+from mcpauth.config import AuthServerType
+from mcpauth.utils import fetch_server_config
+
+auth_issuer = '<your-logto-issuer-endpoint>'
+auth_server_config = fetch_server_config(auth_issuer, type=AuthServerType.OIDC)
+mcp_auth = MCPAuth(server=auth_server_config)
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+**In `whoami.js`:**
+
+```js
+import { MCPAuth, fetchServerConfig } from 'mcp-auth';
+
+const authIssuer = '<your-logto-issuer-endpoint>';
+const mcpAuth = new MCPAuth({
+  server: await fetchServerConfig(authIssuer, { type: 'oidc' }),
+});
+```
+
+</TabItem>
+</Tabs>
+
+### Token-Überprüfung implementieren \{#implement-token-verification}
+
+Da wir das Zugangstoken (Access token) überprüfen und Benutzerinformationen abrufen möchten, müssen wir die Überprüfung des Zugangstokens wie folgt implementieren:
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+import requests
+from mcpauth.types import AuthInfo
+
+def verify_access_token(token: str) -> AuthInfo:
+    endpoint = auth_server_config.metadata.userinfo_endpoint
+    response = requests.get(
+        endpoint,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    data = response.json()
+    return AuthInfo(
+        token=token,
+        subject=data.get("sub"),
+        issuer=auth_server_config.metadata.issuer,
+        claims=data,
+    )
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+const verifyToken = async (token) => {
+  const { userinfoEndpoint, issuer } = mcpAuth.config.server.metadata;
+  const response = await fetch(userinfoEndpoint, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Token verification failed');
+  const userInfo = await response.json();
+  return {
+    token,
+    issuer,
+    subject: userInfo.sub,
+    claims: userInfo,
+  };
+};
+```
+
+</TabItem>
+</Tabs>
+
+### Das "whoami"-Tool implementieren \{#implement-the-whoami-tool}
+
+Nun implementieren wir das "whoami"-Tool, das die Identitätsansprüche (Claims) des aktuellen Benutzers zurückgibt, indem es den userinfo-Endpunkt mit dem vom Client gesendeten Zugangstoken (Access token) abfragt.
+
+:::note
+Wir verwenden für das Beispiel den SSE-Transport, da der Streamable HTTP-Transport in der aktuellen Version des SDKs noch nicht offiziell unterstützt wird. Theoretisch kannst du jeden HTTP-kompatiblen Transport verwenden.
+:::
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.middleware import Middleware
+
+mcp = FastMCP("WhoAmI")
+
+@mcp.tool()
+def whoami() -> dict:
+    """
+    Gibt die Identitätsinformationen des aktuellen Benutzers zurück.
+    """
+    return (
+        mcp_auth.auth_info.claims
+        if mcp_auth.auth_info
+        else {"error": "Nicht authentifiziert"}
+    )
+
+bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
+app = Starlette(
+    routes=[
+        mcp_auth.metadata_route(),  # Stellt OIDC-Metadaten für Discovery bereit
+        Mount('/', app=mcp.sse_app(), middleware=[bearer_auth]),
+    ],
+)
+```
+
+Starte den Server mit:
+
+```bash
+uvicorn whoami:app --host 0.0.0.0 --port 3001
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import express from 'express';
+
+// MCP-Server erstellen und das whoami-Tool registrieren
+const server = new McpServer({ name: 'WhoAmI', version: '0.0.0' });
+server.tool('whoami', ({ authInfo }) => ({
+  content: [
+    { type: 'text', text: JSON.stringify(authInfo?.claims ?? { error: 'Nicht authentifiziert' }) },
+  ],
+}));
+
+// Express-App & MCP Auth Middleware
+const app = express();
+app.use(mcpAuth.delegatedRouter());
+app.use(mcpAuth.bearerAuth(verifyToken));
+
+// SSE-Transport (wie in den SDK-Dokumenten)
+const transports = {};
+app.get('/sse', async (_req, res) => {
+  const transport = new SSEServerTransport('/messages', res);
+  transports[transport.sessionId] = transport;
+  res.on('close', () => delete transports[transport.sessionId]);
+  await server.connect(transport);
+});
+app.post('/messages', async (req, res) => {
+  const sessionId = String(req.query.sessionId);
+  const transport = transports[sessionId];
+  if (transport) await transport.handlePostMessage(req, res, req.body);
+  else res.status(400).send('Kein Transport für sessionId gefunden');
+});
+
+app.listen(3001);
+```
+
+Starte den Server mit:
+
+```bash
+node whoami.js
+```
+
+</TabItem>
+</Tabs>

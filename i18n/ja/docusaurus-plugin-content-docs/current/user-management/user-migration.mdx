@@ -4,82 +4,104 @@ sidebar_position: 5
 
 # ユーザー移行
 
-Logto は、他のプラットフォームから既存のユーザーを手動で移行することをサポートしています。このガイドでは、Management API を介して既存のユーザーをインポートする方法と、移行前に考慮すべき事項について説明します。
+Logto は、他のプラットフォームから既存ユーザーを手動で移行することをサポートしています。このガイドでは、Management API を使って既存ユーザーをインポートする方法と、移行前に考慮すべき点について説明します。
 
 ## ユーザースキーマ \{#user-schema}
 
 始める前に、Logto の [ユーザースキーマ](/user-management/user-data/#user-profile) を見てみましょう。ユーザースキーマには、次の 3 つの部分があります：
 
-1. **基本データ**：ユーザープロフィールからの基本情報で、既存のユーザープロフィールのデータと一致させることができます。
-2. **カスタムデータ**：追加のユーザー情報を保存するためのもので、基本データに一致しないファイルを保存するために使用できます。
+1. **基本データ**：ユーザープロファイルからの基本情報で、既存のユーザープロファイルのデータとマッチさせることができます。
+2. **カスタムデータ**：追加のユーザー情報を保存します。基本データにマッチできないファイルなどを保存するのに利用できます。
 3. **ソーシャルアイデンティティ**：ソーシャルサインインから取得したユーザー情報を保存します。
 
-既存のユーザープロフィールから **基本データ** と **カスタムデータ** にユーザー情報を一致させるためのマップを作成できます。ソーシャルサインインの場合、ソーシャルアイデンティティをインポートするために追加の手順が必要です。[Link social identity to user](https://openapi.logto.io/operation/operation-createuseridentity) の API を参照してください。
+既存のユーザープロファイルから **基本データ** および **カスタムデータ** へ情報をマッピングするためのマップを作成できます。ソーシャルサインインの場合は、ソーシャルアイデンティティをインポートするために追加の手順が必要です。詳細は [Link social identity to user](https://openapi.logto.io/operation/operation-createuseridentity) の API を参照してください。
 
-## パスワードハッシュ \{#password-hashing}
+## パスワードハッシュ化 \{#password-hashing}
 
-Logto は、ユーザーのパスワードをハッシュするために [Argon2](https://en.wikipedia.org/wiki/Argon2) を使用し、移行の便宜のために `MD5`、`SHA1`、`SHA256`、`Bcrypt` などの他のアルゴリズムもサポートしています。これらのアルゴリズムは安全ではないと考えられており、対応するパスワードハッシュは、ユーザーが最初にサインインに成功した際に Argon2 に移行されます。
+Logto は [Argon2](https://en.wikipedia.org/wiki/Argon2) を使ってユーザーのパスワードをハッシュ化していますが、移行の利便性のために `MD5`、`SHA1`、`SHA256`、`Bcrypt` など他のアルゴリズムもサポートしています。これらのアルゴリズムは安全ではないと考えられており、該当するパスワードハッシュはユーザーが初めてサインインに成功した際に Argon2 へ移行されます。
 
-特定のハッシュアルゴリズムのサポートが必要な場合は、[こちらからご連絡ください](https://logto.io/contact)。
+他のハッシュアルゴリズムやソルトを使用している場合は、`passwordAlgorithm` を `Legacy` に設定できます。これにより、Node.js でサポートされている任意のハッシュアルゴリズムを利用できます。サポートされているアルゴリズムの一覧は [Node.js crypto ドキュメント](https://nodejs.org/api/crypto.html#cryptogethashes) で確認できます。この場合、`passwordDigest` はハッシュアルゴリズムやその他のアルゴリズム固有のパラメータを含む JSON 文字列になります。
+
+JSON 文字列のフォーマットは次の通りです：
+
+```json
+["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
+```
+
+引数内で実際のパスワード値のプレースホルダーとして `@` を使用できます。
+
+例えば、SHA256 とソルトを使っている場合、パスワードは次の形式で保存できます：
+
+```json
+["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
+```
+
+これは次のコードと同等です：
+
+```ts
+const hash = crypto.createHash('sha256');
+hash.update('salt123' + 'password123');
+const expectedHashedValue = hash.digest('hex');
+```
 
 ## 移行手順 \{#steps-to-migrate}
 
-1. **ユーザーデータの準備**
-   まず、既存のプラットフォームからユーザーデータをエクスポートし、Logto のユーザースキーマにユーザー情報をマッピングする必要があります。マッピングされたデータを JSON 形式で準備することをお勧めします。以下はユーザーデータの例です：
+1.  **ユーザーデータの準備**
+    まず既存プラットフォームからユーザーデータをエクスポートし、Logto のユーザースキーマに情報をマッピングします。マッピングしたデータは JSON 形式で準備することを推奨します。以下はユーザーデータの例です：
 
-   ```json
-   [
-     {
-       "username": "user1",
-       "passwordDigest": "password-encrypted",
-       "passwordAlgorithm": "SHA256"
-     },
-     {
-       "username": "user2",
-       "passwordDigest": "password-encrypted",
-       "passwordAlgorithm": "SHA256"
-     }
-   ]
-   ```
+    ```json
+    [
+      {
+        "username": "user1",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      },
+      {
+        "username": "user2",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      }
+    ]
+    ```
 
-2. **Logto テナントの作成**
-   Logto にテナントを設定する必要があります。Logto Cloud または Logto OSS のいずれかを使用できます。まだ設定していない場合は、[Logto Cloud のセットアップ](/introduction/set-up-logto-cloud/#create-logto-tenant) ガイドを参照してください。
-3. **Management API の接続設定**
-   Management API を使用してユーザーデータをインポートします。開発環境での接続設定方法については、[Management API](/integrate-logto/interact-with-management-api) を参照してください。
-4. **ユーザーデータのインポート**
-   ユーザーデータを一つずつインポートするスクリプトを準備することをお勧めします。[create user](https://openapi.logto.io/operation/operation-createuser) API を呼び出してユーザーデータをインポートします。以下はスクリプトの例です：
+2.  **Logto テナントの作成**
+    Logto でテナントをセットアップする必要があります。Logto Cloud または Logto OSS のいずれかを利用できます。まだセットアップしていない場合は、[Logto cloud のセットアップ](/introduction/set-up-logto-cloud/#create-logto-tenant) ガイドを参照してください。
+3.  **Management API の接続設定**
+    Management API を使ってユーザーデータをインポートします。開発環境での接続方法については [Management API](/integrate-logto/interact-with-management-api) を参照してください。
+4.  **ユーザーデータのインポート**
+    ユーザーデータを 1 件ずつインポートするスクリプトを用意することを推奨します。[create user](https://openapi.logto.io/operation/operation-createuser) API を呼び出してユーザーデータをインポートします。スクリプト例は以下の通りです：
 
-   ```jsx
-   const users = require('./users.json');
+    ```jsx
+    const users = require('./users.json');
 
-   const importUsers = async () => {
-     for (const user of users) {
-       try {
-         await fetch('https://[tenant_id].logto.app/api/users', {
-           method: 'POST',
-           headers: {
-             'Content-Type': 'application/json',
-             Authorization: 'Bearer [your-access-token]',
-           },
-           body: JSON.stringify(user),
-         });
-         // レート制限を避けるために少し待機
-         await new Promise((resolve) => setTimeout(resolve, 200));
-       } catch (error) {
-         console.error(`ユーザー ${user.username} のインポートに失敗しました: ${error.message}`);
-       }
-     }
-   };
+    const importUsers = async () => {
+      for (const user of users) {
+        try {
+          await fetch('https://[tenant_id].logto.app/api/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer [your-access-token]',
+            },
+            body: JSON.stringify(user),
+          });
+          // レートリミット回避のため少し待機
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } catch (error) {
+          console.error(`Failed to import user ${user.username}: ${error.message}`);
+        }
+      }
+    };
 
-   importUsers();
-   ```
+    importUsers();
+    ```
 
-API ポイントにはレート制限があることに注意してください。レート制限を避けるために各リクエストの間に待機を追加する必要があります。詳細については、[レート制限](/integrate-logto/interact-with-management-api/#rate-limit) ページを確認してください。
+API エンドポイントにはレートリミットがあるため、各リクエストの間に待機時間を設けてください。詳細は [レートリミット](/integrate-logto/interact-with-management-api/#rate-limit) ページを確認してください。
 
-大量のユーザーデータ（10万以上）がある場合は、レート制限を増やすために [こちらからご連絡ください](https://logto.io/contact)。
+大量のユーザーデータ（10 万件以上）がある場合は、[こちらからご連絡ください](https://logto.io/contact) 。レートリミットの引き上げが可能です。
 
 ## 関連リソース \{#related-resources}
 
 <Url href="https://blog.logto.io/general-migration-guide">
-  既存のユーザーデータベースを Logto に移行するための一般的なガイドライン
+  既存のユーザーデータベースを Logto へ移行するための一般的なガイドライン
 </Url>

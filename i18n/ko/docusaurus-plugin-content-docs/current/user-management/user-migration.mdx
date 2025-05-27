@@ -4,28 +4,50 @@ sidebar_position: 5
 
 # 사용자 마이그레이션
 
-Logto는 다른 플랫폼에서 기존 사용자를 수동으로 마이그레이션하는 것을 지원합니다. 이 가이드는 Management API를 통해 기존 사용자를 가져오는 방법과 마이그레이션 전에 고려해야 할 사항에 대해 설명합니다.
+Logto는 기존 플랫폼에서 기존 사용자를 수동으로 마이그레이션하는 것을 지원합니다. 이 가이드에서는 Management API를 통해 기존 사용자를 가져오는 방법과 마이그레이션 전에 고려해야 할 사항에 대해 안내합니다.
 
 ## 사용자 스키마 \{#user-schema}
 
-시작하기 전에 Logto의 [사용자 스키마](/user-management/user-data/#user-profile)를 살펴보겠습니다. 사용자 스키마에는 알아두어야 할 3가지 부분이 있습니다:
+시작하기 전에, Logto의 [사용자 스키마](/user-management/user-data/#user-profile)를 살펴보겠습니다. 사용자 스키마에는 알아두어야 할 3가지 부분이 있습니다:
 
 1. **기본 데이터**: 사용자 프로필의 기본 정보로, 기존 사용자 프로필의 데이터를 매칭할 수 있습니다.
-2. **사용자 정의 데이터**: 추가 사용자 정보를 저장하며, 기본 데이터와 매칭할 수 없는 파일을 저장하는 데 사용할 수 있습니다.
+2. **커스텀 데이터**: 추가 사용자 정보를 저장하며, 기본 데이터와 매칭할 수 없는 파일을 저장하는 데 사용할 수 있습니다.
 3. **소셜 아이덴티티**: 소셜 로그인에서 가져온 사용자 정보를 저장합니다.
 
-기존 사용자 프로필의 사용자 정보를 **기본 데이터** 및 **사용자 정의 데이터**에 매핑하는 지도를 만들 수 있습니다. 소셜 로그인에 대해서는 소셜 아이덴티티를 가져오기 위한 추가 단계가 필요하며, [사용자에게 소셜 아이덴티티 연결](https://openapi.logto.io/operation/operation-createuseridentity) API를 참조하세요.
+기존 사용자 프로필의 정보를 **기본 데이터**와 **커스텀 데이터**에 매핑하는 맵을 만들 수 있습니다. 소셜 로그인의 경우, 소셜 아이덴티티를 가져오기 위한 추가 단계가 필요합니다. 자세한 내용은 [사용자에 소셜 아이덴티티 연결 API](https://openapi.logto.io/operation/operation-createuseridentity)를 참고하세요.
 
 ## 비밀번호 해싱 \{#password-hashing}
 
-Logto는 사용자의 비밀번호를 해싱하기 위해 [Argon2](https://en.wikipedia.org/wiki/Argon2)를 사용하며, 마이그레이션의 편의를 위해 `MD5`, `SHA1`, `SHA256`, `Bcrypt`와 같은 다른 알고리즘도 지원합니다. 이러한 알고리즘은 안전하지 않은 것으로 간주되며, 사용자가 처음으로 성공적으로 로그인할 때 해당 비밀번호 해시는 Argon2로 마이그레이션됩니다.
+Logto는 사용자의 비밀번호를 해싱하기 위해 [Argon2](https://en.wikipedia.org/wiki/Argon2)를 사용하며, 마이그레이션의 편의를 위해 `MD5`, `SHA1`, `SHA256`, `Bcrypt`와 같은 다른 알고리즘도 지원합니다. 이러한 알고리즘은 안전하지 않은 것으로 간주되며, 해당 비밀번호 해시는 사용자가 처음으로 성공적으로 로그인할 때 Argon2로 마이그레이션됩니다.
 
-특정 해싱 알고리즘에 대한 지원이 필요하다면, [저희에게 알려주세요](https://logto.io/contact).
+다른 해싱 알고리즘이나 솔트를 사용하는 경우, `passwordAlgorithm`을 `Legacy`로 설정할 수 있습니다. 이렇게 하면 Node.js에서 지원하는 모든 해시 알고리즘을 사용할 수 있습니다. 지원되는 알고리즘 목록은 [Node.js crypto 문서](https://nodejs.org/api/crypto.html#cryptogethashes)에서 확인할 수 있습니다. 이 경우, `passwordDigest`는 해시 알고리즘과 기타 알고리즘별 매개변수를 포함하는 JSON 문자열이 됩니다.
+
+JSON 문자열의 형식은 다음과 같습니다:
+
+```json
+["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
+```
+
+그리고 인자에서 실제 비밀번호 값의 자리에는 `@`를 플레이스홀더로 사용할 수 있습니다.
+
+예를 들어, SHA256과 솔트를 사용하는 경우, 비밀번호를 다음과 같은 형식으로 저장할 수 있습니다:
+
+```json
+["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
+```
+
+이는 다음 코드와 동일합니다:
+
+```ts
+const hash = crypto.createHash('sha256');
+hash.update('salt123' + 'password123');
+const expectedHashedValue = hash.digest('hex');
+```
 
 ## 마이그레이션 단계 \{#steps-to-migrate}
 
 1.  **사용자 데이터 준비**
-    먼저 기존 플랫폼에서 사용자 데이터를 내보낸 후, Logto 사용자 스키마에 사용자 정보를 매핑해야 합니다. 매핑된 데이터를 JSON 형식으로 준비하는 것을 권장합니다. 다음은 사용자 데이터의 예입니다:
+    먼저 기존 플랫폼에서 사용자 데이터를 내보낸 후, 사용자 정보를 Logto 사용자 스키마에 매핑해야 합니다. 매핑된 데이터를 JSON 형식으로 준비하는 것을 권장합니다. 다음은 사용자 데이터 예시입니다:
 
     ```json
     [
@@ -43,11 +65,11 @@ Logto는 사용자의 비밀번호를 해싱하기 위해 [Argon2](https://en.wi
     ```
 
 2.  **Logto 테넌트 생성**
-    Logto에서 테넌트를 설정해야 합니다. Logto Cloud 또는 Logto OSS를 사용할 수 있습니다. 아직 설정하지 않았다면, [Logto 클라우드 설정](/introduction/set-up-logto-cloud/#create-logto-tenant) 가이드를 참조하세요.
+    Logto에서 테넌트를 설정해야 합니다. Logto Cloud 또는 Logto OSS를 사용할 수 있습니다. 아직 설정하지 않았다면, [Logto Cloud 설정](/introduction/set-up-logto-cloud/#create-logto-tenant) 가이드를 참고하세요.
 3.  **Management API 연결 설정**
-    Management API를 사용하여 사용자 데이터를 가져올 것입니다. 개발 환경에서 연결을 설정하는 방법은 [Management API](/integrate-logto/interact-with-management-api)를 참조하세요.
+    Management API를 사용하여 사용자 데이터를 가져올 예정입니다. 개발 환경에서 연결을 설정하는 방법은 [Management API](/integrate-logto/interact-with-management-api)를 참고하세요.
 4.  **사용자 데이터 가져오기**
-    사용자 데이터를 하나씩 가져오기 위한 스크립트를 준비하는 것이 좋습니다. [사용자 생성](https://openapi.logto.io/operation/operation-createuser) API를 호출하여 사용자 데이터를 가져올 것입니다. 다음은 스크립트의 예입니다:
+    사용자 데이터를 하나씩 가져오는 스크립트를 준비하는 것이 좋습니다. [사용자 생성](https://openapi.logto.io/operation/operation-createuser) API를 호출하여 사용자 데이터를 가져올 수 있습니다. 다음은 스크립트 예시입니다:
 
     ```jsx
     const users = require('./users.json');
@@ -66,7 +88,7 @@ Logto는 사용자의 비밀번호를 해싱하기 위해 [Argon2](https://en.wi
           // 속도 제한을 피하기 위해 잠시 대기
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`사용자 ${user.username} 가져오기 실패: ${error.message}`);
+          console.error(`Failed to import user ${user.username}: ${error.message}`);
         }
       }
     };
@@ -74,12 +96,12 @@ Logto는 사용자의 비밀번호를 해싱하기 위해 [Argon2](https://en.wi
     importUsers();
     ```
 
-API 포인트는 속도 제한이 있으므로, 각 요청 사이에 대기 시간을 추가하여 속도 제한을 피해야 합니다. 자세한 내용은 [속도 제한](/integrate-logto/interact-with-management-api/#rate-limit) 페이지를 검토하세요.
+API 엔드포인트에는 속도 제한이 적용되므로, 각 요청 사이에 대기 시간을 추가해야 합니다. 자세한 내용은 [속도 제한](/integrate-logto/interact-with-management-api/#rate-limit) 페이지를 참고하세요.
 
-사용자 데이터가 대량인 경우 (100k+ 사용자), 속도 제한을 늘리기 위해 [저희에게 연락](https://logto.io/contact)할 수 있습니다.
+사용자 데이터가 대량(10만 명 이상)인 경우, [문의해 주세요](https://logto.io/contact) 속도 제한 상향을 요청할 수 있습니다.
 
 ## 관련 리소스 \{#related-resources}
 
 <Url href="https://blog.logto.io/general-migration-guide">
-  기존 사용자 데이터베이스를 Logto로 마이그레이션하는 일반적인 가이드라인
+  기존 사용자 데이터베이스를 Logto로 마이그레이션하는 일반 가이드라인
 </Url>
