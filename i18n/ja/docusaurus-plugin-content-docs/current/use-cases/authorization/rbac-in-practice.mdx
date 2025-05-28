@@ -1,0 +1,479 @@
+---
+sidebar_position: 1
+sidebar_label: 実践的な RBAC
+description: 'ロールベースのアクセス制御 (RBAC) の実践ガイド：権限設計、ロール管理、安全な認可 (Authorization) のセットアップ方法を CMS 例で学ぶ。'
+---
+
+<head>
+  <link rel="canonical" href="https://blog.logto.io/rbac-in-practice" />
+</head>
+
+# 実践的な RBAC：アプリケーションのための安全な認可 (Authorization) の実装
+
+アプリケーションのために安全かつスケーラブルな認可 (Authorization) システムの実装に悩んでいませんか？ロールベースのアクセス制御 (RBAC) はユーザー権限管理の業界標準ですが、正しく実装するのは難しい場合があります。このチュートリアルでは、実際のコンテンツ管理システム (CMS) を例に、堅牢な RBAC システムの構築方法を紹介します。
+
+このガイドを通じて、次のことが学べます：
+
+- ✨ 細かな権限設計と実装方法、精密なコントロールの実現
+- 🔒 権限を意味のあるロールに整理するベストプラクティス
+- 👤 リソース所有権を効果的に扱うテクニック
+- 🚀 認可 (Authorization) システムをスケーラブルかつ保守しやすくする方法
+- 💡 実際の CMS 例を使った実装
+
+このチュートリアルの完全なソースコードは [GitHub](https://github.com/logto-io/rbac-sample) で公開されています。
+
+## RBAC の基本を理解する \{#understanding-rbac-fundamentals}
+
+ロールベースのアクセス制御 (RBAC) は、単にユーザーに権限を割り当てるだけではありません。セキュリティと保守性のバランスを取るための体系的な認可 (Authorization) アプローチを構築することです。
+
+[RBAC とは何か](https://auth-wiki.logto.io/rbac) については Auth Wiki で詳しく学べます。
+
+本実装で従う主な原則は以下の通りです：
+
+### 細かな権限設計 \{#fine-grained-permission-design}
+
+細かな権限設計により、ユーザーがシステム内で何ができるかを精密にコントロールできます。「admin」や「user」といった大まかなアクセスレベルではなく、リソースごとにユーザーが実行できる具体的なアクションを定義します。例：
+
+- `read:articles` - システム内の任意の記事を閲覧
+- `create:articles` - 新しい記事の作成
+- `update:articles` - 既存記事の編集
+- `publish:articles` - 記事の公開ステータス変更
+
+### リソース所有権とアクセス制御 \{#resource-ownership-and-access-control}
+
+リソース所有権は、CMS の認可 (Authorization) 設計における基本概念です。RBAC でロールごとのアクションを定義する一方、所有権はアクセス制御に個人の側面を加えます：
+
+- 著者は自分が作成した記事へのアクセス権を自動的に持ちます
+- この自然な所有権モデルにより、著者は常に自分のコンテンツを閲覧・編集できます
+- システムは記事操作時にロール権限または所有権のいずれかをチェックします
+- たとえば `update:articles` 権限がなくても、著者は自分の記事を編集できます
+- この設計により、余分なロール権限を増やさずにセキュリティを維持できます
+
+この二重構造（ロール + 所有権）により、より直感的で安全なシステムが実現します。パブリッシャーや管理者はロール権限で全コンテンツを管理でき、著者は自分の作品をコントロールできます。
+
+## 安全な API 設計 \{#designing-a-secure-apis}
+
+まず、CMS のコア機能を API エンドポイントで設計します：
+
+```
+GET    /api/articles         # すべての記事一覧
+GET    /api/articles/:id     # 特定の記事取得
+POST   /api/articles        # 新規記事作成
+PATCH  /api/articles/:id    # 記事の編集
+DELETE /api/articles/:id    # 記事の削除
+PATCH  /api/articles/:id/published  # 公開ステータス変更
+```
+
+### API へのアクセス制御の実装 \{#implement-access-control-for-your-api}
+
+各エンドポイントごとに、アクセス制御の 2 つの側面を考慮します：
+
+1. リソース所有権 - ユーザーはこのリソースの所有者か？
+2. ロールベースの権限 - ユーザーのロールはこの操作を許可しているか？
+
+各エンドポイントのアクセス制御は次の通りです：
+
+| エンドポイント                    | アクセス制御ロジック                                                   |
+| --------------------------------- | ---------------------------------------------------------------------- |
+| GET /api/articles                 | - `list:articles` 権限を持つユーザー、または著者は自分の記事を閲覧可能 |
+| GET /api/articles/:id             | - `read:articles` 権限を持つユーザー、または記事の著者                 |
+| POST /api/articles                | - `create:articles` 権限を持つユーザー                                 |
+| PATCH /api/articles/:id           | - `update:articles` 権限を持つユーザー、または記事の著者               |
+| DELETE /api/articles/:id          | - `delete:articles` 権限を持つユーザー、または記事の著者               |
+| PATCH /api/articles/:id/published | - `publish:articles` 権限を持つユーザーのみ                            |
+
+### スケールする権限システムの設計 \{#creating-a-permission-system-that-scales}
+
+API アクセス要件に基づき、次の権限を定義できます：
+
+| 権限             | 説明                               |
+| ---------------- | ---------------------------------- |
+| list:articles    | システム内のすべての記事一覧を閲覧 |
+| read:articles    | 任意の記事の全文を閲覧             |
+| create:articles  | 新規記事の作成                     |
+| update:articles  | 任意の記事の編集                   |
+| delete:articles  | 任意の記事の削除                   |
+| publish:articles | 公開ステータスの変更               |
+
+これらの権限は、自分が所有していないリソースにアクセスする場合のみ必要です。記事の所有者は自動的に：
+
+- 自分の記事を閲覧（`read:articles` 不要）
+- 自分の記事を編集（`update:articles` 不要）
+- 自分の記事を削除（`delete:articles` 不要）
+
+## 効果的なロールの構築 \{#building-effective-roles}
+
+API と権限が定義できたので、これらの権限を論理的にまとめるロールを作成します：
+
+| 権限/ロール      | 👑 管理者 (Admin)                            | 📝 パブリッシャー (Publisher)              | ✍️ 著者 (Author)               |
+| ---------------- | -------------------------------------------- | ------------------------------------------ | ------------------------------ |
+| **説明**         | 全コンテンツ管理のためのシステム全体アクセス | すべての記事閲覧と公開ステータス管理が可能 | システム内で新規記事作成が可能 |
+| list:articles    | ✅                                           | ✅                                         | ❌                             |
+| read:articles    | ✅                                           | ✅                                         | ❌                             |
+| create:articles  | ✅                                           | ❌                                         | ✅                             |
+| update:articles  | ✅                                           | ❌                                         | ❌                             |
+| delete:articles  | ✅                                           | ❌                                         | ❌                             |
+| publish:articles | ✅                                           | ✅                                         | ❌                             |
+
+**注意**：著者はロール権限に関係なく、自分の記事に対して read / update / delete 権限を自動的に持ちます。
+
+各ロールは明確な責任範囲を持って設計されています：
+
+- **管理者 (Admin)**：CMS 全体の完全なコントロール、すべての記事操作が可能
+- **パブリッシャー (Publisher)**：コンテンツレビューと公開管理に特化
+- **著者 (Author)**：コンテンツ作成に特化
+
+このロール構造により、役割ごとの責任分担が明確になります：
+
+- 著者はコンテンツ作成に集中
+- パブリッシャーはコンテンツ品質と公開を管理
+- 管理者はシステム全体を維持
+
+## Logto での RBAC 設定 \{#config-rbac-in-logto}
+
+始める前に、 [Logto Cloud](https://cloud.logto.io) でアカウントを作成する必要があります。または [Logto OSS バージョン](/logto-oss) を使ってセルフホスト型 Logto インスタンスを利用することもできます。
+
+本チュートリアルでは、簡単のため Logto Cloud を使用します。
+
+### アプリケーションのセットアップ \{#setting-up-your-application}
+
+1. Logto コンソールの「アプリケーション」から新しい React アプリケーションを作成
+   - アプリケーション名：Content Management System
+   - アプリケーションタイプ：従来型 Web アプリケーション
+   - リダイレクト URI： http://localhost:5173/callback
+
+![CMS React application](https://uploads.strapi.logto.io/cms_application_3ed42f2256.png)
+
+### API リソースと権限の設定 \{#configuring-api-resources-and-permissions}
+
+1. Logto コンソールの「API リソース」から新しい API リソースを作成
+   - API 名：CMS API
+   - API 識別子： https://api.cms.com
+   - API リソースに権限を追加
+     - `list:articles`
+     - `read:articles`
+     - `create:articles`
+     - `update:articles`
+     - `publish:articles`
+     - `delete:articles`
+
+![CMS API resource details](https://uploads.strapi.logto.io/cms_api_resource_b15ae2b91a.png)
+
+### ロールの作成 \{#creating-roles}
+
+Logto コンソールの「ロール」から CMS 用に次のロールを作成します
+
+- 管理者 (Admin)
+  - すべての権限を付与
+- パブリッシャー (Publisher)
+  - `read:articles`, `list:articles`, `publish:articles` を付与
+- 著者 (Author)
+  - `create:articles` を付与
+
+![Admin role](https://uploads.strapi.logto.io/admin_role_53edb35ecf.png)
+
+![Publisher role](https://uploads.strapi.logto.io/publisher_role_2ac205cc32.png)
+
+![Author role](https://uploads.strapi.logto.io/author_role_f89cd99543.png)
+
+### ユーザーへのロール割り当て \{#assigning-roles-to-users}
+
+Logto コンソールの「ユーザー管理」セクションでユーザーを作成します。
+
+ユーザー詳細の「ロール」タブで、ユーザーにロールを割り当てられます。
+
+本例では、次の 3 ユーザーを作成し、それぞれにロールを割り当てます：
+
+- Alex：管理者 (Admin)
+- Bob：パブリッシャー (Publisher)
+- Charlie：著者 (Author)
+
+![User management](https://uploads.strapi.logto.io/user_management_c0bc17119f.png)
+
+![User details - Alex](https://uploads.strapi.logto.io/user_details_alex_702f96ef9a.png)
+
+:::note
+デモのため、これらのリソースや設定は Logto コンソールから作成しています。実際のプロジェクトでは、Logto が提供する [Management API](/integrate-logto/interact-with-management-api) を使ってプログラム的に作成・設定できます。
+:::
+
+## フロントエンドと Logto RBAC の統合 \{#integrate-your-frontend-with-logto-rbac}
+
+Logto で RBAC を設定できたので、フロントエンドに統合していきます。
+
+まず [Logto クイックスタート](/quick-starts) に従ってアプリケーションへ Logto を統合します。
+
+本例では [React](/quick-starts/react) を使って説明します。
+
+アプリケーションに Logto をセットアップしたら、Logto が機能するよう RBAC 設定を追加します。
+
+```tsx
+// frontend/src/App.tsx
+
+const logtoConfig: LogtoConfig = {
+  appId: LOGTO_APP_ID, // Logto コンソールで作成したアプリ ID
+  endpoint: LOGTO_ENDPOINT, // Logto コンソールで作成したエンドポイント
+  resources: [API_RESOURCE], // Logto コンソールで作成した API リソース識別子（例: https://api.cms.com）
+  // フロントエンドで API リソースからリクエストしたい全スコープ
+  scopes: [
+    'list:articles',
+    'create:articles',
+    'read:articles',
+    'update:articles',
+    'delete:articles',
+    'publish:articles',
+  ],
+};
+```
+
+すでにサインイン済みの場合は、一度サインアウトして再度サインインし直すことで設定が反映されます。
+
+ユーザーが Logto でサインインし、上記で指定した API リソースのアクセス トークンをリクエストすると、Logto はユーザーのロールに関連するスコープ（権限）をアクセス トークンに追加します。
+
+`useLogto` フックの `getAccessTokenClaims` を使って、アクセス トークンからスコープを取得できます。
+
+```tsx
+// frontend/src/hooks/use-user-data.ts
+
+import { useLogto } from '@logto/react';
+import { API_RESOURCE } from '../config';
+import { useState, useEffect } from 'react';
+
+export const useUserData = () => {
+  const { getAccessTokenClaims } = useLogto();
+  const [userScopes, setUserScopes] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string>();
+
+  useEffect(() => {
+    const fetchScopes = async () => {
+      const token = await getAccessTokenClaims(API_RESOURCE);
+      setUserScopes(token?.scope?.split(' ') ?? []);
+      setUserId(token?.sub);
+    };
+
+    fetchScopes();
+  }, [getAccessTokenClaims]);
+
+  return { userId, userScopes };
+};
+```
+
+`userScopes` を使って、ユーザーがリソースにアクセスする権限を持っているかどうかを判定できます。
+
+```tsx
+// frontend/src/pages/Dashboard.tsx
+
+const Dashboard = () => {
+  const { userId, userScopes } = useUserData();
+  // ...
+
+  return (
+    <div>
+      {/* ... */}
+      {(userScopes.includes('delete:articles') || article.ownerId === userId) && (
+        <button
+          onClick={() => handleDelete(article.id)}
+          className="text-red-600 hover:text-red-900"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
+};
+```
+
+## バックエンドと Logto RBAC の統合 \{#integrate-your-backend-with-logto-rbac}
+
+次は、Logto RBAC をバックエンドに統合します。
+
+### バックエンド認可 (Authorization) ミドルウェア \{#backend-authorization-middleware}
+
+まず、バックエンドでユーザー権限をチェックし、ログイン済みかどうか、必要な権限を持っているかを判定するミドルウェアを追加します。
+
+```javascript
+// backend/src/middleware/auth.js
+
+const { createRemoteJWKSet, jwtVerify } = require('jose');
+
+const getTokenFromHeader = (headers) => {
+  const { authorization } = headers;
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error('Authorization header missing');
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error('Authorization token type not supported');
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+
+const hasScopes = (tokenScopes, requiredScopes) => {
+  if (!requiredScopes || requiredScopes.length === 0) {
+    return true;
+  }
+  const scopeSet = new Set(tokenScopes);
+  return requiredScopes.every((scope) => scopeSet.has(scope));
+};
+
+const verifyJwt = async (token) => {
+  const JWKS = createRemoteJWKSet(new URL(process.env.LOGTO_JWKS_URL));
+
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: process.env.LOGTO_ISSUER,
+    audience: process.env.LOGTO_API_RESOURCE,
+  });
+
+  return payload;
+};
+
+const requireAuth = (requiredScopes = []) => {
+  return async (req, res, next) => {
+    try {
+      // トークンを抽出
+      const token = getTokenFromHeader(req.headers);
+
+      // トークンを検証
+      const payload = await verifyJwt(token);
+
+      // ユーザー情報をリクエストに追加
+      req.user = {
+        id: payload.sub,
+        scopes: payload.scope?.split(' ') || [],
+      };
+
+      // 必要なスコープを検証
+      if (!hasScopes(req.user.scopes, requiredScopes)) {
+        throw new Error('Insufficient permissions');
+      }
+
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  };
+};
+
+module.exports = {
+  requireAuth,
+  hasScopes,
+};
+```
+
+このミドルウェアでは、フロントエンドリクエストが有効なアクセス トークンを含んでいるかを検証し、アクセス トークンのオーディエンスが Logto コンソールで作成した API リソースと一致するかをチェックしています。
+
+API リソースを検証する理由は、この API リソースが実際に CMS バックエンドのリソースを表し、すべての CMS 権限がこの API リソースに紐付いているためです。
+
+この API リソースが Logto で CMS リソースを表しているので、フロントエンドのコードでは、バックエンド API リクエスト時に対応するアクセス トークンを付与します：
+
+```typescript
+// frontend/src/hooks/use-api.ts
+export const useApi = () => {
+  const { getAccessToken } = useLogto();
+
+  return useMemo(
+    () =>
+      async (endpoint: string, options: RequestInit = {}) => {
+        try {
+          // API リソース用のアクセス トークンを取得
+          const token = await getAccessToken(API_RESOURCE);
+
+          if (!token) {
+            throw new ApiRequestError('Failed to get access token');
+          }
+
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+              'Content-Type': 'application/json',
+              // アクセス トークンをリクエストヘッダーに追加
+              Authorization: `Bearer ${token}`,
+              ...options.headers,
+            },
+          });
+
+          // ... レスポンス処理
+
+          return await response.json();
+        } catch (error) {
+          // ... エラー処理
+        }
+      },
+    [getAccessToken]
+  );
+};
+```
+
+これで `requireAuth` ミドルウェアを使って API エンドポイントを保護できます。
+
+### API エンドポイントの保護 \{#protecting-api-endpoints}
+
+特定の権限を持つユーザーだけがアクセスできる API には、ミドルウェアで直接制限を追加できます。たとえば、記事作成 API は `create:articles` 権限を持つユーザーのみアクセス可能です：
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth } = require('../middleware/auth');
+
+router.post('/articles', requireAuth(['create:articles']), async (req, res) => {
+  // ...
+});
+```
+
+権限とリソース所有権の両方をチェックする必要がある API では、`hasScopes` 関数を利用できます。たとえば記事一覧 API では、`list:articles` 権限を持つユーザーは全記事にアクセスでき、著者は自分が作成した記事のみアクセスできます：
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth, hasScopes } = require('../middleware/auth');
+
+router.get('/articles', requireAuth(), async (req, res) => {
+  try {
+    // list:articles スコープを持つ場合は全記事を返す
+    if (hasScopes(req.user.scopes, ['list:articles'])) {
+      const articles = await articleDB.list();
+      return res.json(articles);
+    }
+
+    // それ以外は自分の記事のみ返す
+    const articles = await articleDB.listByOwner(req.user.id);
+    res.json(articles);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch articles' });
+  }
+});
+```
+
+これで RBAC 実装が完了しました。[完全なソースコード](https://github.com/logto-io/rbac-sample) で全体像を確認できます。
+
+## CMS RBAC 実装のテスト \{#test-the-cms-rbac-implementation}
+
+作成した 3 ユーザーを使って、CMS RBAC 実装をテストしてみましょう。
+
+:::note
+「ユーザー管理」で作成したユーザーの認証情報でサインインできない場合は、まず適切なサインイン方法を有効化する必要があります。Logto コンソールの「サインイン体験」で、Email + パスワードやユーザー名 + パスワードなど、希望する認証方法を有効にしてください。
+:::
+
+まず、Alex と Charles でそれぞれサインインし、記事を作成してみます。
+
+Alex は管理者 (Admin) ロールなので、記事の作成・削除・編集・公開・全記事閲覧が可能です。
+
+![CMS dashboard - Alex](https://uploads.strapi.logto.io/cms_dashboard_alex_a11863a94b.png)
+
+Charles は著者 (Author) ロールなので、自分の記事のみ作成・閲覧・編集・削除できます。
+
+![CMS dashboard - Charles - Article list](https://uploads.strapi.logto.io/cms_dashboard_charles_05f610066a.png)
+
+Bob はパブリッシャー (Publisher) ロールなので、すべての記事を閲覧・公開できますが、作成・編集・削除はできません。
+
+![CMS dashboard - Bob](https://uploads.strapi.logto.io/cms_dashboard_bob_421a429b69.png)
+
+## まとめ \{#conclusion}
+
+おめでとうございます！アプリケーションに堅牢な RBAC システムを実装する方法を学びました。
+
+より複雑なシナリオ、たとえばマルチテナントアプリケーションの構築などには、Logto の包括的な組織 (Organization) サポートが役立ちます。組織単位のアクセス制御実装については、 [マルチテナント SaaS アプリケーション構築：設計から実装までの完全ガイド](https://blog.logto.io/build-multi-tenant-saas) をご覧ください。
+
+Happy coding! 🚀

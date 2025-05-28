@@ -1,0 +1,479 @@
+---
+sidebar_position: 1
+sidebar_label: RBAC in der Praxis
+description: 'Ein praktischer Leitfaden zur rollenbasierten Zugangskontrolle (RBAC): Erfahre, wie du Berechtigungen entwirfst, Rollen verwaltest und sichere Autorisierung in deinem CMS einrichtest.'
+---
+
+<head>
+  <link rel="canonical" href="https://blog.logto.io/rbac-in-practice" />
+</head>
+
+# RBAC in der Praxis: Sichere Autorisierung für deine Anwendung implementieren
+
+Hast du Schwierigkeiten, ein sicheres und skalierbares Autorisierungssystem für deine Anwendung zu implementieren? Rollenbasierte Zugangskontrolle (RBAC) ist der Industriestandard zur Verwaltung von Benutzerberechtigungen, aber die korrekte Umsetzung kann herausfordernd sein. In diesem Tutorial zeigen wir dir, wie du ein robustes RBAC-System anhand eines praxisnahen Content Management Systems (CMS) aufbaust.
+
+Wenn du dieser Anleitung folgst, lernst du:
+
+- ✨ Wie du fein abgestufte Berechtigungen entwirfst und implementierst, um präzise Kontrolle zu erhalten
+- 🔒 Best Practices zur Organisation von Berechtigungen in sinnvolle Rollen
+- 👤 Techniken zur effektiven Verwaltung von Ressourcenbesitz
+- 🚀 Möglichkeiten, dein Autorisierungssystem skalierbar und wartbar zu gestalten
+- 💡 Praktische Umsetzung anhand eines realen CMS-Beispiels
+
+Der vollständige Quellcode zu diesem Tutorial ist auf [GitHub](https://github.com/logto-io/rbac-sample) verfügbar.
+
+## Grundverständnis von RBAC \{#understanding-rbac-fundamentals}
+
+Rollenbasierte Zugangskontrolle ist mehr als nur das Zuweisen von Berechtigungen an Benutzer. Es geht darum, einen strukturierten Ansatz für die Autorisierung zu schaffen, der Sicherheit und Wartbarkeit in Einklang bringt.
+
+Mehr dazu findest du unter [Was ist RBAC](https://auth-wiki.logto.io/rbac) im Auth Wiki.
+
+Hier sind die wichtigsten Prinzipien, denen wir in unserer Umsetzung folgen:
+
+### Fein abgestufte Berechtigungs-Entwürfe \{#fine-grained-permission-design}
+
+Fein abgestufte Berechtigungen geben dir präzise Kontrolle darüber, was Benutzer in deinem System tun können. Anstatt allgemeiner Zugriffsebenen wie „admin“ oder „user“ definieren wir spezifische Aktionen, die Benutzer auf Ressourcen ausführen dürfen. Zum Beispiel:
+
+- `read:articles` – Beliebigen Artikel im System ansehen
+- `create:articles` – Neue Artikel erstellen
+- `update:articles` – Bestehende Artikel bearbeiten
+- `publish:articles` – Veröffentlichungsstatus von Artikeln ändern
+
+### Ressourcenbesitz und Zugangskontrolle \{#resource-ownership-and-access-control}
+
+Ressourcenbesitz ist ein grundlegendes Konzept im Autorisierungsdesign unseres CMS. Während RBAC festlegt, welche Aktionen verschiedene Rollen ausführen dürfen, fügt der Besitz eine persönliche Dimension zur Zugangskontrolle hinzu:
+
+- Autoren haben automatisch Zugriff auf die Artikel, die sie erstellt haben
+- Dieses natürliche Besitzmodell bedeutet, dass Autoren ihre eigenen Inhalte immer ansehen und bearbeiten können
+- Das System prüft sowohl Rollenberechtigungen ODER Besitz beim Umgang mit Artikeloperationen
+- Zum Beispiel kann ein Autor auch ohne die Berechtigung `update:articles` seine eigenen Artikel bearbeiten
+- Dieses Design reduziert den Bedarf an zusätzlichen Rollenberechtigungen und erhält dennoch die Sicherheit
+
+Dieser zweistufige Ansatz (Rollen + Besitz) schafft ein intuitiveres und sichereres System. Publisher und Admins können weiterhin alle Inhalte über ihre Rollenberechtigungen verwalten, während Autoren die Kontrolle über ihre eigenen Arbeiten behalten.
+
+## Sichere APIs entwerfen \{#designing-a-secure-apis}
+
+Beginnen wir damit, die Kernfunktionalität unseres CMS über seine API-Endpunkte zu entwerfen:
+
+```
+GET    /api/articles         # Alle Artikel auflisten
+GET    /api/articles/:id     # Einen bestimmten Artikel abrufen
+POST   /api/articles         # Einen neuen Artikel erstellen
+PATCH  /api/articles/:id     # Einen Artikel aktualisieren
+DELETE /api/articles/:id     # Einen Artikel löschen
+PATCH  /api/articles/:id/published  # Veröffentlichungsstatus ändern
+```
+
+### Zugangskontrolle für deine API implementieren \{#implement-access-control-for-your-api}
+
+Für jeden Endpunkt müssen wir zwei Aspekte der Zugangskontrolle berücksichtigen:
+
+1. Ressourcenbesitz – Besitzt der Benutzer diese Ressource?
+2. Rollenbasierte Berechtigungen – Erlaubt die Rolle des Benutzers diese Operation?
+
+So handhaben wir den Zugriff für jeden Endpunkt:
+
+| Endpoint                          | Zugangskontroll-Logik                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------- |
+| GET /api/articles                 | - Jeder mit `list:articles`-Berechtigung ODER Autoren sehen ihre eigenen Artikel |
+| GET /api/articles/:id             | - Jeder mit `read:articles`-Berechtigung ODER Autor des Artikels                 |
+| POST /api/articles                | - Jeder mit `create:articles`-Berechtigung                                       |
+| PATCH /api/articles/:id           | - Jeder mit `update:articles`-Berechtigung ODER Autor des Artikels               |
+| DELETE /api/articles/:id          | - Jeder mit `delete:articles`-Berechtigung ODER Autor des Artikels               |
+| PATCH /api/articles/:id/published | - Nur Benutzer mit `publish:articles`-Berechtigung                               |
+
+### Ein skalierbares Berechtigungssystem erstellen \{#creating-a-permission-system-that-scales}
+
+Basierend auf unseren API-Zugriffsanforderungen können wir diese Berechtigungen definieren:
+
+| Berechtigung     | Beschreibung                                      |
+| ---------------- | ------------------------------------------------- |
+| list:articles    | Die Liste aller Artikel im System ansehen         |
+| read:articles    | Den vollständigen Inhalt beliebiger Artikel lesen |
+| create:articles  | Neue Artikel erstellen                            |
+| update:articles  | Beliebige Artikel bearbeiten                      |
+| delete:articles  | Beliebige Artikel löschen                         |
+| publish:articles | Veröffentlichungsstatus ändern                    |
+
+Beachte, dass diese Berechtigungen nur benötigt werden, wenn auf Ressourcen zugegriffen wird, die man nicht selbst besitzt. Artikelbesitzer können automatisch:
+
+- Ihre eigenen Artikel ansehen (kein `read:articles` nötig)
+- Ihre eigenen Artikel bearbeiten (kein `update:articles` nötig)
+- Ihre eigenen Artikel löschen (kein `delete:articles` nötig)
+
+## Effektive Rollen erstellen \{#building-effective-roles}
+
+Jetzt, da wir unsere API und Berechtigungen definiert haben, können wir Rollen erstellen, die diese Berechtigungen logisch gruppieren:
+
+| Berechtigung/Rolle | 👑 Admin                                       | 📝 Publisher                                             | ✍️ Autor                              |
+| ------------------ | ---------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| **Beschreibung**   | Vollzugriff für vollständige Inhaltsverwaltung | Kann alle Artikel ansehen und Veröffentlichungen steuern | Kann neue Artikel im System erstellen |
+| list:articles      | ✅                                             | ✅                                                       | ❌                                    |
+| read:articles      | ✅                                             | ✅                                                       | ❌                                    |
+| create:articles    | ✅                                             | ❌                                                       | ✅                                    |
+| update:articles    | ✅                                             | ❌                                                       | ❌                                    |
+| delete:articles    | ✅                                             | ❌                                                       | ❌                                    |
+| publish:articles   | ✅                                             | ✅                                                       | ❌                                    |
+
+**Hinweis**: Autoren haben automatisch Lese-/Bearbeitungs-/Löschrechte für ihre eigenen Artikel, unabhängig von den Rollenberechtigungen.
+
+Jede Rolle ist mit bestimmten Verantwortlichkeiten gestaltet:
+
+- **Admin**: Hat vollständige Kontrolle über das CMS, einschließlich aller Artikeloperationen
+- **Publisher**: Konzentriert sich auf Inhaltsprüfung und Veröffentlichungsmanagement
+- **Autor**: Spezialisiert auf Inhaltserstellung
+
+Diese Rollenstruktur schafft eine klare Trennung der Verantwortlichkeiten:
+
+- Autoren konzentrieren sich auf die Inhaltserstellung
+- Publisher verwalten Inhaltsqualität und Sichtbarkeit
+- Admins behalten die Gesamtsteuerung des Systems
+
+## RBAC in Logto konfigurieren \{#config-rbac-in-logto}
+
+Bevor du beginnst, musst du ein Konto in [Logto Cloud](https://cloud.logto.io) erstellen, oder du kannst auch eine selbst gehostete Logto-Instanz mit der [Logto OSS-Version](/logto-oss) verwenden.
+
+Für dieses Tutorial nutzen wir jedoch Logto Cloud der Einfachheit halber.
+
+### Deine Anwendung einrichten \{#setting-up-your-application}
+
+1. Gehe in der Logto Console zu „Anwendungen“, um eine neue React-Anwendung zu erstellen
+   - Anwendungsname: Content Management System
+   - Anwendungstyp: Traditionelle Webanwendung
+   - Redirect URIs: http://localhost:5173/callback
+
+![CMS React-Anwendung](https://uploads.strapi.logto.io/cms_application_3ed42f2256.png)
+
+### API-Ressourcen und Berechtigungen konfigurieren \{#configuring-api-resources-and-permissions}
+
+1. Gehe in der Logto Console zu „API-Ressourcen“, um eine neue API-Ressource zu erstellen
+   - API-Name: CMS API
+   - API-Identifier: https://api.cms.com
+   - Füge der API-Ressource Berechtigungen hinzu
+     - `list:articles`
+     - `read:articles`
+     - `create:articles`
+     - `update:articles`
+     - `publish:articles`
+     - `delete:articles`
+
+![CMS API-Ressourcendetails](https://uploads.strapi.logto.io/cms_api_resource_b15ae2b91a.png)
+
+### Rollen erstellen \{#creating-roles}
+
+Gehe zu Rollen in der Logto Console, um die folgenden Rollen für das CMS zu erstellen
+
+- Admin
+  - mit allen Berechtigungen
+- Publisher
+  - mit `read:articles`, `list:articles`, `publish:articles`
+- Autor
+  - mit `create:articles`
+
+![Admin-Rolle](https://uploads.strapi.logto.io/admin_role_53edb35ecf.png)
+
+![Publisher-Rolle](https://uploads.strapi.logto.io/publisher_role_2ac205cc32.png)
+
+![Autor-Rolle](https://uploads.strapi.logto.io/author_role_f89cd99543.png)
+
+### Rollen Benutzern zuweisen \{#assigning-roles-to-users}
+
+Gehe zum Bereich „Benutzerverwaltung“ in der Logto Console, um Benutzer zu erstellen.
+
+Im Tab „Rollen“ der Benutzerdetails kannst du dem Benutzer Rollen zuweisen.
+
+In unserem Beispiel erstellen wir 3 Benutzer mit folgenden Rollen:
+
+- Alex: Admin
+- Bob: Publisher
+- Charlie: Autor
+
+![Benutzerverwaltung](https://uploads.strapi.logto.io/user_management_c0bc17119f.png)
+
+![Benutzerdetails – Alex](https://uploads.strapi.logto.io/user_details_alex_702f96ef9a.png)
+
+:::note
+Zu Demonstrationszwecken erstellen wir diese Ressourcen und Konfigurationen über die Logto Console. In realen Projekten kannst du diese Ressourcen und Konfigurationen programmatisch mit der von Logto bereitgestellten [Management API](/integrate-logto/interact-with-management-api) erstellen.
+:::
+
+## Dein Frontend mit Logto RBAC integrieren \{#integrate-your-frontend-with-logto-rbac}
+
+Jetzt, da wir RBAC in Logto eingerichtet haben, können wir mit der Integration ins Frontend beginnen.
+
+Folge zunächst den [Logto Quick Starts](/quick-starts), um Logto in deine Anwendung zu integrieren.
+
+In unserem Beispiel verwenden wir [React](/quick-starts/react) zur Demonstration.
+
+Nachdem du Logto in deiner Anwendung eingerichtet hast, müssen wir die RBAC-Konfigurationen hinzufügen, damit Logto funktioniert.
+
+```tsx
+// frontend/src/App.tsx
+
+const logtoConfig: LogtoConfig = {
+  appId: LOGTO_APP_ID, // Die App-ID, die du in der Logto Console erstellt hast
+  endpoint: LOGTO_ENDPOINT, // Der Endpoint, den du in der Logto Console erstellt hast
+  resources: [API_RESOURCE], // Der API-Resource-Identifier, z. B. https://api.cms.com
+  // Alle Scopes, die du von der API-Ressource im Frontend anfordern möchtest
+  scopes: [
+    'list:articles',
+    'create:articles',
+    'read:articles',
+    'update:articles',
+    'delete:articles',
+    'publish:articles',
+  ],
+};
+```
+
+Denke daran, dich ab- und wieder anzumelden, damit diese Änderung wirksam wird, falls du bereits angemeldet bist.
+
+Wenn sich der Benutzer mit Logto anmeldet und ein Zugangstoken für die oben angegebenen API-Ressourcen anfordert, fügt Logto dem Zugangstoken Berechtigungen (Scopes) hinzu, die zur Rolle des Benutzers gehören.
+
+Du kannst `getAccessTokenClaims` aus dem `useLogto`-Hook verwenden, um die Scopes aus dem Zugangstoken zu erhalten.
+
+```tsx
+// frontend/src/hooks/use-user-data.ts
+
+import { useLogto } from '@logto/react';
+import { API_RESOURCE } from '../config';
+import { useState, useEffect } from 'react';
+
+export const useUserData = () => {
+  const { getAccessTokenClaims } = useLogto();
+  const [userScopes, setUserScopes] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string>();
+
+  useEffect(() => {
+    const fetchScopes = async () => {
+      const token = await getAccessTokenClaims(API_RESOURCE);
+      setUserScopes(token?.scope?.split(' ') ?? []);
+      setUserId(token?.sub);
+    };
+
+    fetchScopes();
+  }, [getAccessTokenClaims]);
+
+  return { userId, userScopes };
+};
+```
+
+Und du kannst `userScopes` verwenden, um zu prüfen, ob der Benutzer die Berechtigung zum Zugriff auf die Ressource hat.
+
+```tsx
+// frontend/src/pages/Dashboard.tsx
+
+const Dashboard = () => {
+  const { userId, userScopes } = useUserData();
+  // ...
+
+  return (
+    <div>
+      {/* ... */}
+      {(userScopes.includes('delete:articles') || article.ownerId === userId) && (
+        <button
+          onClick={() => handleDelete(article.id)}
+          className="text-red-600 hover:text-red-900"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  );
+};
+```
+
+## Dein Backend mit Logto RBAC integrieren \{#integrate-your-backend-with-logto-rbac}
+
+Jetzt ist es Zeit, Logto RBAC in dein Backend zu integrieren.
+
+### Backend-Autorisierungsmiddleware \{#backend-authorization-middleware}
+
+Zuerst müssen wir eine Middleware im Backend hinzufügen, um Benutzerberechtigungen zu prüfen, zu verifizieren, ob der Benutzer angemeldet ist, und festzustellen, ob er die erforderlichen Berechtigungen für bestimmte APIs hat.
+
+```javascript
+// backend/src/middleware/auth.js
+
+const { createRemoteJWKSet, jwtVerify } = require('jose');
+
+const getTokenFromHeader = (headers) => {
+  const { authorization } = headers;
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error('Authorization header missing');
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error('Authorization token type not supported');
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+
+const hasScopes = (tokenScopes, requiredScopes) => {
+  if (!requiredScopes || requiredScopes.length === 0) {
+    return true;
+  }
+  const scopeSet = new Set(tokenScopes);
+  return requiredScopes.every((scope) => scopeSet.has(scope));
+};
+
+const verifyJwt = async (token) => {
+  const JWKS = createRemoteJWKSet(new URL(process.env.LOGTO_JWKS_URL));
+
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: process.env.LOGTO_ISSUER,
+    audience: process.env.LOGTO_API_RESOURCE,
+  });
+
+  return payload;
+};
+
+const requireAuth = (requiredScopes = []) => {
+  return async (req, res, next) => {
+    try {
+      // Token extrahieren
+      const token = getTokenFromHeader(req.headers);
+
+      // Token verifizieren
+      const payload = await verifyJwt(token);
+
+      // Benutzerinfo zur Anfrage hinzufügen
+      req.user = {
+        id: payload.sub,
+        scopes: payload.scope?.split(' ') || [],
+      };
+
+      // Erforderliche Scopes prüfen
+      if (!hasScopes(req.user.scopes, requiredScopes)) {
+        throw new Error('Insufficient permissions');
+      }
+
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  };
+};
+
+module.exports = {
+  requireAuth,
+  hasScopes,
+};
+```
+
+Wie du siehst, prüfen wir in dieser Middleware, ob die Frontend-Anfrage ein gültiges Zugangstoken enthält und ob die Zielgruppe (audience) des Zugangstokens mit der API-Ressource übereinstimmt, die wir in der Logto Console erstellt haben.
+
+Der Grund für die Überprüfung der API-Ressource ist, dass unsere API-Ressource tatsächlich die Ressourcen unseres CMS-Backends repräsentiert und alle unsere CMS-Berechtigungen mit dieser API-Ressource verknüpft sind.
+
+Da diese API-Ressource die CMS-Ressourcen in Logto repräsentiert, fügen wir im Frontend-Code das entsprechende Zugangstoken bei API-Anfragen an das Backend hinzu:
+
+```typescript
+// frontend/src/hooks/use-api.ts
+export const useApi = () => {
+  const { getAccessToken } = useLogto();
+
+  return useMemo(
+    () =>
+      async (endpoint: string, options: RequestInit = {}) => {
+        try {
+          // Zugangstoken für die API-Ressource holen
+          const token = await getAccessToken(API_RESOURCE);
+
+          if (!token) {
+            throw new ApiRequestError('Failed to get access token');
+          }
+
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+              'Content-Type': 'application/json',
+              // Zugangstoken zu den Request-Headern hinzufügen
+              Authorization: `Bearer ${token}`,
+              ...options.headers,
+            },
+          });
+
+          // ... handle response
+
+          return await response.json();
+        } catch (error) {
+          // ... error handling
+        }
+      },
+    [getAccessToken]
+  );
+};
+```
+
+Jetzt können wir die `requireAuth`-Middleware verwenden, um unsere API-Endpunkte zu schützen.
+
+### API-Endpunkte schützen \{#protecting-api-endpoints}
+
+Für APIs, die nur für Benutzer mit bestimmten Berechtigungen zugänglich sein sollen, können wir die Einschränkungen direkt in der Middleware hinzufügen. Zum Beispiel sollte die Artikel-Erstellungs-API nur für Benutzer mit der Berechtigung `create:articles` zugänglich sein:
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth } = require('../middleware/auth');
+
+router.post('/articles', requireAuth(['create:articles']), async (req, res) => {
+  // ...
+});
+```
+
+Für APIs, die sowohl Berechtigungen als auch Ressourcenbesitz prüfen müssen, können wir die Funktion `hasScopes` verwenden. Zum Beispiel können Benutzer mit der Berechtigung `list:articles` in der Artikelliste-API alle Artikel abrufen, während Autoren nur ihre eigenen Artikel sehen:
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth, hasScopes } = require('../middleware/auth');
+
+router.get('/articles', requireAuth(), async (req, res) => {
+  try {
+    // Wenn der Benutzer den Scope list:articles hat, alle Artikel zurückgeben
+    if (hasScopes(req.user.scopes, ['list:articles'])) {
+      const articles = await articleDB.list();
+      return res.json(articles);
+    }
+
+    // Andernfalls nur die Artikel des Benutzers zurückgeben
+    const articles = await articleDB.listByOwner(req.user.id);
+    res.json(articles);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch articles' });
+  }
+});
+```
+
+An diesem Punkt haben wir die RBAC-Implementierung abgeschlossen. Du kannst dir [den vollständigen Quellcode](https://github.com/logto-io/rbac-sample) ansehen, um die komplette Umsetzung zu sehen.
+
+## Die CMS RBAC-Implementierung testen \{#test-the-cms-rbac-implementation}
+
+Jetzt testen wir unsere CMS RBAC-Implementierung mit den drei gerade erstellten Benutzern.
+
+:::note
+Falls du dich nicht mit den Zugangsdaten der in der „Benutzerverwaltung“ erstellten Benutzer anmelden kannst, musst du zuerst die entsprechende Anmeldemethode aktivieren. Gehe in der Logto Console zu „Anmeldeerfahrung“ und aktiviere deine bevorzugte Authentifizierungsmethode (z. B. E-Mail + Passwort oder Benutzername + Passwort).
+:::
+
+Melden wir uns zunächst als Alex und Charles an und erstellen einige Artikel.
+
+Da Alex die Admin-Rolle hat, kann er Artikel erstellen, löschen, aktualisieren, veröffentlichen und alle Artikel ansehen.
+
+![CMS Dashboard – Alex](https://uploads.strapi.logto.io/cms_dashboard_alex_a11863a94b.png)
+
+Charles, mit der Autor-Rolle, kann nur eigene Artikel erstellen und nur Artikel sehen, bearbeiten und löschen, die er selbst besitzt.
+
+![CMS Dashboard – Charles – Artikelliste](https://uploads.strapi.logto.io/cms_dashboard_charles_05f610066a.png)
+
+Bob, mit der Publisher-Rolle, kann alle Artikel ansehen und veröffentlichen, aber keine erstellen, bearbeiten oder löschen.
+
+![CMS Dashboard – Bob](https://uploads.strapi.logto.io/cms_dashboard_bob_421a429b69.png)
+
+## Fazit \{#conclusion}
+
+Herzlichen Glückwunsch! Du hast gelernt, wie du ein robustes RBAC-System in deiner Anwendung implementierst.
+
+Für komplexere Szenarien, wie den Aufbau von Multi-Tenant-Anwendungen, bietet Logto umfassende Organisationsunterstützung. Sieh dir unseren Leitfaden [Multi-Tenant SaaS-Anwendung bauen: Ein vollständiger Leitfaden von Design bis Implementierung](https://blog.logto.io/build-multi-tenant-saas) an, um mehr über die Umsetzung von organisationsweiter Zugangskontrolle zu erfahren.
+
+Viel Spaß beim Coden! 🚀
