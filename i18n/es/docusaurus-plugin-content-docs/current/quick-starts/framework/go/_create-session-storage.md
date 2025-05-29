@@ -1,4 +1,4 @@
-En las aplicaciones web tradicionales, la información de autenticación del usuario se almacenará en la sesión del usuario.
+En las aplicaciones web tradicionales, la información de autenticación del usuario se almacena en la sesión del usuario.
 
 El SDK de Logto proporciona una interfaz `Storage`, puedes implementar un adaptador `Storage` basado en tu framework web para que el SDK de Logto pueda almacenar la información de autenticación del usuario en la sesión.
 
@@ -9,7 +9,7 @@ En este ejemplo, usamos sesiones basadas en memoria. Puedes usar Redis, MongoDB 
 
 El tipo `Storage` en el SDK de Logto es el siguiente:
 
-```go title="github.com/logto-io/client/storage.go"
+```go title="storage.go"
 package client
 
 type Storage interface {
@@ -29,14 +29,14 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
-	"github.com/logto-io/go/client"
+	"github.com/logto-io/go/v2/client"
 )
 
 func main() {
 	router := gin.Default()
 
-	// Usamos sesiones basadas en memoria en este ejemplo
-	store := memstore.NewStore([]byte("tu secreto de sesión"))
+	// Usamos sesión basada en memoria en este ejemplo
+	store := memstore.NewStore([]byte("your session secret"))
 	router.Use(sessions.Sessions("logto-session", store))
 
 	router.GET("/", func(ctx *gin.Context) {

@@ -8,4 +8,4 @@ Algunas cosas a tener en cuenta:
 2. La mayoría de nuestras guías rápidas están escritas para aplicaciones de primera parte, pero aún puedes usarlas como referencia para la integración de aplicaciones de terceros.
 3. La principal diferencia es que las aplicaciones de terceros mostrarán una pantalla de consentimiento (Consent screen), solicitando a los usuarios permiso explícito para acceder a sus datos.
 
-Puedes encontrar más información en nuestras [guías rápidas](https://docs.logto.io/quick-starts).
+Puedes encontrar más información en nuestras [guías rápidas](/quick-starts).

@@ -1,10 +1,14 @@
 Execute no diretório raiz do projeto:
 
 ```bash
-go get github.com/logto-io/go
+# Instale o pacote core para acessar valores e tipos predefinidos
+go get github.com/logto-io/go/v2/core
+
+# Instale o pacote client para interagir com o Logto
+go get github.com/logto-io/go/v2/client
 ```
 
-Adicione o pacote `github.com/logto-io/go/client` ao código do seu aplicativo:
+Adicione os pacotes `github.com/logto-io/go/v2/core` e `github.com/logto-io/go/v2/client` ao código do seu aplicativo:
 
 ```go title="main.go"
 // main.go
@@ -12,8 +16,9 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
-	// Adicionar dependência
-	"github.com/logto-io/go/client"
+	// Adicione a dependência
+	"github.com/logto-io/go/v2/core"
+	"github.com/logto-io/go/v2/client"
 )
 
 func main() {
