@@ -9,7 +9,7 @@ In this example, we use memory-based sessions. You can use Redis, MongoDB, and o
 
 The `Storage` type in the Logto SDK is as follows:
 
-```go title="github.com/logto-io/client/storage.go"
+```go title="storage.go"
 package client
 
 type Storage interface {
@@ -29,7 +29,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
-	"github.com/logto-io/go/client"
+	"github.com/logto-io/go/v2/client"
 )
 
 func main() {
