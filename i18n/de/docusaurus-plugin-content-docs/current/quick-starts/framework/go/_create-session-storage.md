@@ -1,14 +1,15 @@
-In traditionellen Webanwendungen werden die Benutzer-Authentifizierungsinformationen in der Benutzersitzung gespeichert.
+In traditionellen Webanwendungen werden die Informationen zur Benutzer-Authentifizierung in der Benutzersitzung gespeichert.
 
-Das Logto SDK bietet eine `Storage`-Schnittstelle, mit der du einen `Storage`-Adapter basierend auf deinem Web-Framework implementieren kannst, sodass das Logto SDK die Benutzer-Authentifizierungsinformationen in der Sitzung speichern kann.
+Das Logto SDK stellt ein `Storage`-Interface bereit. Du kannst einen `Storage`-Adapter basierend auf deinem Web-Framework implementieren, sodass das Logto SDK die Informationen zur Benutzer-Authentifizierung in der Sitzung speichern kann.
 
 :::note
-Wir empfehlen NICHT die Verwendung von cookie-basierten Sitzungen, da die von Logto gespeicherten Benutzer-Authentifizierungsinformationen die Cookie-Größenbeschränkung überschreiten können. In diesem Beispiel verwenden wir speicherbasierte Sitzungen. Du kannst Redis, MongoDB und andere Technologien in der Produktion verwenden, um Sitzungen nach Bedarf zu speichern.
+Wir empfehlen NICHT die Verwendung von cookie-basierten Sitzungen, da die von Logto gespeicherten Authentifizierungsinformationen die Cookie-Größenbeschränkung überschreiten können.
+In diesem Beispiel verwenden wir speicherbasierte Sitzungen. In der Produktion kannst du Redis, MongoDB und andere Technologien verwenden, um Sitzungen nach Bedarf zu speichern.
 :::
 
 Der `Storage`-Typ im Logto SDK sieht wie folgt aus:
 
-```go title="github.com/logto-io/client/storage.go"
+```go title="storage.go"
 package client
 
 type Storage interface {
@@ -17,9 +18,9 @@ type Storage interface {
 }
 ```
 
-Wir verwenden die [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) Middleware als Beispiel, um diesen Prozess zu demonstrieren.
+Wir verwenden das [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) Middleware als Beispiel, um diesen Prozess zu demonstrieren.
 
-Wende die Middleware auf die Anwendung an, damit wir die Benutzersitzung durch den Benutzeranforderungskontext im Routen-Handler erhalten können:
+Wende die Middleware auf die Anwendung an, sodass wir die Benutzersitzung über den Benutzeranfrage-Kontext im Routen-Handler erhalten können:
 
 ```go title="main.go"
 package main
@@ -28,14 +29,14 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
-	"github.com/logto-io/go/client"
+	"github.com/logto-io/go/v2/client"
 )
 
 func main() {
 	router := gin.Default()
 
-	// Wir verwenden speicherbasierte Sitzungen in diesem Beispiel
-	store := memstore.NewStore([]byte("dein Sitzungsschlüssel"))
+	// In diesem Beispiel verwenden wir eine speicherbasierte Sitzung
+	store := memstore.NewStore([]byte("your session secret"))
 	router.Use(sessions.Sessions("logto-session", store))
 
 	router.GET("/", func(ctx *gin.Context) {
@@ -48,7 +49,7 @@ func main() {
 }
 ```
 
-Erstelle eine `session_storage.go`-Datei, definiere eine `SessionStorage` und implementiere die `Storage`-Schnittstellen des Logto SDK:
+Erstelle eine Datei `session_storage.go`, definiere ein `SessionStorage` und implementiere die `Storage`-Interfaces des Logto SDK:
 
 ```go title="session_storage.go"
 package main
@@ -75,7 +76,7 @@ func (storage *SessionStorage) SetItem(key, value string) {
 }
 ```
 
-Jetzt kannst du im Routen-Handler einen Sitzungs-Speicher für Logto erstellen:
+Jetzt kannst du im Routen-Handler einen Session Storage für Logto erstellen:
 
 ```go
 session := sessions.Default(ctx)

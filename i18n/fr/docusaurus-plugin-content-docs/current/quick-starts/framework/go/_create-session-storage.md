@@ -1,15 +1,15 @@
-Dans les applications web traditionnelles, les informations d'Authentification (Authentication) de l'utilisateur sont stockées dans la session utilisateur.
+Dans les applications web traditionnelles, les informations d'authentification de l'utilisateur sont stockées dans la session utilisateur.
 
-Le SDK Logto fournit une interface `Storage`, vous pouvez implémenter un adaptateur `Storage` basé sur votre framework web afin que le SDK Logto puisse stocker les informations d'Authentification (Authentication) de l'utilisateur dans la session.
+Le SDK Logto fournit une interface `Storage`, vous pouvez implémenter un adaptateur `Storage` basé sur votre framework web afin que le SDK Logto puisse stocker les informations d'authentification de l'utilisateur dans la session.
 
 :::note
-Nous ne recommandons PAS d'utiliser des sessions basées sur les cookies, car les informations d'Authentification (Authentication) de l'utilisateur stockées par Logto peuvent dépasser la limite de taille des cookies.
-Dans cet exemple, nous utilisons des sessions basées sur la mémoire. Vous pouvez utiliser Redis, MongoDB et d'autres technologies en production pour stocker les sessions selon vos besoins.
+Nous ne recommandons PAS d'utiliser des sessions basées sur les cookies, car les informations d'authentification de l'utilisateur stockées par Logto peuvent dépasser la limite de taille des cookies.
+Dans cet exemple, nous utilisons des sessions en mémoire. Vous pouvez utiliser Redis, MongoDB et d'autres technologies en production pour stocker les sessions selon vos besoins.
 :::
 
 Le type `Storage` dans le SDK Logto est le suivant :
 
-```go title="github.com/logto-io/client/storage.go"
+```go title="storage.go"
 package client
 
 type Storage interface {
@@ -20,7 +20,7 @@ type Storage interface {
 
 Nous utilisons le middleware [github.com/gin-contrib/sessions](https://github.com/gin-contrib/sessions) comme exemple pour démontrer ce processus.
 
-Appliquez le middleware à l'application, afin que nous puissions obtenir la session utilisateur par le contexte de la requête utilisateur dans le gestionnaire de route :
+Appliquez le middleware à l'application, afin que nous puissions obtenir la session utilisateur via le contexte de la requête utilisateur dans le gestionnaire de route :
 
 ```go title="main.go"
 package main
@@ -29,13 +29,13 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
-	"github.com/logto-io/go/client"
+	"github.com/logto-io/go/v2/client"
 )
 
 func main() {
 	router := gin.Default()
 
-	// Nous utilisons une session basée sur la mémoire dans cet exemple
+	// Nous utilisons une session en mémoire dans cet exemple
 	store := memstore.NewStore([]byte("your session secret"))
 	router.Use(sessions.Sessions("logto-session", store))
 
@@ -76,7 +76,7 @@ func (storage *SessionStorage) SetItem(key, value string) {
 }
 ```
 
-Maintenant, dans le gestionnaire de route, vous pouvez créer un stockage de session pour Logto :
+Désormais, dans le gestionnaire de route, vous pouvez créer un stockage de session pour Logto :
 
 ```go
 session := sessions.Default(ctx)

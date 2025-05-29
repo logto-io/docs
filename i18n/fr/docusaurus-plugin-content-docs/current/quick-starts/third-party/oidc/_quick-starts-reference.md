@@ -8,4 +8,4 @@ Quelques points à garder à l'esprit :
 2. La plupart de nos guides de démarrage rapide sont rédigés pour des applications propriétaires, mais vous pouvez tout de même les utiliser comme référence pour l'intégration d'applications tierces.
 3. La principale différence est que les applications tierces afficheront un écran de consentement (Consent screen), demandant aux utilisateurs une permission explicite pour accéder à leurs données.
 
-Vous pouvez trouver plus d'informations dans nos [guides de démarrage rapide](https://docs.logto.io/quick-starts).
+Vous pouvez trouver plus d'informations dans nos [guides de démarrage rapide](/quick-starts).
