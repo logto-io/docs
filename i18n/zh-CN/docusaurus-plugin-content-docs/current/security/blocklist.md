@@ -35,6 +35,6 @@ sidebar_position: 3
 
 :::
 
-## 相关资源
+## 相关资源 {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">什么是一次性邮箱？如何在你的应用中处理？</Url>

@@ -35,6 +35,6 @@ E-mails descartáveis, subendereçamento e e-mails personalizados são restritos
 
 :::
 
-## Recursos relacionados
+## Recursos relacionados {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">O que é e-mail descartável? Como lidar com eles em seu aplicativo?</Url>

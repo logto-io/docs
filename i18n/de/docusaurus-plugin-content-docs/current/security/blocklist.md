@@ -35,6 +35,6 @@ Wegwerf-E-Mails, Subaddressing und benutzerdefinierte E-Mails sind während der 
 
 :::
 
-## Verwandte Ressourcen
+## Verwandte Ressourcen {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">Was ist eine Wegwerf-E-Mail? Wie gehst du in deiner App damit um?</Url>

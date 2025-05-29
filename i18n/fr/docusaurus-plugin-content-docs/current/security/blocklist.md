@@ -35,6 +35,6 @@ Les e-mails jetables, le sous-adressage et les e-mails personnalisés sont restr
 
 :::
 
-## Ressources associées
+## Ressources associées {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">Qu'est-ce qu'un e-mail jetable ? Comment les gérer dans votre application ?</Url>
