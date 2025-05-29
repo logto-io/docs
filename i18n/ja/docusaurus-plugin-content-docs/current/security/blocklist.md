@@ -35,6 +35,6 @@ sidebar_position: 3
 
 :::
 
-## 関連リソース
+## 関連リソース {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">使い捨てメールとは？アプリでの対処方法</Url>

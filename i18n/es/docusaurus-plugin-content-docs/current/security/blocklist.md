@@ -35,6 +35,6 @@ Los correos electrónicos desechables, el subdireccionamiento y los correos elec
 
 :::
 
-## Recursos relacionados
+## Recursos relacionados {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">¿Qué es un correo electrónico desechable? ¿Cómo gestionarlos en tu aplicación?</Url>

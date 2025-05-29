@@ -35,6 +35,6 @@ Disposable emails, subaddressing, and custom email are restricted during registr
 
 :::
 
-## Related resources
+## Related resources {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">What is disposable email? How to handle them in your app?</Url>

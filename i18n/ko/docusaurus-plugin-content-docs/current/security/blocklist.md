@@ -35,6 +35,6 @@ sidebar_position: 3
 
 :::
 
-## 관련 리소스
+## 관련 리소스 {#related-resources}
 
 <Url href="https://blog.logto.io/disposable-email">일회용 이메일이란 무엇이며, 앱에서 어떻게 처리해야 할까요?</Url>
