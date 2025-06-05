@@ -16,15 +16,50 @@ RBAC lets you manage **who** can do **what** in your application by grouping per
 
 **Core concepts**
 
-- **Role** A named set of permissions (e.g., `admin`, `viewer`, `billing-manager`).
-- **Permission** An action or right (e.g., `manage:members`, `view:analytics`).
-- **Scope** A synonym for permission, often used in OAuth 2.0 contexts.
-- **Resource** The API or feature to which permissions apply.
-- **User/Client** The entity assigned roles (end users, M2M apps).
+- **Role:** A named set of permissions (e.g., `admin`, `viewer`, `billing-manager`).
+- **Permission:** An action or right (e.g., `manage:members`, `view:analytics`).
+- **Scope:** A synonym for permission, commonly used in OAuth 2.0 contexts.
+- **API resource:** An API, endpoint, or service to which permissions apply.
+- **User/Client:** The entity assigned roles (end users or machine-to-machine (M2M) apps).
 
 :::note
 In Logto (and OAuth 2.1), **“permissions” and “scopes” refer to the same concept** and are used interchangeably throughout this documentation.
 :::
+
+### API resources
+
+An **API resource** is any protected endpoint or service in your application—such as a REST API, GraphQL endpoint, or other backend service requiring authorization.
+
+Logto models API resources following [RFC 8707: Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707).  
+Each API resource is uniquely identified by a **resource indicator** (a URI), which is used to scope access tokens and enforce audience restrictions.
+
+| **Property name**     | **Description**                                                                                                                         | **Required** |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| API Name              | A human-friendly name to identify the API resource in the Console and logs.                                                             | Yes          |
+| API Identifier        | The unique [resource indicator](https://www.rfc-editor.org/rfc/rfc8707.html) URI that represents the API resource.                      | Yes          |
+| Token expiration time | The lifetime of issued access tokens for this API (in seconds). Default is **3600** (1 hour).                                           | No           |
+| Default API           | Only one API resource can be set as the default per Logto tenant. When set, the `resource` parameter can be omitted from auth requests. | No           |
+
+:::note
+When a default API resource is designated, Logto will use it as the audience for tokens when the `resource` parameter is omitted in authentication requests.
+:::
+
+#### Default API resource behavior
+
+In Logto, every user-defined global permission (scope) must be linked to an API resource. Otherwise, the permission is treated as an OpenID Connect (OIDC) scope.
+
+This generally doesn’t impact most integrations, but when working with third-party apps that do **not** support [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html), the initial authorization request may not include a `resource` parameter. In these cases, Logto issues [opaque access tokens](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc) instead of JWTs, which can complicate access control.
+
+To solve this, you can set a **default API resource** for your tenant:
+
+- **When the `resource` parameter is missing in the [Authentication request](https://auth.wiki/authentication-request):**
+  - Logto uses the default API resource as the audience for access tokens.
+- **If the `openid` scope is included:**
+  - Logto issues an opaque access token for the [Userinfo endpoint](https://auth.wiki/userinfo-endpoint) when no `resource` is present in the token request.
+- **If the `openid` scope is not included:**
+  - Logto issues a JWT access token for the default API resource as the audience.
+
+Setting a default API resource ensures smoother integration with apps that do not support RFC 8707, while maintaining secure and standards-based access controls.
 
 ## RBAC in Logto
 
@@ -32,7 +67,7 @@ Logto provides flexible RBAC at both the **global** and **organization** levels 
 
 - **Global roles** Assigned across the Logto tenant. Ideal for product-wide permissions, admins, or superusers.
 - **Organization roles** Assigned within an organization. Perfect for organization-specific access, such as workspace admins, project members, or custom groups.
-- **Resources** Registered APIs and features that require authorization.
+- **API resources** Registered APIs and features that require authorization.
 - **Permissions (scopes)** Defined per API resource or in the organization template.
   - API resource permissions can be assigned to either global or organization roles.
   - Organization permissions can be assigned only to organization roles.
@@ -154,7 +189,7 @@ In OAuth 2.0 and OIDC, an “API resource” is technically called a resource in
 3. Provide:
 
    - **API name:** Human-readable name for your API.
-   - **API identifier:** Resource indicator URI (e.g., `https://api.yourapp.com/org`).
+   - **API identifier:** API resource indicator (e.g., `https://api.yourapp.com/org`).
 
 4. In the **Permissions** tab, click **Create permission** to create permissions (scopes) for this API resource.
 5. In the **General** tab, you can optionally set the following:
@@ -292,7 +327,7 @@ To enforce authorization, your backend or API should:
 2. Validate the access token to ensure it is issued by Logto, not expired, and has the required permissions (scopes) for the requested action.
 3. Respond with an error (e.g., HTTP 401 Unauthorized or HTTP 403 Forbidden) if the token is missing, invalid, or does not have the required permissions.
 
-For step-by-step and language-specific guides, see [How to validate access tokens](/developers/validate-access-tokens).
+For step-by-step and language-specific guides, see [How to validate access tokens](/authorization/validate-access-tokens).
 
 ### Integrate Logto RBAC with your application
 
@@ -322,32 +357,70 @@ Explore more sophisticated RBAC use cases in Logto:
 - **Separation of duties**: Create distinct roles for sensitive/admin actions.
 - **Test RBAC in staging**: Validate permission boundaries and escalations.
 
-## FAQ & troubleshooting
+## FAQs
 
-- **Q: How do I update roles or permissions across all organizations?**
+<details>
+<summary>
 
-  A: Update the [organization template](/authorization/organization-template) for global changes; existing organizations can inherit updates.
+### How do I update roles or permissions across all organizations?
 
-- **Q: Can I change roles/permissions dynamically?**
+</summary>
 
-  A: Yes, roles and their permissions can be updated at any time.
+Update the [organization template](/authorization/organization-template) for global changes; existing organizations can inherit updates.
 
-- **Q: What happens if I remove a permission from a role?**
+</details>
 
-  A: Users/clients with that role will lose the permission immediately for new tokens.
+<details>
+<summary>
 
-- **Q: How can I audit who has what role?**
+### Can I change roles/permissions dynamically?
 
-  A: Use the Logto Console or API to list role assignments.
+</summary>
 
-- **Q: Can roles and permissions be assigned via API?**
+Yes, roles and their permissions can be updated at any time.
 
-  A: Yes, both the Console and Management API support managing roles and assignments programmatically.
+</details>
+
+<details>
+<summary>
+
+### What happens if I remove a permission from a role?
+
+</summary>
+
+Users/clients with that role will lose the permission immediately for new tokens.
+
+</details>
+
+<details>
+<summary>
+
+### How can I audit who has what role?
+
+</summary>
+
+Use the Logto Console or API to list role assignments.
+
+</details>
+
+<details>
+<summary>
+
+### Can roles and permissions be assigned via API?
+
+</summary>
+
+Yes, both the Console and Management API support managing roles and assignments programmatically.
+
+</details>
 
 ## Further reading
 
-- [Organization template](/authorization/organization-template)
-- [Customizing token claims](/developers/custom-token-claims)
-- [How to validate access tokens](/developers/validate-access-tokens)
-- [Protect organization (non-API) permissions](/authorization/organization-permissions)
-- [Protect organization-level API resources](/authorization/organization-level-api-resources)
+<Url href="/authorization/organization-template">Organization template</Url>
+<Url href="/developers/custom-token-claims">Customizing token claims</Url>
+<Url href="/authorization/validate-access-tokens">How to validate access tokens</Url>
+<Url href="/authorization/global-api-resources">Protect global API resources</Url>
+<Url href="/authorization/organization-permissions">Protect organization (non-API) permissions</Url>
+<Url href="/authorization/organization-level-api-resources">
+  Protect organization-level API resources
+</Url>
