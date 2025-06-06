@@ -1,0 +1,426 @@
+---
+sidebar_position: 1
+---
+
+import globalApiResources from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import organizationApiResources from '@site/docs/authorization/assets/rbac-organization-level-api-resources.png';
+import organizationPermissions from '@site/docs/authorization/assets/rbac-organization-permissions.png';
+
+# 역할 기반 접근 제어 (RBAC) (Role-based access control (RBAC))
+
+[역할 기반 접근 제어 (RBAC)](https://auth.wiki/rbac)는 실제 비즈니스 동작을 역할과 권한에 매핑하는 검증된 인가 (Authorization) 모델입니다. 이 가이드에서는 Logto에서 RBAC가 어떻게 작동하는지, 실용적인 설계 패턴, 그리고 안전하고 확장 가능한 SaaS 애플리케이션을 구축하기 위한 모범 사례를 다룹니다.
+
+## RBAC란 무엇인가요? \{#what-is-rbac}
+
+RBAC를 사용하면 권한을 역할로 그룹화하여 애플리케이션에서 **누가** **무엇을** 할 수 있는지 관리할 수 있습니다. 사용자와 클라이언트는 하나 이상의 역할을 할당받으며, 이 역할은 기능, API 또는 데이터에 접근하는 데 필요한 권한을 부여합니다.
+
+**핵심 개념**
+
+- **역할 (Role):** 권한의 명명된 집합 (예: `admin`, `viewer`, `billing-manager`)
+- **권한 (Permission):** 동작 또는 권리 (예: `manage:members`, `view:analytics`)
+- **스코프 (Scope):** 권한의 동의어로, OAuth 2.0 환경에서 자주 사용됩니다.
+- **API 리소스 (API resource):** 권한이 적용되는 API, 엔드포인트 또는 서비스
+- **사용자/클라이언트 (User/Client):** 역할이 할당되는 엔티티 (최종 사용자 또는 기계 간 (M2M) 앱)
+
+:::note
+Logto (및 OAuth 2.1)에서는 **“권한 (permissions)”과 “스코프 (scopes)”가 동일한 개념**을 의미하며, 본 문서 전체에서 혼용되어 사용됩니다.
+:::
+
+### API 리소스 (API resources) \{#api-resources}
+
+**API 리소스**란 애플리케이션 내에서 보호되는 모든 엔드포인트 또는 서비스(예: REST API, GraphQL 엔드포인트, 인가가 필요한 기타 백엔드 서비스)를 의미합니다.
+
+Logto는 [RFC 8707: OAuth 2.0을 위한 리소스 지표](https://www.rfc-editor.org/rfc/rfc8707)를 따라 API 리소스를 모델링합니다.  
+각 API 리소스는 **리소스 지표 (resource indicator)**(URI)로 고유하게 식별되며, 이는 액세스 토큰의 스코프 지정 및 대상 제한을 강제하는 데 사용됩니다.
+
+| **속성명**                | **설명**                                                                                                              | **필수 여부** |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------ |
+| API 이름               | 콘솔 및 로그에서 API 리소스를 식별하기 위한 사람이 읽을 수 있는 이름입니다.                                                    | 예           |
+| API 식별자             | API 리소스를 나타내는 고유한 [리소스 지표 (resource indicator)](https://www.rfc-editor.org/rfc/rfc8707.html) URI입니다. | 예           |
+| 토큰 만료 시간         | 이 API에 대해 발급된 액세스 토큰의 수명(초 단위). 기본값은 **3600**(1시간)입니다.                                            | 아니오        |
+| 기본 API               | Logto 테넌트당 하나의 API 리소스만 기본값으로 설정할 수 있습니다. 설정 시, 인증 요청에서 `resource` 파라미터를 생략할 수 있습니다. | 아니오        |
+
+:::note
+기본 API 리소스가 지정되면, 인증 요청에서 `resource` 파라미터가 생략될 때 Logto는 이를 토큰의 대상 (audience)으로 사용합니다.
+:::
+
+#### 기본 API 리소스 동작 \{#default-api-resource-behavior}
+
+Logto에서는 모든 사용자 정의 글로벌 권한(스코프)이 반드시 API 리소스에 연결되어야 합니다. 그렇지 않으면 해당 권한은 OpenID Connect (OIDC) 스코프로 처리됩니다.
+
+이는 대부분의 통합에는 영향을 주지 않지만, [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html)을 지원하지 않는 서드파티 앱과 작업할 때는 최초 인가 요청에 `resource` 파라미터가 포함되지 않을 수 있습니다. 이 경우 Logto는 JWT 대신 [불투명 액세스 토큰 (opaque access tokens)](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc)을 발급하며, 이는 접근 제어를 복잡하게 만들 수 있습니다.
+
+이를 해결하려면 테넌트에 **기본 API 리소스**를 설정하세요:
+
+- **[인증 요청 (Authentication request)](https://auth.wiki/authentication-request)에서 `resource` 파라미터가 없는 경우:**
+  - Logto는 기본 API 리소스를 액세스 토큰의 대상 (audience)으로 사용합니다.
+- **`openid` 스코프가 포함된 경우:**
+  - 토큰 요청에 `resource`가 없으면 Logto는 [Userinfo 엔드포인트 (Userinfo endpoint)](https://auth.wiki/userinfo-endpoint)용 불투명 액세스 토큰을 발급합니다.
+- **`openid` 스코프가 포함되지 않은 경우:**
+  - Logto는 기본 API 리소스를 대상 (audience)으로 하는 JWT 액세스 토큰을 발급합니다.
+
+기본 API 리소스를 설정하면 RFC 8707을 지원하지 않는 앱과의 통합이 원활해지며, 안전하고 표준 기반의 접근 제어를 유지할 수 있습니다.
+
+## Logto에서의 RBAC \{#rbac-in-logto}
+
+Logto는 멀티 테넌트 SaaS를 지원하기 위해 **글로벌** 및 **조직** 수준에서 유연한 RBAC를 제공합니다:
+
+- **글로벌 역할**: Logto 테넌트 전체에 할당됩니다. 제품 전체 권한, 관리자, 슈퍼유저 등에 적합합니다.
+- **조직 역할**: 조직 내에서 할당됩니다. 워크스페이스 관리자, 프로젝트 멤버, 커스텀 그룹 등 조직별 접근에 적합합니다.
+- **API 리소스**: 인가가 필요한 등록된 API 및 기능입니다.
+- **권한 (스코프)**: API 리소스별 또는 조직 템플릿에서 정의됩니다.
+  - API 리소스 권한은 글로벌 또는 조직 역할에 할당할 수 있습니다.
+  - 조직 권한은 조직 역할에만 할당할 수 있습니다.
+
+제품의 필요에 따라 이 RBAC 모델을 개별적으로 또는 조합하여 사용할 수 있습니다.
+
+아래는 다이어그램과 함께 3가지 예시 모델입니다:
+
+### 모델 1: 글로벌 API 리소스 \{#model-1-global-api-resources}
+
+**시나리오**
+
+조직과 상관없이 모든 사용자가 공유하는 API를 가진 SaaS 제품.  
+글로벌 역할을 사용하여 제품 전체 API 리소스에 대한 접근을 제어합니다.
+
+**다이어그램**
+
+<img src={globalApiResources} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+**핵심 포인트**
+
+- **사용자** 및 **M2M 앱**은 글로벌 역할(예: Store manager, Service agent)을 할당받습니다.
+- 역할은 `read:store`, `order:book`과 같은 권한(스코프)을 부여합니다.
+- 권한은 API 리소스(예: `https://read.shop/stores`)에 직접 연결됩니다.
+
+**사용 시점**
+
+접근이 조직별이 아니거나, 사용자/클라이언트가 모든 조직에서 동작하는 경우.
+
+:::note
+Logto는 글로벌 수준에서 비-API 권한을 지원하지 않습니다. 이는 OpenID Connect (OIDC) 스코프에 예약되어 있기 때문입니다.
+:::
+
+:::tip
+단계별 구현 가이드는 [글로벌 API 리소스 보호하기](/authorization/global-api-resources)를 참고하세요.
+:::
+
+### 모델 2: 조직(비-API) 권한 \{#model-2-organization-non-api-permissions}
+
+**시나리오**
+
+API 레이어에서 강제되지 않는 인앱 기능 또는 워크플로우(예: UI 기능, 대시보드, 내부 도구 등)를 조직 역할과 권한으로 제어합니다.
+
+**다이어그램**
+
+<img
+  src={organizationPermissions}
+  alt="Organization permissions RBAC"
+  style={{ maxWidth: '800px', width: '100%' }}
+/>
+
+**핵심 포인트**
+
+- 각 조직(A, B)은 자체 할당을 가지지만, 모든 조직은 [조직 템플릿](/authorization/organization-template)에 정의된 공통 역할 집합을 공유합니다.
+- **사용자** 및 **M2M 앱**은 각 조직에서 서로 다른 역할을 가질 수 있습니다.
+- **조직 역할**(예: Admin, Member)은 `invite:member`, `manage:billing`과 같은 조직 권한을 부여합니다.
+- 권한은 앱의 UI 또는 비즈니스 로직에서 강제되며, API 게이트웨이에서는 강제되지 않습니다.
+
+**사용 시점**
+
+API 수준의 강제가 필요하지 않을 때, 조직 내에서 누가 어떤 기능을 볼 수 있고 사용할 수 있는지 관리하고 싶을 때.
+
+:::tip
+단계별 구현 가이드는 [조직(비-API) 권한 보호하기](/authorization/organization-permissions)를 참고하세요.
+:::
+
+### 모델 3: 조직 수준 API 리소스 \{#model-3-organization-level-api-resources}
+
+**시나리오**
+
+각 조직이 자체 멤버, 데이터, 역할을 가진 멀티 테넌트 SaaS 플랫폼.  
+**조직 역할**을 사용하여 각 조직 내에서 API 접근을 부여합니다.
+
+**다이어그램**
+
+<img
+  src={organizationApiResources}
+  alt="Organization-level API resources RBAC"
+  style={{ maxWidth: '100%' }}
+/>
+
+**핵심 포인트**
+
+- 각 조직(A, B)은 자체 할당을 가지지만, 모든 조직은 [조직 템플릿](/authorization/organization-template)에 정의된 공통 역할 집합을 공유합니다.
+- **사용자** 및 **M2M 앱**은 각 조직에서 서로 다른 역할을 가질 수 있습니다.
+- `invite:member`, `manage:billing`과 같은 권한(스코프)은 API 리소스에 연결됩니다.
+- 액세스 토큰에 조직 컨텍스트가 포함될 때 API 수준에서 권한이 강제됩니다.
+
+**사용 시점**
+
+조직 컨텍스트에 따라 API 접근을 제어해야 할 때(예: 사용자가 자신의 조직 데이터만 관리할 수 있도록 허용).
+
+:::tip
+단계별 구현 가이드는 [조직 수준 API 리소스 보호하기](/authorization/organization-level-api-resources)를 참고하세요.
+:::
+
+## 권한 모델 설계 및 구현 \{#design-and-implement-a-permission-model}
+
+제품의 아키텍처와 사용자 요구에 따라 위 예시 중 적합한 RBAC 모델을 선택할 수 있습니다. 효과적으로 권한 모델을 설계하고 구현하기 위한 치트 시트는 다음과 같습니다:
+
+| 권한 모델                         | 권한이 있는 API 리소스 정의? | 조직 권한 정의? | 글로벌 역할 사용? | 조직 역할 사용? |
+| ---------------------------------- | ---------------------------- | -------------- | --------------- | --------------- |
+| 글로벌 API 리소스                  | ✅                           | n/a            | ✅              | n/a             |
+| 조직(비-API) 권한                  | n/a                          | ✅             | n/a             | ✅              |
+| 조직 수준 API 리소스               | ✅                           | n/a            | n/a             | ✅              |
+
+### 권한이 있는 API 리소스 정의 \{#define-api-resources-with-permissions}
+
+Logto 콘솔 또는 [Management API](https://openapi.logto.io/group/endpoint-resources)를 통해 API 리소스와 그 권한(스코프)을 정의하세요.
+
+:::note
+OAuth 2.0 및 OIDC에서 “API 리소스”는 기술적으로 리소스 지표(resource indicator)라고 하며, 보호되는 API 또는 서비스를 식별하는 고유 URI입니다.
+:::
+
+#### Logto 콘솔에서 권한이 있는 API 리소스 등록 \{#register-api-resources-with-permissions-in-logto-console}
+
+1. <CloudLink to="/api-resources">콘솔 → API 리소스</CloudLink>로 이동하세요.
+2. **API 리소스 생성**을 클릭하세요.
+3. 다음을 입력하세요:
+
+   - **API 이름:** 사람이 읽을 수 있는 API 이름
+   - **API 식별자:** API 리소스 지표(예: `https://api.yourapp.com/org`)
+
+4. **권한** 탭에서 **권한 생성**을 클릭하여 이 API 리소스의 권한(스코프)을 생성하세요.
+5. **일반** 탭에서 다음을 선택적으로 설정할 수 있습니다:
+
+   - **토큰 만료 시간**: 이 API 리소스의 액세스 토큰 유효 기간을 설정합니다. 보안을 위해 짧게(예: 1시간) 유지하는 것을 권장합니다.
+   - **기본 API**: OAuth 요청에서 `resource`가 지정되지 않은 경우, 이 API 리소스를 대상 제한 및 토큰 발급의 기본값으로 지정합니다. 일부 서드파티 도구나 플러그인 등 `resource` 파라미터를 지원하지 않는 클라이언트에 유용할 수 있습니다.
+
+#### 팁 \{#tips}
+
+- API 리소스 지표를 실제 API 엔드포인트에 매핑하여 직관적인 이름을 제공하세요.
+  - 예: `https://api.example.com/v1/users`
+- 명확하고 동작 기반의 네이밍을 사용하세요(예: `invite:member`, `manage:billing`, `view:analytics`).
+  - 또는, 일부 장르는 명확성을 위해 접두사 또는 기능별 그룹화를 선호할 수 있습니다(예: `billing:read`, `billing:manage`).
+- 권한은 단순한 기술적 엔드포인트가 아니라 비즈니스 중심으로 설계하세요.
+
+**예시**
+
+| API 리소스 지표                   | 권한             | 설명                      |
+| --------------------------------- | ---------------- | ------------------------- |
+| `https://api.example.com/users`   | `invite:user`    | 신규 사용자 초대          |
+| `https://api.example.com/users`   | `manage:user`    | 사용자 수정 또는 삭제      |
+| `https://api.example.com/billing` | `view:billing`   | 결제 상세 보기            |
+| `https://api.example.com/billing` | `manage:billing` | 결제 설정 수정            |
+
+### 조직 권한 정의 \{#define-organization-permissions}
+
+Logto 콘솔 또는 [Management API](https://openapi.logto.io/group/endpoint-organization-scopes)를 통해 각 조직 내에서 적용되는 권한을 정의하세요. 조직 권한은 [조직 템플릿](/authorization/organization-template)에서 정의됩니다.
+
+#### Logto 콘솔에서 조직 권한 등록 \{#register-organization-permissions-in-logto-console}
+
+1. <CloudLink to="/organization-template/organization-permissions">콘솔 → 조직 템플릿 → 조직 권한</CloudLink>으로 이동하세요.
+2. **조직 권한 생성**을 클릭하세요.
+3. 다음을 입력하세요:
+   - **권한 이름:** 명확하고 동작 기반의 이름(예: `invite:member`, `manage:billing`)
+   - **설명:** 권한이 허용하는 동작에 대한 간단한 설명(예: "조직에 새 멤버 초대")
+4. **권한 생성**을 클릭하여 저장하세요.
+
+#### 팁 \{#tips}
+
+- 명확하고 동작 기반의 이름을 사용하세요(예: `invite:member`, `manage:billing`).
+- 혼동을 피하기 위해 조직 권한과 API 권한을 구분하세요.
+
+**예시**
+
+| 조직 권한           | 설명                                  |
+| ------------------- | ------------------------------------- |
+| `invite:member`     | 조직에 새 멤버 초대                   |
+| `manage:billing`    | 조직의 결제 설정 수정                  |
+
+### 글로벌 역할 구성 \{#configure-global-roles}
+
+Logto 콘솔 또는 [Management API](https://openapi.logto.io/group/endpoint-roles)를 통해 Logto 테넌트 전체에 적용되는 권한을 그룹화하는 글로벌 역할을 생성하고 구성하세요.
+
+글로벌 역할은 다음 중 하나일 수 있습니다:
+
+- **사용자 역할:** 최종 사용자에게 할당되어 API 및 기능 접근 권한을 부여합니다.
+- **기계 간 (M2M) 역할:** M2M 앱에 할당되어 API 및 기능, Logto Management API 접근 권한을 부여합니다.
+
+:::note
+이 두 역할 유형은 혼합하거나 생성 후 변경할 수 없습니다. 역할 유형에 따라 사용자 또는 M2M 앱을 할당하세요.
+:::
+
+#### Logto 콘솔에서 글로벌 역할 생성 \{#create-global-roles-in-logto-console}
+
+1. <CloudLink to="/roles">콘솔 → 역할</CloudLink>로 이동하세요.
+2. **역할 생성**을 클릭하세요.
+3. 다음을 입력하세요:
+   - **역할 이름:** 명확하고 설명적인 이름(예: `admin`, `viewer`, `billing-manager`)
+   - **역할 유형:** **사용자** 또는 **기계 간 (M2M)** 중 선택 (**기계 간 (M2M) 역할만 Logto Management API에 연결할 수 있습니다**)
+   - **설명:** 역할의 목적에 대한 간단한 설명(예: "전체 접근 권한의 관리자 역할", "읽기 전용 접근의 뷰어 역할")
+   - **권한 할당:** 이 역할이 가져야 할 API 리소스의 권한(스코프)을 선택하세요. 필요에 따라 나중에 권한을 업데이트할 수 있습니다.
+4. **역할 생성**을 클릭하여 저장하세요.
+
+#### 글로벌 역할에 사용자 또는 M2M 앱 할당 \{#assign-users-or-m2m-apps-to-global-roles}
+
+1. <CloudLink to="/roles">콘솔 → 역할</CloudLink>로 이동하세요.
+2. 사용자를 할당할 역할을 클릭하세요.
+3. **사용자 역할**의 경우 **사용자** 탭을, **M2M 역할**의 경우 **기계 간 앱** 탭을 클릭하세요.
+4. **사용자 할당** 또는 **M2M 앱 할당**을 클릭하세요.
+5. 이 역할에 할당할 사용자 또는 M2M 앱을 검색하세요.
+6. 선택 후 **할당**을 클릭하세요.
+
+#### 기본 글로벌 역할 \{#default-global-roles}
+
+신규 사용자에게 **기본 역할**로 하나 이상의 글로벌 역할을 설정할 수 있습니다. 기본 역할은 사용자가 직접 가입하거나 Management API를 통해 생성될 때 자동으로 할당됩니다. <CloudLink to="/roles">콘솔 > 역할</CloudLink>의 상세 페이지에서 “일반” 탭에서 이 토글을 활성화할 수 있습니다.
+
+### 조직 역할 구성 \{#configure-organization-roles}
+
+Logto 콘솔 또는 [Management API](https://openapi.logto.io/group/endpoint-organization-roles)를 통해 각 조직 내에서 적용되는 권한을 그룹화하는 조직 역할을 생성하세요. 조직 역할은 [조직 템플릿](/authorization/organization-template)에서 정의됩니다.
+
+조직 역할은 다음 중 하나일 수 있습니다:
+
+- **사용자 역할:** 조직 내 최종 사용자에게 할당되어 API 및 기능 접근 권한을 부여합니다.
+- **기계 간 (M2M) 역할:** 조직 내 M2M 앱에 할당되어 API 및 기능 접근 권한을 부여합니다. 이 역할은 조직 전용이므로 Logto Management API에 연결할 **수 없습니다**.
+
+:::note
+이 두 역할 유형은 혼합하거나 생성 후 변경할 수 없습니다. 역할 유형에 따라 사용자 또는 M2M 앱을 할당하세요.
+:::
+
+#### Logto 콘솔에서 조직 역할 생성 \{#create-organization-roles-in-logto-console}
+
+1. <CloudLink to="/organization-template/organization-roles">콘솔 → 조직 템플릿 → 조직 역할</CloudLink>로 이동하세요.
+2. **조직 역할 생성**을 클릭하세요.
+3. 다음을 입력하세요:
+
+   - **역할 이름:** 명확하고 설명적인 이름(예: `admin`, `member`, `billing-manager`)
+   - **역할 유형:** **사용자** 또는 **기계 간 (M2M)** 중 선택 (**기계 간 (M2M) 역할만 Logto Management API에 연결할 수 있습니다**)
+   - **설명:** 역할의 목적에 대한 간단한 설명(예: "전체 접근 권한의 관리자 역할", "기본 접근 권한의 멤버 역할")
+
+4. **역할 생성**을 클릭하여 저장하세요.
+5. **권한 할당** 모달에서 이 역할이 가져야 할 조직 권한 및/또는 API 리소스 권한을 선택하세요. 필요에 따라 나중에 권한을 업데이트할 수 있습니다.
+
+#### 조직 역할에 사용자 또는 M2M 앱 할당 \{#assign-users-or-m2m-apps-to-organization-roles}
+
+조직 역할은 조직별이므로, 조직 컨텍스트 내에서 사용자 또는 M2M 앱을 조직 역할에 할당해야 합니다.
+
+1. <CloudLink to="/organizations">콘솔 → 조직</CloudLink>로 이동하세요.
+2. 관리할 조직을 선택하세요.
+3. **사용자 역할**의 경우 **사용자** 탭을, **M2M 역할**의 경우 **기계 간 앱** 탭을 클릭하세요.
+4. 사용자가 조직의 멤버가 아니라면 **멤버 추가** 또는 **M2M 앱 추가**를 클릭하여 조직에 추가하세요. 이 과정에서 하나 이상의 조직 역할을 할당할 수 있습니다.
+5. 이미 멤버라면 이름 옆의 점 세 개 메뉴를 클릭하고 **조직 역할 편집**을 선택하세요.
+6. 열린 모달에서 할당할 조직 역할을 선택하고 저장하세요.
+
+#### Just-in-time (JIT) 프로비저닝 \{#just-in-time-jit-provisioning}
+
+사용자 또는 M2M 앱이 조직에 가입할 때 조직 역할을 할당할 수도 있습니다. 자세한 내용은 [Just-in-time (JIT) 프로비저닝](/organizations/just-in-time-provisioning)을 참고하세요.
+
+### 백엔드 또는 API에서 인가 (Authorization) 강제하기 \{#enforcing-authorization-in-your-backend-or-api}
+
+Logto는 인가 (Authorization) 강제를 위해 필요한 클레임 (Claim)이 포함된 [JSON Web Token (JWT)](https://auth.wiki/jwt)을 발급합니다.
+
+인가를 강제하려면, 백엔드 또는 API에서 다음을 수행해야 합니다:
+
+1. 클라이언트가 요청 헤더에 `Authorization: Bearer <token>` 형식의 유효한 액세스 토큰을 반드시 포함하도록 요구하세요.
+2. 액세스 토큰이 Logto에서 발급되었는지, 만료되지 않았는지, 요청된 동작에 필요한 권한(스코프)이 있는지 검증하세요.
+3. 토큰이 없거나, 유효하지 않거나, 필요한 권한이 없으면 오류(예: HTTP 401 Unauthorized 또는 HTTP 403 Forbidden)로 응답하세요.
+
+단계별 및 언어별 가이드는 [액세스 토큰 검증 방법](/authorization/validate-access-tokens)을 참고하세요.
+
+### 애플리케이션에 Logto RBAC 통합하기 \{#integrate-logto-rbac-with-your-application}
+
+Logto RBAC를 애플리케이션에 통합하는 방법은 두 가지입니다:
+
+- **Logto SDK:** [Logto SDK](/quick-starts)를 사용하여 내장된 인증 (Authentication) 및 인가 (Authorization) 플로우를 처리하세요.
+- **표준 OAuth 2.0/OIDC 라이브러리:** 선호하는 OAuth 2.0 또는 OpenID Connect 라이브러리로 필요한 플로우를 구현하세요.
+
+통합 후, 선택한 RBAC 모델에 맞는 파라미터로 액세스 토큰을 요청하세요. API 요청의 `Authorization` 헤더에 액세스 토큰을 추가하여 권한을 강제하세요.
+
+단계별 예시는 위 모델별 구현 가이드를 참고하세요.
+
+## 고급 시나리오 \{#advanced-scenarios}
+
+Logto에서 더 정교한 RBAC 사용 사례를 탐색하세요:
+
+- **글로벌 및 조직 역할 조합:** 필요에 따라 사용자/클라이언트에 둘 다 할당; Logto는 요청된 토큰 컨텍스트에 따라 해결합니다.
+- **다중 앱:** 교차 애플리케이션 RBAC를 위해 공유 리소스 및 스코프 사용
+- **동적 권한:** 필요하다면 RBAC와 런타임 체크(예: 소유권, 속성)를 결합하여 고급 시나리오 구현
+- **커스텀 토큰 클레임:** [커스텀 클레임](/developers/custom-token-claims)으로 토큰을 필요에 따라 확장
+
+## 모범 사례 & 흔한 실수 \{#best-practices-common-pitfalls}
+
+- **최소 권한 원칙:** 각 역할에 필요한 권한만 부여하세요.
+- **권한 남용 방지:** 권한 모델을 단순하고 유지보수 가능하게 유지하세요.
+- **역할/권한 검토 및 업데이트:** 제품이 발전함에 따라 RBAC 모델을 정기적으로 감사하세요.
+- **업무 분리:** 민감/관리자 작업을 위한 별도 역할을 만드세요.
+- **스테이징 환경에서 RBAC 테스트:** 권한 경계 및 상승을 검증하세요.
+
+## 자주 묻는 질문 (FAQs) \{#faqs}
+
+<details>
+<summary>
+
+### 모든 조직에서 역할 또는 권한을 어떻게 업데이트하나요? \{#how-do-i-update-roles-or-permissions-across-all-organizations}
+
+</summary>
+
+글로벌 변경을 위해 [조직 템플릿](/authorization/organization-template)을 업데이트하세요. 기존 조직은 업데이트를 상속받을 수 있습니다.
+
+</details>
+
+<details>
+<summary>
+
+### 역할/권한을 동적으로 변경할 수 있나요? \{#can-i-change-roles-permissions-dynamically}
+
+</summary>
+
+네, 역할과 그 권한은 언제든지 업데이트할 수 있습니다.
+
+</details>
+
+<details>
+<summary>
+
+### 역할에서 권한을 제거하면 어떻게 되나요? \{#what-happens-if-i-remove-a-permission-from-a-role}
+
+</summary>
+
+해당 역할을 가진 사용자/클라이언트는 새 토큰에 대해 즉시 그 권한을 잃게 됩니다.
+
+</details>
+
+<details>
+<summary>
+
+### 누가 어떤 역할을 가지고 있는지 어떻게 감사할 수 있나요? \{#how-can-i-audit-who-has-what-role}
+
+</summary>
+
+Logto 콘솔 또는 API를 사용하여 역할 할당 목록을 확인하세요.
+
+</details>
+
+<details>
+<summary>
+
+### 역할과 권한을 API로 할당할 수 있나요? \{#can-roles-and-permissions-be-assigned-via-api}
+
+</summary>
+
+네, 콘솔과 Management API 모두 역할 및 할당을 프로그래밍 방식으로 관리할 수 있습니다.
+
+</details>
+
+## 추가 자료 \{#further-reading}
+
+<Url href="/authorization/organization-template">조직 템플릿</Url>
+<Url href="/developers/custom-token-claims">토큰 클레임 커스터마이징</Url>
+<Url href="/authorization/validate-access-tokens">액세스 토큰 검증 방법</Url>
+<Url href="/authorization/global-api-resources">글로벌 API 리소스 보호하기</Url>
+<Url href="/authorization/organization-permissions">조직(비-API) 권한 보호하기</Url>
+<Url href="/authorization/organization-level-api-resources">
+  조직 수준 API 리소스 보호하기
+</Url>

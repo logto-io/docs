@@ -54,7 +54,9 @@ export const filterFiles = async (files, locale, sync, check) => {
     return files;
   }
 
-  log('Checking for files that need to be translated by comparing timestamps in Git...');
+  log(
+    `Checking for files in locale ${locale} that need to be translated by comparing timestamps in Git...`
+  );
   const result = await Promise.all(
     files.map(async (file) => {
       const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
