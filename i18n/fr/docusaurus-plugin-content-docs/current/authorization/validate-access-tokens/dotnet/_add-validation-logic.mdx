@@ -1,0 +1,227 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+Ajoutez le package NuGet requis pour l’authentification JWT :
+
+```xml
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+```
+
+Créez un service de validation pour gérer la validation du jeton :
+
+```csharp title="JwtValidationService.cs"
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using YourApiNamespace.Exceptions;
+
+namespace YourApiNamespace.Services
+{
+    public interface IJwtValidationService
+    {
+        Task ValidateTokenAsync(TokenValidatedContext context);
+    }
+
+    public class JwtValidationService : IJwtValidationService
+    {
+        public async Task ValidateTokenAsync(TokenValidatedContext context)
+        {
+            var principal = context.Principal!;
+
+            try
+            {
+                // Ajoutez ici votre logique de validation basée sur le modèle de permission
+                ValidatePayload(principal);
+            }
+            catch (AuthorizationException)
+            {
+                throw; // Relancer les exceptions d'autorisation
+            }
+            catch (Exception ex)
+            {
+                throw new AuthorizationException($"Échec de la validation du jeton : {ex.Message}", 401);
+            }
+        }
+
+        private void ValidatePayload(ClaimsPrincipal principal)
+        {
+            // Implémentez ici votre logique de vérification basée sur le modèle de permission
+            // Ceci sera détaillé dans la section sur les modèles de permission ci-dessous
+        }
+    }
+}
+```
+
+Configurez l’authentification JWT dans votre `Program.cs` :
+
+```csharp title="Program.cs"
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using YourApiNamespace.Services;
+using YourApiNamespace.Exceptions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Ajoutez les services au conteneur
+builder.Services.AddControllers();
+builder.Services.AddScoped<IJwtValidationService, JwtValidationService>();
+
+// Configurez l’authentification JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = AuthConstants.Issuer;
+        options.MetadataAddress = $"{AuthConstants.Issuer}/.well-known/openid_configuration";
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthConstants.Issuer,
+            ValidateAudience = false, // Nous validerons l’audience manuellement selon le modèle de permission
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validationService = context.HttpContext.RequestServices
+                    .GetRequiredService<IJwtValidationService>();
+
+                await validationService.ValidateTokenAsync(context);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // Gérer les erreurs de la bibliothèque JWT comme 401
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                context.Response.WriteAsync($"{{\"error\": \"Invalid token\"}}");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// Gestion globale des erreurs pour les échecs d’authentification / autorisation
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AuthorizationException ex)
+    {
+        context.Response.StatusCode = ex.StatusCode;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync($"{{\"error\": \"{ex.Message}\"}}");
+    }
+});
+
+// Configurez le pipeline de requêtes HTTP
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+
+Selon votre modèle de permission, implémentez la logique de validation appropriée dans `JwtValidationService` :
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Ressources API globales">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // Vérifiez que la revendication d’audience correspond à votre indicateur de ressource API
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Audience invalide");
+    }
+
+    // Vérifiez les portées requises pour les ressources API globales
+    var requiredScopes = new[] { "api:read", "api:write" }; // Remplacez par vos portées requises
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Portée insuffisante");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // Vérifiez que la revendication d’audience correspond au format d’organisation
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    var hasOrgAudience = audiences.Any(aud => aud.StartsWith("urn:logto:organization:"));
+
+    if (!hasOrgAudience)
+    {
+        throw new AuthorizationException("Audience invalide pour les permissions d’organisation");
+    }
+
+    // Vérifiez que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    var expectedOrgId = "your-organization-id"; // À extraire du contexte de la requête
+    var expectedAud = $"urn:logto:organization:{expectedOrgId}";
+    if (!audiences.Contains(expectedAud))
+    {
+        throw new AuthorizationException("Incohérence de l’ID d’organisation");
+    }
+
+    // Vérifiez les portées requises pour l’organisation
+    var requiredScopes = new[] { "invite:users", "manage:settings" }; // Remplacez par vos portées requises
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Portée d’organisation insuffisante");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Ressources API au niveau organisation">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // Vérifiez que la revendication d’audience correspond à votre indicateur de ressource API
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Audience invalide pour les ressources API au niveau organisation");
+    }
+
+    // Vérifiez que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    var expectedOrgId = "your-organization-id"; // À extraire du contexte de la requête
+    var orgId = principal.FindFirst("organization_id")?.Value;
+    if (!expectedOrgId.Equals(orgId))
+    {
+        throw new AuthorizationException("Incohérence de l’ID d’organisation");
+    }
+
+    // Vérifiez les portées requises pour les ressources API au niveau organisation
+    var requiredScopes = new[] { "api:read", "api:write" }; // Remplacez par vos portées requises
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Portées API au niveau organisation insuffisantes");
+    }
+}
+```
+
+</TabItem>
+</Tabs>

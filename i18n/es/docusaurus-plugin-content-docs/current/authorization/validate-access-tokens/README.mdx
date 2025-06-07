@@ -1,0 +1,218 @@
+---
+sidebar_position: 6
+sidebar_label: Validar tokens de acceso en la API
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DotNetAddValidationLogic from './dotnet/_add-validation-logic.mdx';
+import DotNetApplyMiddleware from './dotnet/_apply-middleware.mdx';
+import DotNetInit from './dotnet/_init.mdx';
+import GoAddValidationLogic from './go/_add-validation-logic.mdx';
+import GoApplyMiddleware from './go/_apply-middleware.mdx';
+import GoInit from './go/_init.mdx';
+import JavaAddValidationLogic from './java/_add-validation-logic.mdx';
+import JavaApplyMiddleware from './java/_apply-middleware.mdx';
+import JavaInit from './java/_init.mdx';
+import NodeAddValidationLogic from './nodejs/_add-validation-logic.mdx';
+import NodeApplyMiddleware from './nodejs/_apply-middleware.mdx';
+import NodeInit from './nodejs/_init.mdx';
+import PhpAddValidationLogic from './php/_add-validation-logic.mdx';
+import PhpApplyMiddleware from './php/_apply-middleware.mdx';
+import PhpInit from './php/_init.mdx';
+import PythonAddValidationLogic from './python/_add-validation-logic.mdx';
+import PythonApplyMiddleware from './python/_apply-middleware.mdx';
+import PythonInit from './python/_init.mdx';
+import RubyAddValidationLogic from './ruby/_add-validation-logic.mdx';
+import RubyApplyMiddleware from './ruby/_apply-middleware.mdx';
+import RubyInit from './ruby/_init.mdx';
+import RustAddValidationLogic from './rust/_add-validation-logic.mdx';
+import RustApplyMiddleware from './rust/_apply-middleware.mdx';
+import RustInit from './rust/_init.mdx';
+
+# Cómo validar tokens de acceso en tu servicio API o backend
+
+Validar los tokens de acceso es una parte crítica para hacer cumplir el control de acceso basado en roles (RBAC) en Logto. Esta guía te guía a través de la verificación de JWTs emitidos por Logto en tu backend / API, comprobando la firma, emisor, audiencia, expiración, permisos (alcances) y contexto de organización.
+
+## Antes de comenzar
+
+- Esta guía asume que estás familiarizado con los conceptos de RBAC de Logto.
+- Si estás protegiendo recursos de API, esta guía asume que ya has seguido la guía [Proteger recursos de API globales](/authorization/global-api-resources).
+- Si estás protegiendo funciones o flujos dentro de la aplicación (permisos no-API), esta guía asume que ya has seguido la guía [Proteger permisos de organización (no-API)](/authorization/organization-permissions).
+- Si estás protegiendo recursos de API a nivel de organización, esta guía asume que ya has seguido la guía [Proteger recursos de API a nivel de organización](/authorization/organization-level-api-resources).
+
+## Paso 1: Inicializa constantes y utilidades
+
+Define las constantes y utilidades necesarias en tu código para manejar la extracción y validación del token. Una solicitud válida debe incluir un encabezado `Authorization` en la forma `Bearer <access_token>`.
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeInit />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonInit />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoInit />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaInit />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetInit />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpInit />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyInit />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustInit />
+  </TabItem>
+</Tabs>
+
+## Paso 2: Obtén información sobre tu tenant de Logto
+
+Necesitarás los siguientes valores para validar los tokens emitidos por Logto:
+
+- URI de JSON Web Key Set (JWKS): La URL de las claves públicas de Logto, utilizada para verificar las firmas de los JWT.
+- Emisor (Issuer): El valor esperado de emisor (la URL OIDC de Logto).
+
+Primero, encuentra el endpoint de tu tenant de Logto. Puedes encontrarlo en varios lugares:
+
+- En la Consola de Logto, en **Configuración** → **Dominios**.
+- En cualquier configuración de aplicación que hayas configurado en Logto, **Configuración** → **Endpoints y Credenciales**.
+
+### Obtener desde el endpoint de descubrimiento de OpenID Connect
+
+Estos valores pueden obtenerse desde el endpoint de descubrimiento de OpenID Connect de Logto:
+
+```
+https://<your-logto-endpoint>/oidc/.well-known/openid-configuration
+```
+
+Aquí tienes un ejemplo de respuesta (otros campos omitidos por brevedad):
+
+```json
+{
+  "jwks_uri": "https://your-tenant.logto.app/oidc/jwks",
+  "issuer": "https://your-tenant.logto.app/oidc"
+}
+```
+
+### Codificar directamente en tu código (no recomendado)
+
+Dado que Logto no permite personalizar el URI de JWKS ni el emisor, puedes codificar estos valores directamente en tu código. Sin embargo, esto no se recomienda para aplicaciones en producción, ya que puede aumentar la carga de mantenimiento si alguna configuración cambia en el futuro.
+
+- JWKS URI: `https://<your-logto-endpoint>/oidc/jwks`
+- Emisor: `https://<your-logto-endpoint>/oidc`
+
+## Paso 3: Valida el token y los permisos
+
+Después de extraer el token y obtener la configuración OIDC, valida lo siguiente:
+
+- **Firma:** El JWT debe ser válido y estar firmado por Logto (a través de JWKS).
+- **Emisor (Issuer):** Debe coincidir con el emisor de tu tenant de Logto.
+- **Audiencia (Audience):** Debe coincidir con el indicador de recurso de la API registrado en Logto, o el contexto de organización si aplica.
+- **Expiración:** El token no debe estar expirado.
+- **Permisos (alcances / scopes):** El token debe incluir los alcances requeridos para tu API / acción. Los alcances son cadenas separadas por espacios en el reclamo `scope`.
+- **Contexto de organización:** Si proteges recursos de API a nivel de organización, valida el reclamo `organization_id`.
+
+Consulta [JSON Web Token](https://auth.wiki/jwt) para aprender más sobre la estructura y los reclamos de los JWT.
+
+### Qué comprobar según el modelo de permisos
+
+Los reclamos y reglas de validación difieren según el modelo de permisos:
+
+| Modelo de permisos                      | Reclamo de audiencia (`aud`)                                              | Reclamo de organización (`organization_id`)          | Alcances (permisos) a comprobar (`scope`) |
+| --------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------- |
+| Recursos de API globales                | Indicador de recurso de API                                               | _No presente_                                        | Permisos de recurso de API                |
+| Permisos de organización (no-API)       | `urn:logto:organization:<id>` (el contexto de organización está en `aud`) | _No presente_                                        | Permisos de organización                  |
+| Recursos de API a nivel de organización | Indicador de recurso de API                                               | ID de organización (debe coincidir con la solicitud) | Permisos de recurso de API                |
+
+<small>
+  Para los permisos de organización no-API, el contexto de organización está representado por el
+  reclamo `aud` (por ejemplo, `urn:logto:organization:abc123`). El reclamo `organization_id` solo
+  está presente para tokens de recursos de API a nivel de organización.
+</small>
+
+:::tip
+Valida siempre tanto los permisos (alcances) como el contexto (audiencia, organización) para APIs multi-tenant seguras.
+:::
+
+### Añade la lógica de validación
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeAddValidationLogic />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonAddValidationLogic />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoAddValidationLogic />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaAddValidationLogic />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetAddValidationLogic />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpAddValidationLogic />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyAddValidationLogic />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustAddValidationLogic />
+  </TabItem>
+</Tabs>
+
+## Paso 4: Aplica el middleware a tu API
+
+Aplica el middleware a tus rutas de API protegidas.
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeApplyMiddleware />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonApplyMiddleware />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoApplyMiddleware />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaApplyMiddleware />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetApplyMiddleware />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpApplyMiddleware />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyApplyMiddleware />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustApplyMiddleware />
+  </TabItem>
+</Tabs>
+
+## Paso 5: Prueba tu implementación
+
+Prueba tu API con tokens válidos e inválidos para asegurar que:
+
+- Los tokens válidos pasan y otorgan acceso.
+- Devuelve `401 Unauthorized` para tokens inválidos / ausentes. Devuelve `403 Forbidden` para tokens válidos que no tienen los permisos o contexto requeridos.
+
+## Recursos relacionados
+
+<Url href="/developers/custom-token-claims">Personalización de reclamos de tokens</Url>
+<Url href="https://openid.net/specs/openid-connect-discovery-1_0.html">
+  OpenID Connect Discovery
+</Url>
+<Url href="https://www.rfc-editor.org/rfc/rfc8707.html">RFC 8707: Indicadores de recurso</Url>

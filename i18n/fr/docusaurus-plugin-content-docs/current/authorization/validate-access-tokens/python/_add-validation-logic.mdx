@@ -1,0 +1,256 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+Nous utilisons [PyJWT](https://github.com/jpadilla/pyjwt) pour valider les JWT. Installez-le si ce n'est pas déjà fait :
+
+```bash
+pip install pyjwt[crypto]
+```
+
+Commencez par ajouter ces utilitaires partagés pour gérer la validation des JWT :
+
+```py title="jwt_validator.py"
+import jwt
+from jwt import PyJWKClient
+from typing import Dict, Any
+from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
+
+jwks_client = PyJWKClient(JWKS_URI)
+
+def validate_jwt_token(token: str) -> Dict[str, Any]:
+    """Valider le jeton JWT et retourner le payload"""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+            issuer=ISSUER,
+            options={'verify_aud': False}  # Nous vérifierons l'audience manuellement
+        )
+
+        verify_payload(payload)
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        raise AuthorizationError(f'Jeton invalide : {str(e)}', 401)
+    except Exception as e:
+        raise AuthorizationError(f'Échec de la validation du jeton : {str(e)}', 401)
+
+def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
+    """Créer AuthInfo à partir du payload JWT"""
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    audience = payload.get('aud', [])
+    if isinstance(audience, str):
+        audience = [audience]
+
+    return AuthInfo(
+        sub=payload.get('sub'),
+        client_id=payload.get('client_id'),
+        organization_id=payload.get('organization_id'),
+        scopes=scopes,
+        audience=audience
+    )
+
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """Vérifier le payload selon le modèle de permission"""
+    # Implémentez ici votre logique de vérification selon le modèle de permission
+    # Cela sera montré dans la section des modèles de permission ci-dessous
+    pass
+```
+
+Ensuite, implémentez le middleware pour vérifier le jeton d’accès (Access token) :
+
+<Tabs groupId="api-framework">
+  <TabItem value="fastapi" label="FastAPI">
+
+```py title="auth_middleware.py"
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jwt_validator import validate_jwt_token, create_auth_info
+
+security = HTTPBearer()
+
+async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthInfo:
+    try:
+        token = credentials.credentials
+        payload = validate_jwt_token(token)
+        return create_auth_info(payload)
+
+    except AuthorizationError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+```
+
+  </TabItem>
+  <TabItem value="flask" label="Flask">
+
+```py title="auth_middleware.py"
+from functools import wraps
+from flask import request, jsonify, g
+from jwt_validator import validate_jwt_token, create_auth_info
+
+def verify_access_token(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            token = extract_bearer_token_from_headers(dict(request.headers))
+            payload = validate_jwt_token(token)
+
+            # Stocker les informations d'authentification dans l'objet g de Flask pour un usage générique
+            g.auth = create_auth_info(payload)
+
+            return f(*args, **kwargs)
+
+        except AuthorizationError as e:
+            return jsonify({'error': str(e)}), e.status
+
+    return decorated_function
+```
+
+  </TabItem>
+  <TabItem value="django" label="Django">
+
+```py title="auth_middleware.py"
+from django.http import JsonResponse
+from jwt_validator import validate_jwt_token, create_auth_info
+
+def require_access_token(view_func):
+    def wrapper(request, *args, **kwargs):
+        try:
+            headers = {key.replace('HTTP_', '').replace('_', '-').lower(): value
+                      for key, value in request.META.items() if key.startswith('HTTP_')}
+
+            token = extract_bearer_token_from_headers(headers)
+            payload = validate_jwt_token(token)
+
+            # Attacher les informations d'authentification à la requête pour un usage générique
+            request.auth = create_auth_info(payload)
+
+            return view_func(request, *args, **kwargs)
+
+        except AuthorizationError as e:
+            return JsonResponse({'error': str(e)}, status=e.status)
+
+    return wrapper
+```
+
+  </TabItem>
+  <TabItem value="django-rest-framework" label="Django REST Framework">
+
+```py title="auth_middleware.py"
+from rest_framework.authentication import TokenAuthentication
+from rest_framework import exceptions
+from jwt_validator import validate_jwt_token, create_auth_info
+
+class AccessTokenAuthentication(TokenAuthentication):
+    keyword = 'Bearer'  # Utiliser 'Bearer' au lieu de 'Token'
+
+    def authenticate_credentials(self, key):
+        """
+        Authentifier le jeton en le validant comme JWT.
+        """
+        try:
+            payload = validate_jwt_token(key)
+            auth_info = create_auth_info(payload)
+
+            # Créer un objet de type utilisateur qui contient les infos d'authentification pour un usage générique
+            user = type('User', (), {
+                'auth': auth_info,
+                'is_authenticated': True,
+                'is_anonymous': False,
+                'is_active': True,
+            })()
+
+            return (user, key)
+
+        except AuthorizationError as e:
+            if e.status == 401:
+                raise exceptions.AuthenticationFailed(str(e))
+            else:  # 403
+                raise exceptions.PermissionDenied(str(e))
+```
+
+  </TabItem>
+</Tabs>
+
+Selon votre modèle de permission, implémentez la logique de vérification appropriée dans `jwt_validator.py` :
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Ressources API globales">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """Vérifier le payload pour les ressources API globales"""
+    # Vérifier que la revendication d'audience correspond à votre indicateur de ressource API
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Audience invalide')
+
+    # Vérifier les portées requises pour les ressources API globales
+    required_scopes = ['api:read', 'api:write']  # Remplacez par vos portées requises réelles
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Portée insuffisante')
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """Vérifier le payload pour les permissions d’organisation"""
+    # Vérifier que la revendication d'audience correspond au format d'organisation
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    has_org_audience = any(aud.startswith('urn:logto:organization:') for aud in audiences)
+    if not has_org_audience:
+        raise AuthorizationError('Audience invalide pour les permissions d’organisation')
+
+    # Vérifier que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    expected_org_id = 'your-organization-id'  # À extraire du contexte de la requête
+    expected_aud = f'urn:logto:organization:{expected_org_id}'
+    if expected_aud not in audiences:
+        raise AuthorizationError('Incohérence de l’ID d’organisation')
+
+    # Vérifier les portées requises pour l’organisation
+    required_scopes = ['invite:users', 'manage:settings']  # Remplacez par vos portées requises réelles
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Portée d’organisation insuffisante')
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Ressources API au niveau organisation">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """Vérifier le payload pour les ressources API au niveau organisation"""
+    # Vérifier que la revendication d'audience correspond à votre indicateur de ressource API
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Audience invalide pour les ressources API au niveau organisation')
+
+    # Vérifier que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    expected_org_id = 'your-organization-id'  # À extraire du contexte de la requête
+    org_id = payload.get('organization_id')
+    if expected_org_id != org_id:
+        raise AuthorizationError('Incohérence de l’ID d’organisation')
+
+    # Vérifier les portées requises pour les ressources API au niveau organisation
+    required_scopes = ['api:read', 'api:write']  # Remplacez par vos portées requises réelles
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Portées API au niveau organisation insuffisantes')
+```
+
+</TabItem>
+</Tabs>
