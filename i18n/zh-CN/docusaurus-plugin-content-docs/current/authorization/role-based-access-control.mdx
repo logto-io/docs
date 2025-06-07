@@ -1,0 +1,424 @@
+---
+sidebar_position: 1
+---
+
+import globalApiResources from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import organizationApiResources from '@site/docs/authorization/assets/rbac-organization-level-api-resources.png';
+import organizationPermissions from '@site/docs/authorization/assets/rbac-organization-permissions.png';
+
+# 基于角色的访问控制 (RBAC) (Role-based access control)
+
+[基于角色的访问控制 (RBAC)](https://auth.wiki/rbac) 是一种经过验证的授权 (Authorization) 模型，将现实世界的业务操作映射到角色和权限 (Permissions)。本指南介绍了 RBAC 在 Logto 中的工作方式、实用设计模式以及构建安全、可扩展 SaaS 应用的最佳实践。
+
+## 什么是 RBAC？ \{#what-is-rbac}
+
+RBAC 通过将权限 (Permissions) 分组到角色 (Roles) 中，让你管理应用中“谁”可以做“什么”。用户和客户端被分配一个或多个角色 (Roles)，这些角色授予访问功能、API 或数据所需的权限 (Permissions)。
+
+**核心概念**
+
+- **角色 (Role)**：一组命名的权限 (Permissions)（如 `admin`、`viewer`、`billing-manager`）。
+- **权限 (Permission)**：一个操作或权利（如 `manage:members`、`view:analytics`）。
+- **权限 (Scope)**：权限 (Permission) 的同义词，常用于 OAuth 2.0 场景。
+- **API 资源**：应用中需要授权 (Authorization) 的 API、端点或服务。
+- **用户 / 客户端**：被分配角色 (Roles) 的实体（终端用户或机器对机器 (M2M) 应用）。
+
+:::note
+在 Logto（以及 OAuth 2.1）中，**“权限 (Permissions)” 和 “权限 (Scopes)” 指的是同一个概念**，在本文档中可以互换使用。
+:::
+
+### API 资源 \{#api-resources}
+
+**API 资源**是应用中任何受保护的端点或服务——如 REST API、GraphQL 端点或其他需要授权 (Authorization) 的后端服务。
+
+Logto 按照 [RFC 8707: OAuth 2.0 的资源指示器 (Resource Indicators)](https://www.rfc-editor.org/rfc/rfc8707) 建模 API 资源。  
+每个 API 资源都由一个唯一的**资源指示器 (Resource indicator)**（URI）标识，用于限定访问令牌 (Access token) 的范围并强制受众 (Audience) 限制。
+
+| **属性名**   | **描述**                                                                                                 | **必填** |
+| ------------ | -------------------------------------------------------------------------------------------------------- | -------- |
+| API 名称     | 用于在控制台和日志中识别 API 资源的人性化名称。                                                          | 是       |
+| API 标识符   | 表示 API 资源的唯一 [资源指示器 (Resource indicator)](https://www.rfc-editor.org/rfc/rfc8707.html) URI。 | 是       |
+| 令牌过期时间 | 为此 API 签发的访问令牌 (Access token) 的有效期（秒）。默认值为 **3600**（1 小时）。                     | 否       |
+| 默认 API     | 每个 Logto 租户只能设置一个默认 API 资源。设置后，认证请求可以省略 `resource` 参数。                     | 否       |
+
+:::note
+当指定了默认 API 资源时，Logto 会在认证 (Authentication) 请求中省略 `resource` 参数时，将其用作令牌的受众 (Audience)。
+:::
+
+#### 默认 API 资源行为 \{#default-api-resource-behavior}
+
+在 Logto 中，每个用户自定义的全局权限 (Scope) 必须关联到一个 API 资源。否则，该权限会被视为 OpenID Connect (OIDC) 权限 (Scope)。
+
+这通常不会影响大多数集成，但在与**不支持 [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html) 的第三方应用**对接时，初始授权 (Authorization) 请求可能不会包含 `resource` 参数。在这种情况下，Logto 会签发[不透明访问令牌 (Opaque token)](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc) 而不是 JWT，这可能会使访问控制变得复杂。
+
+为了解决这个问题，你可以为租户设置一个**默认 API 资源**：
+
+- **当 [认证请求 (Authentication request)](https://auth.wiki/authentication-request) 中缺少 `resource` 参数时：**
+  - Logto 使用默认 API 资源作为访问令牌 (Access token) 的受众 (Audience)。
+- **如果包含 `openid` 权限 (Scope)：**
+  - 当令牌请求中没有 `resource` 时，Logto 会为 [Userinfo 端点](https://auth.wiki/userinfo-endpoint) 签发不透明访问令牌 (Opaque token)。
+- **如果未包含 `openid` 权限 (Scope)：**
+  - Logto 会为默认 API 资源签发 JWT 访问令牌 (Access token) 作为受众 (Audience)。
+
+设置默认 API 资源可以确保与不支持 RFC 8707 的应用顺畅集成，同时保持安全且符合标准的访问控制。
+
+## Logto 中的 RBAC \{#rbac-in-logto}
+
+Logto 在**全局**和**组织 (Organization)** 两个层面提供灵活的 RBAC，以支持多租户 SaaS：
+
+- **全局角色 (Global roles)**：在整个 Logto 租户范围内分配。适用于产品级权限、管理员或超级用户。
+- **组织角色 (Organization roles)**：在组织 (Organization) 内部分配。适用于组织 (Organization) 内的访问控制，如工作区管理员、项目成员或自定义分组。
+- **API 资源**：需要授权 (Authorization) 的已注册 API 和功能。
+- **权限 (Permissions / Scopes)**：按 API 资源或组织模板定义。
+  - API 资源权限 (Permissions) 可分配给全局或组织角色 (Roles)。
+  - 组织权限 (Permissions) 只能分配给组织角色 (Roles)。
+
+根据你的产品需求，可以单独或组合使用这些 RBAC 模型。
+
+以下是三个示例及其示意图：
+
+### 模型 1：全局 API 资源 \{#model-1-global-api-resources}
+
+**场景**
+
+一个 SaaS 产品，API 面向所有用户共享，与组织 (Organization) 无关。
+使用全局角色 (Roles) 控制对产品级 API 资源的访问。
+
+**示意图**
+
+<img src={globalApiResources} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+**要点**
+
+- **用户**和**M2M 应用**被分配全局角色 (如 Store manager、Service agent)。
+- 角色 (Roles) 授予权限 (Scopes)，如 `read:store`、`order:book`。
+- 权限 (Permissions) 直接关联到 API 资源（如 `https://read.shop/stores`）。
+
+**适用场景**
+
+当访问权限与组织 (Organization) 无关，或用户 / 客户端跨所有组织 (Organization) 操作时。
+
+:::note
+Logto 不支持在全局层面设置非 API 权限 (Permissions)，因为该层级保留给 OpenID Connect (OIDC) 权限 (Scopes)。
+:::
+
+:::tip
+分步实现指南请参见 [保护全局 API 资源](/authorization/global-api-resources)。
+:::
+
+### 模型 2：组织 (非 API) 权限 \{#model-2-organization-non-api-permissions}
+
+**场景**
+
+通过组织角色 (Roles) 和权限 (Permissions) 控制应用内未在 API 层强制的功能或流程（如 UI 功能、仪表盘或内部工具）。
+
+**示意图**
+
+<img
+  src={organizationPermissions}
+  alt="Organization permissions RBAC"
+  style={{ maxWidth: '800px', width: '100%' }}
+/>
+
+**要点**
+
+- 每个组织 (A 和 B) 有自己的分配，但所有组织共享在 [组织模板](/authorization/organization-template) 中定义的通用角色 (Roles)。
+- **用户**和**M2M 应用**在每个组织中可以拥有不同的角色 (Roles)。
+- **组织角色 (Organization roles)**（如 Admin、Member）授予组织权限 (Permissions)，如 `invite:member`、`manage:billing`。
+- 权限 (Permissions) 在应用 UI 或业务逻辑中强制执行，而不是由 API 网关控制。
+
+**适用场景**
+
+当你希望管理谁可以在组织 (Organization) 内看到或使用某些功能，而无需 API 层强制时。
+
+:::tip
+分步实现指南请参见 [保护组织 (非 API) 权限](/authorization/organization-permissions)。
+:::
+
+### 模型 3：组织级 API 资源 \{#model-3-organization-level-api-resources}
+
+**场景**
+
+一个多租户 SaaS 平台，每个组织 (Organization) 拥有自己的成员、数据和角色 (Roles)。
+使用**组织角色 (Organization roles)** 授予每个组织 (Organization) 内的 API 访问权限。
+
+**示意图**
+
+<img
+  src={organizationApiResources}
+  alt="Organization-level API resources RBAC"
+  style={{ maxWidth: '100%' }}
+/>
+
+**要点**
+
+- 每个组织 (A 和 B) 有自己的分配，但所有组织共享在 [组织模板](/authorization/organization-template) 中定义的通用角色 (Roles)。
+- **用户**和**M2M 应用**在每个组织中可以拥有不同的角色 (Roles)。
+- 权限 (Scopes)，如 `invite:member`、`manage:billing`，与 API 资源关联。
+- 当访问令牌 (Access token) 包含组织上下文时，权限 (Permissions) 在 API 层强制执行。
+
+**适用场景**
+
+当你需要基于组织上下文控制 API 访问权限，如允许用户管理自己组织的数据时。
+
+:::tip
+分步实现指南请参见 [保护组织级 API 资源](/authorization/organization-level-api-resources)。
+:::
+
+## 设计并实现权限模型 \{#design-and-implement-a-permission-model}
+
+根据你的产品架构和用户需求，可以从上述示例中选择合适的 RBAC 模型。以下是帮助你高效设计和实现权限模型的速查表：
+
+| 权限模型           | 是否定义带权限的 API 资源？ | 是否定义组织权限？ | 是否使用全局角色？ | 是否使用组织角色？ |
+| ------------------ | --------------------------- | ------------------ | ------------------ | ------------------ |
+| 全局 API 资源      | ✅                          | n/a                | ✅                 | n/a                |
+| 组织 (非 API) 权限 | n/a                         | ✅                 | n/a                | ✅                 |
+| 组织级 API 资源    | ✅                          | n/a                | n/a                | ✅                 |
+
+### 定义带权限的 API 资源 \{#define-api-resources-with-permissions}
+
+在 Logto 控制台或[通过 Management API](https://openapi.logto.io/group/endpoint-resources) 注册你的 API，以定义 API 资源及其权限 (Scopes)。
+
+:::note
+在 OAuth 2.0 和 OIDC 中，“API 资源”在技术上称为资源指示器 (Resource indicator)，即唯一标识受保护 API 或服务的 URI。
+:::
+
+#### 在 Logto 控制台注册带权限的 API 资源 \{#register-api-resources-with-permissions-in-logto-console}
+
+1. 进入 <CloudLink to="/api-resources">控制台 → API 资源</CloudLink>。
+2. 点击 **创建 API 资源**。
+3. 填写：
+
+   - **API 名称**：API 的人性化名称。
+   - **API 标识符**：API 资源指示器（如 `https://api.yourapp.com/org`）。
+
+4. 在 **权限 (Permissions)** 标签页，点击 **创建权限**，为该 API 资源创建权限 (Scopes)。
+5. 在 **常规** 标签页，你可以选择设置以下内容：
+
+   - **令牌过期时间**：设置该 API 资源访问令牌 (Access token) 的有效期。建议为安全起见保持较短（如 1 小时）。
+   - **默认 API**：将该 API 资源设为默认，用于受众 (Audience) 限制和令牌签发（当 OAuth 请求未指定 `resource` 时）。这对于不支持 `resource` 参数的客户端（如某些第三方工具或插件）很有用，但为可选项。
+
+#### 提示 \{#tips}
+
+- 将 API 资源指示器映射到实际 API 端点，便于直观命名。
+  - 例如，`https://api.example.com/v1/users`。
+- 使用清晰、基于动作的命名（如 `invite:member`、`manage:billing`、`view:analytics`）。
+  - 或者，也可以按功能前缀或分组（如 `billing:read`、`billing:manage`）。
+- 保持权限 (Permissions) 以业务为导向，而不仅仅是技术端点。
+
+**示例**
+
+| API 资源指示器                    | 权限 (Permission) | 描述           |
+| --------------------------------- | ----------------- | -------------- |
+| `https://api.example.com/users`   | `invite:user`     | 邀请新用户     |
+| `https://api.example.com/users`   | `manage:user`     | 更新或删除用户 |
+| `https://api.example.com/billing` | `view:billing`    | 查看账单详情   |
+| `https://api.example.com/billing` | `manage:billing`  | 编辑账单设置   |
+
+### 定义组织权限 \{#define-organization-permissions}
+
+在 Logto 控制台或[通过 Management API](https://openapi.logto.io/group/endpoint-organization-scopes) 注册组织权限 (Permissions)，以定义适用于每个组织 (Organization) 的权限。组织权限在 [组织模板](/authorization/organization-template) 中定义。
+
+#### 在 Logto 控制台注册组织权限 \{#register-organization-permissions-in-logto-console}
+
+1. 进入 <CloudLink to="/organization-template/organization-permissions">控制台 → 组织模板 → 组织权限</CloudLink>。
+2. 点击 **创建组织权限**。
+3. 填写：
+   - **权限名称**：清晰、基于动作的权限名称（如 `invite:member`、`manage:billing`）。
+   - **描述**：简要描述该权限允许的操作（如“邀请新成员加入组织”）。
+4. 点击 **创建权限** 保存。
+
+#### 提示 \{#tips}
+
+- 使用清晰、基于动作的名称（如 `invite:member`、`manage:billing`）。
+- 保持组织权限 (Permissions) 与 API 权限 (Permissions) 区分，避免混淆。
+
+**示例**
+
+| 组织权限 (Organization permission) | 描述               |
+| ---------------------------------- | ------------------ |
+| `invite:member`                    | 邀请新成员加入组织 |
+| `manage:billing`                   | 编辑组织的账单设置 |
+
+### 配置全局角色 \{#configure-global-roles}
+
+在 Logto 控制台或[通过 Management API](https://openapi.logto.io/group/endpoint-roles) 创建和配置全局角色 (Roles)，以分组适用于整个 Logto 租户的权限 (Permissions)。
+
+全局角色可以是以下两种之一：
+
+- **用户角色**：分配给终端用户，授予访问 API 和功能的权限。
+- **机器对机器 (M2M) 角色**：分配给 M2M 应用，授予访问 API 和功能（包括 Logto Management API）的权限。
+
+:::note
+请注意，这两种角色类型创建后不能混用或更改。请根据角色类型分配用户或 M2M 应用。
+:::
+
+#### 在 Logto 控制台创建全局角色 \{#create-global-roles-in-logto-console}
+
+1. 进入 <CloudLink to="/roles">控制台 → 角色</CloudLink>。
+2. 点击 **创建角色**。
+3. 填写：
+   - **角色名称**：清晰、描述性的角色名称（如 `admin`、`viewer`、`billing-manager`）。
+   - **角色类型**：选择 **用户** 或 **机器对机器 (M2M)**。**只有机器对机器 (M2M) 角色可以关联 Logto Management API**。
+   - **描述**：简要描述角色用途（如“拥有全部访问权限的管理员角色”，“只读访问的查看者角色”）。
+   - **分配权限**：从可用 API 资源中选择该角色应拥有的权限 (Scopes)。你可以后续随时更新权限。
+4. 点击 **创建角色** 保存。
+
+#### 将用户或 M2M 应用分配到全局角色 \{#assign-users-or-m2m-apps-to-global-roles}
+
+1. 进入 <CloudLink to="/roles">控制台 → 角色</CloudLink>。
+2. 点击你要分配用户或 M2M 应用的角色。
+3. 对于**用户角色**，点击 **用户** 标签页；对于**M2M 角色**，点击 **机器对机器应用** 标签页。
+4. 点击 **分配用户** 或 **分配 M2M 应用**。
+5. 搜索你要分配到该角色的用户或 M2M 应用。
+6. 选择用户或 M2M 应用并点击 **分配**。
+
+#### 默认全局角色 \{#default-global-roles}
+
+你可以将一个或多个全局角色设置为**默认角色**，用于新用户。默认角色会在用户创建时自动分配，无论是自助注册还是通过 Management API 创建。你可以在 <CloudLink to="/roles">控制台 > 角色</CloudLink> 的详情页“常规”标签页中启用此选项。
+
+### 配置组织角色 \{#configure-organization-roles}
+
+在 Logto 控制台或[通过 Management API](https://openapi.logto.io/group/endpoint-organization-roles) 创建组织角色 (Roles)，以分组适用于每个组织 (Organization) 的权限 (Permissions)。组织角色在 [组织模板](/authorization/organization-template) 中定义。
+
+组织角色可以是以下两种之一：
+
+- **用户角色**：分配给组织 (Organization) 内的终端用户，授予访问 API 和功能的权限。
+- **机器对机器 (M2M) 角色**：分配给组织 (Organization) 内的 M2M 应用，授予访问 API 和功能的权限。该角色**不能**关联 Logto Management API，因为它是组织 (Organization) 专属的。
+
+:::note
+请注意，这两种角色类型创建后不能混用或更改。请根据角色类型分配用户或 M2M 应用。
+:::
+
+#### 在 Logto 控制台创建组织角色 \{#create-organization-roles-in-logto-console}
+
+1. 进入 <CloudLink to="/organization-template/organization-roles">控制台 → 组织模板 → 组织角色</CloudLink>。
+2. 点击 **创建组织角色**。
+3. 填写：
+
+   - **角色名称**：清晰、描述性的角色名称（如 `admin`、`member`、`billing-manager`）。
+   - **角色类型**：选择 **用户** 或 **机器对机器 (M2M)**。**只有机器对机器 (M2M) 角色可以关联 Logto Management API**。
+   - **描述**：简要描述角色用途（如“拥有全部访问权限的管理员角色”，“基础访问的成员角色”）。
+
+4. 点击 **创建角色** 保存。
+5. 在 **分配权限** 弹窗中，选择该角色应拥有的组织权限 (Permissions) 和 / 或 API 资源权限 (Permissions)。你可以后续随时更新权限。
+
+#### 将用户或 M2M 应用分配到组织角色 \{#assign-users-or-m2m-apps-to-organization-roles}
+
+由于组织角色是组织 (Organization) 专属的，你需要在组织 (Organization) 上下文中分配用户或 M2M 应用到组织角色。
+
+1. 进入 <CloudLink to="/organizations">控制台 → 组织</CloudLink>。
+2. 选择你要管理的组织。
+3. 对于**用户角色**，点击 **用户** 标签页；对于**M2M 角色**，点击 **机器对机器应用** 标签页。
+4. 如果用户或 M2M 应用尚未加入该组织，点击 **添加成员** 或 **添加 M2M 应用** 将其加入组织。在此过程中，你可以为其分配一个或多个组织角色。
+5. 如果用户或 M2M 应用已是成员，点击其姓名旁的三点菜单，选择 **编辑组织角色**。
+6. 在弹窗中选择并保存你要分配给该用户或 M2M 应用的组织角色。
+
+#### 即时 (JIT) 供应 \{#just-in-time-jit-provisioning}
+
+你也可以在用户或 M2M 应用加入组织时即时分配组织角色。具体操作请参见 [即时 (JIT) 供应](/organizations/just-in-time-provisioning)。
+
+### 在后端或 API 强制执行授权 (Authorization) \{#enforcing-authorization-in-your-backend-or-api}
+
+Logto 会签发包含必要声明 (Claims) 的 [JSON Web Token (JWT)](https://auth.wiki/jwt)，用于在你的应用或 API 中强制执行授权 (Authorization)。
+
+要强制执行授权 (Authorization)，你的后端或 API 应：
+
+1. 要求客户端在请求头中以 `Authorization: Bearer <token>` 格式携带有效访问令牌 (Access token)。
+2. 验证访问令牌 (Access token)，确保其由 Logto 签发、未过期，并且拥有请求操作所需的权限 (Scopes)。
+3. 如果令牌缺失、无效或没有所需权限 (Permissions)，返回错误（如 HTTP 401 Unauthorized 或 HTTP 403 Forbidden）。
+
+分步和特定语言的指南请参见 [如何验证访问令牌 (Access token)](/authorization/validate-access-tokens)。
+
+### 将 Logto RBAC 集成到你的应用 \{#integrate-logto-rbac-with-your-application}
+
+你可以通过以下两种方式将 Logto RBAC 集成到你的应用：
+
+- **Logto SDK**：使用 [Logto SDK](/quick-starts) 实现内置认证 (Authentication) 和授权 (Authorization) 流程。
+- **标准 OAuth 2.0 / OIDC 库**：使用你喜欢的 OAuth 2.0 或 OpenID Connect 库实现所需流程。
+
+集成后，根据所选 RBAC 模型请求带有正确参数的访问令牌 (Access token)。在 API 请求中将访问令牌 (Access token) 添加到 `Authorization` 头，以强制执行权限 (Permissions)。
+
+具体分步示例请参见上文各模型实现指南。
+
+## 高级场景 \{#advanced-scenarios}
+
+探索 Logto 中更复杂的 RBAC 用例：
+
+- **组合全局和组织角色**：在需要时同时分配给用户 / 客户端；Logto 会根据请求令牌上下文自动解析。
+- **多应用场景**：为跨应用 RBAC 使用共享资源和权限 (Scopes)。
+- **动态权限**：如有需要，将 RBAC 与运行时检查（如所有权、属性）结合，实现高级场景。
+- **自定义令牌声明 (Claims)**：使用 [自定义声明](/developers/custom-token-claims) 丰富令牌内容。
+
+## 最佳实践与常见陷阱 \{#best-practices-common-pitfalls}
+
+- **最小权限原则**：只授予每个角色所需的权限 (Permissions)。
+- **避免权限蔓延**：保持权限模型简单、易维护。
+- **定期审查和更新角色 / 权限**：随着产品发展，定期审计 RBAC 模型。
+- **职责分离**：为敏感 / 管理操作创建独立角色。
+- **在预发布环境测试 RBAC**：验证权限边界和权限提升。
+
+## 常见问题解答 \{#faqs}
+
+<details>
+<summary>
+
+### 如何跨所有组织更新角色或权限？ \{#how-do-i-update-roles-or-permissions-across-all-organizations}
+
+</summary>
+
+更新 [组织模板](/authorization/organization-template) 以实现全局变更；现有组织可以继承更新。
+
+</details>
+
+<details>
+<summary>
+
+### 可以动态更改角色 / 权限吗？ \{#can-i-change-roles-permissions-dynamically}
+
+</summary>
+
+可以，角色及其权限 (Permissions) 可随时更新。
+
+</details>
+
+<details>
+<summary>
+
+### 如果我从角色中移除某个权限会发生什么？ \{#what-happens-if-i-remove-a-permission-from-a-role}
+
+</summary>
+
+拥有该角色的用户 / 客户端会在新令牌中立即失去该权限 (Permission)。
+
+</details>
+
+<details>
+<summary>
+
+### 如何审计谁拥有哪些角色？ \{#how-can-i-audit-who-has-what-role}
+
+</summary>
+
+使用 Logto 控制台或 API 列出角色分配情况。
+
+</details>
+
+<details>
+<summary>
+
+### 可以通过 API 分配角色和权限吗？ \{#can-roles-and-permissions-be-assigned-via-api}
+
+</summary>
+
+可以，控制台和 Management API 均支持以编程方式管理角色和分配。
+
+</details>
+
+## 延伸阅读 \{#further-reading}
+
+<Url href="/authorization/organization-template">组织模板</Url>
+<Url href="/developers/custom-token-claims">自定义令牌声明 (Claims)</Url>
+<Url href="/authorization/validate-access-tokens">如何验证访问令牌 (Access token)</Url>
+<Url href="/authorization/global-api-resources">保护全局 API 资源</Url>
+<Url href="/authorization/organization-permissions">保护组织 (非 API) 权限</Url>
+<Url href="/authorization/organization-level-api-resources">保护组织级 API 资源</Url>

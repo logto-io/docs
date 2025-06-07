@@ -1,0 +1,421 @@
+---
+sidebar_position: 1
+---
+
+import globalApiResources from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import organizationApiResources from '@site/docs/authorization/assets/rbac-organization-level-api-resources.png';
+import organizationPermissions from '@site/docs/authorization/assets/rbac-organization-permissions.png';
+
+# ロールベースのアクセス制御 (RBAC) (Role-based access control (RBAC))
+
+[ロールベースのアクセス制御 (RBAC)](https://auth.wiki/rbac) は、現実世界のビジネスアクションをロールと権限にマッピングする実績ある認可 (Authorization) モデルです。このガイドでは、Logto における RBAC の仕組み、実践的な設計パターン、安全でスケーラブルな SaaS アプリケーションを構築するためのベストプラクティスを解説します。
+
+## RBAC とは？ \{#what-is-rbac}
+
+RBAC を使うことで、権限をロールにまとめて「誰が」「何をできるか」をアプリケーション内で管理できます。ユーザーやクライアントには 1 つ以上のロールが割り当てられ、それによって機能、API、データへのアクセス権限が付与されます。
+
+**コア概念**
+
+- **ロール (Role)**：権限のセットに名前を付けたもの（例：`admin`、`viewer`、`billing-manager`）。
+- **権限 (Permission)**：アクションや権利（例：`manage:members`、`view:analytics`）。
+- **スコープ (Scope)**：権限の同義語で、OAuth 2.0 の文脈でよく使われます。
+- **API リソース (API resource)**：権限が適用される API、エンドポイント、サービス。
+- **ユーザー / クライアント (User/Client)**：ロールが割り当てられるエンティティ（エンドユーザーまたはマシン間通信 (M2M) アプリ）。
+
+:::note
+Logto（および OAuth 2.1）では、**「権限 (permissions)」と「スコープ (scopes)」は同じ概念** を指し、本ドキュメント内で同義的に使用されます。
+:::
+
+### API リソース (API resources) \{#api-resources}
+
+**API リソース (API resource)** とは、アプリケーション内の保護されたエンドポイントやサービス（REST API、GraphQL エンドポイント、認可 (Authorization) が必要なバックエンドサービスなど）です。
+
+Logto は [RFC 8707: OAuth 2.0 のリソースインジケーター](https://www.rfc-editor.org/rfc/rfc8707) に従って API リソースをモデル化しています。  
+各 API リソースは **リソースインジケーター (resource indicator)**（URI）で一意に識別され、アクセス トークンのスコープやオーディエンス制限のために使用されます。
+
+| **プロパティ名** | **説明**                                                                                                                     | **必須** |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- |
+| API 名           | コンソールやログで API リソースを識別するための分かりやすい名前。                                                            | Yes      |
+| API 識別子       | API リソースを表す一意の [リソースインジケーター (resource indicator)](https://www.rfc-editor.org/rfc/rfc8707.html) URI。    | Yes      |
+| トークン有効期限 | この API 用に発行されるアクセス トークンの有効期間（秒単位）。デフォルトは **3600**（1 時間）。                              | No       |
+| デフォルト API   | 1 テナントにつき 1 つだけデフォルト API リソースを設定可能。設定時、認証リクエストで `resource` パラメーターを省略できます。 | No       |
+
+:::note
+デフォルト API リソースが指定されている場合、認証リクエストで `resource` パラメーターが省略された際に Logto はそれをトークンのオーディエンスとして使用します。
+:::
+
+#### デフォルト API リソースの挙動 \{#default-api-resource-behavior}
+
+Logto では、ユーザー定義のグローバル権限（スコープ）は必ず API リソースに紐付ける必要があります。そうでない場合、その権限は OpenID Connect (OIDC) スコープとして扱われます。
+
+これはほとんどの統合には影響しませんが、[RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html) をサポートしないサードパーティアプリと連携する場合、初回の認可 (Authorization) リクエストに `resource` パラメーターが含まれないことがあります。この場合、Logto は JWT ではなく [不透明アクセス トークン (opaque access tokens)](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc) を発行し、アクセス制御が複雑になることがあります。
+
+この問題を解決するには、テナントに **デフォルト API リソース** を設定します：
+
+- **[認証リクエスト (Authentication request)](https://auth.wiki/authentication-request) で `resource` パラメーターがない場合：**
+  - Logto はデフォルト API リソースをアクセス トークンのオーディエンスとして使用します。
+- **`openid` スコープが含まれている場合：**
+  - トークンリクエストに `resource` がない場合、Logto は [Userinfo エンドポイント](https://auth.wiki/userinfo-endpoint) 用の不透明アクセス トークンを発行します。
+- **`openid` スコープが含まれていない場合：**
+  - Logto はデフォルト API リソースをオーディエンスとする JWT アクセス トークンを発行します。
+
+デフォルト API リソースを設定することで、RFC 8707 をサポートしないアプリとの統合がスムーズになり、安全かつ標準に基づいたアクセス制御を維持できます。
+
+## Logto における RBAC \{#rbac-in-logto}
+
+Logto は、マルチテナント SaaS をサポートするために **グローバル** および **組織** レベルで柔軟な RBAC を提供します：
+
+- **グローバルロール**：Logto テナント全体で割り当て。プロダクト全体の権限や管理者、スーパーユーザーに最適。
+- **組織ロール**：組織内で割り当て。ワークスペース管理者、プロジェクトメンバー、カスタムグループなど組織固有のアクセスに最適。
+- **API リソース**：認可 (Authorization) が必要な API や機能を登録。
+- **権限 (スコープ)**：API リソースごと、または組織テンプレートで定義。
+  - API リソース権限はグローバルロールまたは組織ロールのいずれにも割り当て可能。
+  - 組織権限は組織ロールのみに割り当て可能。
+
+プロダクトの要件に応じて、これらの RBAC モデルを単独または組み合わせて利用できます。
+
+以下に 3 つの代表的な例と図を示します：
+
+### モデル 1: グローバル API リソース \{#model-1-global-api-resources}
+
+**シナリオ**
+
+すべてのユーザーが組織に関係なく共有する API を持つ SaaS プロダクト。
+グローバルロールでプロダクト全体の API リソースへのアクセスを制御します。
+
+**図**
+
+<img src={globalApiResources} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+**ポイント**
+
+- **ユーザー** や **M2M アプリ** にグローバルロール（例：ストアマネージャー、サービスエージェント）を割り当て。
+- ロールは `read:store`、`order:book` などの権限（スコープ）を付与。
+- 権限は API リソース（例：`https://read.shop/stores`）に直接紐付け。
+
+**利用シーン**
+
+アクセスが組織固有でない場合や、ユーザー / クライアントがすべての組織を横断して操作する場合。
+
+:::note
+Logto では、グローバルレベルでの非 API 権限はサポートしていません（OpenID Connect (OIDC) スコープ用に予約されています）。
+:::
+
+:::tip
+実装手順ガイドは [グローバル API リソースの保護](/authorization/global-api-resources) を参照してください。
+:::
+
+### モデル 2: 組織（非 API）権限 \{#model-2-organization-non-api-permissions}
+
+**シナリオ**
+
+API レイヤーで強制されないアプリ内機能やワークフロー（UI 機能、ダッシュボード、内部ツールなど）を組織ロールと権限で制御。
+
+**図**
+
+<img
+  src={organizationPermissions}
+  alt="Organization permissions RBAC"
+  style={{ maxWidth: '800px', width: '100%' }}
+/>
+
+**ポイント**
+
+- 各組織（A、B）は独自の割り当てを持つが、すべての組織は [組織テンプレート](/authorization/organization-template) で定義された共通のロールセットを共有。
+- **ユーザー** や **M2M アプリ** は組織ごとに異なるロールを持てる。
+- **組織ロール**（例：Admin、Member）は `invite:member`、`manage:billing` などの組織権限を付与。
+- 権限はアプリの UI やビジネスロジックで強制され、API ゲートウェイでは強制されない。
+
+**利用シーン**
+
+API レベルでの強制が不要な場合に、組織内で誰がどの機能を利用できるかを管理したい場合。
+
+:::tip
+実装手順ガイドは [組織（非 API）権限の保護](/authorization/organization-permissions) を参照してください。
+:::
+
+### モデル 3: 組織レベル API リソース \{#model-3-organization-level-api-resources}
+
+**シナリオ**
+
+各組織が独自のメンバー、データ、ロールを持つマルチテナント SaaS プラットフォーム。
+**組織ロール** を使って、各組織内での API アクセスを付与します。
+
+**図**
+
+<img
+  src={organizationApiResources}
+  alt="Organization-level API resources RBAC"
+  style={{ maxWidth: '100%' }}
+/>
+
+**ポイント**
+
+- 各組織（A、B）は独自の割り当てを持つが、すべての組織は [組織テンプレート](/authorization/organization-template) で定義された共通のロールセットを共有。
+- **ユーザー** や **M2M アプリ** は組織ごとに異なるロールを持てる。
+- `invite:member`、`manage:billing` などの権限（スコープ）は API リソースに紐付け。
+- アクセス トークンに組織コンテキストが含まれる場合、API レベルで権限が強制される。
+
+**利用シーン**
+
+組織コンテキストに基づいて API アクセスを制御したい場合（例：ユーザーが自分の組織データのみ管理できるようにしたい場合）。
+
+:::tip
+実装手順ガイドは [組織レベル API リソースの保護](/authorization/organization-level-api-resources) を参照してください。
+:::
+
+## 権限モデルの設計と実装 \{#design-and-implement-a-permission-model}
+
+プロダクトのアーキテクチャやユーザー要件に応じて、上記の RBAC モデルから適切なものを選択できます。効果的な権限モデル設計・実装のためのチートシートを以下に示します：
+
+| 権限モデル              | 権限付き API リソース定義 | 組織権限定義 | グローバルロール利用 | 組織ロール利用 |
+| ----------------------- | ------------------------- | ------------ | -------------------- | -------------- |
+| グローバル API リソース | ✅                        | n/a          | ✅                   | n/a            |
+| 組織（非 API）権限      | n/a                       | ✅           | n/a                  | ✅             |
+| 組織レベル API リソース | ✅                        | n/a          | n/a                  | ✅             |
+
+### 権限付き API リソースの定義 \{#define-api-resources-with-permissions}
+
+Logto コンソールまたは [Management API 経由](https://openapi.logto.io/group/endpoint-resources) で API を登録し、API リソースとその権限（スコープ）を定義します。
+
+:::note
+OAuth 2.0 および OIDC では、「API リソース」は技術的にはリソースインジケーターと呼ばれ、保護対象の API やサービスを一意に識別する URI です。
+:::
+
+#### Logto コンソールで権限付き API リソースを登録 \{#register-api-resources-with-permissions-in-logto-console}
+
+1. <CloudLink to="/api-resources">コンソール → API リソース</CloudLink> にアクセス。
+2. **API リソースを作成** をクリック。
+3. 以下を入力：
+   - **API 名**：API の分かりやすい名前。
+   - **API 識別子**：API リソースインジケーター（例：`https://api.yourapp.com/org`）。
+4. **権限** タブで **権限を作成** をクリックし、この API リソース用の権限（スコープ）を作成。
+5. **一般** タブで以下を任意で設定可能：
+   - **トークン有効期限**：この API リソース用のアクセス トークンの有効期間。セキュリティのため短め（例：1 時間）を推奨。
+   - **デフォルト API**：OAuth リクエストで `resource` が指定されていない場合のオーディエンス制限・トークン発行用のデフォルト API リソースに指定（任意）。一部サードパーティツールやプラグインなど `resource` パラメーター非対応クライアントに便利。
+
+#### Tips \{#tips}
+
+- API リソースインジケーターを実際の API エンドポイントにマッピングし、直感的な名前付けを。
+  - 例：`https://api.example.com/v1/users`
+- 明確でアクションベースの命名を推奨（例：`invite:member`、`manage:billing`、`view:analytics`）。
+  - または、ジャンルや機能ごとにプレフィックスを付けて整理（例：`billing:read`、`billing:manage`）。
+- 権限は技術的なエンドポイントだけでなく、ビジネス要件に基づいて設計。
+
+**例**
+
+| API リソースインジケーター        | 権限             | 説明                 |
+| --------------------------------- | ---------------- | -------------------- |
+| `https://api.example.com/users`   | `invite:user`    | 新規ユーザーの招待   |
+| `https://api.example.com/users`   | `manage:user`    | ユーザーの更新・削除 |
+| `https://api.example.com/billing` | `view:billing`   | 請求情報の閲覧       |
+| `https://api.example.com/billing` | `manage:billing` | 請求設定の編集       |
+
+### 組織権限の定義 \{#define-organization-permissions}
+
+Logto コンソールまたは [Management API 経由](https://openapi.logto.io/group/endpoint-organization-scopes) で組織権限を登録し、各組織内で適用される権限を定義します。組織権限は [組織テンプレート](/authorization/organization-template) で定義されます。
+
+#### Logto コンソールで組織権限を登録 \{#register-organization-permissions-in-logto-console}
+
+{/* eslint-disable-next-line prettier/prettier */}
+1. <CloudLink to="/organization-template/organization-permissions">コンソール → 組織テンプレート → 組織権限</CloudLink> にアクセス。
+2. **組織権限を作成** をクリック。
+3. 以下を入力：
+   - **権限名**：明確でアクションベースの名前（例：`invite:member`、`manage:billing`）。
+   - **説明**：この権限で何ができるかの簡単な説明（例：「組織に新しいメンバーを招待」）。
+4. **権限を作成** をクリックして保存。
+
+#### Tips \{#tips}
+
+- 明確でアクションベースの命名を推奨（例：`invite:member`、`manage:billing`）。
+- 組織権限と API 権限を明確に分けて混同を避ける。
+
+**例**
+
+| 組織権限         | 説明                       |
+| ---------------- | -------------------------- |
+| `invite:member`  | 組織に新しいメンバーを招待 |
+| `manage:billing` | 組織の請求設定を編集       |
+
+### グローバルロールの設定 \{#configure-global-roles}
+
+Logto コンソールまたは [Management API 経由](https://openapi.logto.io/group/endpoint-roles) でグローバルロールを作成・設定し、テナント全体で適用される権限をまとめます。
+
+グローバルロールは以下のいずれかです：
+
+- **ユーザーロール**：エンドユーザーに割り当て、API や機能へのアクセス権限を付与。
+- **マシン間通信 (M2M) ロール**：M2M アプリに割り当て、API や機能へのアクセス権限を付与（Logto Management API へのリンクも可能）。
+
+:::note
+これら 2 種類のロールは混在・作成後のタイプ変更はできません。ロールのタイプに応じてユーザーまたは M2M アプリを割り当ててください。
+:::
+
+#### Logto コンソールでグローバルロールを作成 \{#create-global-roles-in-logto-console}
+
+1. <CloudLink to="/roles">コンソール → ロール</CloudLink> にアクセス。
+2. **ロールを作成** をクリック。
+3. 以下を入力：
+   - **ロール名**：明確で説明的な名前（例：`admin`、`viewer`、`billing-manager`）。
+   - **ロールタイプ**：**ユーザー** または **マシン間通信 (M2M)** から選択。**Logto Management API へのリンクはマシン間通信 (M2M) ロールのみ可能**。
+   - **説明**：ロールの目的を簡単に説明（例：「フルアクセスの管理者ロール」「閲覧専用のビューワーロール」）。
+   - **権限の割り当て**：このロールに付与する API リソースの権限（スコープ）を選択。必要に応じて後から更新可能。
+4. **ロールを作成** をクリックして保存。
+
+#### グローバルロールへのユーザーまたは M2M アプリの割り当て \{#assign-users-or-m2m-apps-to-global-roles}
+
+1. <CloudLink to="/roles">コンソール → ロール</CloudLink> にアクセス。
+2. 割り当てたいロールをクリック。
+3. **ユーザーロール** の場合は **ユーザー** タブ、**M2M ロール** の場合は **machine-to-machine apps** タブをクリック。
+4. **ユーザーを割り当て** または **M2M アプリを割り当て** をクリック。
+5. 割り当てたいユーザーまたは M2M アプリを検索。
+6. 選択して **割り当て** をクリック。
+
+#### デフォルトグローバルロール \{#default-global-roles}
+
+新規ユーザーの **デフォルトロール** として 1 つ以上のグローバルロールを設定できます。デフォルトロールは、ユーザーが自己サインアップまたは Management API 経由で作成された際に自動的に割り当てられます。<CloudLink to="/roles">コンソール > ロール</CloudLink> の詳細ページ「一般」タブで切り替え可能です。
+
+### 組織ロールの設定 \{#configure-organization-roles}
+
+Logto コンソールまたは [Management API 経由](https://openapi.logto.io/group/endpoint-organization-roles) で組織ロールを作成し、各組織内で適用される権限をまとめます。組織ロールは [組織テンプレート](/authorization/organization-template) で定義されます。
+
+組織ロールは以下のいずれかです：
+
+- **ユーザーロール**：組織内のエンドユーザーに割り当て、API や機能へのアクセス権限を付与。
+- **マシン間通信 (M2M) ロール**：組織内の M2M アプリに割り当て、API や機能へのアクセス権限を付与（Logto Management API へのリンクは不可）。
+
+:::note
+これら 2 種類のロールは混在・作成後のタイプ変更はできません。ロールのタイプに応じてユーザーまたは M2M アプリを割り当ててください。
+:::
+
+#### Logto コンソールで組織ロールを作成 \{#create-organization-roles-in-logto-console}
+
+{/* eslint-disable-next-line prettier/prettier */}
+1. <CloudLink to="/organization-template/organization-roles">コンソール → 組織テンプレート → 組織ロール</CloudLink> にアクセス。
+2. **組織ロールを作成** をクリック。
+3. 以下を入力：
+   - **ロール名**：明確で説明的な名前（例：`admin`、`member`、`billing-manager`）。
+   - **ロールタイプ**：**ユーザー** または **マシン間通信 (M2M)** から選択。**Logto Management API へのリンクはマシン間通信 (M2M) ロールのみ可能**。
+   - **説明**：ロールの目的を簡単に説明（例：「フルアクセスの管理者ロール」「基本アクセスのメンバーロール」）。
+4. **ロールを作成** をクリックして保存。
+5. **権限の割り当て** モーダルで、このロールに付与する組織権限や API リソース権限を選択。必要に応じて後から更新可能。
+
+#### 組織ロールへのユーザーまたは M2M アプリの割り当て \{#assign-users-or-m2m-apps-to-organization-roles}
+
+組織ロールは組織ごとに固有なので、組織コンテキスト内でユーザーや M2M アプリを割り当てます。
+
+1. <CloudLink to="/organizations">コンソール → 組織</CloudLink> にアクセス。
+2. 管理したい組織を選択。
+3. **ユーザーロール** の場合は **ユーザー** タブ、**M2M ロール** の場合は **machine-to-machine apps** タブをクリック。
+4. ユーザーまたは M2M アプリがまだ組織メンバーでない場合は **メンバー追加** または **M2M アプリ追加** で組織に追加し、その際に 1 つ以上の組織ロールを割り当て可能。
+5. 既にメンバーの場合は、名前横の三点メニューから **組織ロール編集** を選択。
+6. 開いたモーダルで割り当てたい組織ロールを選択・保存。
+
+#### ジャストインタイム (JIT) プロビジョニング \{#just-in-time-jit-provisioning}
+
+ユーザーや M2M アプリが組織に参加するタイミングで組織ロールを割り当てることも可能です。詳細は [ジャストインタイム (JIT) プロビジョニング](/organizations/just-in-time-provisioning) を参照してください。
+
+### バックエンドや API での認可 (Authorization) 強制 \{#enforcing-authorization-in-your-backend-or-api}
+
+Logto は [JSON Web Token (JWT)](https://auth.wiki/jwt) に必要なクレーム (claims) を含めて発行し、アプリや API で認可 (Authorization) を強制できます。
+
+認可 (Authorization) を強制するには、バックエンドや API で以下を実施します：
+
+1. クライアントに `Authorization: Bearer <token>` 形式で有効なアクセス トークンの提示を要求。
+2. アクセス トークンが Logto によって発行され、有効期限内であり、リクエストされたアクションに必要な権限（スコープ）を持つことを検証。
+3. トークンがない・無効・必要な権限がない場合はエラー（例：HTTP 401 Unauthorized または HTTP 403 Forbidden）で応答。
+
+詳細な手順や言語別ガイドは [アクセス トークンの検証方法](/authorization/validate-access-tokens) を参照してください。
+
+### アプリケーションへの Logto RBAC 統合 \{#integrate-logto-rbac-with-your-application}
+
+Logto RBAC は次のいずれかの方法でアプリケーションに統合できます：
+
+- **Logto SDK**：[Logto SDK](/quick-starts) を利用し、認証 (Authentication)・認可 (Authorization) フローを組み込み。
+- **標準 OAuth 2.0 / OIDC ライブラリ**：好みの OAuth 2.0 または OpenID Connect ライブラリで必要なフローを実装。
+
+統合後は、選択した RBAC モデルに合わせて適切なパラメーターでアクセス トークンをリクエストし、API リクエストの `Authorization` ヘッダーにトークンを付与して権限を強制します。
+
+各モデルの実装ガイドは上記セクションを参照してください。
+
+## 応用シナリオ \{#advanced-scenarios}
+
+Logto でより高度な RBAC ユースケースを探求：
+
+- **グローバルロールと組織ロールの組み合わせ**：必要に応じて両方をユーザー / クライアントに割り当て可能。Logto はリクエストされたトークンコンテキストに基づき解決します。
+- **複数アプリ**：共有リソースやスコープでアプリ横断 RBAC を実現。
+- **動的権限**：必要に応じて RBAC と実行時チェック（例：所有権、属性）を組み合わせて高度なシナリオに対応。
+- **カスタムトークンクレーム**：[カスタムクレーム](/developers/custom-token-claims) で必要に応じてトークンを拡張。
+
+## ベストプラクティス & よくある落とし穴 \{#best-practices-common-pitfalls}
+
+- **最小権限の原則**：各ロールに必要な権限のみを付与。
+- **権限の肥大化防止**：権限モデルはシンプルかつ保守しやすく。
+- **ロール / 権限の見直し・更新**：プロダクトの進化に合わせて RBAC モデルを定期的に監査。
+- **職務分離**：機密・管理アクション用に明確なロールを作成。
+- **ステージング環境での RBAC テスト**：権限境界や昇格の検証。
+
+## よくある質問 \{#faqs}
+
+<details>
+<summary>
+
+### すべての組織でロールや権限を一括更新するには？ \{#how-do-i-update-roles-or-permissions-across-all-organizations}
+
+</summary>
+
+グローバルな変更には [組織テンプレート](/authorization/organization-template) を更新してください。既存の組織は更新を継承できます。
+
+</details>
+
+<details>
+<summary>
+
+### ロールや権限を動的に変更できますか？ \{#can-i-change-roles-permissions-dynamically}
+
+</summary>
+
+はい、ロールやその権限はいつでも更新可能です。
+
+</details>
+
+<details>
+<summary>
+
+### ロールから権限を削除するとどうなりますか？ \{#what-happens-if-i-remove-a-permission-from-a-role}
+
+</summary>
+
+そのロールを持つユーザー / クライアントは、新しいトークン発行時に即座にその権限を失います。
+
+</details>
+
+<details>
+<summary>
+
+### 誰がどのロールを持っているか監査するには？ \{#how-can-i-audit-who-has-what-role}
+
+</summary>
+
+Logto コンソールまたは API でロール割り当てを一覧できます。
+
+</details>
+
+<details>
+<summary>
+
+### ロールや権限は API で割り当て可能ですか？ \{#can-roles-and-permissions-be-assigned-via-api}
+
+</summary>
+
+はい、コンソールと Management API の両方でロールや割り当てをプログラム的に管理できます。
+
+</details>
+
+## さらに読む \{#further-reading}
+
+<Url href="/authorization/organization-template">組織テンプレート</Url>
+<Url href="/developers/custom-token-claims">トークンクレームのカスタマイズ</Url>
+<Url href="/authorization/validate-access-tokens">アクセス トークンの検証方法</Url>
+<Url href="/authorization/global-api-resources">グローバル API リソースの保護</Url>
+<Url href="/authorization/organization-permissions">組織（非 API）権限の保護</Url>
+<Url href="/authorization/organization-level-api-resources">組織レベル API リソースの保護</Url>
