@@ -1,0 +1,256 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+我們使用 [PyJWT](https://github.com/jpadilla/pyjwt) 來驗證 JWT。如尚未安裝，請先執行：
+
+```bash
+pip install pyjwt[crypto]
+```
+
+首先，新增這些共用工具來處理 JWT 驗證：
+
+```py title="jwt_validator.py"
+import jwt
+from jwt import PyJWKClient
+from typing import Dict, Any
+from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
+
+jwks_client = PyJWKClient(JWKS_URI)
+
+def validate_jwt_token(token: str) -> Dict[str, Any]:
+    """驗證 JWT 權杖並回傳內容 (payload)"""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+            issuer=ISSUER,
+            options={'verify_aud': False}  # 受眾 (Audience) 會手動驗證
+        )
+
+        verify_payload(payload)
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        raise AuthorizationError(f'Invalid token: {str(e)}', 401)
+    except Exception as e:
+        raise AuthorizationError(f'Token validation failed: {str(e)}', 401)
+
+def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
+    """從 JWT payload 建立 AuthInfo"""
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    audience = payload.get('aud', [])
+    if isinstance(audience, str):
+        audience = [audience]
+
+    return AuthInfo(
+        sub=payload.get('sub'),
+        client_id=payload.get('client_id'),
+        organization_id=payload.get('organization_id'),
+        scopes=scopes,
+        audience=audience
+    )
+
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """根據權限模型驗證 payload"""
+    # 請根據權限模型實作驗證邏輯
+    # 相關內容會在下方權限模型區段說明
+    pass
+```
+
+接著，實作中介軟體（middleware）來驗證存取權杖 (Access token)：
+
+<Tabs groupId="api-framework">
+  <TabItem value="fastapi" label="FastAPI">
+
+```py title="auth_middleware.py"
+from fastapi import HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jwt_validator import validate_jwt_token, create_auth_info
+
+security = HTTPBearer()
+
+async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthInfo:
+    try:
+        token = credentials.credentials
+        payload = validate_jwt_token(token)
+        return create_auth_info(payload)
+
+    except AuthorizationError as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+```
+
+  </TabItem>
+  <TabItem value="flask" label="Flask">
+
+```py title="auth_middleware.py"
+from functools import wraps
+from flask import request, jsonify, g
+from jwt_validator import validate_jwt_token, create_auth_info
+
+def verify_access_token(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            token = extract_bearer_token_from_headers(dict(request.headers))
+            payload = validate_jwt_token(token)
+
+            # 將驗證資訊存入 Flask 的 g 物件以便通用存取
+            g.auth = create_auth_info(payload)
+
+            return f(*args, **kwargs)
+
+        except AuthorizationError as e:
+            return jsonify({'error': str(e)}), e.status
+
+    return decorated_function
+```
+
+  </TabItem>
+  <TabItem value="django" label="Django">
+
+```py title="auth_middleware.py"
+from django.http import JsonResponse
+from jwt_validator import validate_jwt_token, create_auth_info
+
+def require_access_token(view_func):
+    def wrapper(request, *args, **kwargs):
+        try:
+            headers = {key.replace('HTTP_', '').replace('_', '-').lower(): value
+                      for key, value in request.META.items() if key.startswith('HTTP_')}
+
+            token = extract_bearer_token_from_headers(headers)
+            payload = validate_jwt_token(token)
+
+            # 將驗證資訊附加到 request 以便通用存取
+            request.auth = create_auth_info(payload)
+
+            return view_func(request, *args, **kwargs)
+
+        except AuthorizationError as e:
+            return JsonResponse({'error': str(e)}, status=e.status)
+
+    return wrapper
+```
+
+  </TabItem>
+  <TabItem value="django-rest-framework" label="Django REST Framework">
+
+```py title="auth_middleware.py"
+from rest_framework.authentication import TokenAuthentication
+from rest_framework import exceptions
+from jwt_validator import validate_jwt_token, create_auth_info
+
+class AccessTokenAuthentication(TokenAuthentication):
+    keyword = 'Bearer'  # 使用 'Bearer' 而非 'Token'
+
+    def authenticate_credentials(self, key):
+        """
+        透過驗證 JWT 權杖進行驗證。
+        """
+        try:
+            payload = validate_jwt_token(key)
+            auth_info = create_auth_info(payload)
+
+            # 建立一個類似 user 的物件，持有驗證資訊以便通用存取
+            user = type('User', (), {
+                'auth': auth_info,
+                'is_authenticated': True,
+                'is_anonymous': False,
+                'is_active': True,
+            })()
+
+            return (user, key)
+
+        except AuthorizationError as e:
+            if e.status == 401:
+                raise exceptions.AuthenticationFailed(str(e))
+            else:  # 403
+                raise exceptions.PermissionDenied(str(e))
+```
+
+  </TabItem>
+</Tabs>
+
+根據你的權限模型，在 `jwt_validator.py` 中實作對應的驗證邏輯：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """驗證全域 API 資源 (Global API resources) 的 payload"""
+    # 檢查受眾 (audience) 宣告是否符合你的 API 資源標示符
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Invalid audience')
+
+    # 檢查全域 API 資源所需的權限範圍 (scopes)
+    required_scopes = ['api:read', 'api:write']  # 請替換為實際所需權限範圍
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient scope')
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """驗證組織權限 (Organization permissions) 的 payload"""
+    # 檢查受眾 (audience) 宣告是否符合組織格式
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    has_org_audience = any(aud.startswith('urn:logto:organization:') for aud in audiences)
+    if not has_org_audience:
+        raise AuthorizationError('Invalid audience for organization permissions')
+
+    # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+    expected_org_id = 'your-organization-id'  # 從請求內容取得
+    expected_aud = f'urn:logto:organization:{expected_org_id}'
+    if expected_aud not in audiences:
+        raise AuthorizationError('Organization ID mismatch')
+
+    # 檢查所需的組織權限範圍
+    required_scopes = ['invite:users', 'manage:settings']  # 請替換為實際所需權限範圍
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient organization scope')
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """驗證組織層級 API 資源 (Organization-level API resources) 的 payload"""
+    # 檢查受眾 (audience) 宣告是否符合你的 API 資源標示符
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Invalid audience for organization-level API resources')
+
+    # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+    expected_org_id = 'your-organization-id'  # 從請求內容取得
+    org_id = payload.get('organization_id')
+    if expected_org_id != org_id:
+        raise AuthorizationError('Organization ID mismatch')
+
+    # 檢查組織層級 API 資源所需的權限範圍
+    required_scopes = ['api:read', 'api:write']  # 請替換為實際所需權限範圍
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient organization-level API scopes')
+```
+
+</TabItem>
+</Tabs>

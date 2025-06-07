@@ -1,0 +1,277 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+Wir verwenden [jose](https://github.com/panva/jose) in diesem Beispiel, um das JWT zu validieren. Installiere es, falls du es noch nicht getan hast:
+
+```bash
+npm install jose
+```
+
+Oder verwende deinen bevorzugten Paketmanager (z. B. `pnpm` oder `yarn`).
+
+Füge zunächst diese gemeinsamen Hilfsfunktionen hinzu, um die JWT-Validierung zu handhaben:
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwtToken(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // Implementiere hier deine Verifizierungslogik basierend auf dem Berechtigungsmodell
+  // Dies wird im Abschnitt zu den Berechtigungsmodellen unten gezeigt
+}
+```
+
+Implementiere dann das Middleware, um das Zugangstoken zu überprüfen:
+
+<Tabs groupId="api-framework">
+  <TabItem value="express" label="Express.js">
+
+```ts title="auth-middleware.ts"
+import { Request, Response, NextFunction } from 'express';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+// Erweitere das Express Request-Interface um auth
+declare global {
+  namespace Express {
+    interface Request {
+      auth?: AuthInfo;
+    }
+  }
+}
+
+export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = extractBearerTokenFromHeaders(req.headers);
+    const payload = await validateJwtToken(token);
+
+    // Auth-Info im Request für generische Nutzung speichern
+    req.auth = createAuthInfo(payload);
+
+    next();
+  } catch (err: any) {
+    return res.status(err.status ?? 401).json({ error: err.message });
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="koa" label="Koa.js">
+
+```ts title="auth-middleware.ts"
+import { Context, Next } from 'koa';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+export async function koaVerifyAccessToken(ctx: Context, next: Next) {
+  try {
+    const token = extractBearerTokenFromHeaders(ctx.request.headers);
+    const payload = await validateJwtToken(token);
+
+    // Auth-Info im State für generische Nutzung speichern
+    ctx.state.auth = createAuthInfo(payload);
+
+    await next();
+  } catch (err: any) {
+    ctx.status = err.status ?? 401;
+    ctx.body = { error: err.message };
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="fastify" label="Fastify">
+
+```ts title="auth-middleware.ts"
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+// Erweitere das Fastify Request-Interface um auth
+declare module 'fastify' {
+  interface FastifyRequest {
+    auth?: AuthInfo;
+  }
+}
+
+export async function fastifyVerifyAccessToken(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const token = extractBearerTokenFromHeaders(request.headers);
+    const payload = await validateJwtToken(token);
+
+    // Auth-Info im Request für generische Nutzung speichern
+    request.auth = createAuthInfo(payload);
+  } catch (err: any) {
+    reply.code(err.status ?? 401).send({ error: err.message });
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="hapi" label="Hapi.js">
+
+```ts title="auth-middleware.ts"
+import { Request, ResponseToolkit } from '@hapi/hapi';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
+  try {
+    const token = extractBearerTokenFromHeaders(request.headers);
+    const payload = await validateJwtToken(token);
+
+    // Auth-Info in request.app für generische Nutzung speichern
+    request.app.auth = createAuthInfo(payload);
+
+    return h.continue;
+  } catch (err: any) {
+    return h
+      .response({ error: err.message })
+      .code(err.status ?? 401)
+      .takeover();
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="nestjs" label="NestJS">
+
+```ts title="access-token.guard.ts"
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+@Injectable()
+export class AccessTokenGuard implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest();
+
+    try {
+      const token = extractBearerTokenFromHeaders(req.headers);
+      const payload = await validateJwtToken(token);
+
+      // Auth-Info im Request für generische Nutzung speichern
+      req.auth = createAuthInfo(payload);
+
+      return true;
+    } catch (err: any) {
+      if (err.status === 401) throw new UnauthorizedException(err.message);
+      throw new ForbiddenException(err.message);
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+Implementiere gemäß deinem Berechtigungsmodell die entsprechende Verifizierungslogik in `jwt-validator.ts`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Globale API-Ressourcen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Ungültige Zielgruppe (audience)');
+  }
+
+  // Überprüfe erforderliche Berechtigungen für globale API-Ressourcen
+  const requiredScopes = ['api:read', 'api:write']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende Berechtigung (scope)');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Organisations-(Nicht-API)-Berechtigungen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch dem Organisationsformat entspricht
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Ungültige Zielgruppe für Organisationsberechtigungen');
+  }
+
+  // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Request-Kontext extrahieren)
+  const expectedOrgId = 'your-organization-id'; // Aus dem Request-Kontext extrahieren
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Organisation-ID stimmt nicht überein');
+  }
+
+  // Überprüfe erforderliche Organisationsberechtigungen
+  const requiredScopes = ['invite:users', 'manage:settings']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende Organisationsberechtigung (scope)');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Organisationsbezogene API-Ressourcen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Ungültige Zielgruppe für organisationsbezogene API-Ressourcen');
+  }
+
+  // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Request-Kontext extrahieren)
+  const expectedOrgId = 'your-organization-id'; // Aus dem Request-Kontext extrahieren
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Organisation-ID stimmt nicht überein');
+  }
+
+  // Überprüfe erforderliche Berechtigungen für organisationsbezogene API-Ressourcen
+  const requiredScopes = ['api:read', 'api:write']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende organisationsbezogene API-Berechtigungen (scope)');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

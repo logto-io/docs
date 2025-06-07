@@ -1,0 +1,227 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+新增 JWT 驗證 (Authentication) 所需的 NuGet 套件：
+
+```xml
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+```
+
+建立驗證服務以處理權杖驗證：
+
+```csharp title="JwtValidationService.cs"
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using YourApiNamespace.Exceptions;
+
+namespace YourApiNamespace.Services
+{
+    public interface IJwtValidationService
+    {
+        Task ValidateTokenAsync(TokenValidatedContext context);
+    }
+
+    public class JwtValidationService : IJwtValidationService
+    {
+        public async Task ValidateTokenAsync(TokenValidatedContext context)
+        {
+            var principal = context.Principal!;
+
+            try
+            {
+                // 根據權限 (Permission) 模型新增你的驗證邏輯
+                ValidatePayload(principal);
+            }
+            catch (AuthorizationException)
+            {
+                throw; // 重新拋出授權 (Authorization) 例外
+            }
+            catch (Exception ex)
+            {
+                throw new AuthorizationException($"Token validation failed: {ex.Message}", 401);
+            }
+        }
+
+        private void ValidatePayload(ClaimsPrincipal principal)
+        {
+            // 根據權限 (Permission) 模型實作你的驗證邏輯
+            // 相關內容會在下方權限 (Permission) 模型章節說明
+        }
+    }
+}
+```
+
+在你的 `Program.cs` 中設定 JWT 驗證 (Authentication)：
+
+```csharp title="Program.cs"
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using YourApiNamespace.Services;
+using YourApiNamespace.Exceptions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 加入服務到容器
+builder.Services.AddControllers();
+builder.Services.AddScoped<IJwtValidationService, JwtValidationService>();
+
+// 設定 JWT 驗證 (Authentication)
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = AuthConstants.Issuer;
+        options.MetadataAddress = $"{AuthConstants.Issuer}/.well-known/openid_configuration";
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthConstants.Issuer,
+            ValidateAudience = false, // 受眾 (Audience) 驗證將根據權限 (Permission) 模型手動處理
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validationService = context.HttpContext.RequestServices
+                    .GetRequiredService<IJwtValidationService>();
+
+                await validationService.ValidateTokenAsync(context);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // 將 JWT 函式庫錯誤處理為 401
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                context.Response.WriteAsync($"{{\"error\": \"Invalid token\"}}");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// 驗證 (Authentication) / 授權 (Authorization) 失敗的全域錯誤處理
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AuthorizationException ex)
+    {
+        context.Response.StatusCode = ex.StatusCode;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync($"{{\"error\": \"{ex.Message}\"}}");
+    }
+});
+
+// 設定 HTTP 請求管線
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+
+根據你的權限 (Permission) 模型，在 `JwtValidationService` 中實作相應的驗證邏輯：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // 檢查受眾 (Audience) 宣告是否符合你的 API 資源標示符 (Resource indicator)
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience");
+    }
+
+    // 檢查全域 API 資源所需的權限範圍 (Scopes)
+    var requiredScopes = new[] { "api:read", "api:write" }; // 請替換為實際所需權限範圍
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // 檢查受眾 (Audience) 宣告是否符合組織格式
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    var hasOrgAudience = audiences.Any(aud => aud.StartsWith("urn:logto:organization:"));
+
+    if (!hasOrgAudience)
+    {
+        throw new AuthorizationException("Invalid audience for organization permissions");
+    }
+
+    // 檢查組織 ID 是否符合上下文（你可能需要從請求上下文取得）
+    var expectedOrgId = "your-organization-id"; // 從請求上下文取得
+    var expectedAud = $"urn:logto:organization:{expectedOrgId}";
+    if (!audiences.Contains(expectedAud))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // 檢查所需的組織權限範圍 (Scopes)
+    var requiredScopes = new[] { "invite:users", "manage:settings" }; // 請替換為實際所需權限範圍
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // 檢查受眾 (Audience) 宣告是否符合你的 API 資源標示符 (Resource indicator)
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience for organization-level API resources");
+    }
+
+    // 檢查組織 ID 是否符合上下文（你可能需要從請求上下文取得）
+    var expectedOrgId = "your-organization-id"; // 從請求上下文取得
+    var orgId = principal.FindFirst("organization_id")?.Value;
+    if (!expectedOrgId.Equals(orgId))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // 檢查組織層級 API 資源所需的權限範圍 (Scopes)
+    var requiredScopes = new[] { "api:read", "api:write" }; // 請替換為實際所需權限範圍
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization-level API scopes");
+    }
+}
+```
+
+</TabItem>
+</Tabs>

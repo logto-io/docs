@@ -1,0 +1,227 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+JWT 인증 (Authentication)을 위해 필요한 NuGet 패키지를 추가하세요:
+
+```xml
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+```
+
+토큰 검증을 처리할 검증 서비스를 생성하세요:
+
+```csharp title="JwtValidationService.cs"
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using YourApiNamespace.Exceptions;
+
+namespace YourApiNamespace.Services
+{
+    public interface IJwtValidationService
+    {
+        Task ValidateTokenAsync(TokenValidatedContext context);
+    }
+
+    public class JwtValidationService : IJwtValidationService
+    {
+        public async Task ValidateTokenAsync(TokenValidatedContext context)
+        {
+            var principal = context.Principal!;
+
+            try
+            {
+                // 권한 모델에 따라 검증 로직을 여기에 추가하세요
+                ValidatePayload(principal);
+            }
+            catch (AuthorizationException)
+            {
+                throw; // 인가 (Authorization) 예외는 다시 throw
+            }
+            catch (Exception ex)
+            {
+                throw new AuthorizationException($"토큰 검증 실패: {ex.Message}", 401);
+            }
+        }
+
+        private void ValidatePayload(ClaimsPrincipal principal)
+        {
+            // 권한 모델에 따라 검증 로직을 여기에 구현하세요
+            // 아래 권한 모델 섹션에서 예시를 확인할 수 있습니다
+        }
+    }
+}
+```
+
+`Program.cs`에서 JWT 인증 (Authentication)을 구성하세요:
+
+```csharp title="Program.cs"
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using YourApiNamespace.Services;
+using YourApiNamespace.Exceptions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 서비스 등록
+builder.Services.AddControllers();
+builder.Services.AddScoped<IJwtValidationService, JwtValidationService>();
+
+// JWT 인증 (Authentication) 구성
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = AuthConstants.Issuer;
+        options.MetadataAddress = $"{AuthConstants.Issuer}/.well-known/openid_configuration";
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthConstants.Issuer,
+            ValidateAudience = false, // 권한 모델에 따라 audience는 직접 검증
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validationService = context.HttpContext.RequestServices
+                    .GetRequiredService<IJwtValidationService>();
+
+                await validationService.ValidateTokenAsync(context);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // JWT 라이브러리 오류를 401로 처리
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                context.Response.WriteAsync($"{{\"error\": \"Invalid token\"}}");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// 인증 (Authentication)/인가 (Authorization) 실패에 대한 전역 에러 처리
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AuthorizationException ex)
+    {
+        context.Response.StatusCode = ex.StatusCode;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync($"{{\"error\": \"{ex.Message}\"}}");
+    }
+});
+
+// HTTP 요청 파이프라인 구성
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+
+권한 모델에 따라 `JwtValidationService`에서 적절한 검증 로직을 구현하세요:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="글로벌 API 리소스">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // audience 클레임이 API 리소스 지표와 일치하는지 확인
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("유효하지 않은 대상 (audience)");
+    }
+
+    // 글로벌 API 리소스에 필요한 스코프 확인
+    var requiredScopes = new[] { "api:read", "api:write" }; // 실제 필요한 스코프로 교체
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("스코프 (scope)가 부족합니다");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="조직 (비-API) 권한">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // audience 클레임이 조직 형식과 일치하는지 확인
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    var hasOrgAudience = audiences.Any(aud => aud.StartsWith("urn:logto:organization:"));
+
+    if (!hasOrgAudience)
+    {
+        throw new AuthorizationException("조직 권한에 대한 유효하지 않은 대상 (audience)");
+    }
+
+    // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+    var expectedOrgId = "your-organization-id"; // 요청 컨텍스트에서 추출
+    var expectedAud = $"urn:logto:organization:{expectedOrgId}";
+    if (!audiences.Contains(expectedAud))
+    {
+        throw new AuthorizationException("조직 ID 불일치");
+    }
+
+    // 필요한 조직 스코프 확인
+    var requiredScopes = new[] { "invite:users", "manage:settings" }; // 실제 필요한 스코프로 교체
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("조직 스코프 (scope)가 부족합니다");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="조직 수준 API 리소스">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // audience 클레임이 API 리소스 지표와 일치하는지 확인
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("조직 수준 API 리소스에 대한 유효하지 않은 대상 (audience)");
+    }
+
+    // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+    var expectedOrgId = "your-organization-id"; // 요청 컨텍스트에서 추출
+    var orgId = principal.FindFirst("organization_id")?.Value;
+    if (!expectedOrgId.Equals(orgId))
+    {
+        throw new AuthorizationException("조직 ID 불일치");
+    }
+
+    // 조직 수준 API 리소스에 필요한 스코프 확인
+    var requiredScopes = new[] { "api:read", "api:write" }; // 실제 필요한 스코프로 교체
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("조직 수준 API 스코프 (scope)가 부족합니다");
+    }
+}
+```
+
+</TabItem>
+</Tabs>

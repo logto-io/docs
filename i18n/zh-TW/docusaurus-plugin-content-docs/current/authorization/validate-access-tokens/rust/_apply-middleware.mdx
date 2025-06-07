@@ -1,0 +1,148 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+<Tabs groupId="api-framework">
+  <TabItem value="axum" label="Axum">
+
+```rust title="main.rs"
+use axum::{
+    extract::Extension,
+    http::StatusCode,
+    middleware,
+    response::Json,
+    routing::get,
+    Router,
+};
+use serde_json::{json, Value};
+use std::sync::Arc;
+use tower_http::cors::CorsLayer;
+
+mod lib;
+mod jwt_validator;
+mod middleware as jwt_middleware;
+
+use lib::AuthInfo;
+use jwt_validator::JwtValidator;
+
+#[tokio::main]
+async fn main() {
+    let validator = Arc::new(JwtValidator::new().await.expect("Failed to initialize JWT validator"));
+
+    let app = Router::new()
+        .route("/api/protected", get(protected_handler))
+        .route("/api/protected/detailed", get(detailed_handler))
+        .layer(middleware::from_fn(jwt_middleware::jwt_middleware))
+        .layer(Extension(validator))
+        .layer(CorsLayer::permissive());
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn protected_handler(Extension(auth): Extension<AuthInfo>) -> Json<Value> {
+    // 直接從 Extension 取得驗證 (Authentication) 資訊
+    Json(json!({ "auth": auth }))
+}
+
+async fn detailed_handler(Extension(auth): Extension<AuthInfo>) -> Json<Value> {
+    // 你的受保護端點邏輯
+    Json(json!({
+        "auth": auth,
+        "message": "成功存取受保護資料"
+    }))
+}
+```
+
+  </TabItem>
+  <TabItem value="actix-web" label="Actix Web">
+
+```rust title="main.rs"
+use actix_web::{middleware::Logger, web, App, HttpRequest, HttpServer, Result};
+use serde_json::{json, Value};
+use std::sync::Arc;
+
+mod lib;
+mod jwt_validator;
+mod middleware as jwt_middleware;
+
+use lib::AuthInfo;
+use jwt_validator::JwtValidator;
+use jwt_middleware::JwtMiddleware;
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    let validator = Arc::new(JwtValidator::new().await.expect("Failed to initialize JWT validator"));
+
+    HttpServer::new(move || {
+        App::new()
+            .app_data(web::Data::new(validator.clone()))
+            .wrap(Logger::default())
+            .service(
+                web::scope("/api/protected")
+                    .wrap(JwtMiddleware::new(validator.clone()))
+                    .route("", web::get().to(protected_handler))
+                    .route("/detailed", web::get().to(detailed_handler))
+            )
+    })
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
+}
+
+async fn protected_handler(req: HttpRequest) -> Result<web::Json<Value>> {
+    // 從 request extensions 取得驗證 (Authentication) 資訊
+    let auth = req.extensions().get::<AuthInfo>().unwrap();
+    Ok(web::Json(json!({ "auth": auth })))
+}
+
+async fn detailed_handler(req: HttpRequest) -> Result<web::Json<Value>> {
+    // 你的受保護端點邏輯
+    let auth = req.extensions().get::<AuthInfo>().unwrap();
+    Ok(web::Json(json!({
+        "auth": auth,
+        "message": "成功存取受保護資料"
+    })))
+}
+```
+
+  </TabItem>
+  <TabItem value="rocket" label="Rocket">
+
+```rust title="main.rs"
+use rocket::{get, launch, routes, serde::json::Json, State};
+use serde_json::{json, Value};
+
+mod lib;
+mod jwt_validator;
+mod guards;
+
+use lib::AuthInfo;
+use jwt_validator::JwtValidator;
+
+#[get("/api/protected")]
+fn protected_handler(auth: AuthInfo) -> Json<Value> {
+    // 直接從 request guard 取得驗證 (Authentication) 資訊
+    Json(json!({ "auth": auth }))
+}
+
+#[get("/api/protected/detailed")]
+fn detailed_handler(auth: AuthInfo) -> Json<Value> {
+    // 你的受保護端點邏輯
+    Json(json!({
+        "auth": auth,
+        "message": "成功存取受保護資料"
+    }))
+}
+
+#[launch]
+async fn rocket() -> _ {
+    let validator = JwtValidator::new().await.expect("Failed to initialize JWT validator");
+
+    rocket::build()
+        .manage(validator)
+        .mount("/", routes![protected_handler, detailed_handler])
+}
+```
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,256 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+我们使用 [jwt](https://github.com/jwt/ruby-jwt) gem 来验证 JWT。请将其添加到你的 Gemfile：
+
+```ruby title="Gemfile"
+gem 'jwt'
+# net-http 是 Ruby 2.7 及以上版本的标准库，无需显式添加
+```
+
+然后运行：
+
+```bash
+bundle install
+```
+
+首先，添加这些用于处理 JWKS 和令牌验证的通用工具：
+
+```ruby title="jwt_validator.rb"
+require 'jwt'
+require 'net/http'
+require 'json'
+
+class JwtValidator
+  include AuthHelpers
+
+  def self.fetch_jwks
+    @jwks ||= begin
+      uri = URI(AuthConstants::JWKS_URI)
+      response = Net::HTTP.get_response(uri)
+      raise AuthorizationError.new('Failed to fetch JWKS', 401) unless response.is_a?(Net::HTTPSuccess)
+
+      jwks_data = JSON.parse(response.body)
+      JWT::JWK::Set.new(jwks_data)
+    end
+  end
+
+  def self.validate_jwt_token(token)
+    jwks = fetch_jwks
+
+    # 让 JWT 库根据 JWKS 自动检测算法
+    decoded_token = JWT.decode(token, nil, true, {
+      iss: AuthConstants::ISSUER,
+      verify_iss: true,
+      verify_aud: false, # 我们会根据权限模型手动验证受众 (Audience)
+      jwks: jwks
+    })[0]
+
+    decoded_token
+  end
+
+  def self.create_auth_info(payload)
+    scopes = payload['scope']&.split(' ') || []
+    audience = payload['aud'] || []
+
+    AuthInfo.new(
+      payload['sub'],
+      payload['client_id'],
+      payload['organization_id'],
+      scopes,
+      audience
+    )
+  end
+
+  def self.verify_payload(payload)
+    # 在这里根据权限模型实现你的验证逻辑
+    # 具体内容将在下方权限模型部分展示
+  end
+end
+```
+
+接下来，实现中间件以验证访问令牌 (Access token)：
+
+<Tabs groupId="api-framework">
+  <TabItem value="rails" label="Rails">
+
+```ruby title="app/controllers/concerns/jwt_authentication.rb"
+module JwtAuthentication
+  extend ActiveSupport::Concern
+  include AuthHelpers
+
+  included do
+    before_action :verify_access_token, only: [:protected_action] # 添加需要保护的具体 action
+  end
+
+  private
+
+  def verify_access_token
+    begin
+      token = extract_bearer_token(request)
+      decoded_token = JwtValidator.validate_jwt_token(token)
+
+      JwtValidator.verify_payload(decoded_token)
+      # 存储认证信息以便通用使用
+      @auth = JwtValidator.create_auth_info(decoded_token)
+
+    rescue AuthorizationError => e
+      render json: { error: e.message }, status: e.status
+    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+      render json: { error: 'Invalid token' }, status: 401
+    end
+  end
+end
+```
+
+  </TabItem>
+  <TabItem value="sinatra" label="Sinatra">
+
+```ruby title="auth_middleware.rb"
+class AuthMiddleware
+  include AuthHelpers
+
+  def initialize(app)
+    @app = app
+  end
+
+  def call(env)
+    request = Rack::Request.new(env)
+
+    # 只保护特定路由
+    if request.path.start_with?('/api/protected')
+      begin
+        token = extract_bearer_token(request)
+        decoded_token = JwtValidator.validate_jwt_token(token)
+
+        JwtValidator.verify_payload(decoded_token)
+        # 在 env 中存储认证信息以便通用使用
+        env['auth'] = JwtValidator.create_auth_info(decoded_token)
+
+      rescue AuthorizationError => e
+        return [e.status, { 'Content-Type' => 'application/json' }, [{ error: e.message }.to_json]]
+      rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+        return [401, { 'Content-Type' => 'application/json' }, [{ error: 'Invalid token' }.to_json]]
+      end
+    end
+
+    @app.call(env)
+  end
+end
+```
+
+  </TabItem>
+  <TabItem value="grape" label="Grape">
+
+```ruby title="auth_helpers.rb"
+module GrapeAuthHelpers
+  include AuthHelpers
+
+  def authenticate_user!
+    begin
+      token = extract_bearer_token(request)
+      decoded_token = JwtValidator.validate_jwt_token(token)
+
+      JwtValidator.verify_payload(decoded_token)
+      # 存储认证信息以便通用使用
+      @auth = JwtValidator.create_auth_info(decoded_token)
+
+    rescue AuthorizationError => e
+      error!({ error: e.message }, e.status)
+    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+      error!({ error: 'Invalid token' }, 401)
+    end
+  end
+
+  def auth
+    @auth
+  end
+end
+```
+
+  </TabItem>
+</Tabs>
+
+根据你的权限模型，在 `JwtValidator` 中实现相应的验证逻辑：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全局 API 资源">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 检查受众 (Audience) 声明是否匹配你的 API 资源指示器
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Invalid audience')
+  end
+
+  # 检查全局 API 资源所需的权限 (Scopes)
+  required_scopes = ['api:read', 'api:write'] # 替换为你实际需要的权限
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient scope')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="组织 (非 API) 权限">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 检查受众 (Audience) 声明是否符合组织格式
+  audiences = payload['aud'] || []
+  has_org_audience = audiences.any? { |aud| aud.start_with?('urn:logto:organization:') }
+
+  unless has_org_audience
+    raise AuthorizationError.new('Invalid audience for organization permissions')
+  end
+
+  # 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
+  expected_org_id = 'your-organization-id' # 从请求上下文中提取
+  expected_aud = "urn:logto:organization:#{expected_org_id}"
+  unless audiences.include?(expected_aud)
+    raise AuthorizationError.new('Organization ID mismatch')
+  end
+
+  # 检查所需的组织权限 (Scopes)
+  required_scopes = ['invite:users', 'manage:settings'] # 替换为你实际需要的权限
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient organization scope')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="组织级 API 资源">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 检查受众 (Audience) 声明是否匹配你的 API 资源指示器
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Invalid audience for organization-level API resources')
+  end
+
+  # 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
+  expected_org_id = 'your-organization-id' # 从请求上下文中提取
+  org_id = payload['organization_id']
+  unless expected_org_id == org_id
+    raise AuthorizationError.new('Organization ID mismatch')
+  end
+
+  # 检查组织级 API 资源所需的权限 (Scopes)
+  required_scopes = ['api:read', 'api:write'] # 替换为你实际需要的权限
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient organization-level API scopes')
+  end
+end
+```
+
+</TabItem>
+</Tabs>

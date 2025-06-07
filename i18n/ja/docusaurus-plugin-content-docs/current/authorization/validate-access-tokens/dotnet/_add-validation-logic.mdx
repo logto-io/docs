@@ -1,0 +1,227 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+JWT 認証 (Authentication) に必要な NuGet パッケージを追加します：
+
+```xml
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+```
+
+トークン検証を処理するためのバリデーションサービスを作成します：
+
+```csharp title="JwtValidationService.cs"
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using YourApiNamespace.Exceptions;
+
+namespace YourApiNamespace.Services
+{
+    public interface IJwtValidationService
+    {
+        Task ValidateTokenAsync(TokenValidatedContext context);
+    }
+
+    public class JwtValidationService : IJwtValidationService
+    {
+        public async Task ValidateTokenAsync(TokenValidatedContext context)
+        {
+            var principal = context.Principal!;
+
+            try
+            {
+                // 権限 (Permission) モデルに基づくバリデーションロジックをここに追加
+                ValidatePayload(principal);
+            }
+            catch (AuthorizationException)
+            {
+                throw; // 認可 (Authorization) 例外を再スロー
+            }
+            catch (Exception ex)
+            {
+                throw new AuthorizationException($"Token validation failed: {ex.Message}", 401);
+            }
+        }
+
+        private void ValidatePayload(ClaimsPrincipal principal)
+        {
+            // 権限 (Permission) モデルに基づく検証ロジックをここに実装
+            // この内容は下記の権限 (Permission) モデルセクションで示します
+        }
+    }
+}
+```
+
+`Program.cs` で JWT 認証 (Authentication) を設定します：
+
+```csharp title="Program.cs"
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using YourApiNamespace.Services;
+using YourApiNamespace.Exceptions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// サービスをコンテナに追加
+builder.Services.AddControllers();
+builder.Services.AddScoped<IJwtValidationService, JwtValidationService>();
+
+// JWT 認証 (Authentication) を設定
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = AuthConstants.Issuer;
+        options.MetadataAddress = $"{AuthConstants.Issuer}/.well-known/openid_configuration";
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthConstants.Issuer,
+            ValidateAudience = false, // 権限 (Permission) モデルに基づき手動でオーディエンスを検証
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validationService = context.HttpContext.RequestServices
+                    .GetRequiredService<IJwtValidationService>();
+
+                await validationService.ValidateTokenAsync(context);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // JWT ライブラリエラーを 401 として処理
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                context.Response.WriteAsync($"{{\"error\": \"Invalid token\"}}");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// 認証 (Authentication) / 認可 (Authorization) 失敗時のグローバルエラーハンドリング
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AuthorizationException ex)
+    {
+        context.Response.StatusCode = ex.StatusCode;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync($"{{\"error\": \"{ex.Message}\"}}");
+    }
+});
+
+// HTTP リクエストパイプラインの設定
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+
+権限 (Permission) モデルに応じて、`JwtValidationService` で適切なバリデーションロジックを実装します：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="グローバル API リソース">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience");
+    }
+
+    // グローバル API リソースに必要なスコープ (Scope) を確認
+    var requiredScopes = new[] { "api:read", "api:write" }; // 実際の必要スコープに置き換えてください
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織 (非 API) 権限 (Permission)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // オーディエンス (Audience) クレームが組織フォーマットと一致するか確認
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    var hasOrgAudience = audiences.Any(aud => aud.StartsWith("urn:logto:organization:"));
+
+    if (!hasOrgAudience)
+    {
+        throw new AuthorizationException("Invalid audience for organization permissions");
+    }
+
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+    var expectedOrgId = "your-organization-id"; // リクエストコンテキストから抽出
+    var expectedAud = $"urn:logto:organization:{expectedOrgId}";
+    if (!audiences.Contains(expectedAud))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // 必要な組織スコープ (Scope) を確認
+    var requiredScopes = new[] { "invite:users", "manage:settings" }; // 実際の必要スコープに置き換えてください
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織レベル API リソース">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience for organization-level API resources");
+    }
+
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+    var expectedOrgId = "your-organization-id"; // リクエストコンテキストから抽出
+    var orgId = principal.FindFirst("organization_id")?.Value;
+    if (!expectedOrgId.Equals(orgId))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // 組織レベル API リソースに必要なスコープ (Scope) を確認
+    var requiredScopes = new[] { "api:read", "api:write" }; // 実際の必要スコープに置き換えてください
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization-level API scopes");
+    }
+}
+```
+
+</TabItem>
+</Tabs>

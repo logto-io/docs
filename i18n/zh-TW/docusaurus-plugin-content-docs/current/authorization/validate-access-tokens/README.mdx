@@ -1,0 +1,219 @@
+---
+sidebar_position: 6
+sidebar_label: 在 API 中驗證存取權杖 (Access token)
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DotNetAddValidationLogic from './dotnet/_add-validation-logic.mdx';
+import DotNetApplyMiddleware from './dotnet/_apply-middleware.mdx';
+import DotNetInit from './dotnet/_init.mdx';
+import GoAddValidationLogic from './go/_add-validation-logic.mdx';
+import GoApplyMiddleware from './go/_apply-middleware.mdx';
+import GoInit from './go/_init.mdx';
+import JavaAddValidationLogic from './java/_add-validation-logic.mdx';
+import JavaApplyMiddleware from './java/_apply-middleware.mdx';
+import JavaInit from './java/_init.mdx';
+import NodeAddValidationLogic from './nodejs/_add-validation-logic.mdx';
+import NodeApplyMiddleware from './nodejs/_apply-middleware.mdx';
+import NodeInit from './nodejs/_init.mdx';
+import PhpAddValidationLogic from './php/_add-validation-logic.mdx';
+import PhpApplyMiddleware from './php/_apply-middleware.mdx';
+import PhpInit from './php/_init.mdx';
+import PythonAddValidationLogic from './python/_add-validation-logic.mdx';
+import PythonApplyMiddleware from './python/_apply-middleware.mdx';
+import PythonInit from './python/_init.mdx';
+import RubyAddValidationLogic from './ruby/_add-validation-logic.mdx';
+import RubyApplyMiddleware from './ruby/_apply-middleware.mdx';
+import RubyInit from './ruby/_init.mdx';
+import RustAddValidationLogic from './rust/_add-validation-logic.mdx';
+import RustApplyMiddleware from './rust/_apply-middleware.mdx';
+import RustInit from './rust/_init.mdx';
+
+# 如何在你的 API 服務或後端驗證存取權杖 (Access token)
+
+驗證存取權杖 (Access token) 是在 Logto 中實施 [角色型存取控制 (RBAC, Role-based access control)](/authorization/role-based-access-control) 的關鍵步驟。本指南將帶你逐步驗證 Logto 發行的 JWT，包括檢查簽章、簽發者 (Issuer)、受眾 (Audience)、過期時間、權限 (Scopes) 以及組織 (Organization) 上下文。
+
+## 開始之前
+
+- 本指南假設你已熟悉 Logto 的 RBAC 概念。
+- 如果你要保護 API 資源，請先完成 [保護全域 API 資源](/authorization/global-api-resources) 指南。
+- 如果你要保護應用程式內功能或流程（非 API 權限），請先完成 [保護組織（非 API）權限](/authorization/organization-permissions) 指南。
+- 如果你要保護組織層級 API 資源，請先完成 [保護組織層級 API 資源](/authorization/organization-level-api-resources) 指南。
+
+## 步驟 1：初始化常數與工具函式
+
+在你的程式碼中定義必要的常數與工具函式，用於處理權杖提取與驗證。有效的請求必須包含 `Authorization` 標頭，格式為 `Bearer <access_token>`。
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeInit />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonInit />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoInit />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaInit />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetInit />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpInit />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyInit />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustInit />
+  </TabItem>
+</Tabs>
+
+## 步驟 2：取得你的 Logto 租戶資訊
+
+你需要以下資訊來驗證 Logto 發行的權杖：
+
+- JSON Web Key Set (JWKS) URI：Logto 公鑰的網址，用於驗證 JWT 簽章。
+- 簽發者 (Issuer)：預期的簽發者值（Logto 的 OIDC URL）。
+
+首先，找到你的 Logto 租戶端點。你可以在以下位置找到：
+
+- 在 Logto Console，**設定** → **網域**。
+- 在任何你於 Logto 設定過的應用程式設定中，**設定** → **端點與憑證**。
+
+### 從 OpenID Connect 探索端點取得
+
+這些值可以從 Logto 的 OpenID Connect 探索端點取得：
+
+```
+https://<your-logto-endpoint>/oidc/.well-known/openid-configuration
+```
+
+以下為範例回應（省略其他欄位）：
+
+```json
+{
+  "jwks_uri": "https://your-tenant.logto.app/oidc/jwks",
+  "issuer": "https://your-tenant.logto.app/oidc"
+}
+```
+
+### 在程式碼中硬編碼（不建議）
+
+由於 Logto 不允許自訂 JWKS URI 或簽發者 (Issuer)，你可以直接在程式碼中硬編碼這些值。但不建議在正式環境這麼做，因為未來若有設定變動會增加維護成本。
+
+- JWKS URI：`https://<your-logto-endpoint>/oidc/jwks`
+- 簽發者 (Issuer)：`https://<your-logto-endpoint>/oidc`
+
+## 步驟 3：驗證權杖與權限
+
+提取權杖並取得 OIDC 設定後，請驗證下列項目：
+
+- **簽章 (Signature)：** JWT 必須有效且由 Logto（透過 JWKS）簽署。
+- **簽發者 (Issuer)：** 必須與你的 Logto 租戶簽發者一致。
+- **受眾 (Audience)：** 必須與在 Logto 註冊的 API 資源標示符 (Resource indicator) 或組織上下文相符（如適用）。
+- **過期時間 (Expiration)：** 權杖不得過期。
+- **權限 (Scopes)：** 權杖必須包含你 API / 行為所需的權限範圍。Scopes 會以空格分隔字串出現在 `scope` 宣告 (Claim)。
+- **組織上下文 (Organization context)：** 若保護的是組織層級 API 資源，需驗證 `organization_id` 宣告 (Claim)。
+
+想了解更多 JWT 結構與宣告，請參閱 [JSON Web Token](https://auth.wiki/jwt)。
+
+### 各權限模型需檢查的項目
+
+不同權限模型下，宣告與驗證規則如下：
+
+| 權限模型           | 受眾宣告 (`aud`)                                         | 組織宣告 (`organization_id`) | 權限（需檢查的 scopes） (`scope`) |
+| ------------------ | -------------------------------------------------------- | ---------------------------- | --------------------------------- |
+| 全域 API 資源      | API 資源標示符 (Resource indicator)                      | _無_                         | API 資源權限                      |
+| 組織（非 API）權限 | `urn:logto:organization:<id>`（組織上下文於 `aud` 宣告） | _無_                         | 組織權限                          |
+| 組織層級 API 資源  | API 資源標示符 (Resource indicator)                      | 組織 ID（必須與請求相符）    | API 資源權限                      |
+
+<small>
+  對於非 API 組織權限，組織上下文以 `aud` 宣告表示 （例如
+  `urn:logto:organization:abc123`）。`organization_id` 宣告僅存在於組織層級 API 資源權杖中。
+</small>
+
+:::tip
+務必同時驗證權限（scopes）與上下文（受眾、組織）以確保多租戶 API 的安全性。
+:::
+
+### 新增驗證邏輯
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeAddValidationLogic />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonAddValidationLogic />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoAddValidationLogic />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaAddValidationLogic />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetAddValidationLogic />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpAddValidationLogic />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyAddValidationLogic />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustAddValidationLogic />
+  </TabItem>
+</Tabs>
+
+## 步驟 4：將中介軟體 (Middleware) 套用到你的 API
+
+將中介軟體 (Middleware) 套用到你要保護的 API 路由。
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeApplyMiddleware />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonApplyMiddleware />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoApplyMiddleware />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaApplyMiddleware />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetApplyMiddleware />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpApplyMiddleware />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyApplyMiddleware />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustApplyMiddleware />
+  </TabItem>
+</Tabs>
+
+## 步驟 5：測試你的實作
+
+使用有效與無效權杖測試你的 API，確保：
+
+- 有效權杖可通過並取得存取權。
+- 無效或缺少權杖時回傳 `401 Unauthorized`。若權杖有效但缺少必要權限或上下文，回傳 `403 Forbidden`。
+
+## 相關資源
+
+<Url href="/developers/custom-token-claims">自訂權杖宣告 (Claim)</Url>
+<Url href="https://openid.net/specs/openid-connect-discovery-1_0.html">
+  OpenID Connect 探索 (Discovery)
+</Url>
+<Url href="https://www.rfc-editor.org/rfc/rfc8707.html">
+  RFC 8707：資源標示符 (Resource Indicators)
+</Url>

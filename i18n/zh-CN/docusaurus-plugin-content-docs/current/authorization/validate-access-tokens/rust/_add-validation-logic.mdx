@@ -1,0 +1,463 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+我们使用 [jsonwebtoken](https://github.com/Keats/jsonwebtoken) 来验证 JWT。请在你的 `Cargo.toml` 中添加所需依赖：
+
+<Tabs groupId="api-framework">
+  <TabItem value="axum" label="Axum">
+
+```toml title="Cargo.toml"
+[dependencies]
+axum = "0.7"
+tokio = { version = "1.0", features = ["full"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors"] }
+jsonwebtoken = "9.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+```
+
+  </TabItem>
+  <TabItem value="actix-web" label="Actix Web">
+
+```toml title="Cargo.toml"
+[dependencies]
+actix-web = "4.0"
+tokio = { version = "1.0", features = ["full"] }
+jsonwebtoken = "9.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+```
+
+  </TabItem>
+  <TabItem value="rocket" label="Rocket">
+
+```toml title="Cargo.toml"
+[dependencies]
+rocket = { version = "0.5", features = ["json"] }
+tokio = { version = "1.0", features = ["full"] }
+jsonwebtoken = "9.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+```
+
+  </TabItem>
+</Tabs>
+
+首先，添加这些通用工具以处理 JWT 验证：
+
+```rust title="jwt_validator.rs"
+use crate::{AuthInfo, AuthorizationError, ISSUER, JWKS_URI};
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use serde_json::Value;
+use std::collections::HashMap;
+
+pub struct JwtValidator {
+    jwks: HashMap<String, DecodingKey>,
+}
+
+impl JwtValidator {
+    pub async fn new() -> Result<Self, AuthorizationError> {
+        let jwks = Self::fetch_jwks().await?;
+        Ok(Self { jwks })
+    }
+
+    async fn fetch_jwks() -> Result<HashMap<String, DecodingKey>, AuthorizationError> {
+        let response = reqwest::get(JWKS_URI).await.map_err(|e| {
+            AuthorizationError::with_status(format!("Failed to fetch JWKS: {}", e), 401)
+        })?;
+
+        let jwks: Value = response.json().await.map_err(|e| {
+            AuthorizationError::with_status(format!("Failed to parse JWKS: {}", e), 401)
+        })?;
+
+        let mut keys = HashMap::new();
+
+        if let Some(keys_array) = jwks["keys"].as_array() {
+            for key in keys_array {
+                if let (Some(kid), Some(kty), Some(n), Some(e)) = (
+                    key["kid"].as_str(),
+                    key["kty"].as_str(),
+                    key["n"].as_str(),
+                    key["e"].as_str(),
+                ) {
+                    if kty == "RSA" {
+                        if let Ok(decoding_key) = DecodingKey::from_rsa_components(n, e) {
+                            keys.insert(kid.to_string(), decoding_key);
+                        }
+                    }
+                }
+            }
+        }
+
+        if keys.is_empty() {
+            return Err(AuthorizationError::with_status("No valid keys found in JWKS", 401));
+        }
+
+        Ok(keys)
+    }
+
+    pub fn validate_jwt_token(&self, token: &str) -> Result<AuthInfo, AuthorizationError> {
+        let header = decode_header(token).map_err(|e| {
+            AuthorizationError::with_status(format!("Invalid token header: {}", e), 401)
+        })?;
+
+        let kid = header.kid.ok_or_else(|| {
+            AuthorizationError::with_status("Token missing kid claim", 401)
+        })?;
+
+        let key = self.jwks.get(&kid).ok_or_else(|| {
+            AuthorizationError::with_status("Unknown key ID", 401)
+        })?;
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_issuer(&[ISSUER]);
+        validation.validate_aud = false; // 我们会手动验证受众 (Audience)
+
+        let token_data = decode::<Value>(token, key, &validation).map_err(|e| {
+            AuthorizationError::with_status(format!("Invalid token: {}", e), 401)
+        })?;
+
+        let claims = token_data.claims;
+        self.verify_payload(&claims)?;
+
+        Ok(self.create_auth_info(claims))
+    }
+
+    fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+        // 在此根据权限 (Permission) 模型实现你的验证逻辑
+        // 具体内容将在下方权限 (Permission) 模型部分展示
+        Ok(())
+    }
+
+    fn create_auth_info(&self, claims: Value) -> AuthInfo {
+        let scopes = claims["scope"]
+            .as_str()
+            .map(|s| s.split(' ').map(|s| s.to_string()).collect())
+            .unwrap_or_default();
+
+        let audience = match &claims["aud"] {
+            Value::Array(arr) => arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect(),
+            Value::String(s) => vec![s.clone()],
+            _ => vec![],
+        };
+
+        AuthInfo::new(
+            claims["sub"].as_str().unwrap_or_default().to_string(),
+            claims["client_id"].as_str().map(|s| s.to_string()),
+            claims["organization_id"].as_str().map(|s| s.to_string()),
+            scopes,
+            audience,
+        )
+    }
+}
+```
+
+然后，实现中间件以验证访问令牌 (Access token)：
+
+<Tabs groupId="api-framework">
+  <TabItem value="axum" label="Axum">
+
+```rust title="middleware.rs"
+use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
+use crate::jwt_validator::JwtValidator;
+use axum::{
+    extract::Request,
+    http::{HeaderMap, StatusCode},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    Extension, Json,
+};
+use serde_json::json;
+use std::sync::Arc;
+
+pub async fn jwt_middleware(
+    Extension(validator): Extension<Arc<JwtValidator>>,
+    headers: HeaderMap,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, AuthorizationError> {
+    let authorization = headers
+        .get("authorization")
+        .and_then(|h| h.to_str().ok());
+
+    let token = extract_bearer_token(authorization)?;
+    let auth_info = validator.validate_jwt_token(token)?;
+
+    // 将认证信息存储到请求扩展中，便于通用使用
+    request.extensions_mut().insert(auth_info);
+
+    Ok(next.run(request).await)
+}
+
+impl IntoResponse for AuthorizationError {
+    fn into_response(self) -> Response {
+        let status = StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::FORBIDDEN);
+        (status, Json(json!({ "error": self.message }))).into_response()
+    }
+}
+```
+
+  </TabItem>
+  <TabItem value="actix-web" label="Actix Web">
+
+```rust title="middleware.rs"
+use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
+use crate::jwt_validator::JwtValidator;
+use actix_web::{
+    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
+    web, Error, HttpMessage, HttpResponse,
+};
+use futures::future::{ok, Ready};
+use std::sync::Arc;
+
+pub struct JwtMiddleware {
+    validator: Arc<JwtValidator>,
+}
+
+impl JwtMiddleware {
+    pub fn new(validator: Arc<JwtValidator>) -> Self {
+        Self { validator }
+    }
+}
+
+impl<S, B> Transform<S, ServiceRequest> for JwtMiddleware
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type InitError = ();
+    type Transform = JwtMiddlewareService<S>;
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(JwtMiddlewareService {
+            service,
+            validator: self.validator.clone(),
+        })
+    }
+}
+
+pub struct JwtMiddlewareService<S> {
+    service: S,
+    validator: Arc<JwtValidator>,
+}
+
+impl<S, B> Service<ServiceRequest> for JwtMiddlewareService<S>
+where
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = futures::future::LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
+
+    forward_ready!(service);
+
+    fn call(&self, req: ServiceRequest) -> Self::Future {
+        let validator = self.validator.clone();
+
+        Box::pin(async move {
+            let authorization = req
+                .headers()
+                .get("authorization")
+                .and_then(|h| h.to_str().ok());
+
+            match extract_bearer_token(authorization)
+                .and_then(|token| validator.validate_jwt_token(token))
+            {
+                Ok(auth_info) => {
+                    // 将认证信息存储到请求扩展中，便于通用使用
+                    req.extensions_mut().insert(auth_info);
+                    let fut = self.service.call(req);
+                    fut.await
+                }
+                Err(e) => {
+                    let response = HttpResponse::build(
+                        actix_web::http::StatusCode::from_u16(e.status_code)
+                            .unwrap_or(actix_web::http::StatusCode::FORBIDDEN),
+                    )
+                    .json(serde_json::json!({ "error": e.message }));
+
+                    Ok(req.into_response(response))
+                }
+            }
+        })
+    }
+}
+```
+
+  </TabItem>
+  <TabItem value="rocket" label="Rocket">
+
+```rust title="guards.rs"
+use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
+use crate::jwt_validator::JwtValidator;
+use rocket::{
+    http::Status,
+    outcome::Outcome,
+    request::{self, FromRequest, Request},
+    State,
+};
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for AuthInfo {
+    type Error = AuthorizationError;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let validator = match req.guard::<&State<JwtValidator>>().await {
+            Outcome::Success(validator) => validator,
+            Outcome::Failure((status, _)) => {
+                return Outcome::Failure((
+                    status,
+                    AuthorizationError::with_status("JWT validator not found", 500),
+                ))
+            }
+            Outcome::Forward(()) => {
+                return Outcome::Forward(())
+            }
+        };
+
+        let authorization = req.headers().get_one("authorization");
+
+        match extract_bearer_token(authorization)
+            .and_then(|token| validator.validate_jwt_token(token))
+        {
+            Ok(auth_info) => Outcome::Success(auth_info),
+            Err(e) => {
+                let status = Status::from_code(e.status_code).unwrap_or(Status::Forbidden);
+                Outcome::Failure((status, e))
+            }
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+根据你的权限 (Permission) 模型，在 `JwtValidator` 中实现相应的验证逻辑：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全局 API 资源">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    if !audiences.contains(&"https://your-api-resource-indicator") {
+        return Err(AuthorizationError::new("Invalid audience"));
+    }
+
+    // 检查全局 API 资源所需的权限 (Scopes)
+    let required_scopes = vec!["api:read", "api:write"]; // 替换为你实际需要的权限 (Scopes)
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("Insufficient scope"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="组织 (非 API) 权限 (Permissions)">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // 检查受众 (Audience) 声明是否匹配组织格式
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    let has_org_audience = audiences.iter().any(|aud| aud.starts_with("urn:logto:organization:"));
+    if !has_org_audience {
+        return Err(AuthorizationError::new("Invalid audience for organization permissions"));
+    }
+
+    // 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
+    let expected_org_id = "your-organization-id"; // 从请求上下文中提取
+    let expected_aud = format!("urn:logto:organization:{}", expected_org_id);
+    if !audiences.contains(&expected_aud.as_str()) {
+        return Err(AuthorizationError::new("Organization ID mismatch"));
+    }
+
+    // 检查所需的组织权限 (Scopes)
+    let required_scopes = vec!["invite:users", "manage:settings"]; // 替换为你实际需要的权限 (Scopes)
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("Insufficient organization scope"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="组织级 API 资源">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    if !audiences.contains(&"https://your-api-resource-indicator") {
+        return Err(AuthorizationError::new("Invalid audience for organization-level API resources"));
+    }
+
+    // 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
+    let expected_org_id = "your-organization-id"; // 从请求上下文中提取
+    let org_id = claims["organization_id"].as_str().unwrap_or_default();
+    if expected_org_id != org_id {
+        return Err(AuthorizationError::new("Organization ID mismatch"));
+    }
+
+    // 检查组织级 API 资源所需的权限 (Scopes)
+    let required_scopes = vec!["api:read", "api:write"]; // 替换为你实际需要的权限 (Scopes)
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("Insufficient organization-level API scopes"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+</Tabs>

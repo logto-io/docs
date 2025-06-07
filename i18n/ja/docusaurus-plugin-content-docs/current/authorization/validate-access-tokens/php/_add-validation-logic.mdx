@@ -1,0 +1,375 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+[firebase/php-jwt](https://github.com/firebase/php-jwt) を使用して JWT の検証を行います。Composer でインストールしてください：
+
+<Tabs groupId="api-framework">
+  <TabItem value="laravel" label="Laravel">
+
+```bash
+composer require firebase/php-jwt
+```
+
+  </TabItem>
+  <TabItem value="symfony" label="Symfony">
+
+```bash
+composer require firebase/php-jwt
+```
+
+  </TabItem>
+  <TabItem value="slim" label="Slim">
+
+```bash
+composer require firebase/php-jwt slim/slim:"4.*" slim/psr7
+```
+
+  </TabItem>
+</Tabs>
+
+まず、JWT 検証を処理するための共通ユーティリティを追加します：
+
+```php title="JwtValidator.php"
+<?php
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
+
+class JwtValidator
+{
+    use AuthHelpers;
+
+    private static ?array $jwks = null;
+
+    public static function fetchJwks(): array
+    {
+        if (self::$jwks === null) {
+            $jwksData = file_get_contents(AuthConstants::JWKS_URI);
+            if ($jwksData === false) {
+                throw new AuthorizationException('Failed to fetch JWKS', 401);
+            }
+
+            self::$jwks = json_decode($jwksData, true);
+        }
+
+        return self::$jwks;
+    }
+
+    public static function validateJwtToken(string $token): array
+    {
+        try {
+            $jwks = self::fetchJwks();
+            $keys = JWK::parseKeySet($jwks);
+
+            $decoded = JWT::decode($token, $keys);
+            $payload = (array) $decoded;
+
+            // 発行者 (Issuer) の検証
+            if (($payload['iss'] ?? '') !== AuthConstants::ISSUER) {
+                throw new AuthorizationException('Invalid issuer', 401);
+            }
+
+            self::verifyPayload($payload);
+            return $payload;
+
+        } catch (AuthorizationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new AuthorizationException('Invalid token: ' . $e->getMessage(), 401);
+        }
+    }
+
+    public static function createAuthInfo(array $payload): AuthInfo
+    {
+        $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+        $audience = $payload['aud'] ?? [];
+
+        if (is_string($audience)) {
+            $audience = [$audience];
+        }
+
+        return new AuthInfo(
+            sub: $payload['sub'],
+            clientId: $payload['client_id'] ?? null,
+            organizationId: $payload['organization_id'] ?? null,
+            scopes: $scopes,
+            audience: $audience
+        );
+    }
+
+    private static function verifyPayload(array $payload): void
+    {
+        // 権限モデルに基づく検証ロジックをここに実装してください
+        // この内容は下記の権限モデルセクションで説明します
+    }
+}
+```
+
+次に、アクセス トークンの検証用ミドルウェアを実装します：
+
+<Tabs groupId="api-framework">
+  <TabItem value="laravel" label="Laravel">
+
+```php title="app/Http/Middleware/VerifyAccessToken.php"
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+class VerifyAccessToken
+{
+    use AuthHelpers;
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        try {
+            $token = $this->extractBearerToken($request->headers->all());
+            $payload = JwtValidator::validateJwtToken($token);
+
+            // 認証情報をリクエスト属性に格納し、汎用的に利用できるようにする
+            $request->attributes->set('auth', JwtValidator::createAuthInfo($payload));
+
+            return $next($request);
+
+        } catch (AuthorizationException $e) {
+            return response()->json(['error' => $e->getMessage()], $e->statusCode);
+        }
+    }
+}
+```
+
+`app/Http/Kernel.php` でミドルウェアを登録します：
+
+```php title="app/Http/Kernel.php"
+protected $middlewareAliases = [
+    // ... 他のミドルウェア
+    'auth.token' => \App\Http\Middleware\VerifyAccessToken::class,
+];
+```
+
+  </TabItem>
+  <TabItem value="symfony" label="Symfony">
+
+```php title="src/Security/JwtAuthenticator.php"
+<?php
+
+namespace App\Security;
+
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+
+class JwtAuthenticator extends AbstractAuthenticator
+{
+    use AuthHelpers;
+
+    public function supports(Request $request): ?bool
+    {
+        return $request->headers->has('authorization');
+    }
+
+    public function authenticate(Request $request): Passport
+    {
+        try {
+            $token = $this->extractBearerToken($request->headers->all());
+            $payload = JwtValidator::validateJwtToken($token);
+            $authInfo = JwtValidator::createAuthInfo($payload);
+
+            // 認証情報をリクエスト属性に格納し、汎用的に利用できるようにする
+            $request->attributes->set('auth', $authInfo);
+
+            return new SelfValidatingPassport(new UserBadge($payload['sub']));
+
+        } catch (AuthorizationException $e) {
+            throw new AuthenticationException($e->getMessage());
+        }
+    }
+
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    {
+        return null; // コントローラーへ処理を継続
+    }
+
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
+    {
+        return new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_UNAUTHORIZED);
+    }
+}
+```
+
+`config/packages/security.yaml` でセキュリティを設定します：
+
+```yaml title="config/packages/security.yaml"
+security:
+  firewalls:
+    api:
+      pattern: ^/api/protected
+      stateless: true
+      custom_authenticators:
+        - App\Security\JwtAuthenticator
+```
+
+  </TabItem>
+  <TabItem value="slim" label="Slim">
+
+```php title="src/Middleware/JwtMiddleware.php"
+<?php
+
+namespace App\Middleware;
+
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Slim\Psr7\Response;
+
+class JwtMiddleware implements MiddlewareInterface
+{
+    use AuthHelpers;
+
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        try {
+            $headers = $request->getHeaders();
+            $token = $this->extractBearerToken($headers);
+            $payload = JwtValidator::validateJwtToken($token);
+
+            // 認証情報をリクエスト属性に格納し、汎用的に利用できるようにする
+            $request = $request->withAttribute('auth', JwtValidator::createAuthInfo($payload));
+
+            return $handler->handle($request);
+
+        } catch (AuthorizationException $e) {
+            $response = new Response();
+            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus($e->statusCode);
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+権限モデルに応じて、`JwtValidator` 内で適切な検証ロジックを実装してください：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="グローバル API リソース">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Invalid audience');
+    }
+
+    // グローバル API リソースに必要なスコープを確認
+    $requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient scope');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織 (非 API) 権限">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // オーディエンス (Audience) クレームが組織フォーマットと一致するか確認
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    $hasOrgAudience = false;
+    foreach ($audiences as $aud) {
+        if (str_starts_with($aud, 'urn:logto:organization:')) {
+            $hasOrgAudience = true;
+            break;
+        }
+    }
+
+    if (!$hasOrgAudience) {
+        throw new AuthorizationException('Invalid audience for organization permissions');
+    }
+
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
+    $expectedOrgId = 'your-organization-id'; // リクエストコンテキストから取得
+    $expectedAud = "urn:logto:organization:{$expectedOrgId}";
+    if (!in_array($expectedAud, $audiences)) {
+        throw new AuthorizationException('Organization ID mismatch');
+    }
+
+    // 必要な組織スコープを確認
+    $requiredScopes = ['invite:users', 'manage:settings']; // 実際に必要なスコープに置き換えてください
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient organization scope');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織レベルの API リソース">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Invalid audience for organization-level API resources');
+    }
+
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
+    $expectedOrgId = 'your-organization-id'; // リクエストコンテキストから取得
+    $orgId = $payload['organization_id'] ?? null;
+    if ($expectedOrgId !== $orgId) {
+        throw new AuthorizationException('Organization ID mismatch');
+    }
+
+    // 組織レベルの API リソースに必要なスコープを確認
+    $requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient organization-level API scopes');
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>

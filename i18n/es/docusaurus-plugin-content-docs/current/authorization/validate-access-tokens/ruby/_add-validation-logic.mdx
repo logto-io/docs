@@ -1,0 +1,256 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+Usamos la gema [jwt](https://github.com/jwt/ruby-jwt) para validar JWTs. Añádela a tu Gemfile:
+
+```ruby title="Gemfile"
+gem 'jwt'
+# net-http es parte de la biblioteca estándar de Ruby desde Ruby 2.7, no es necesario añadirlo explícitamente
+```
+
+Luego ejecuta:
+
+```bash
+bundle install
+```
+
+Primero, añade estas utilidades compartidas para manejar JWKS y la validación de tokens:
+
+```ruby title="jwt_validator.rb"
+require 'jwt'
+require 'net/http'
+require 'json'
+
+class JwtValidator
+  include AuthHelpers
+
+  def self.fetch_jwks
+    @jwks ||= begin
+      uri = URI(AuthConstants::JWKS_URI)
+      response = Net::HTTP.get_response(uri)
+      raise AuthorizationError.new('No se pudo obtener JWKS', 401) unless response.is_a?(Net::HTTPSuccess)
+
+      jwks_data = JSON.parse(response.body)
+      JWT::JWK::Set.new(jwks_data)
+    end
+  end
+
+  def self.validate_jwt_token(token)
+    jwks = fetch_jwks
+
+    # Deja que la biblioteca JWT maneje la detección del algoritmo desde JWKS
+    decoded_token = JWT.decode(token, nil, true, {
+      iss: AuthConstants::ISSUER,
+      verify_iss: true,
+      verify_aud: false, # Verificaremos la audiencia manualmente según el modelo de permisos
+      jwks: jwks
+    })[0]
+
+    decoded_token
+  end
+
+  def self.create_auth_info(payload)
+    scopes = payload['scope']&.split(' ') || []
+    audience = payload['aud'] || []
+
+    AuthInfo.new(
+      payload['sub'],
+      payload['client_id'],
+      payload['organization_id'],
+      scopes,
+      audience
+    )
+  end
+
+  def self.verify_payload(payload)
+    # Implementa aquí tu lógica de verificación según el modelo de permisos
+    # Esto se mostrará en la sección de modelos de permisos más abajo
+  end
+end
+```
+
+Luego, implementa el middleware para verificar el token de acceso:
+
+<Tabs groupId="api-framework">
+  <TabItem value="rails" label="Rails">
+
+```ruby title="app/controllers/concerns/jwt_authentication.rb"
+module JwtAuthentication
+  extend ActiveSupport::Concern
+  include AuthHelpers
+
+  included do
+    before_action :verify_access_token, only: [:protected_action] # Añade acciones específicas
+  end
+
+  private
+
+  def verify_access_token
+    begin
+      token = extract_bearer_token(request)
+      decoded_token = JwtValidator.validate_jwt_token(token)
+
+      JwtValidator.verify_payload(decoded_token)
+      # Guarda la información de autenticación para uso general
+      @auth = JwtValidator.create_auth_info(decoded_token)
+
+    rescue AuthorizationError => e
+      render json: { error: e.message }, status: e.status
+    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+      render json: { error: 'Token inválido' }, status: 401
+    end
+  end
+end
+```
+
+  </TabItem>
+  <TabItem value="sinatra" label="Sinatra">
+
+```ruby title="auth_middleware.rb"
+class AuthMiddleware
+  include AuthHelpers
+
+  def initialize(app)
+    @app = app
+  end
+
+  def call(env)
+    request = Rack::Request.new(env)
+
+    # Solo protege rutas específicas
+    if request.path.start_with?('/api/protected')
+      begin
+        token = extract_bearer_token(request)
+        decoded_token = JwtValidator.validate_jwt_token(token)
+
+        JwtValidator.verify_payload(decoded_token)
+        # Guarda la información de autenticación en env para uso general
+        env['auth'] = JwtValidator.create_auth_info(decoded_token)
+
+      rescue AuthorizationError => e
+        return [e.status, { 'Content-Type' => 'application/json' }, [{ error: e.message }.to_json]]
+      rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+        return [401, { 'Content-Type' => 'application/json' }, [{ error: 'Token inválido' }.to_json]]
+      end
+    end
+
+    @app.call(env)
+  end
+end
+```
+
+  </TabItem>
+  <TabItem value="grape" label="Grape">
+
+```ruby title="auth_helpers.rb"
+module GrapeAuthHelpers
+  include AuthHelpers
+
+  def authenticate_user!
+    begin
+      token = extract_bearer_token(request)
+      decoded_token = JwtValidator.validate_jwt_token(token)
+
+      JwtValidator.verify_payload(decoded_token)
+      # Guarda la información de autenticación para uso general
+      @auth = JwtValidator.create_auth_info(decoded_token)
+
+    rescue AuthorizationError => e
+      error!({ error: e.message }, e.status)
+    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
+      error!({ error: 'Token inválido' }, 401)
+    end
+  end
+
+  def auth
+    @auth
+  end
+end
+```
+
+  </TabItem>
+</Tabs>
+
+Según tu modelo de permisos, implementa la lógica de verificación apropiada en `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos de API globales">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifica que el reclamo de audiencia coincida con tu indicador de recurso de API
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Audiencia inválida')
+  end
+
+  # Verifica los alcances requeridos para recursos de API globales
+  required_scopes = ['api:read', 'api:write'] # Reemplaza con tus alcances requeridos
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Alcance insuficiente')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permisos de organización (no API)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifica que el reclamo de audiencia coincida con el formato de organización
+  audiences = payload['aud'] || []
+  has_org_audience = audiences.any? { |aud| aud.start_with?('urn:logto:organization:') }
+
+  unless has_org_audience
+    raise AuthorizationError.new('Audiencia inválida para permisos de organización')
+  end
+
+  # Verifica que el ID de la organización coincida con el contexto (puede que necesites extraer esto del contexto de la solicitud)
+  expected_org_id = 'your-organization-id' # Extrae del contexto de la solicitud
+  expected_aud = "urn:logto:organization:#{expected_org_id}"
+  unless audiences.include?(expected_aud)
+    raise AuthorizationError.new('ID de organización no coincide')
+  end
+
+  # Verifica los alcances requeridos de la organización
+  required_scopes = ['invite:users', 'manage:settings'] # Reemplaza con tus alcances requeridos
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Alcance de organización insuficiente')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API a nivel de organización">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifica que el reclamo de audiencia coincida con tu indicador de recurso de API
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Audiencia inválida para recursos de API a nivel de organización')
+  end
+
+  # Verifica que el ID de la organización coincida con el contexto (puede que necesites extraer esto del contexto de la solicitud)
+  expected_org_id = 'your-organization-id' # Extrae del contexto de la solicitud
+  org_id = payload['organization_id']
+  unless expected_org_id == org_id
+    raise AuthorizationError.new('ID de organización no coincide')
+  end
+
+  # Verifica los alcances requeridos para recursos de API a nivel de organización
+  required_scopes = ['api:read', 'api:write'] # Reemplaza con tus alcances requeridos
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Alcances insuficientes para recursos de API a nivel de organización')
+  end
+end
+```
+
+</TabItem>
+</Tabs>

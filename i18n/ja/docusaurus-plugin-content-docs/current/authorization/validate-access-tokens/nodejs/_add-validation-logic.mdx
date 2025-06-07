@@ -1,0 +1,277 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+この例では [jose](https://github.com/panva/jose) を使用して JWT の検証を行います。まだインストールしていない場合は、インストールしてください：
+
+```bash
+npm install jose
+```
+
+または、お好みのパッケージマネージャー（例： `pnpm` や `yarn`）を使用してください。
+
+まず、JWT 検証を処理するための共通ユーティリティを追加します：
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwtToken(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // 権限モデルに基づく検証ロジックをここに実装してください
+  // この内容は下記の権限モデルセクションで示します
+}
+```
+
+次に、アクセス トークン (Access token) を検証するミドルウェアを実装します：
+
+<Tabs groupId="api-framework">
+  <TabItem value="express" label="Express.js">
+
+```ts title="auth-middleware.ts"
+import { Request, Response, NextFunction } from 'express';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+// Express Request インターフェースを拡張して auth を追加
+declare global {
+  namespace Express {
+    interface Request {
+      auth?: AuthInfo;
+    }
+  }
+}
+
+export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = extractBearerTokenFromHeaders(req.headers);
+    const payload = await validateJwtToken(token);
+
+    // リクエストに認証情報を格納し、汎用的に利用できるようにする
+    req.auth = createAuthInfo(payload);
+
+    next();
+  } catch (err: any) {
+    return res.status(err.status ?? 401).json({ error: err.message });
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="koa" label="Koa.js">
+
+```ts title="auth-middleware.ts"
+import { Context, Next } from 'koa';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+export async function koaVerifyAccessToken(ctx: Context, next: Next) {
+  try {
+    const token = extractBearerTokenFromHeaders(ctx.request.headers);
+    const payload = await validateJwtToken(token);
+
+    // state に認証情報を格納し、汎用的に利用できるようにする
+    ctx.state.auth = createAuthInfo(payload);
+
+    await next();
+  } catch (err: any) {
+    ctx.status = err.status ?? 401;
+    ctx.body = { error: err.message };
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="fastify" label="Fastify">
+
+```ts title="auth-middleware.ts"
+import { FastifyRequest, FastifyReply } from 'fastify';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+// Fastify Request インターフェースを拡張して auth を追加
+declare module 'fastify' {
+  interface FastifyRequest {
+    auth?: AuthInfo;
+  }
+}
+
+export async function fastifyVerifyAccessToken(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const token = extractBearerTokenFromHeaders(request.headers);
+    const payload = await validateJwtToken(token);
+
+    // リクエストに認証情報を格納し、汎用的に利用できるようにする
+    request.auth = createAuthInfo(payload);
+  } catch (err: any) {
+    reply.code(err.status ?? 401).send({ error: err.message });
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="hapi" label="Hapi.js">
+
+```ts title="auth-middleware.ts"
+import { Request, ResponseToolkit } from '@hapi/hapi';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
+  try {
+    const token = extractBearerTokenFromHeaders(request.headers);
+    const payload = await validateJwtToken(token);
+
+    // request.app に認証情報を格納し、汎用的に利用できるようにする
+    request.app.auth = createAuthInfo(payload);
+
+    return h.continue;
+  } catch (err: any) {
+    return h
+      .response({ error: err.message })
+      .code(err.status ?? 401)
+      .takeover();
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="nestjs" label="NestJS">
+
+```ts title="access-token.guard.ts"
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
+import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+
+@Injectable()
+export class AccessTokenGuard implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest();
+
+    try {
+      const token = extractBearerTokenFromHeaders(req.headers);
+      const payload = await validateJwtToken(token);
+
+      // リクエストに認証情報を格納し、汎用的に利用できるようにする
+      req.auth = createAuthInfo(payload);
+
+      return true;
+    } catch (err: any) {
+      if (err.status === 401) throw new UnauthorizedException(err.message);
+      throw new ForbiddenException(err.message);
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+権限モデルに応じて、`jwt-validator.ts` 内で適切な検証ロジックを実装してください：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="グローバル API リソース">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが API リソースインジケーターと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience');
+  }
+
+  // グローバル API リソースに必要なスコープを確認
+  const requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）権限">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが組織フォーマットと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Invalid audience for organization permissions');
+  }
+
+  // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+  const expectedOrgId = 'your-organization-id'; // リクエストコンテキストから抽出
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // 必要な組織スコープを確認
+  const requiredScopes = ['invite:users', 'manage:settings']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織レベルの API リソース">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが API リソースインジケーターと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience for organization-level API resources');
+  }
+
+  // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+  const expectedOrgId = 'your-organization-id'; // リクエストコンテキストから抽出
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // 組織レベルの API リソースに必要なスコープを確認
+  const requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization-level API scopes');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

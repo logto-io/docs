@@ -1,0 +1,217 @@
+---
+sidebar_position: 6
+sidebar_label: 在 API 中校验访问令牌 (Access token)
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DotNetAddValidationLogic from './dotnet/_add-validation-logic.mdx';
+import DotNetApplyMiddleware from './dotnet/_apply-middleware.mdx';
+import DotNetInit from './dotnet/_init.mdx';
+import GoAddValidationLogic from './go/_add-validation-logic.mdx';
+import GoApplyMiddleware from './go/_apply-middleware.mdx';
+import GoInit from './go/_init.mdx';
+import JavaAddValidationLogic from './java/_add-validation-logic.mdx';
+import JavaApplyMiddleware from './java/_apply-middleware.mdx';
+import JavaInit from './java/_init.mdx';
+import NodeAddValidationLogic from './nodejs/_add-validation-logic.mdx';
+import NodeApplyMiddleware from './nodejs/_apply-middleware.mdx';
+import NodeInit from './nodejs/_init.mdx';
+import PhpAddValidationLogic from './php/_add-validation-logic.mdx';
+import PhpApplyMiddleware from './php/_apply-middleware.mdx';
+import PhpInit from './php/_init.mdx';
+import PythonAddValidationLogic from './python/_add-validation-logic.mdx';
+import PythonApplyMiddleware from './python/_apply-middleware.mdx';
+import PythonInit from './python/_init.mdx';
+import RubyAddValidationLogic from './ruby/_add-validation-logic.mdx';
+import RubyApplyMiddleware from './ruby/_apply-middleware.mdx';
+import RubyInit from './ruby/_init.mdx';
+import RustAddValidationLogic from './rust/_add-validation-logic.mdx';
+import RustApplyMiddleware from './rust/_apply-middleware.mdx';
+import RustInit from './rust/_init.mdx';
+
+# 如何在你的 API 服务或后端校验访问令牌 (Access token)
+
+校验访问令牌 (Access token) 是在 Logto 中实施[基于角色的访问控制 (RBAC)](/authorization/role-based-access-control)的关键步骤。本指南将带你完成在后端 / API 中验证 Logto 签发的 JWT，包括校验签名、发行者 (Issuer)、受众 (Audience)、过期时间、权限 (Scopes) 以及组织 (Organization) 上下文。
+
+## 开始之前
+
+- 本指南假设你已熟悉 Logto 的基于角色的访问控制 (RBAC) 概念。
+- 如果你正在保护 API 资源，本指南假设你已阅读 [保护全局 API 资源](/authorization/global-api-resources) 指南。
+- 如果你正在保护应用内功能或流程（非 API 权限），本指南假设你已阅读 [保护组织 (Organization)（非 API）权限](/authorization/organization-permissions) 指南。
+- 如果你正在保护组织级 API 资源，本指南假设你已阅读 [保护组织级 API 资源](/authorization/organization-level-api-resources) 指南。
+
+## 步骤 1：初始化常量和工具方法
+
+在你的代码中定义必要的常量和工具方法，用于处理令牌提取和校验。一个有效的请求必须包含 `Authorization` 头，格式为 `Bearer <access_token>`。
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeInit />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonInit />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoInit />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaInit />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetInit />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpInit />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyInit />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustInit />
+  </TabItem>
+</Tabs>
+
+## 步骤 2：获取你的 Logto 租户信息
+
+你需要以下信息来校验 Logto 签发的令牌：
+
+- JSON Web Key Set (JWKS) URI：Logto 公钥的 URL，用于验证 JWT 签名。
+- 发行者 (Issuer)：期望的发行者值（Logto 的 OIDC URL）。
+
+首先，找到你的 Logto 租户端点。你可以在以下位置找到：
+
+- 在 Logto 控制台，**设置** → **域名**。
+- 在你配置的任意应用设置中，**设置** → **端点与凭据**。
+
+### 从 OpenID Connect 发现端点获取
+
+这些值可以通过 Logto 的 OpenID Connect 发现端点获取：
+
+```
+https://<your-logto-endpoint>/oidc/.well-known/openid-configuration
+```
+
+以下是一个示例响应（为简洁省略了其他字段）：
+
+```json
+{
+  "jwks_uri": "https://your-tenant.logto.app/oidc/jwks",
+  "issuer": "https://your-tenant.logto.app/oidc"
+}
+```
+
+### 在代码中硬编码（不推荐）
+
+由于 Logto 不允许自定义 JWKS URI 或发行者 (Issuer)，你可以在代码中硬编码这些值。但不推荐在生产环境中这样做，因为如果将来有配置变更，会增加维护成本。
+
+- JWKS URI: `https://<your-logto-endpoint>/oidc/jwks`
+- 发行者 (Issuer): `https://<your-logto-endpoint>/oidc`
+
+## 步骤 3：校验令牌和权限 (Permissions)
+
+在提取令牌并获取 OIDC 配置后，校验以下内容：
+
+- **签名**：JWT 必须有效且由 Logto（通过 JWKS）签名。
+- **发行者 (Issuer)**：必须与你的 Logto 租户发行者一致。
+- **受众 (Audience)**：必须与在 Logto 注册的 API 资源指示器 (Resource indicator) 匹配，或在适用时匹配组织上下文。
+- **过期时间**：令牌必须未过期。
+- **权限 (Scopes)**：令牌必须包含你 API / 操作所需的权限 (Scopes)。Scopes 是 `scope` 声明中的以空格分隔的字符串。
+- **组织 (Organization) 上下文**：如果保护的是组织级 API 资源，需要校验 `organization_id` 声明。
+
+参见 [JSON Web Token](https://auth.wiki/jwt) 了解更多关于 JWT 结构和声明 (Claims) 的信息。
+
+### 不同权限模型下的校验要点
+
+不同权限模型下，声明 (Claims) 和校验规则有所不同：
+
+| 权限模型           | 受众声明 (`aud`)                                           | 组织声明 (`organization_id`) | 需校验的权限 (Scopes) (`scope`) |
+| ------------------ | ---------------------------------------------------------- | ---------------------------- | ------------------------------- |
+| 全局 API 资源      | API 资源指示器 (Resource indicator)                        | _无_                         | API 资源权限                    |
+| 组织（非 API）权限 | `urn:logto:organization:<id>`（组织上下文在 `aud` 声明中） | _无_                         | 组织权限                        |
+| 组织级 API 资源    | API 资源指示器 (Resource indicator)                        | 组织 ID（需与请求匹配）      | API 资源权限                    |
+
+<small>
+  对于非 API 的组织权限，组织上下文通过 `aud` 声明表示 （如
+  `urn:logto:organization:abc123`）。`organization_id` 声明仅在组织级 API 资源令牌中存在。
+</small>
+
+:::tip
+对于多租户 API，务必同时校验权限 (Scopes) 和上下文（受众、组织）以确保安全。
+:::
+
+### 添加校验逻辑
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeAddValidationLogic />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonAddValidationLogic />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoAddValidationLogic />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaAddValidationLogic />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetAddValidationLogic />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpAddValidationLogic />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyAddValidationLogic />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustAddValidationLogic />
+  </TabItem>
+</Tabs>
+
+## 步骤 4：为你的 API 应用中间件
+
+将中间件应用到你需要保护的 API 路由。
+
+<Tabs groupId="api-language">
+  <TabItem value="node" label="Node.js">
+    <NodeApplyMiddleware />
+  </TabItem>
+  <TabItem value="python" label="Python">
+    <PythonApplyMiddleware />
+  </TabItem>
+  <TabItem value="go" label="Go">
+    <GoApplyMiddleware />
+  </TabItem>
+  <TabItem value="java" label="Java">
+    <JavaApplyMiddleware />
+  </TabItem>
+  <TabItem value="dotnet" label=".NET">
+    <DotNetApplyMiddleware />
+  </TabItem>
+  <TabItem value="php" label="PHP">
+    <PhpApplyMiddleware />
+  </TabItem>
+  <TabItem value="ruby" label="Ruby">
+    <RubyApplyMiddleware />
+  </TabItem>
+  <TabItem value="rust" label="Rust">
+    <RustApplyMiddleware />
+  </TabItem>
+</Tabs>
+
+## 步骤 5：测试你的实现
+
+使用有效和无效的令牌测试你的 API，确保：
+
+- 有效令牌可以通过校验并获得访问权限。
+- 对于无效 / 缺失令牌返回 `401 Unauthorized`，对于有效但缺少所需权限或上下文的令牌返回 `403 Forbidden`。
+
+## 相关资源
+
+<Url href="/developers/custom-token-claims">自定义令牌声明 (Claims)</Url>
+<Url href="https://openid.net/specs/openid-connect-discovery-1_0.html">OpenID Connect 发现</Url>
+<Url href="https://www.rfc-editor.org/rfc/rfc8707.html">
+  RFC 8707：资源指示器 (Resource indicator)
+</Url>
