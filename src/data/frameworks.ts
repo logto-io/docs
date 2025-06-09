@@ -57,6 +57,22 @@ export const apiFrameworks = Object.freeze({
     name: 'NestJS',
     language: 'nodejs',
   },
+  gin: {
+    name: 'Gin',
+    language: 'go',
+  },
+  fiber: {
+    name: 'Fiber',
+    language: 'go',
+  },
+  echo: {
+    name: 'Echo',
+    language: 'go',
+  },
+  chi: {
+    name: 'Chi',
+    language: 'go',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;
