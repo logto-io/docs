@@ -1,15 +1,30 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-在本示例中，我们使用 [jose](https://github.com/panva/jose) 来验证 JWT。如果你还没有安装，请先安装：
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+我们在本示例中使用 [jose](https://github.com/panva/jose) 来验证 JWT。如果你还没有安装，请先安装：
 
 ```bash
 npm install jose
 ```
 
-或者使用你喜欢的包管理器（如 `pnpm` 或 `yarn`）。
+或者使用你喜欢的包管理器（例如 `pnpm` 或 `yarn`）。
 
-首先，添加这些用于处理 JWT 验证的通用工具：
+首先，添加这些用于处理 JWT 验证的通用工具方法：
 
 ```ts title="jwt-validator.ts"
 import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
@@ -41,175 +56,40 @@ export function createAuthInfo(payload: JWTPayload): AuthInfo {
 
 function verifyPayload(payload: JWTPayload): void {
   // 在这里根据权限模型实现你的验证逻辑
-  // 具体内容将在下方的权限模型部分展示
+  // 具体内容将在下方权限模型部分展示
 }
 ```
 
-然后，实现用于验证访问令牌 (Access token) 的中间件：
+然后，实现中间件以验证访问令牌 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="express" label="Express.js">
-
-```ts title="auth-middleware.ts"
-import { Request, Response, NextFunction } from 'express';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-// 扩展 Express Request 接口以包含 auth
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthInfo;
-    }
-  }
-}
-
-export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = extractBearerTokenFromHeaders(req.headers);
-    const payload = await validateJwt(token);
-
-    // 将认证信息存储在 request 中以便通用使用
-    req.auth = createAuthInfo(payload);
-
-    next();
-  } catch (err: any) {
-    return res.status(err.status ?? 401).json({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="koa" label="Koa.js">
-
-```ts title="auth-middleware.ts"
-import { Context, Next } from 'koa';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-export async function koaVerifyAccessToken(ctx: Context, next: Next) {
-  try {
-    const token = extractBearerTokenFromHeaders(ctx.request.headers);
-    const payload = await validateJwt(token);
-
-    // 将认证信息存储在 state 中以便通用使用
-    ctx.state.auth = createAuthInfo(payload);
-
-    await next();
-  } catch (err: any) {
-    ctx.status = err.status ?? 401;
-    ctx.body = { error: err.message };
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="fastify" label="Fastify">
-
-```ts title="auth-middleware.ts"
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-// 扩展 Fastify Request 接口以包含 auth
-declare module 'fastify' {
-  interface FastifyRequest {
-    auth?: AuthInfo;
-  }
-}
-
-export async function fastifyVerifyAccessToken(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwt(token);
-
-    // 将认证信息存储在 request 中以便通用使用
-    request.auth = createAuthInfo(payload);
-  } catch (err: any) {
-    reply.code(err.status ?? 401).send({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="hapi" label="Hapi.js">
-
-```ts title="auth-middleware.ts"
-import { Request, ResponseToolkit } from '@hapi/hapi';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwt(token);
-
-    // 将认证信息存储在 request.app 中以便通用使用
-    request.app.auth = createAuthInfo(payload);
-
-    return h.continue;
-  } catch (err: any) {
-    return h
-      .response({ error: err.message })
-      .code(err.status ?? 401)
-      .takeover();
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="nestjs" label="NestJS">
-
-```ts title="access-token.guard.ts"
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-@Injectable()
-export class AccessTokenGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-
-    try {
-      const token = extractBearerTokenFromHeaders(req.headers);
-      const payload = await validateJwt(token);
-
-      // 将认证信息存储在 request 中以便通用使用
-      req.auth = createAuthInfo(payload);
-
-      return true;
-    } catch (err: any) {
-      if (err.status === 401) throw new UnauthorizedException(err.message);
-      throw new ForbiddenException(err.message);
-    }
-  }
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 根据你的权限模型，在 `jwt-validator.ts` 中实现相应的验证逻辑：
 
 <Tabs groupId="permission-models">
-<TabItem value="global-api-resources" label="全局 API 资源">
+<TabItem value="global-api-resources" label="全局 API 资源 (API resources)">
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
-  // 检查 audience 声明是否匹配你的 API 资源指示器 (Resource indicator)
+  // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器 (Resource indicator)
   const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   if (!audiences.includes('https://your-api-resource-indicator')) {
     throw new AuthorizationError('Invalid audience');
   }
 
-  // 检查全局 API 资源所需的权限 (Scopes)
-  const requiredScopes = ['api:read', 'api:write']; // 替换为你实际需要的权限
+  // 检查全局 API 资源 (API resources) 所需的权限 (Scopes)
+  const requiredScopes = ['api:read', 'api:write']; // 替换为你实际需要的权限 (Scopes)
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient scope');
@@ -218,11 +98,11 @@ function verifyPayload(payload: JWTPayload): void {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="组织 (非 API) 权限">
+<TabItem value="organization-permissions" label="组织 (Organization)（非 API）权限 (Permissions)">
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
-  // 检查 audience 声明是否匹配组织格式
+  // 检查受众 (Audience) 声明是否符合组织 (Organization) 格式
   const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
 
@@ -237,8 +117,8 @@ function verifyPayload(payload: JWTPayload): void {
     throw new AuthorizationError('Organization ID mismatch');
   }
 
-  // 检查所需的组织权限 (Scopes)
-  const requiredScopes = ['invite:users', 'manage:settings']; // 替换为你实际需要的权限
+  // 检查所需的组织权限 (Organization scopes)
+  const requiredScopes = ['invite:users', 'manage:settings']; // 替换为你实际需要的权限 (Scopes)
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient organization scope');
@@ -247,11 +127,11 @@ function verifyPayload(payload: JWTPayload): void {
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="组织级 API 资源">
+<TabItem value="organization-level-api-resources" label="组织级 API 资源 (Organization-level API resources)">
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
-  // 检查 audience 声明是否匹配你的 API 资源指示器 (Resource indicator)
+  // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器 (Resource indicator)
   const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   if (!audiences.includes('https://your-api-resource-indicator')) {
     throw new AuthorizationError('Invalid audience for organization-level API resources');
@@ -264,8 +144,8 @@ function verifyPayload(payload: JWTPayload): void {
     throw new AuthorizationError('Organization ID mismatch');
   }
 
-  // 检查组织级 API 资源所需的权限 (Scopes)
-  const requiredScopes = ['api:read', 'api:write']; // 替换为你实际需要的权限
+  // 检查组织级 API 资源 (Organization-level API resources) 所需的权限 (Scopes)
+  const requiredScopes = ['api:read', 'api:write']; // 替换为你实际需要的权限 (Scopes)
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient organization-level API scopes');

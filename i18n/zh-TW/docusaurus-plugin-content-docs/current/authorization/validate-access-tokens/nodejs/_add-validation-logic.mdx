@@ -1,7 +1,22 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-本範例中我們使用 [jose](https://github.com/panva/jose) 來驗證 JWT。如尚未安裝，請先安裝：
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+我們在本範例中使用 [jose](https://github.com/panva/jose) 來驗證 JWT。如果尚未安裝，請先安裝：
 
 ```bash
 npm install jose
@@ -40,160 +55,25 @@ export function createAuthInfo(payload: JWTPayload): AuthInfo {
 }
 
 function verifyPayload(payload: JWTPayload): void {
-  // 根據權限模型實作你的驗證邏輯
-  // 相關內容會在下方權限模型章節展示
+  // 在此根據權限模型實作你的驗證邏輯
+  // 相關內容會在下方權限模型區段展示
 }
 ```
 
-接著，實作中介軟體來驗證存取權杖 (Access token)：
+接著，實作 middleware 來驗證存取權杖 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="express" label="Express.js">
-
-```ts title="auth-middleware.ts"
-import { Request, Response, NextFunction } from 'express';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-// 擴充 Express Request 介面以包含 auth
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthInfo;
-    }
-  }
-}
-
-export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = extractBearerTokenFromHeaders(req.headers);
-    const payload = await validateJwt(token);
-
-    // 將驗證資訊存入 request 以便通用使用
-    req.auth = createAuthInfo(payload);
-
-    next();
-  } catch (err: any) {
-    return res.status(err.status ?? 401).json({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="koa" label="Koa.js">
-
-```ts title="auth-middleware.ts"
-import { Context, Next } from 'koa';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-export async function koaVerifyAccessToken(ctx: Context, next: Next) {
-  try {
-    const token = extractBearerTokenFromHeaders(ctx.request.headers);
-    const payload = await validateJwt(token);
-
-    // 將驗證資訊存入 state 以便通用使用
-    ctx.state.auth = createAuthInfo(payload);
-
-    await next();
-  } catch (err: any) {
-    ctx.status = err.status ?? 401;
-    ctx.body = { error: err.message };
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="fastify" label="Fastify">
-
-```ts title="auth-middleware.ts"
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-// 擴充 Fastify Request 介面以包含 auth
-declare module 'fastify' {
-  interface FastifyRequest {
-    auth?: AuthInfo;
-  }
-}
-
-export async function fastifyVerifyAccessToken(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwt(token);
-
-    // 將驗證資訊存入 request 以便通用使用
-    request.auth = createAuthInfo(payload);
-  } catch (err: any) {
-    reply.code(err.status ?? 401).send({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="hapi" label="Hapi.js">
-
-```ts title="auth-middleware.ts"
-import { Request, ResponseToolkit } from '@hapi/hapi';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwt(token);
-
-    // 將驗證資訊存入 request.app 以便通用使用
-    request.app.auth = createAuthInfo(payload);
-
-    return h.continue;
-  } catch (err: any) {
-    return h
-      .response({ error: err.message })
-      .code(err.status ?? 401)
-      .takeover();
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="nestjs" label="NestJS">
-
-```ts title="access-token.guard.ts"
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwt, createAuthInfo } from './jwt-validator.js';
-
-@Injectable()
-export class AccessTokenGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-
-    try {
-      const token = extractBearerTokenFromHeaders(req.headers);
-      const payload = await validateJwt(token);
-
-      // 將驗證資訊存入 request 以便通用使用
-      req.auth = createAuthInfo(payload);
-
-      return true;
-    } catch (err: any) {
-      if (err.status === 401) throw new UnauthorizedException(err.message);
-      throw new ForbiddenException(err.message);
-    }
-  }
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 根據你的權限模型，在 `jwt-validator.ts` 中實作相應的驗證邏輯：
 
@@ -202,14 +82,14 @@ export class AccessTokenGuard implements CanActivate {
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
-  // 檢查 audience 宣告是否符合你的 API 資源標示符
+  // 檢查 audience 宣告是否符合你的 API 資源標示符 (Resource indicator)
   const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   if (!audiences.includes('https://your-api-resource-indicator')) {
     throw new AuthorizationError('Invalid audience');
   }
 
   // 檢查全域 API 資源所需的權限範圍 (Scopes)
-  const requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需權限範圍
+  const requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需的權限範圍
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient scope');
@@ -230,15 +110,15 @@ function verifyPayload(payload: JWTPayload): void {
     throw new AuthorizationError('Invalid audience for organization permissions');
   }
 
-  // 檢查組織 ID 是否與情境相符（你可能需要從請求情境中取得）
-  const expectedOrgId = 'your-organization-id'; // 從請求情境中取得
+  // 檢查組織 ID 是否與情境相符（你可能需要從請求內容中取得）
+  const expectedOrgId = 'your-organization-id'; // 從請求內容取得
   const expectedAud = `urn:logto:organization:${expectedOrgId}`;
   if (!audiences.includes(expectedAud)) {
     throw new AuthorizationError('Organization ID mismatch');
   }
 
-  // 檢查所需的組織權限範圍
-  const requiredScopes = ['invite:users', 'manage:settings']; // 請替換為實際所需權限範圍
+  // 檢查所需的組織權限範圍 (Scopes)
+  const requiredScopes = ['invite:users', 'manage:settings']; // 請替換為實際所需的權限範圍
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient organization scope');
@@ -251,21 +131,21 @@ function verifyPayload(payload: JWTPayload): void {
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
-  // 檢查 audience 宣告是否符合你的 API 資源標示符
+  // 檢查 audience 宣告是否符合你的 API 資源標示符 (Resource indicator)
   const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
   if (!audiences.includes('https://your-api-resource-indicator')) {
     throw new AuthorizationError('Invalid audience for organization-level API resources');
   }
 
-  // 檢查組織 ID 是否與情境相符（你可能需要從請求情境中取得）
-  const expectedOrgId = 'your-organization-id'; // 從請求情境中取得
+  // 檢查組織 ID 是否與情境相符（你可能需要從請求內容中取得）
+  const expectedOrgId = 'your-organization-id'; // 從請求內容取得
   const orgId = payload.organization_id as string;
   if (expectedOrgId !== orgId) {
     throw new AuthorizationError('Organization ID mismatch');
   }
 
-  // 檢查組織層級 API 資源所需的權限範圍
-  const requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需權限範圍
+  // 檢查組織層級 API 資源所需的權限範圍 (Scopes)
+  const requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需的權限範圍
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {
     throw new AuthorizationError('Insufficient organization-level API scopes');

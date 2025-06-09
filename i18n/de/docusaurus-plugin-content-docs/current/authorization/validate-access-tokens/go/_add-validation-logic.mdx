@@ -1,5 +1,18 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
 
 Wir verwenden [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx), um JWTs zu validieren. Installiere es, falls du es noch nicht getan hast:
 
@@ -30,7 +43,7 @@ func init() {
     var err error
     jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
     if err != nil {
-        panic("Failed to fetch JWKS: " + err.Error())
+        panic("Fehler beim Abrufen von JWKS: " + err.Error())
     }
 }
 
@@ -38,12 +51,12 @@ func init() {
 func validateJWT(tokenString string) (jwt.Token, error) {
     token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
     if err != nil {
-        return nil, NewAuthorizationError("Invalid token: "+err.Error(), http.StatusUnauthorized)
+        return nil, NewAuthorizationError("Ungültiges Token: "+err.Error(), http.StatusUnauthorized)
     }
 
     // Aussteller überprüfen
     if token.Issuer() != ISSUER {
-        return nil, NewAuthorizationError("Invalid issuer", http.StatusUnauthorized)
+        return nil, NewAuthorizationError("Ungültiger Aussteller", http.StatusUnauthorized)
     }
 
     if err := verifyPayload(token); err != nil {
@@ -77,160 +90,37 @@ func getAudienceFromToken(token jwt.Token) []string {
 }
 ```
 
-Implementiere anschließend das Middleware, um das Zugangstoken (Access token) zu überprüfen:
+Implementiere anschließend das Middleware, um das Zugangstoken zu überprüfen:
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="gin" label="Gin">
-
-```go title="auth_middleware.go"
-import "github.com/gin-gonic/gin"
-
-func VerifyAccessToken() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        // Token im Kontext für generische Nutzung speichern
-        c.Set("auth", token)
-        c.Next()
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="echo" label="Echo">
-
-```go title="auth_middleware.go"
-import "github.com/labstack/echo/v4"
-
-func VerifyAccessToken(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request())
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        // Token im Kontext für generische Nutzung speichern
-        c.Set("auth", token)
-        return next(c)
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="fiber" label="Fiber">
-
-```go title="auth_middleware.go"
-import (
-    "net/http"
-    "github.com/gofiber/fiber/v2"
-)
-
-func VerifyAccessToken(c *fiber.Ctx) error {
-    // Fiber-Request zu http.Request konvertieren für Kompatibilität
-    req := &http.Request{
-        Header: make(http.Header),
-    }
-    req.Header.Set("Authorization", c.Get("Authorization"))
-
-    tokenString, err := extractBearerTokenFromHeaders(req)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    token, err := validateJWT(tokenString)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    // Token in locals für generische Nutzung speichern
-    c.Locals("auth", token)
-    return c.Next()
-}
-```
-
-  </TabItem>
-  <TabItem value="chi" label="Chi">
-
-```go title="auth_middleware.go"
-import (
-    "context"
-    "encoding/json"
-    "net/http"
-)
-
-type contextKey string
-
-const AuthContextKey contextKey = "auth"
-
-func VerifyAccessToken(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        tokenString, err := extractBearerTokenFromHeaders(r)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        // Token im Kontext für generische Nutzung speichern
-        ctx := context.WithValue(r.Context(), AuthContextKey, token)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
-Je nach deinem Berechtigungsmodell musst du eventuell unterschiedliche `verifyPayload`-Logik anwenden:
+Je nach deinem Berechtigungsmodell musst du möglicherweise unterschiedliche `verifyPayload`-Logik anwenden:
 
 <Tabs groupId="permission-models">
 <TabItem value="global-api-resources" label="Globale API-Ressourcen">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // Überprüfen, ob der Audience-Claim mit deinem API-Ressourcenindikator übereinstimmt
+    // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
     if !hasAudience(token, "https://your-api-resource-indicator") {
-        return NewAuthorizationError("Invalid audience")
+        return NewAuthorizationError("Ungültige Zielgruppe")
     }
 
-    // Erforderliche Berechtigungen (Scopes) für globale API-Ressourcen prüfen
-    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Scopes
+    // Überprüfe erforderliche Berechtigungen für globale API-Ressourcen
+    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("Insufficient scope")
+        return NewAuthorizationError("Unzureichende Berechtigung")
     }
 
     return nil
@@ -238,25 +128,25 @@ func verifyPayload(token jwt.Token) error {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="Organisations-(Nicht-API)-Berechtigungen">
+<TabItem value="organization-permissions" label="Organisation (nicht-API) Berechtigungen">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // Überprüfen, ob der Audience-Claim das Organisationsformat hat
+    // Überprüfe, ob der Audience-Anspruch dem Organisationsformat entspricht
     if !hasOrganizationAudience(token) {
-        return NewAuthorizationError("Invalid audience for organization permissions")
+        return NewAuthorizationError("Ungültige Zielgruppe für Organisationsberechtigungen")
     }
 
-    // Überprüfen, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Request-Kontext extrahieren)
+    // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
     expectedOrgID := "your-organization-id" // Aus dem Request-Kontext extrahieren
     if !hasMatchingOrganization(token, expectedOrgID) {
-        return NewAuthorizationError("Organization ID mismatch")
+        return NewAuthorizationError("Organisation-ID stimmt nicht überein")
     }
 
-    // Erforderliche Organisations-Scopes prüfen
-    requiredScopes := []string{"invite:users", "manage:settings"} // Ersetze durch deine tatsächlichen erforderlichen Scopes
+    // Überprüfe erforderliche Organisationsberechtigungen
+    requiredScopes := []string{"invite:users", "manage:settings"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("Insufficient organization scope")
+        return NewAuthorizationError("Unzureichende Organisationsberechtigung")
     }
 
     return nil
@@ -268,21 +158,21 @@ func verifyPayload(token jwt.Token) error {
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // Überprüfen, ob der Audience-Claim mit deinem API-Ressourcenindikator übereinstimmt
+    // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
     if !hasAudience(token, "https://your-api-resource-indicator") {
-        return NewAuthorizationError("Invalid audience for organization-level API resources")
+        return NewAuthorizationError("Ungültige Zielgruppe für organisationsbezogene API-Ressourcen")
     }
 
-    // Überprüfen, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Request-Kontext extrahieren)
+    // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
     expectedOrgID := "your-organization-id" // Aus dem Request-Kontext extrahieren
     if !hasMatchingOrganizationID(token, expectedOrgID) {
-        return NewAuthorizationError("Organization ID mismatch")
+        return NewAuthorizationError("Organisation-ID stimmt nicht überein")
     }
 
-    // Erforderliche Scopes für organisationsbezogene API-Ressourcen prüfen
-    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Scopes
+    // Überprüfe erforderliche Berechtigungen für organisationsbezogene API-Ressourcen
+    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("Insufficient organization-level API scopes")
+        return NewAuthorizationError("Unzureichende organisationsbezogene API-Berechtigungen")
     }
 
     return nil
@@ -295,7 +185,7 @@ func verifyPayload(token jwt.Token) error {
 Füge diese Hilfsfunktionen zur Payload-Überprüfung hinzu:
 
 ```go title="auth_middleware.go"
-// hasAudience prüft, ob das Token die angegebene Zielgruppe (Audience) enthält
+// hasAudience prüft, ob das Token die angegebene Zielgruppe enthält
 func hasAudience(token jwt.Token, expectedAud string) bool {
     audiences := token.Audience()
     for _, aud := range audiences {
@@ -306,7 +196,7 @@ func hasAudience(token jwt.Token, expectedAud string) bool {
     return false
 }
 
-// hasOrganizationAudience prüft, ob das Token eine Organisations-Audience hat
+// hasOrganizationAudience prüft, ob das Token eine Zielgruppe im Organisationsformat enthält
 func hasOrganizationAudience(token jwt.Token) bool {
     audiences := token.Audience()
     for _, aud := range audiences {
@@ -317,7 +207,7 @@ func hasOrganizationAudience(token jwt.Token) bool {
     return false
 }
 
-// hasRequiredScopes prüft, ob das Token alle erforderlichen Berechtigungen (Scopes) enthält
+// hasRequiredScopes prüft, ob das Token alle erforderlichen Berechtigungen enthält
 func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     scopes := getScopesFromToken(token)
     for _, required := range requiredScopes {
@@ -335,7 +225,7 @@ func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     return true
 }
 
-// hasMatchingOrganization prüft, ob die Audience des Tokens mit der erwarteten Organisation übereinstimmt
+// hasMatchingOrganization prüft, ob die Token-Zielgruppe mit der erwarteten Organisation übereinstimmt
 func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
     expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
     return hasAudience(token, expectedAud)

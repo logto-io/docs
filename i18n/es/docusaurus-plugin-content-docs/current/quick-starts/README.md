@@ -1,12 +1,16 @@
 ---
-sidebar_label: Introduction
+sidebar_label: Inicios rápidos
 ---
 
-# Introduction
+# Inicios rápidos de Logto
 
-Welcome to Logto quick starts. This documentation contains useful guides for integrating Logto into your application.
+Bienvenido a los inicios rápidos de Logto. Esta documentación contiene guías útiles para integrar Logto en tu aplicación.
 
-Most of guides uses Logto official SDKs. Please don't hesitate to contact us if you have any questions.
+La mayoría de las guías utilizan los SDKs oficiales de Logto. No dudes en contactarnos si tienes alguna pregunta.
+
+:::info
+Esta página se centra en la integración del cliente de Logto, incluyendo patrones backend-for-frontend. Para la protección del API del lado del servidor, consulta [Protección de API](/api-protection).
+:::
 
 ---
 

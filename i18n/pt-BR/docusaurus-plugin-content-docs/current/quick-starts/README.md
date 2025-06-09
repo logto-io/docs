@@ -1,12 +1,16 @@
 ---
-sidebar_label: Introdução
+sidebar_label: Inícios rápidos
 ---
 
-# Introdução
+# Inícios rápidos do Logto
 
-Bem-vindo aos inícios rápidos do Logto. Esta documentação contém guias úteis para integrar o Logto em seu aplicativo.
+Bem-vindo aos inícios rápidos do Logto. Esta documentação contém guias úteis para integrar o Logto ao seu aplicativo.
 
-A maioria dos guias utiliza os SDKs oficiais do Logto. Não hesite em nos contatar se tiver alguma dúvida.
+A maioria dos guias utiliza os SDKs oficiais do Logto. Por favor, não hesite em nos contatar se tiver alguma dúvida.
+
+:::info
+Esta página foca na integração do cliente Logto, incluindo padrões backend-for-frontend. Para proteção de API no lado do servidor, veja [Proteção de API](/api-protection).
+:::
 
 ---
 

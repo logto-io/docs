@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### Obtenir des jetons d’accès (Access tokens)
+
+**Depuis votre application cliente :**  
+Si vous avez configuré une intégration client, votre application peut obtenir automatiquement les jetons. Extrayez le jeton d’accès (access token) et utilisez-le dans les requêtes API.
+
+**Pour tester avec curl / Postman :**
+
+1. **Jetons utilisateur :** Utilisez les outils développeur de votre application cliente pour copier le jeton d’accès depuis le localStorage ou l’onglet réseau.
+2. **Jetons machine à machine :** Utilisez le flux d’identifiants client (client credentials flow). Voici un exemple non normatif utilisant curl :
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   Vous devrez peut-être ajuster les paramètres `resource` et `scope` selon votre ressource API (API resource) et vos permissions ; un paramètre `organization_id` peut également être requis si votre API est liée à une organisation.
+
+:::tip
+Besoin d’inspecter le contenu du jeton ? Utilisez notre [décodificateur JWT](https://logto.io/jwt-decoder) pour décoder et vérifier vos JWT.
+:::
+
+### Tester les points de terminaison protégés
+
+<details>
+<summary>**Requête avec jeton valide**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**Réponse attendue :**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**Jeton manquant**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**Réponse attendue (401) :**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**Jeton invalide**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**Réponse attendue (401) :**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### Tests spécifiques au modèle de permission
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="Ressources API globales">
+
+    Scénarios de test pour les API protégées par des portées globales :
+
+    - **Portées valides :** Testez avec des jetons qui incluent les portées API requises (par exemple, `api:read`, `api:write`)
+    - **Portées manquantes :** Attendez-vous à une réponse **403 Interdit** si le jeton ne contient pas les portées requises
+    - **Audience incorrecte :** Attendez-vous à une réponse **403 Interdit** si l’audience ne correspond pas à la ressource API
+
+    ```bash
+    # Jeton sans les portées requises - attendre 403
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
+
+    Scénarios de test pour le contrôle d’accès spécifique à une organisation :
+
+    - **Jeton d’organisation valide :** Testez avec des jetons qui incluent le bon contexte d’organisation (ID d’organisation et portées)
+    - **Portées manquantes :** Attendez-vous à une réponse **403 Interdit** si l’utilisateur n’a pas les permissions pour l’action demandée
+    - **Mauvaise organisation :** Attendez-vous à une réponse **403 Interdit** si l’audience ne correspond pas au contexte d’organisation (`urn:logto:organization:<organization_id>`)
+
+    ```bash
+    # Jeton pour une mauvaise organisation - attendre 403
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="Ressources API au niveau organisation">
+
+    Scénarios de test combinant la validation de ressource API avec le contexte d’organisation :
+
+    - **Organisation valide + portées API :** Testez avec des jetons ayant à la fois le contexte d’organisation et les portées API requises
+    - **Portées API manquantes :** Attendez-vous à une réponse **403 Interdit** si le jeton d’organisation ne possède pas les permissions API requises
+    - **Mauvaise organisation :** Attendez-vous à une réponse **403 Interdit** lors de l’accès à l’API avec un jeton d’une autre organisation
+    - **Audience incorrecte :** Attendez-vous à une réponse **403 Interdit** si l’audience ne correspond pas à la ressource API au niveau organisation
+
+    ```bash
+    # Jeton d’organisation sans portées API - attendre 403
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

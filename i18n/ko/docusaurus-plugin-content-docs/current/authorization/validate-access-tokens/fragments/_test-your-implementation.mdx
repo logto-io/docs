@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### 액세스 토큰 (Access token) 받기
+
+**클라이언트 애플리케이션에서:**
+클라이언트 통합을 설정했다면, 앱이 토큰을 자동으로 획득할 수 있습니다. 액세스 토큰 (Access token)을 추출하여 API 요청에 사용하세요.
+
+**curl / Postman으로 테스트할 때:**
+
+1. **사용자 토큰:** 클라이언트 앱의 개발자 도구에서 localStorage 또는 네트워크 탭에서 액세스 토큰 (Access token)을 복사하세요.
+2. **기계 간 (Machine-to-machine) 토큰:** 클라이언트 자격 증명 플로우를 사용하세요. 다음은 curl을 사용한 비공식 예시입니다:
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   API 리소스 (API resource)와 권한 (Permission)에 따라 `resource` 및 `scope` 파라미터를 조정해야 할 수 있습니다. API가 조직 범위라면 `organization_id` 파라미터도 필요할 수 있습니다.
+
+:::tip
+토큰 내용을 확인해야 하나요? 우리의 [JWT 디코더](https://logto.io/jwt-decoder)를 사용하여 JWT를 디코드하고 검증하세요.
+:::
+
+### 보호된 엔드포인트 테스트하기
+
+<details>
+<summary>**유효한 토큰 요청**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**예상 응답:**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**토큰 없음**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**예상 응답 (401):**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**잘못된 토큰**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**예상 응답 (401):**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### 권한 (Permission) 모델별 테스트
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="글로벌 API 리소스">
+
+    글로벌 스코프로 보호된 API 테스트 시나리오:
+
+    - **유효한 스코프:** 필요한 API 스코프(예: `api:read`, `api:write`)가 포함된 토큰으로 테스트하세요.
+    - **스코프 누락:** 토큰에 필요한 스코프가 없으면 **403 Forbidden**을 예상하세요.
+    - **잘못된 대상 (Audience):** 대상이 API 리소스와 일치하지 않으면 **403 Forbidden**을 예상하세요.
+
+    ```bash
+    # 스코프가 누락된 토큰 - 403 예상
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="조직 (비-API) 권한">
+
+    조직별 접근 제어 테스트 시나리오:
+
+    - **유효한 조직 토큰:** 올바른 조직 컨텍스트(조직 ID 및 스코프)가 포함된 토큰으로 테스트하세요.
+    - **스코프 누락:** 사용자가 요청한 작업에 대한 권한이 없으면 **403 Forbidden**을 예상하세요.
+    - **잘못된 조직:** 대상이 조직 컨텍스트(`urn:logto:organization:<organization_id>`)와 일치하지 않으면 **403 Forbidden**을 예상하세요.
+
+    ```bash
+    # 잘못된 조직의 토큰 - 403 예상
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="조직 수준 API 리소스">
+
+    API 리소스 검증과 조직 컨텍스트를 결합한 테스트 시나리오:
+
+    - **유효한 조직 + API 스코프:** 조직 컨텍스트와 필요한 API 스코프가 모두 포함된 토큰으로 테스트하세요.
+    - **API 스코프 누락:** 조직 토큰에 필요한 API 권한이 없으면 **403 Forbidden**을 예상하세요.
+    - **잘못된 조직:** 다른 조직의 토큰으로 API에 접근하면 **403 Forbidden**을 예상하세요.
+    - **잘못된 대상 (Audience):** 대상이 조직 수준 API 리소스와 일치하지 않으면 **403 Forbidden**을 예상하세요.
+
+    ```bash
+    # API 스코프가 없는 조직 토큰 - 403 예상
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

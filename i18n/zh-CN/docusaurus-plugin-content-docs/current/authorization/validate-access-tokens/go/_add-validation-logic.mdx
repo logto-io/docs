@@ -1,5 +1,18 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
 
 我们使用 [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) 来验证 JWT。如果你还没有安装它，请先安装：
 
@@ -34,7 +47,7 @@ func init() {
     }
 }
 
-// validateJWT 验证 JWT 令牌并返回解析后的令牌
+// validateJWT 验证 JWT 并返回解析后的令牌
 func validateJWT(tokenString string) (jwt.Token, error) {
     token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
     if err != nil {
@@ -43,7 +56,7 @@ func validateJWT(tokenString string) (jwt.Token, error) {
 
     // 验证发行者 (Issuer)
     if token.Issuer() != ISSUER {
-        return nil, NewAuthorizationError("无效发行者 (Issuer)", http.StatusUnauthorized)
+        return nil, NewAuthorizationError("无效发行者", http.StatusUnauthorized)
     }
 
     if err := verifyPayload(token); err != nil {
@@ -79,158 +92,35 @@ func getAudienceFromToken(token jwt.Token) []string {
 
 然后，实现中间件以验证访问令牌 (Access token)：
 
+{props.framework
+? frameworkContent[props.framework]
+:
+
 <Tabs groupId="api-framework">
-  <TabItem value="gin" label="Gin">
-
-```go title="auth_middleware.go"
-import "github.com/gin-gonic/gin"
-
-func VerifyAccessToken() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        // 在上下文中存储令牌以便通用使用
-        c.Set("auth", token)
-        c.Next()
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="echo" label="Echo">
-
-```go title="auth_middleware.go"
-import "github.com/labstack/echo/v4"
-
-func VerifyAccessToken(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request())
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        // 在上下文中存储令牌以便通用使用
-        c.Set("auth", token)
-        return next(c)
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="fiber" label="Fiber">
-
-```go title="auth_middleware.go"
-import (
-    "net/http"
-    "github.com/gofiber/fiber/v2"
-)
-
-func VerifyAccessToken(c *fiber.Ctx) error {
-    // 将 fiber 请求转换为 http.Request 以兼容
-    req := &http.Request{
-        Header: make(http.Header),
-    }
-    req.Header.Set("Authorization", c.Get("Authorization"))
-
-    tokenString, err := extractBearerTokenFromHeaders(req)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    token, err := validateJWT(tokenString)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    // 在 locals 中存储令牌以便通用使用
-    c.Locals("auth", token)
-    return c.Next()
-}
-```
-
-  </TabItem>
-  <TabItem value="chi" label="Chi">
-
-```go title="auth_middleware.go"
-import (
-    "context"
-    "encoding/json"
-    "net/http"
-)
-
-type contextKey string
-
-const AuthContextKey contextKey = "auth"
-
-func VerifyAccessToken(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        tokenString, err := extractBearerTokenFromHeaders(r)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        // 在上下文中存储令牌以便通用使用
-        ctx := context.WithValue(r.Context(), AuthContextKey, token)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 根据你的权限 (Permission) 模型，你可能需要采用不同的 `verifyPayload` 逻辑：
 
 <Tabs groupId="permission-models">
-<TabItem value="global-api-resources" label="全局 API 资源 (API resources)">
+<TabItem value="global-api-resources" label="全局 API 资源">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // 检查 audience 声明是否匹配你的 API 资源指示器 (Resource indicator)
+    // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器 (Resource indicator)
     if !hasAudience(token, "https://your-api-resource-indicator") {
-        return NewAuthorizationError("无效受众 (Audience)")
+        return NewAuthorizationError("无效受众")
     }
 
     // 检查全局 API 资源所需的权限 (Scopes)
-    requiredScopes := []string{"api:read", "api:write"} // 替换为你实际需要的权限 (Scopes)
+    requiredScopes := []string{"api:read", "api:write"} // 替换为你实际需要的权限
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("权限 (Scope) 不足")
+        return NewAuthorizationError("权限不足")
     }
 
     return nil
@@ -238,25 +128,25 @@ func verifyPayload(token jwt.Token) error {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="组织 (Organization)（非 API）权限 (Permissions)">
+<TabItem value="organization-permissions" label="组织 (非 API) 权限">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // 检查 audience 声明是否为组织 (Organization) 格式
+    // 检查受众 (Audience) 声明是否为组织格式
     if !hasOrganizationAudience(token) {
-        return NewAuthorizationError("组织 (Organization) 权限 (Permissions) 的受众 (Audience) 无效")
+        return NewAuthorizationError("组织权限无效受众")
     }
 
     // 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
     expectedOrgID := "your-organization-id" // 从请求上下文中提取
     if !hasMatchingOrganization(token, expectedOrgID) {
-        return NewAuthorizationError("组织 (Organization) ID 不匹配")
+        return NewAuthorizationError("组织 ID 不匹配")
     }
 
-    // 检查所需的组织 (Organization) 权限 (Scopes)
-    requiredScopes := []string{"invite:users", "manage:settings"} // 替换为你实际需要的权限 (Scopes)
+    // 检查所需的组织权限 (Scopes)
+    requiredScopes := []string{"invite:users", "manage:settings"} // 替换为你实际需要的权限
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("组织 (Organization) 权限 (Scope) 不足")
+        return NewAuthorizationError("组织权限不足")
     }
 
     return nil
@@ -264,25 +154,25 @@ func verifyPayload(token jwt.Token) error {
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="组织级 API 资源 (Organization-level API resources)">
+<TabItem value="organization-level-api-resources" label="组织级 API 资源">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
-    // 检查 audience 声明是否匹配你的 API 资源指示器 (Resource indicator)
+    // 检查受众 (Audience) 声明是否匹配你的 API 资源指示器 (Resource indicator)
     if !hasAudience(token, "https://your-api-resource-indicator") {
-        return NewAuthorizationError("组织级 API 资源 (Organization-level API resources) 的受众 (Audience) 无效")
+        return NewAuthorizationError("组织级 API 资源无效受众")
     }
 
     // 检查组织 ID 是否与上下文匹配（你可能需要从请求上下文中提取）
     expectedOrgID := "your-organization-id" // 从请求上下文中提取
     if !hasMatchingOrganizationID(token, expectedOrgID) {
-        return NewAuthorizationError("组织 (Organization) ID 不匹配")
+        return NewAuthorizationError("组织 ID 不匹配")
     }
 
-    // 检查组织级 API 资源 (Organization-level API resources) 所需的权限 (Scopes)
-    requiredScopes := []string{"api:read", "api:write"} // 替换为你实际需要的权限 (Scopes)
+    // 检查组织级 API 资源所需的权限 (Scopes)
+    requiredScopes := []string{"api:read", "api:write"} // 替换为你实际需要的权限
     if !hasRequiredScopes(token, requiredScopes) {
-        return NewAuthorizationError("组织级 API 权限 (Scope) 不足")
+        return NewAuthorizationError("组织级 API 权限不足")
     }
 
     return nil
@@ -306,7 +196,7 @@ func hasAudience(token jwt.Token, expectedAud string) bool {
     return false
 }
 
-// hasOrganizationAudience 检查令牌是否包含组织 (Organization) 受众 (Audience) 格式
+// hasOrganizationAudience 检查令牌是否包含组织格式的受众 (Audience)
 func hasOrganizationAudience(token jwt.Token) bool {
     audiences := token.Audience()
     for _, aud := range audiences {
@@ -317,7 +207,7 @@ func hasOrganizationAudience(token jwt.Token) bool {
     return false
 }
 
-// hasRequiredScopes 检查令牌是否包含所有必需的权限 (Scopes)
+// hasRequiredScopes 检查令牌是否包含所有所需的权限 (Scopes)
 func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     scopes := getScopesFromToken(token)
     for _, required := range requiredScopes {
@@ -335,13 +225,13 @@ func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     return true
 }
 
-// hasMatchingOrganization 检查令牌受众 (Audience) 是否与期望的组织 (Organization) 匹配
+// hasMatchingOrganization 检查令牌受众 (Audience) 是否与期望的组织匹配
 func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
     expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
     return hasAudience(token, expectedAud)
 }
 
-// hasMatchingOrganizationID 检查令牌中的 organization_id 是否与期望值一致
+// hasMatchingOrganizationID 检查令牌中的 organization_id 是否与期望值匹配
 func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
     orgID := getStringClaim(token, "organization_id")
     return orgID == expectedOrgID
