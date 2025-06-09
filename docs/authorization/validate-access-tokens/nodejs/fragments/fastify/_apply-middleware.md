@@ -1,12 +1,12 @@
 ```ts title="app.ts"
 import { fastifyVerifyAccessToken } from './auth-middleware.js';
 
-fastify.get('/api/protected', { preHandler: fastifyVerifyAccessToken }, (request, reply) => {
+server.get('/api/protected', { preHandler: fastifyVerifyAccessToken }, (request, reply) => {
   // Access auth information directly from request.auth
   reply.send({ auth: request.auth });
 });
 
-fastify.get(
+server.get(
   '/api/protected/detailed',
   { preHandler: fastifyVerifyAccessToken },
   (request, reply) => {

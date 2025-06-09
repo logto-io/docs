@@ -1,6 +1,6 @@
 ```ts title="auth-middleware.ts"
 import { Request, Response, NextFunction } from 'express';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+import { validateJwt, createAuthInfo } from './jwt-validator.js';
 
 // Extend Express Request interface to include auth
 declare global {
@@ -14,7 +14,7 @@ declare global {
 export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
   try {
     const token = extractBearerTokenFromHeaders(req.headers);
-    const payload = await validateJwtToken(token);
+    const payload = await validateJwt(token);
 
     // Store auth info in request for generic use
     req.auth = createAuthInfo(payload);

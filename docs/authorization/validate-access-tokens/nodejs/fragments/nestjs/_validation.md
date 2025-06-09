@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
 } from '@nestjs/common';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+import { validateJwt, createAuthInfo } from './jwt-validator.js';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
@@ -15,7 +15,7 @@ export class AccessTokenGuard implements CanActivate {
 
     try {
       const token = extractBearerTokenFromHeaders(req.headers);
-      const payload = await validateJwtToken(token);
+      const payload = await validateJwt(token);
 
       // Store auth info in request for generic use
       req.auth = createAuthInfo(payload);

@@ -1,8 +1,5 @@
 ```ts title="app.ts"
-import express from 'express';
 import { verifyAccessToken } from './auth-middleware.js';
-
-const app = express();
 
 app.get('/api/protected', verifyAccessToken, (req, res) => {
   // Access auth information directly from req.auth
@@ -16,6 +13,4 @@ app.get('/api/protected/detailed', verifyAccessToken, (req, res) => {
     message: 'Protected data accessed successfully',
   });
 });
-
-app.listen(3000);
 ```

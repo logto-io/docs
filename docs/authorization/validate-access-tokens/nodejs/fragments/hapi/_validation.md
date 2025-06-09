@@ -1,11 +1,11 @@
 ```ts title="auth-middleware.ts"
 import { Request, ResponseToolkit } from '@hapi/hapi';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
+import { validateJwt, createAuthInfo } from './jwt-validator.js';
 
 export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
   try {
     const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwtToken(token);
+    const payload = await validateJwt(token);
 
     // Store auth info in request.app for generic use
     request.app.auth = createAuthInfo(payload);

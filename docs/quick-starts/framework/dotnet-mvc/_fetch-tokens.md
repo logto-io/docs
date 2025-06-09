@@ -12,10 +12,10 @@ Although the authentication middleware will automatically refresh the tokens, th
 This can be resolved once we write our own authentication handler.
 :::
 
-Note the access token above is an opaque token for the userinfo endpoint in OpenID Connect, which is not a JWT token. If you have specified the API resource, you need to use `LogtoParameters.Tokens.AccessTokenForResource` to fetch the access token for the API resource:
+Note the access token above is an opaque token for the userinfo endpoint in OpenID Connect, which is not a JWT. If you have specified the API resource, you need to use `LogtoParameters.Tokens.AccessTokenForResource` to fetch the access token for the API resource:
 
 ```csharp
 var accessToken = await HttpContext.GetTokenAsync(LogtoParameters.Tokens.AccessTokenForResource);
 ```
 
-This token will be a JWT token with the API resource as the audience.
+This token will be a JWT with the API resource as the audience.
