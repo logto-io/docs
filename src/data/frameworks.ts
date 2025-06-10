@@ -89,6 +89,18 @@ export const apiFrameworks = Object.freeze({
     name: 'Vert.x Web',
     language: 'java',
   },
+  laravel: {
+    name: 'Laravel',
+    language: 'php',
+  },
+  symfony: {
+    name: 'Symfony',
+    language: 'php',
+  },
+  slim: {
+    name: 'Slim',
+    language: 'php',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;
