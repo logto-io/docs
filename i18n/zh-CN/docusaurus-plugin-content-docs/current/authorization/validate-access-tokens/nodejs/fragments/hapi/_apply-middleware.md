@@ -12,19 +12,4 @@ server.route({
     },
   },
 });
-
-server.route({
-  method: 'GET',
-  path: '/api/protected/detailed',
-  options: {
-    pre: [{ method: hapiVerifyAccessToken }],
-    handler: (request, h) => {
-      // 你的受保护接口逻辑
-      return {
-        auth: request.app.auth,
-        message: '受保护数据访问成功',
-      };
-    },
-  },
-});
 ```

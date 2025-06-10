@@ -7,18 +7,8 @@ export class ProtectedController {
   @Get('protected')
   @UseGuards(AccessTokenGuard)
   getProtected(@Req() req: any) {
-    // Acesse as informações de autenticação em req.auth
+    // Acesse as informações de autenticação a partir de req.auth
     return { auth: req.auth };
-  }
-
-  @Get('protected/detailed')
-  @UseGuards(AccessTokenGuard)
-  getDetailedProtected(@Req() req: any) {
-    // Sua lógica de endpoint protegido
-    return {
-      auth: req.auth,
-      message: 'Dados protegidos acessados com sucesso',
-    };
   }
 }
 ```

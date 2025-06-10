@@ -73,6 +73,78 @@ export const apiFrameworks = Object.freeze({
     name: 'Chi',
     language: 'go',
   },
+  'spring-boot': {
+    name: 'Spring Boot',
+    language: 'java',
+  },
+  quarkus: {
+    name: 'Quarkus',
+    language: 'java',
+  },
+  micronaut: {
+    name: 'Micronaut',
+    language: 'java',
+  },
+  'vertx-web': {
+    name: 'Vert.x Web',
+    language: 'java',
+  },
+  laravel: {
+    name: 'Laravel',
+    language: 'php',
+  },
+  symfony: {
+    name: 'Symfony',
+    language: 'php',
+  },
+  slim: {
+    name: 'Slim',
+    language: 'php',
+  },
+  rails: {
+    name: 'Ruby on Rails',
+    language: 'ruby',
+  },
+  sinatra: {
+    name: 'Sinatra',
+    language: 'ruby',
+  },
+  grape: {
+    name: 'Grape',
+    language: 'ruby',
+  },
+  fastapi: {
+    name: 'FastAPI',
+    language: 'python',
+  },
+  flask: {
+    name: 'Flask',
+    language: 'python',
+  },
+  django: {
+    name: 'Django',
+    language: 'python',
+  },
+  'django-rest': {
+    name: 'Django REST Framework',
+    language: 'python',
+  },
+  axum: {
+    name: 'Axum',
+    language: 'rust',
+  },
+  'actix-web': {
+    name: 'Actix Web',
+    language: 'rust',
+  },
+  rocket: {
+    name: 'Rocket',
+    language: 'rust',
+  },
+  'aspnet-core': {
+    name: 'ASP.NET Core',
+    language: 'dotnet',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;

@@ -1,51 +1,27 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
+import ActixWebValidation from './fragments/actix-web/_validation.md';
+import AxumValidation from './fragments/axum/_validation.md';
+import RocketValidation from './fragments/rocket/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  axum: <AxumValidation />,
+  'actix-web': <ActixWebValidation />,
+  rocket: <RocketValidation />,
+});
+
 우리는 [jsonwebtoken](https://github.com/Keats/jsonwebtoken) 을 사용하여 JWT 를 검증합니다. `Cargo.toml`에 필요한 의존성을 추가하세요:
 
-<Tabs groupId="api-framework">
-  <TabItem value="axum" label="Axum">
-
 ```toml title="Cargo.toml"
 [dependencies]
-axum = "0.7"
-tokio = { version = "1.0", features = ["full"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors"] }
 jsonwebtoken = "9.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
-```
-
-  </TabItem>
-  <TabItem value="actix-web" label="Actix Web">
-
-```toml title="Cargo.toml"
-[dependencies]
-actix-web = "4.0"
 tokio = { version = "1.0", features = ["full"] }
-jsonwebtoken = "9.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-reqwest = { version = "0.11", features = ["json"] }
 ```
-
-  </TabItem>
-  <TabItem value="rocket" label="Rocket">
-
-```toml title="Cargo.toml"
-[dependencies]
-rocket = { version = "0.5", features = ["json"] }
-tokio = { version = "1.0", features = ["full"] }
-jsonwebtoken = "9.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-reqwest = { version = "0.11", features = ["json"] }
-```
-
-  </TabItem>
-</Tabs>
 
 먼저, JWT 검증을 처리하기 위한 공통 유틸리티를 추가하세요:
 
@@ -100,7 +76,7 @@ impl JwtValidator {
         Ok(keys)
     }
 
-    pub fn validate_jwt_token(&self, token: &str) -> Result<AuthInfo, AuthorizationError> {
+    pub fn validate_jwt(&self, token: &str) -> Result<AuthInfo, AuthorizationError> {
         let header = decode_header(token).map_err(|e| {
             AuthorizationError::with_status(format!("Invalid token header: {}", e), 401)
         })?;
@@ -115,7 +91,7 @@ impl JwtValidator {
 
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_issuer(&[ISSUER]);
-        validation.validate_aud = false; // 대상 (Audience)는 수동으로 검증합니다
+        validation.validate_aud = false; // 대상 (Audience)는 수동으로 검증합니다.
 
         let token_data = decode::<Value>(token, key, &validation).map_err(|e| {
             AuthorizationError::with_status(format!("Invalid token: {}", e), 401)
@@ -128,8 +104,8 @@ impl JwtValidator {
     }
 
     fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
-        // 권한 모델에 따라 검증 로직을 구현하세요
-        // 아래 권한 모델 섹션에서 예시를 확인할 수 있습니다
+        // 권한 모델에 따라 검증 로직을 구현하세요.
+        // 아래 권한 모델 섹션에서 예시를 확인할 수 있습니다.
         Ok(())
     }
 
@@ -156,192 +132,20 @@ impl JwtValidator {
 }
 ```
 
-그 다음, 액세스 토큰 (Access token) 을 검증하는 미들웨어를 구현하세요:
+그 다음, 액세스 토큰을 검증하는 미들웨어를 구현하세요:
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="axum" label="Axum">
-
-```rust title="middleware.rs"
-use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
-use crate::jwt_validator::JwtValidator;
-use axum::{
-    extract::Request,
-    http::{HeaderMap, StatusCode},
-    middleware::Next,
-    response::{IntoResponse, Response},
-    Extension, Json,
-};
-use serde_json::json;
-use std::sync::Arc;
-
-pub async fn jwt_middleware(
-    Extension(validator): Extension<Arc<JwtValidator>>,
-    headers: HeaderMap,
-    mut request: Request,
-    next: Next,
-) -> Result<Response, AuthorizationError> {
-    let authorization = headers
-        .get("authorization")
-        .and_then(|h| h.to_str().ok());
-
-    let token = extract_bearer_token(authorization)?;
-    let auth_info = validator.validate_jwt_token(token)?;
-
-    // 인증 정보 (auth info)를 request extensions에 저장하여 범용적으로 사용
-    request.extensions_mut().insert(auth_info);
-
-    Ok(next.run(request).await)
-}
-
-impl IntoResponse for AuthorizationError {
-    fn into_response(self) -> Response {
-        let status = StatusCode::from_u16(self.status_code).unwrap_or(StatusCode::FORBIDDEN);
-        (status, Json(json!({ "error": self.message }))).into_response()
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="actix-web" label="Actix Web">
-
-```rust title="middleware.rs"
-use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
-use crate::jwt_validator::JwtValidator;
-use actix_web::{
-    dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
-    web, Error, HttpMessage, HttpResponse,
-};
-use futures::future::{ok, Ready};
-use std::sync::Arc;
-
-pub struct JwtMiddleware {
-    validator: Arc<JwtValidator>,
-}
-
-impl JwtMiddleware {
-    pub fn new(validator: Arc<JwtValidator>) -> Self {
-        Self { validator }
-    }
-}
-
-impl<S, B> Transform<S, ServiceRequest> for JwtMiddleware
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type InitError = ();
-    type Transform = JwtMiddlewareService<S>;
-    type Future = Ready<Result<Self::Transform, Self::InitError>>;
-
-    fn new_transform(&self, service: S) -> Self::Future {
-        ok(JwtMiddlewareService {
-            service,
-            validator: self.validator.clone(),
-        })
-    }
-}
-
-pub struct JwtMiddlewareService<S> {
-    service: S,
-    validator: Arc<JwtValidator>,
-}
-
-impl<S, B> Service<ServiceRequest> for JwtMiddlewareService<S>
-where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
-    S::Future: 'static,
-    B: 'static,
-{
-    type Response = ServiceResponse<B>;
-    type Error = Error;
-    type Future = futures::future::LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
-
-    forward_ready!(service);
-
-    fn call(&self, req: ServiceRequest) -> Self::Future {
-        let validator = self.validator.clone();
-
-        Box::pin(async move {
-            let authorization = req
-                .headers()
-                .get("authorization")
-                .and_then(|h| h.to_str().ok());
-
-            match extract_bearer_token(authorization)
-                .and_then(|token| validator.validate_jwt_token(token))
-            {
-                Ok(auth_info) => {
-                    // 인증 정보 (auth info)를 request extensions에 저장하여 범용적으로 사용
-                    req.extensions_mut().insert(auth_info);
-                    let fut = self.service.call(req);
-                    fut.await
-                }
-                Err(e) => {
-                    let response = HttpResponse::build(
-                        actix_web::http::StatusCode::from_u16(e.status_code)
-                            .unwrap_or(actix_web::http::StatusCode::FORBIDDEN),
-                    )
-                    .json(serde_json::json!({ "error": e.message }));
-
-                    Ok(req.into_response(response))
-                }
-            }
-        })
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="rocket" label="Rocket">
-
-```rust title="guards.rs"
-use crate::{AuthInfo, AuthorizationError, extract_bearer_token};
-use crate::jwt_validator::JwtValidator;
-use rocket::{
-    http::Status,
-    outcome::Outcome,
-    request::{self, FromRequest, Request},
-    State,
-};
-
-#[rocket::async_trait]
-impl<'r> FromRequest<'r> for AuthInfo {
-    type Error = AuthorizationError;
-
-    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let validator = match req.guard::<&State<JwtValidator>>().await {
-            Outcome::Success(validator) => validator,
-            Outcome::Failure((status, _)) => {
-                return Outcome::Failure((
-                    status,
-                    AuthorizationError::with_status("JWT validator not found", 500),
-                ))
-            }
-            Outcome::Forward(()) => {
-                return Outcome::Forward(())
-            }
-        };
-
-        let authorization = req.headers().get_one("authorization");
-
-        match extract_bearer_token(authorization)
-            .and_then(|token| validator.validate_jwt_token(token))
-        {
-            Ok(auth_info) => Outcome::Success(auth_info),
-            Err(e) => {
-                let status = Status::from_code(e.status_code).unwrap_or(Status::Forbidden);
-                Outcome::Failure((status, e))
-            }
-        }
-    }
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 권한 모델에 따라 `JwtValidator`에서 적절한 검증 로직을 구현하세요:
 
@@ -350,7 +154,7 @@ impl<'r> FromRequest<'r> for AuthInfo {
 
 ```rust title="jwt_validator.rs"
 fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
-    // 대상 (Audience) 클레임이 API 리소스 지표와 일치하는지 확인
+    // 대상 (audience) 클레임이 API 리소스 지표와 일치하는지 확인
     let audiences = match &claims["aud"] {
         Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
         Value::String(s) => vec![s.as_str()],
@@ -361,8 +165,8 @@ fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
         return Err(AuthorizationError::new("Invalid audience"));
     }
 
-    // 글로벌 API 리소스에 필요한 스코프 (Scope) 확인
-    let required_scopes = vec!["api:read", "api:write"]; // 실제 필요한 스코프로 교체하세요
+    // 글로벌 API 리소스에 필요한 스코프 확인
+    let required_scopes = vec!["api:read", "api:write"]; // 실제 필요한 스코프로 교체하세요.
     let scopes = claims["scope"]
         .as_str()
         .map(|s| s.split(' ').collect::<Vec<_>>())
@@ -379,11 +183,11 @@ fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="조직 (Organization) (비 API) 권한">
+<TabItem value="organization-permissions" label="조직 (비-API) 권한">
 
 ```rust title="jwt_validator.rs"
 fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
-    // 대상 (Audience) 클레임이 조직 포맷과 일치하는지 확인
+    // 대상 (audience) 클레임이 조직 형식과 일치하는지 확인
     let audiences = match &claims["aud"] {
         Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
         Value::String(s) => vec![s.as_str()],
@@ -395,15 +199,15 @@ fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
         return Err(AuthorizationError::new("Invalid audience for organization permissions"));
     }
 
-    // 조직 ID 가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+    // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
     let expected_org_id = "your-organization-id"; // 요청 컨텍스트에서 추출
     let expected_aud = format!("urn:logto:organization:{}", expected_org_id);
     if !audiences.contains(&expected_aud.as_str()) {
         return Err(AuthorizationError::new("Organization ID mismatch"));
     }
 
-    // 필요한 조직 스코프 (Scope) 확인
-    let required_scopes = vec!["invite:users", "manage:settings"]; // 실제 필요한 스코프로 교체하세요
+    // 조직 권한에 필요한 스코프 확인
+    let required_scopes = vec!["invite:users", "manage:settings"]; // 실제 필요한 스코프로 교체하세요.
     let scopes = claims["scope"]
         .as_str()
         .map(|s| s.split(' ').collect::<Vec<_>>())
@@ -420,11 +224,11 @@ fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="조직 단위 API 리소스">
+<TabItem value="organization-level-api-resources" label="조직 레벨 API 리소스">
 
 ```rust title="jwt_validator.rs"
 fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
-    // 대상 (Audience) 클레임이 API 리소스 지표와 일치하는지 확인
+    // 대상 (audience) 클레임이 API 리소스 지표와 일치하는지 확인
     let audiences = match &claims["aud"] {
         Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
         Value::String(s) => vec![s.as_str()],
@@ -435,15 +239,15 @@ fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
         return Err(AuthorizationError::new("Invalid audience for organization-level API resources"));
     }
 
-    // 조직 ID 가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+    // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
     let expected_org_id = "your-organization-id"; // 요청 컨텍스트에서 추출
     let org_id = claims["organization_id"].as_str().unwrap_or_default();
     if expected_org_id != org_id {
         return Err(AuthorizationError::new("Organization ID mismatch"));
     }
 
-    // 조직 단위 API 리소스에 필요한 스코프 (Scope) 확인
-    let required_scopes = vec!["api:read", "api:write"]; // 실제 필요한 스코프로 교체하세요
+    // 조직 레벨 API 리소스에 필요한 스코프 확인
+    let required_scopes = vec!["api:read", "api:write"]; // 실제 필요한 스코프로 교체하세요.
     let scopes = claims["scope"]
         .as_str()
         .map(|s| s.split(' ').collect::<Vec<_>>())

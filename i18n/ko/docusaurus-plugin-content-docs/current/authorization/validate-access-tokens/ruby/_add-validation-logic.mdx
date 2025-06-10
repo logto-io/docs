@@ -1,20 +1,31 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-[ jwt ](https://github.com/jwt/ruby-jwt) gem을 사용하여 JWT를 검증합니다. Gemfile에 추가하세요:
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
+
+우리는 [jwt](https://github.com/jwt/ruby-jwt) gem을 사용하여 JWT를 검증합니다. Gemfile에 추가하세요:
 
 ```ruby title="Gemfile"
 gem 'jwt'
-# net-http는 Ruby 2.7부터 Ruby 표준 라이브러리에 포함되어 있으므로 별도 추가 필요 없음
+# net-http는 Ruby 2.7부터 Ruby 표준 라이브러리의 일부이므로 명시적으로 추가할 필요가 없습니다
 ```
 
-그런 다음 다음 명령어를 실행하세요:
+그런 다음 다음을 실행하세요:
 
 ```bash
 bundle install
 ```
 
-먼저, JWKS와 토큰 검증을 처리하는 공통 유틸리티를 추가하세요:
+먼저, JWKS 및 토큰 검증을 처리하기 위한 공통 유틸리티를 추가하세요:
 
 ```ruby title="jwt_validator.rb"
 require 'jwt'
@@ -35,17 +46,18 @@ class JwtValidator
     end
   end
 
-  def self.validate_jwt_token(token)
+  def self.validate_jwt(token)
     jwks = fetch_jwks
 
-    # JWT 라이브러리가 JWKS에서 알고리즘을 자동 감지하도록 처리
+    # JWT 라이브러리가 JWKS에서 알고리즘 감지를 처리하도록 합니다
     decoded_token = JWT.decode(token, nil, true, {
       iss: AuthConstants::ISSUER,
       verify_iss: true,
-      verify_aud: false, # 권한 모델에 따라 audience는 수동으로 검증
+      verify_aud: false, # 권한 모델에 따라 audience를 수동으로 검증합니다
       jwks: jwks
     })[0]
 
+    verify_payload(decoded_token)
     decoded_token
   end
 
@@ -63,113 +75,26 @@ class JwtValidator
   end
 
   def self.verify_payload(payload)
-    # 권한 모델에 따라 검증 로직을 구현하세요
+    # 권한 모델에 따라 검증 로직을 여기에 구현하세요
     # 아래 권한 모델 섹션에서 예시를 확인할 수 있습니다
   end
 end
 ```
 
-그런 다음, 액세스 토큰 (Access token) 검증을 위한 미들웨어를 구현하세요:
+그런 다음, 액세스 토큰을 검증하는 미들웨어를 구현하세요:
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="rails" label="Rails">
-
-```ruby title="app/controllers/concerns/jwt_authentication.rb"
-module JwtAuthentication
-  extend ActiveSupport::Concern
-  include AuthHelpers
-
-  included do
-    before_action :verify_access_token, only: [:protected_action] # 특정 액션에만 적용
-  end
-
-  private
-
-  def verify_access_token
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 인증 정보 저장 (범용 사용 가능)
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      render json: { error: e.message }, status: e.status
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      render json: { error: 'Invalid token' }, status: 401
-    end
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="sinatra" label="Sinatra">
-
-```ruby title="auth_middleware.rb"
-class AuthMiddleware
-  include AuthHelpers
-
-  def initialize(app)
-    @app = app
-  end
-
-  def call(env)
-    request = Rack::Request.new(env)
-
-    # 특정 경로만 보호
-    if request.path.start_with?('/api/protected')
-      begin
-        token = extract_bearer_token(request)
-        decoded_token = JwtValidator.validate_jwt_token(token)
-
-        JwtValidator.verify_payload(decoded_token)
-        # 인증 정보 env에 저장 (범용 사용 가능)
-        env['auth'] = JwtValidator.create_auth_info(decoded_token)
-
-      rescue AuthorizationError => e
-        return [e.status, { 'Content-Type' => 'application/json' }, [{ error: e.message }.to_json]]
-      rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-        return [401, { 'Content-Type' => 'application/json' }, [{ error: 'Invalid token' }.to_json]]
-      end
-    end
-
-    @app.call(env)
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="grape" label="Grape">
-
-```ruby title="auth_helpers.rb"
-module GrapeAuthHelpers
-  include AuthHelpers
-
-  def authenticate_user!
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 인증 정보 저장 (범용 사용 가능)
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      error!({ error: e.message }, e.status)
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      error!({ error: 'Invalid token' }, 401)
-    end
-  end
-
-  def auth
-    @auth
-  end
-end
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 권한 모델에 따라 `JwtValidator`에서 적절한 검증 로직을 구현하세요:
 
@@ -185,7 +110,7 @@ def self.verify_payload(payload)
   end
 
   # 글로벌 API 리소스에 필요한 스코프 확인
-  required_scopes = ['api:read', 'api:write'] # 실제 필요한 스코프로 교체
+  required_scopes = ['api:read', 'api:write'] # 실제 필요한 스코프로 교체하세요
   token_scopes = payload['scope']&.split(' ') || []
 
   unless required_scopes.all? { |scope| token_scopes.include?(scope) }
@@ -195,7 +120,7 @@ end
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="조직 (Organization) (비-API) 권한">
+<TabItem value="organization-permissions" label="조직 (비-API) 권한">
 
 ```ruby title="jwt_validator.rb"
 def self.verify_payload(payload)
@@ -207,15 +132,15 @@ def self.verify_payload(payload)
     raise AuthorizationError.new('Invalid audience for organization permissions')
   end
 
-  # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+  # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
   expected_org_id = 'your-organization-id' # 요청 컨텍스트에서 추출
   expected_aud = "urn:logto:organization:#{expected_org_id}"
   unless audiences.include?(expected_aud)
     raise AuthorizationError.new('Organization ID mismatch')
   end
 
-  # 필요한 조직 스코프 확인
-  required_scopes = ['invite:users', 'manage:settings'] # 실제 필요한 스코프로 교체
+  # 조직 권한에 필요한 스코프 확인
+  required_scopes = ['invite:users', 'manage:settings'] # 실제 필요한 스코프로 교체하세요
   token_scopes = payload['scope']&.split(' ') || []
 
   unless required_scopes.all? { |scope| token_scopes.include?(scope) }
@@ -225,7 +150,7 @@ end
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="조직 수준 API 리소스">
+<TabItem value="organization-level-api-resources" label="조직 레벨 API 리소스">
 
 ```ruby title="jwt_validator.rb"
 def self.verify_payload(payload)
@@ -235,15 +160,15 @@ def self.verify_payload(payload)
     raise AuthorizationError.new('Invalid audience for organization-level API resources')
   end
 
-  # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+  # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
   expected_org_id = 'your-organization-id' # 요청 컨텍스트에서 추출
   org_id = payload['organization_id']
   unless expected_org_id == org_id
     raise AuthorizationError.new('Organization ID mismatch')
   end
 
-  # 조직 수준 API 리소스에 필요한 스코프 확인
-  required_scopes = ['api:read', 'api:write'] # 실제 필요한 스코프로 교체
+  # 조직 레벨 API 리소스에 필요한 스코프 확인
+  required_scopes = ['api:read', 'api:write'] # 실제 필요한 스코프로 교체하세요
   token_scopes = payload['scope']&.split(' ') || []
 
   unless required_scopes.all? { |scope| token_scopes.include?(scope) }

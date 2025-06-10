@@ -1,5 +1,18 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import DjangoValidation from './fragments/django/_validation.md';
+import DjangoRestValidation from './fragments/django-rest/_validation.md';
+import FastApiValidation from './fragments/fastapi/_validation.md';
+import FlaskValidation from './fragments/flask/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  fastapi: <FastApiValidation />,
+  flask: <FlaskValidation />,
+  django: <DjangoValidation />,
+  'django-rest': <DjangoRestValidation />,
+});
 
 Wir verwenden [PyJWT](https://github.com/jpadilla/pyjwt), um JWTs zu validieren. Installiere es, falls du es noch nicht getan hast:
 
@@ -60,121 +73,22 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     pass
 ```
 
-Implementiere dann das Middleware, um das Zugangstoken zu überprüfen:
+Implementiere anschließend die Middleware, um das Zugangstoken zu überprüfen:
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="fastapi" label="FastAPI">
-
-```py title="auth_middleware.py"
-from fastapi import HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jwt_validator import validate_jwt, create_auth_info
-
-security = HTTPBearer()
-
-async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthInfo:
-    try:
-        token = credentials.credentials
-        payload = validate_jwt(token)
-        return create_auth_info(payload)
-
-    except AuthorizationError as e:
-        raise HTTPException(status_code=e.status, detail=str(e))
-```
-
-  </TabItem>
-  <TabItem value="flask" label="Flask">
-
-```py title="auth_middleware.py"
-from functools import wraps
-from flask import request, jsonify, g
-from jwt_validator import validate_jwt, create_auth_info
-
-def verify_access_token(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            token = extract_bearer_token_from_headers(dict(request.headers))
-            payload = validate_jwt(token)
-
-            # Auth-Info im Flask-g-Objekt für generische Nutzung speichern
-            g.auth = create_auth_info(payload)
-
-            return f(*args, **kwargs)
-
-        except AuthorizationError as e:
-            return jsonify({'error': str(e)}), e.status
-
-    return decorated_function
-```
-
-  </TabItem>
-  <TabItem value="django" label="Django">
-
-```py title="auth_middleware.py"
-from django.http import JsonResponse
-from jwt_validator import validate_jwt, create_auth_info
-
-def require_access_token(view_func):
-    def wrapper(request, *args, **kwargs):
-        try:
-            headers = {key.replace('HTTP_', '').replace('_', '-').lower(): value
-                      for key, value in request.META.items() if key.startswith('HTTP_')}
-
-            token = extract_bearer_token_from_headers(headers)
-            payload = validate_jwt(token)
-
-            # Auth-Info an die Anfrage anhängen für generische Nutzung
-            request.auth = create_auth_info(payload)
-
-            return view_func(request, *args, **kwargs)
-
-        except AuthorizationError as e:
-            return JsonResponse({'error': str(e)}, status=e.status)
-
-    return wrapper
-```
-
-  </TabItem>
-  <TabItem value="django-rest-framework" label="Django REST Framework">
-
-```py title="auth_middleware.py"
-from rest_framework.authentication import TokenAuthentication
-from rest_framework import exceptions
-from jwt_validator import validate_jwt, create_auth_info
-
-class AccessTokenAuthentication(TokenAuthentication):
-    keyword = 'Bearer'  # Verwende 'Bearer' statt 'Token'
-
-    def authenticate_credentials(self, key):
-        """
-        Authentifiziere das Token, indem es als JWT validiert wird.
-        """
-        try:
-            payload = validate_jwt(key)
-            auth_info = create_auth_info(payload)
-
-            # Erstelle ein benutzerähnliches Objekt, das Auth-Info für generische Nutzung hält
-            user = type('User', (), {
-                'auth': auth_info,
-                'is_authenticated': True,
-                'is_anonymous': False,
-                'is_active': True,
-            })()
-
-            return (user, key)
-
-        except AuthorizationError as e:
-            if e.status == 401:
-                raise exceptions.AuthenticationFailed(str(e))
-            else:  # 403
-                raise exceptions.PermissionDenied(str(e))
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
-Implementiere gemäß deinem Berechtigungsmodell die passende Überprüfungslogik in `jwt_validator.py`:
+Implementiere gemäß deinem Berechtigungsmodell die entsprechende Überprüfungslogik in `jwt_validator.py`:
 
 <Tabs groupId="permission-models">
 <TabItem value="global-api-resources" label="Globale API-Ressourcen">
@@ -191,14 +105,14 @@ def verify_payload(payload: Dict[str, Any]) -> None:
         raise AuthorizationError('Ungültige Zielgruppe')
 
     # Überprüfe erforderliche Berechtigungen für globale API-Ressourcen
-    required_scopes = ['api:read', 'api:write']  # Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+    required_scopes = ['api:read', 'api:write']  # Ersetze durch deine tatsächlich benötigten Berechtigungen
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
         raise AuthorizationError('Unzureichende Berechtigung')
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="Organisations-(Nicht-API)-Berechtigungen">
+<TabItem value="organization-permissions" label="Organisation (nicht-API) Berechtigungen">
 
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
@@ -212,14 +126,14 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if not has_org_audience:
         raise AuthorizationError('Ungültige Zielgruppe für Organisationsberechtigungen')
 
-    # Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Anfragekontext extrahieren)
-    expected_org_id = 'your-organization-id'  # Aus dem Anfragekontext extrahieren
+    # Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (ggf. aus dem Request-Kontext extrahieren)
+    expected_org_id = 'your-organization-id'  # Aus dem Request-Kontext extrahieren
     expected_aud = f'urn:logto:organization:{expected_org_id}'
     if expected_aud not in audiences:
         raise AuthorizationError('Organisations-ID stimmt nicht überein')
 
     # Überprüfe erforderliche Organisationsberechtigungen
-    required_scopes = ['invite:users', 'manage:settings']  # Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+    required_scopes = ['invite:users', 'manage:settings']  # Ersetze durch deine tatsächlich benötigten Berechtigungen
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
         raise AuthorizationError('Unzureichende Organisationsberechtigung')
@@ -239,14 +153,14 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if 'https://your-api-resource-indicator' not in audiences:
         raise AuthorizationError('Ungültige Zielgruppe für organisationsbezogene API-Ressourcen')
 
-    # Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (möglicherweise musst du dies aus dem Anfragekontext extrahieren)
-    expected_org_id = 'your-organization-id'  # Aus dem Anfragekontext extrahieren
+    # Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (ggf. aus dem Request-Kontext extrahieren)
+    expected_org_id = 'your-organization-id'  # Aus dem Request-Kontext extrahieren
     org_id = payload.get('organization_id')
     if expected_org_id != org_id:
         raise AuthorizationError('Organisations-ID stimmt nicht überein')
 
     # Überprüfe erforderliche Berechtigungen für organisationsbezogene API-Ressourcen
-    required_scopes = ['api:read', 'api:write']  # Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+    required_scopes = ['api:read', 'api:write']  # Ersetze durch deine tatsächlich benötigten Berechtigungen
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
         raise AuthorizationError('Unzureichende organisationsbezogene API-Berechtigungen')

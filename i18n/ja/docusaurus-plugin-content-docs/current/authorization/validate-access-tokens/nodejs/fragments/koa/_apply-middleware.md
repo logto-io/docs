@@ -9,13 +9,5 @@ router.get('/api/protected', koaVerifyAccessToken, (ctx) => {
   ctx.body = { auth: ctx.state.auth };
 });
 
-router.get('/api/protected/detailed', koaVerifyAccessToken, (ctx) => {
-  // 保護されたエンドポイントのロジック
-  ctx.body = {
-    auth: ctx.state.auth,
-    message: '保護されたデータへのアクセスに成功しました',
-  };
-});
-
 app.use(router.routes());
 ```

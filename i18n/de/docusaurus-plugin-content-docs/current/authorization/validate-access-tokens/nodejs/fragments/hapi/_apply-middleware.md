@@ -7,23 +7,8 @@ server.route({
   options: {
     pre: [{ method: hapiVerifyAccessToken }],
     handler: (request, h) => {
-      // Zugriff auf Authentifizierungsinformationen über request.app.auth
+      // Greife auf Authentifizierungsinformationen aus request.app.auth zu
       return { auth: request.app.auth };
-    },
-  },
-});
-
-server.route({
-  method: 'GET',
-  path: '/api/protected/detailed',
-  options: {
-    pre: [{ method: hapiVerifyAccessToken }],
-    handler: (request, h) => {
-      // Deine Logik für den geschützten Endpunkt
-      return {
-        auth: request.app.auth,
-        message: 'Geschützte Daten erfolgreich abgerufen',
-      };
     },
   },
 });

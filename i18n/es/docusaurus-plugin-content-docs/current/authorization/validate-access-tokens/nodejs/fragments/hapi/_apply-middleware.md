@@ -12,19 +12,4 @@ server.route({
     },
   },
 });
-
-server.route({
-  method: 'GET',
-  path: '/api/protected/detailed',
-  options: {
-    pre: [{ method: hapiVerifyAccessToken }],
-    handler: (request, h) => {
-      // Tu lógica del endpoint protegido
-      return {
-        auth: request.app.auth,
-        message: 'Datos protegidos accedidos correctamente',
-      };
-    },
-  },
-});
 ```

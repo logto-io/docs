@@ -7,23 +7,8 @@ server.route({
   options: {
     pre: [{ method: hapiVerifyAccessToken }],
     handler: (request, h) => {
-      // request.app.auth から認証情報にアクセス
+      // 認証情報は request.app.auth から取得できます
       return { auth: request.app.auth };
-    },
-  },
-});
-
-server.route({
-  method: 'GET',
-  path: '/api/protected/detailed',
-  options: {
-    pre: [{ method: hapiVerifyAccessToken }],
-    handler: (request, h) => {
-      // 保護されたエンドポイントのロジック
-      return {
-        auth: request.app.auth,
-        message: '保護されたデータへのアクセスに成功しました',
-      };
     },
   },
 });
