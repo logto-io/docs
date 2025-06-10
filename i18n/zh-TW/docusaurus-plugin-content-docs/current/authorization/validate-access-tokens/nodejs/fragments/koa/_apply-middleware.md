@@ -9,13 +9,5 @@ router.get('/api/protected', koaVerifyAccessToken, (ctx) => {
   ctx.body = { auth: ctx.state.auth };
 });
 
-router.get('/api/protected/detailed', koaVerifyAccessToken, (ctx) => {
-  // 你的受保護端點邏輯
-  ctx.body = {
-    auth: ctx.state.auth,
-    message: '成功存取受保護資料',
-  };
-});
-
 app.use(router.routes());
 ```

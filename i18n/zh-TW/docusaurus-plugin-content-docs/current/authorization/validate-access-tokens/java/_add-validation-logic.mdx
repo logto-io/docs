@@ -1,672 +1,114 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-我們會根據不同框架使用不同的 JWT 函式庫。請安裝所需的相依套件：
+import MicronautValidation from './fragments/micronaut/_validation.md';
+import QuarkusValidation from './fragments/quarkus/_validation.md';
+import SpringBootValidation from './fragments/spring-boot/_validation.md';
+import VertxValidation from './fragments/vertx-web/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  'spring-boot': <SpringBootValidation />,
+  quarkus: <QuarkusValidation />,
+  micronaut: <MicronautValidation />,
+  'vertx-web': <VertxValidation />,
+});
+
+我們會根據不同的框架使用不同的 JWT 函式庫。請安裝所需的相依套件：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="spring-boot" label="Spring Boot">
-
-在你的 `pom.xml` 中新增：
-
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-security</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-oauth2-resource-server</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-oauth2-jose</artifactId>
-</dependency>
-```
-
-  </TabItem>
-  <TabItem value="quarkus" label="Quarkus">
-
-在你的 `pom.xml` 中新增：
-
-```xml
-<dependency>
-    <groupId>io.quarkus</groupId>
-    <artifactId>quarkus-smallrye-jwt</artifactId>
-</dependency>
-<dependency>
-    <groupId>io.quarkus</groupId>
-    <artifactId>quarkus-resteasy-reactive</artifactId>
-</dependency>
-```
-
-  </TabItem>
-  <TabItem value="micronaut" label="Micronaut">
-
-在你的 `pom.xml` 中新增：
-
-```xml
-<dependency>
-    <groupId>io.micronaut.security</groupId>
-    <artifactId>micronaut-security-jwt</artifactId>
-</dependency>
-<dependency>
-    <groupId>io.micronaut</groupId>
-    <artifactId>micronaut-http-server-netty</artifactId>
-</dependency>
-```
-
-  </TabItem>
-  <TabItem value="vertx-web" label="Vert.x Web">
-
-在你的 `pom.xml` 中新增：
-
-```xml
-<dependency>
-    <groupId>io.vertx</groupId>
-    <artifactId>vertx-web</artifactId>
-</dependency>
-<dependency>
-    <groupId>io.vertx</groupId>
-    <artifactId>vertx-auth-jwt</artifactId>
-</dependency>
-<dependency>
-    <groupId>io.vertx</groupId>
-    <artifactId>vertx-web-client</artifactId>
-</dependency>
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
-
-接著，實作中介軟體來驗證存取權杖 (Access token)：
-
-<Tabs groupId="api-framework">
-  <TabItem value="spring-boot" label="Spring Boot">
-
-```java title="JwtSecurityConfig.java"
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
-import org.springframework.security.web.SecurityFilterChain;
-
-@Configuration
-@EnableWebSecurity
-public class JwtSecurityConfig {
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/protected/**").authenticated()
-                .anyRequest().permitAll()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.decoder(jwtDecoder()))
-            );
-        return http.build();
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        return NimbusJwtDecoder.withJwkSetUri(AuthConstants.JWKS_URI)
-            .build();
-    }
 }
-```
 
-```java title="JwtValidator.java"
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.stereotype.Component;
-import java.util.Arrays;
-import java.util.List;
-
-@Component
-public class JwtValidator {
-
-    public void verifyPayload(Jwt jwt) {
-        // 在此根據權限模型實作你的驗證邏輯
-        // 相關內容會在下方權限模型區段展示
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="quarkus" label="Quarkus">
-
-```java title="JwtVerificationFilter.java"
-import org.eclipse.microprofile.jwt.JsonWebToken;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.ext.Provider;
-
-@Provider
-@ApplicationScoped
-public class JwtVerificationFilter implements ContainerRequestFilter {
-
-    @Inject
-    JsonWebToken jwt;
-
-    @Override
-    public void filter(ContainerRequestContext requestContext) {
-        if (requestContext.getUriInfo().getPath().startsWith("/api/protected")) {
-            try {
-                verifyPayload(jwt);
-
-                // 將 JWT 存入 context 以便 controller 存取
-                requestContext.setProperty("auth", jwt);
-
-            } catch (AuthorizationException e) {
-                requestContext.abortWith(
-                    jakarta.ws.rs.core.Response.status(e.getStatusCode())
-                        .entity("{\"error\": \"" + e.getMessage() + "\"}")
-                        .build()
-                );
-            } catch (Exception e) {
-                requestContext.abortWith(
-                    jakarta.ws.rs.core.Response.status(401)
-                        .entity("{\"error\": \"Invalid token\"}")
-                        .build()
-                );
-            }
-        }
-    }
-
-    private void verifyPayload(JsonWebToken jwt) {
-        // 在此根據權限模型實作你的驗證邏輯
-        // 相關內容會在下方權限模型區段展示
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="micronaut" label="Micronaut">
-
-```java title="application.yml"
-micronaut:
-  security:
-    authentication: bearer
-    token:
-      jwt:
-        signatures:
-          jwks:
-            logto:
-              url: ${JWKS_URI:https://your-tenant.logto.app/oidc/jwks}
-```
-
-```java title="JwtClaimsValidator.java"
-import io.micronaut.security.token.Claims;
-import io.micronaut.security.token.validator.TokenValidator;
-import jakarta.inject.Singleton;
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
-
-@Singleton
-public class JwtClaimsValidator implements TokenValidator {
-
-    @Override
-    public Publisher<Boolean> validateToken(String token, Claims claims) {
-        return Mono.fromCallable(() -> {
-            try {
-                verifyPayload(claims);
-                return true;
-            } catch (AuthorizationException e) {
-                throw new RuntimeException(e.getMessage());
-            }
-        });
-    }
-
-    private void verifyPayload(Claims claims) {
-        // 在此根據權限模型實作你的驗證邏輯
-        // 相關內容會在下方權限模型區段展示
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="vertx-web" label="Vert.x Web">
-
-```java title="JwtAuthHandler.java"
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.auth.jwt.JWTAuth;
-import io.vertx.ext.auth.jwt.JWTAuthOptions;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.client.WebClient;
-
-public class JwtAuthHandler implements Handler<RoutingContext> {
-
-    private final JWTAuth jwtAuth;
-    private final WebClient webClient;
-
-    public JwtAuthHandler(io.vertx.core.Vertx vertx) {
-        this.webClient = WebClient.create(vertx);
-        this.jwtAuth = JWTAuth.create(vertx, new JWTAuthOptions());
-
-        // 取得 JWKS 並設定 JWT 驗證
-        fetchJWKS().onSuccess(jwks -> {
-            // 設定 JWKS（簡化版－實務上可能需要正規 JWKS 解析器）
-        });
-    }
-
-    @Override
-    public void handle(RoutingContext context) {
-        String authHeader = context.request().getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            context.response()
-                .setStatusCode(401)
-                .putHeader("Content-Type", "application/json")
-                .end("{\"error\": \"Authorization header missing or invalid\"}");
-            return;
-        }
-
-        String token = authHeader.substring(7);
-        jwtAuth.authenticate(new JsonObject().put("token", token))
-            .onSuccess(user -> {
-                try {
-                    JsonObject principal = user.principal();
-                    verifyPayload(principal);
-
-                    // 將 JWT principal 存入 context 以便 handler 存取
-                    context.put("auth", principal);
-                    context.next();
-
-                } catch (AuthorizationException e) {
-                    context.response()
-                        .setStatusCode(e.getStatusCode())
-                        .putHeader("Content-Type", "application/json")
-                        .end("{\"error\": \"" + e.getMessage() + "\"}");
-                } catch (Exception e) {
-                    context.response()
-                        .setStatusCode(401)
-                        .putHeader("Content-Type", "application/json")
-                        .end("{\"error\": \"Invalid token\"}");
-                }
-            })
-            .onFailure(err -> {
-                context.response()
-                    .setStatusCode(401)
-                    .putHeader("Content-Type", "application/json")
-                    .end("{\"error\": \"Invalid token\"}");
-            });
-    }
-
-    private Future<JsonObject> fetchJWKS() {
-        return webClient.getAbs(AuthConstants.JWKS_URI)
-            .send()
-            .map(response -> response.bodyAsJsonObject());
-    }
-
-    private void verifyPayload(JsonObject principal) {
-        // 在此根據權限模型實作你的驗證邏輯
-        // 相關內容會在下方權限模型區段展示
-    }
-}
-```
-
-  </TabItem>
-</Tabs>
-
-根據你的權限模型，可能需要採用不同的驗證邏輯：
+根據你的權限模型，實作相應的驗證邏輯：
 
 <Tabs groupId="permission-models">
 <TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
 
-<Tabs groupId="api-framework">
-  <TabItem value="spring-boot" label="Spring Boot">
+```java
+// 檢查 audience 宣告是否符合你的 API 資源標示符 (resource indicator)
+List<String> audiences = extractAudiences(token); // 依框架提取
+if (!audiences.contains("https://your-api-resource-indicator")) {
+    throw new AuthorizationException("Invalid audience");
+}
 
-```java title="JwtValidator.java"
-private void verifyPayload(Jwt jwt) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    List<String> audiences = jwt.getAudience();
-    if (!audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience");
-    }
+// 檢查全域 API 資源所需的權限範圍 (scopes)
+List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需的權限範圍
+String scopes = extractScopes(token); // 依框架提取
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
 
-    // 檢查全域 API 資源所需的權限範圍 (Scopes)
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaimAsString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient scope");
-    }
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("Insufficient scope");
 }
 ```
-
-  </TabItem>
-  <TabItem value="quarkus" label="Quarkus">
-
-```java title="JwtVerificationFilter.java"
-private void verifyPayload(JsonWebToken jwt) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    if (!jwt.getAudience().contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience");
-    }
-
-    // 檢查全域 API 資源所需的權限範圍 (Scopes)
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaim("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient scope");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="micronaut" label="Micronaut">
-
-```java title="JwtClaimsValidator.java"
-private void verifyPayload(Claims claims) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    List<String> audiences = (List<String>) claims.get("aud");
-    if (audiences == null || !audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience");
-    }
-
-    // 檢查全域 API 資源所需的權限範圍 (Scopes)
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = (String) claims.get("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient scope");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="vertx-web" label="Vert.x Web">
-
-```java title="JwtAuthHandler.java"
-private void verifyPayload(JsonObject principal) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    JsonArray audiences = principal.getJsonArray("aud");
-    if (audiences == null || !audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience");
-    }
-
-    // 檢查全域 API 資源所需的權限範圍 (Scopes)
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = principal.getString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient scope");
-    }
-}
-```
-
-  </TabItem>
-</Tabs>
 
 </TabItem>
 <TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
 
-<Tabs groupId="api-framework">
-  <TabItem value="spring-boot" label="Spring Boot">
+```java
+// 檢查 audience 宣告是否符合組織格式
+List<String> audiences = extractAudiences(token); // 依框架提取
+boolean hasOrgAudience = audiences.stream()
+    .anyMatch(aud -> aud.startsWith("urn:logto:organization:"));
 
-```java title="JwtValidator.java"
-private void verifyPayload(Jwt jwt) {
-    // 檢查 audience 宣告是否為組織格式
-    List<String> audiences = jwt.getAudience();
-    boolean hasOrgAudience = audiences.stream()
-        .anyMatch(aud -> aud.startsWith("urn:logto:organization:"));
+if (!hasOrgAudience) {
+    throw new AuthorizationException("Invalid audience for organization permissions");
+}
 
-    if (!hasOrgAudience) {
-        throw new AuthorizationException("Invalid audience for organization permissions");
-    }
+// 檢查組織 ID 是否與情境相符（你可能需要從請求內容中提取）
+String expectedOrgId = "your-organization-id"; // 從請求內容提取
+String expectedAud = "urn:logto:organization:" + expectedOrgId;
+if (!audiences.contains(expectedAud)) {
+    throw new AuthorizationException("Organization ID mismatch");
+}
 
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String expectedAud = "urn:logto:organization:" + expectedOrgId;
-    if (!audiences.contains(expectedAud)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
+// 檢查所需的組織權限範圍 (scopes)
+List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // 請替換為實際所需的權限範圍
+String scopes = extractScopes(token); // 依框架提取
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
 
-    // 檢查所需組織權限範圍
-    List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaimAsString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization scope");
-    }
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("Insufficient organization scope");
 }
 ```
-
-  </TabItem>
-  <TabItem value="quarkus" label="Quarkus">
-
-```java title="JwtVerificationFilter.java"
-private void verifyPayload(JsonWebToken jwt) {
-    // 檢查 audience 宣告是否為組織格式
-    boolean hasOrgAudience = jwt.getAudience().stream()
-        .anyMatch(aud -> aud.startsWith("urn:logto:organization:"));
-
-    if (!hasOrgAudience) {
-        throw new AuthorizationException("Invalid audience for organization permissions");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String expectedAud = "urn:logto:organization:" + expectedOrgId;
-    if (!jwt.getAudience().contains(expectedAud)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查所需組織權限範圍
-    List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaim("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization scope");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="micronaut" label="Micronaut">
-
-```java title="JwtClaimsValidator.java"
-private void verifyPayload(Claims claims) {
-    // 檢查 audience 宣告是否為組織格式
-    List<String> audiences = (List<String>) claims.get("aud");
-    boolean hasOrgAudience = audiences != null && audiences.stream()
-        .anyMatch(aud -> aud.startsWith("urn:logto:organization:"));
-
-    if (!hasOrgAudience) {
-        throw new AuthorizationException("Invalid audience for organization permissions");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String expectedAud = "urn:logto:organization:" + expectedOrgId;
-    if (!audiences.contains(expectedAud)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查所需組織權限範圍
-    List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // 請替換為實際所需權限範圍
-    String scopes = (String) claims.get("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization scope");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="vertx-web" label="Vert.x Web">
-
-```java title="JwtAuthHandler.java"
-private void verifyPayload(JsonObject principal) {
-    // 檢查 audience 宣告是否為組織格式
-    JsonArray audiences = principal.getJsonArray("aud");
-    boolean hasOrgAudience = false;
-    if (audiences != null) {
-        for (Object aud : audiences) {
-            if (aud.toString().startsWith("urn:logto:organization:")) {
-                hasOrgAudience = true;
-                break;
-            }
-        }
-    }
-
-    if (!hasOrgAudience) {
-        throw new AuthorizationException("Invalid audience for organization permissions");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String expectedAud = "urn:logto:organization:" + expectedOrgId;
-    if (!audiences.contains(expectedAud)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查所需組織權限範圍
-    List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // 請替換為實際所需權限範圍
-    String scopes = principal.getString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization scope");
-    }
-}
-```
-
-  </TabItem>
-</Tabs>
 
 </TabItem>
 <TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
 
-<Tabs groupId="api-framework">
-  <TabItem value="spring-boot" label="Spring Boot">
+```java
+// 檢查 audience 宣告是否符合你的 API 資源標示符 (resource indicator)
+List<String> audiences = extractAudiences(token); // 依框架提取
+if (!audiences.contains("https://your-api-resource-indicator")) {
+    throw new AuthorizationException("Invalid audience for organization-level API resources");
+}
 
-```java title="JwtValidator.java"
-private void verifyPayload(Jwt jwt) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    List<String> audiences = jwt.getAudience();
-    if (!audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience for organization-level API resources");
-    }
+// 檢查組織 ID 是否與情境相符（你可能需要從請求內容中提取）
+String expectedOrgId = "your-organization-id"; // 從請求內容提取
+String orgId = extractOrganizationId(token); // 依框架提取
+if (!expectedOrgId.equals(orgId)) {
+    throw new AuthorizationException("Organization ID mismatch");
+}
 
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String orgId = jwt.getClaimAsString("organization_id");
-    if (!expectedOrgId.equals(orgId)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
+// 檢查組織層級 API 資源所需的權限範圍 (scopes)
+List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需的權限範圍
+String scopes = extractScopes(token); // 依框架提取
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
 
-    // 檢查組織層級 API 資源所需的權限範圍
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaimAsString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization-level API scopes");
-    }
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("Insufficient organization-level API scopes");
 }
 ```
-
-  </TabItem>
-  <TabItem value="quarkus" label="Quarkus">
-
-```java title="JwtVerificationFilter.java"
-private void verifyPayload(JsonWebToken jwt) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    if (!jwt.getAudience().contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience for organization-level API resources");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String orgId = jwt.getClaim("organization_id");
-    if (!expectedOrgId.equals(orgId)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查組織層級 API 資源所需的權限範圍
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = jwt.getClaim("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization-level API scopes");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="micronaut" label="Micronaut">
-
-```java title="JwtClaimsValidator.java"
-private void verifyPayload(Claims claims) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    List<String> audiences = (List<String>) claims.get("aud");
-    if (audiences == null || !audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience for organization-level API resources");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String orgId = (String) claims.get("organization_id");
-    if (!expectedOrgId.equals(orgId)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查組織層級 API 資源所需的權限範圍
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = (String) claims.get("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization-level API scopes");
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="vertx-web" label="Vert.x Web">
-
-```java title="JwtAuthHandler.java"
-private void verifyPayload(JsonObject principal) {
-    // 檢查 audience 宣告是否符合你的 API 資源標示符
-    JsonArray audiences = principal.getJsonArray("aud");
-    if (audiences == null || !audiences.contains("https://your-api-resource-indicator")) {
-        throw new AuthorizationException("Invalid audience for organization-level API resources");
-    }
-
-    // 檢查組織 ID 是否與 context 相符（你可能需要從請求 context 取得）
-    String expectedOrgId = "your-organization-id"; // 從請求 context 取得
-    String orgId = principal.getString("organization_id");
-    if (!expectedOrgId.equals(orgId)) {
-        throw new AuthorizationException("Organization ID mismatch");
-    }
-
-    // 檢查組織層級 API 資源所需的權限範圍
-    List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // 請替換為實際所需權限範圍
-    String scopes = principal.getString("scope");
-    List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
-
-    if (!tokenScopes.containsAll(requiredScopes)) {
-        throw new AuthorizationException("Insufficient organization-level API scopes");
-    }
-}
-```
-
-  </TabItem>
-</Tabs>
 
 </TabItem>
 </Tabs>
+
+提取宣告（claims）的輔助方法會依據不同框架而有所不同。請參考上方各框架專屬驗證檔案中的實作細節。

@@ -10,15 +10,5 @@ export class ProtectedController {
     // Zugriff auf Authentifizierungsinformationen über req.auth
     return { auth: req.auth };
   }
-
-  @Get('protected/detailed')
-  @UseGuards(AccessTokenGuard)
-  getDetailedProtected(@Req() req: any) {
-    // Deine Logik für den geschützten Endpunkt
-    return {
-      auth: req.auth,
-      message: 'Geschützte Daten wurden erfolgreich abgerufen',
-    };
-  }
 }
 ```

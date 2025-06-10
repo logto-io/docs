@@ -9,13 +9,5 @@ router.get('/api/protected', koaVerifyAccessToken, (ctx) => {
   ctx.body = { auth: ctx.state.auth };
 });
 
-router.get('/api/protected/detailed', koaVerifyAccessToken, (ctx) => {
-  // Deine geschützte Endpunkt-Logik
-  ctx.body = {
-    auth: ctx.state.auth,
-    message: 'Geschützte Daten wurden erfolgreich abgerufen',
-  };
-});
-
 app.use(router.routes());
 ```

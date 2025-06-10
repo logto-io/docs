@@ -1,11 +1,22 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
 
 我們使用 [jwt](https://github.com/jwt/ruby-jwt) gem 來驗證 JWT。請將其加入你的 Gemfile：
 
 ```ruby title="Gemfile"
 gem 'jwt'
-# net-http 是 Ruby 2.7 起標準函式庫的一部分，無需額外加入
+# net-http 自 Ruby 2.7 起已是標準函式庫，無需額外加入
 ```
 
 然後執行：
@@ -35,10 +46,10 @@ class JwtValidator
     end
   end
 
-  def self.validate_jwt_token(token)
+  def self.validate_jwt(token)
     jwks = fetch_jwks
 
-    # 讓 JWT 函式庫自動從 JWKS 偵測演算法
+    # 讓 JWT 函式庫自 JWKS 偵測演算法
     decoded_token = JWT.decode(token, nil, true, {
       iss: AuthConstants::ISSUER,
       verify_iss: true,
@@ -46,6 +57,7 @@ class JwtValidator
       jwks: jwks
     })[0]
 
+    verify_payload(decoded_token)
     decoded_token
   end
 
@@ -63,113 +75,26 @@ class JwtValidator
   end
 
   def self.verify_payload(payload)
-    # 根據權限模型實作你的驗證邏輯
-    # 相關內容會在下方權限模型區段展示
+    # 根據權限模型實作驗證邏輯
+    # 相關內容將於下方權限模型區段說明
   end
 end
 ```
 
-接著，實作中介軟體來驗證存取權杖 (Access token)：
+接著，實作中介軟體以驗證存取權杖 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="rails" label="Rails">
-
-```ruby title="app/controllers/concerns/jwt_authentication.rb"
-module JwtAuthentication
-  extend ActiveSupport::Concern
-  include AuthHelpers
-
-  included do
-    before_action :verify_access_token, only: [:protected_action] # 指定需保護的 action
-  end
-
-  private
-
-  def verify_access_token
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 儲存驗證資訊以便通用使用
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      render json: { error: e.message }, status: e.status
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      render json: { error: 'Invalid token' }, status: 401
-    end
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="sinatra" label="Sinatra">
-
-```ruby title="auth_middleware.rb"
-class AuthMiddleware
-  include AuthHelpers
-
-  def initialize(app)
-    @app = app
-  end
-
-  def call(env)
-    request = Rack::Request.new(env)
-
-    # 僅保護特定路徑
-    if request.path.start_with?('/api/protected')
-      begin
-        token = extract_bearer_token(request)
-        decoded_token = JwtValidator.validate_jwt_token(token)
-
-        JwtValidator.verify_payload(decoded_token)
-        # 將驗證資訊存入 env 以便通用使用
-        env['auth'] = JwtValidator.create_auth_info(decoded_token)
-
-      rescue AuthorizationError => e
-        return [e.status, { 'Content-Type' => 'application/json' }, [{ error: e.message }.to_json]]
-      rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-        return [401, { 'Content-Type' => 'application/json' }, [{ error: 'Invalid token' }.to_json]]
-      end
-    end
-
-    @app.call(env)
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="grape" label="Grape">
-
-```ruby title="auth_helpers.rb"
-module GrapeAuthHelpers
-  include AuthHelpers
-
-  def authenticate_user!
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 儲存驗證資訊以便通用使用
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      error!({ error: e.message }, e.status)
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      error!({ error: 'Invalid token' }, 401)
-    end
-  end
-
-  def auth
-    @auth
-  end
-end
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 根據你的權限模型，在 `JwtValidator` 中實作相應的驗證邏輯：
 
@@ -207,8 +132,8 @@ def self.verify_payload(payload)
     raise AuthorizationError.new('Invalid audience for organization permissions')
   end
 
-  # 檢查組織 ID 是否與情境相符（你可能需要從請求情境中取得）
-  expected_org_id = 'your-organization-id' # 從請求情境取得
+  # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+  expected_org_id = 'your-organization-id' # 從請求內容取得
   expected_aud = "urn:logto:organization:#{expected_org_id}"
   unless audiences.include?(expected_aud)
     raise AuthorizationError.new('Organization ID mismatch')
@@ -235,8 +160,8 @@ def self.verify_payload(payload)
     raise AuthorizationError.new('Invalid audience for organization-level API resources')
   end
 
-  # 檢查組織 ID 是否與情境相符（你可能需要從請求情境中取得）
-  expected_org_id = 'your-organization-id' # 從請求情境取得
+  # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+  expected_org_id = 'your-organization-id' # 從請求內容取得
   org_id = payload['organization_id']
   unless expected_org_id == org_id
     raise AuthorizationError.new('Organization ID mismatch')

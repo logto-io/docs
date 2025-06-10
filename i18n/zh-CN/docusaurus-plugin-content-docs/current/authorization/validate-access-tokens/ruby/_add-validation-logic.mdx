@@ -1,7 +1,18 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-我们使用 [jwt](https://github.com/jwt/ruby-jwt) gem 来验证 JWT。请将其添加到你的 Gemfile：
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
+
+我们使用 [jwt](https://github.com/jwt/ruby-jwt) gem 来验证 JWT。请将其添加到你的 Gemfile 中：
 
 ```ruby title="Gemfile"
 gem 'jwt'
@@ -35,7 +46,7 @@ class JwtValidator
     end
   end
 
-  def self.validate_jwt_token(token)
+  def self.validate_jwt(token)
     jwks = fetch_jwks
 
     # 让 JWT 库根据 JWKS 自动检测算法
@@ -46,6 +57,7 @@ class JwtValidator
       jwks: jwks
     })[0]
 
+    verify_payload(decoded_token)
     decoded_token
   end
 
@@ -69,107 +81,20 @@ class JwtValidator
 end
 ```
 
-接下来，实现中间件以验证访问令牌 (Access token)：
+然后，实现中间件以验证访问令牌 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="rails" label="Rails">
-
-```ruby title="app/controllers/concerns/jwt_authentication.rb"
-module JwtAuthentication
-  extend ActiveSupport::Concern
-  include AuthHelpers
-
-  included do
-    before_action :verify_access_token, only: [:protected_action] # 添加需要保护的具体 action
-  end
-
-  private
-
-  def verify_access_token
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 存储认证信息以便通用使用
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      render json: { error: e.message }, status: e.status
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      render json: { error: 'Invalid token' }, status: 401
-    end
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="sinatra" label="Sinatra">
-
-```ruby title="auth_middleware.rb"
-class AuthMiddleware
-  include AuthHelpers
-
-  def initialize(app)
-    @app = app
-  end
-
-  def call(env)
-    request = Rack::Request.new(env)
-
-    # 只保护特定路由
-    if request.path.start_with?('/api/protected')
-      begin
-        token = extract_bearer_token(request)
-        decoded_token = JwtValidator.validate_jwt_token(token)
-
-        JwtValidator.verify_payload(decoded_token)
-        # 在 env 中存储认证信息以便通用使用
-        env['auth'] = JwtValidator.create_auth_info(decoded_token)
-
-      rescue AuthorizationError => e
-        return [e.status, { 'Content-Type' => 'application/json' }, [{ error: e.message }.to_json]]
-      rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-        return [401, { 'Content-Type' => 'application/json' }, [{ error: 'Invalid token' }.to_json]]
-      end
-    end
-
-    @app.call(env)
-  end
-end
-```
-
-  </TabItem>
-  <TabItem value="grape" label="Grape">
-
-```ruby title="auth_helpers.rb"
-module GrapeAuthHelpers
-  include AuthHelpers
-
-  def authenticate_user!
-    begin
-      token = extract_bearer_token(request)
-      decoded_token = JwtValidator.validate_jwt_token(token)
-
-      JwtValidator.verify_payload(decoded_token)
-      # 存储认证信息以便通用使用
-      @auth = JwtValidator.create_auth_info(decoded_token)
-
-    rescue AuthorizationError => e
-      error!({ error: e.message }, e.status)
-    rescue JWT::DecodeError, JWT::VerificationError, JWT::ExpiredSignature => e
-      error!({ error: 'Invalid token' }, 401)
-    end
-  end
-
-  def auth
-    @auth
-  end
-end
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 根据你的权限模型，在 `JwtValidator` 中实现相应的验证逻辑：
 
@@ -195,7 +120,7 @@ end
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="组织 (非 API) 权限">
+<TabItem value="organization-permissions" label="组织 (Organization)（非 API）权限">
 
 ```ruby title="jwt_validator.rb"
 def self.verify_payload(payload)
