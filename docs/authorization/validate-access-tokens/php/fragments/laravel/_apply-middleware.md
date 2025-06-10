@@ -10,15 +10,6 @@ Route::middleware('auth.token')->group(function () {
         $auth = $request->attributes->get('auth');
         return ['auth' => $auth->toArray()];
     });
-
-    Route::get('/api/protected/detailed', function (Request $request) {
-        // Your protected endpoint logic
-        $auth = $request->attributes->get('auth');
-        return [
-            'auth' => $auth->toArray(),
-            'message' => 'Protected data accessed successfully'
-        ];
-    });
 });
 ```
 

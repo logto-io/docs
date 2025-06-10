@@ -38,21 +38,5 @@ public class ProtectedResource {
             "audience", token.getAudience()
         );
     }
-
-    @GET
-    @Path("/protected/detailed")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Map<String, Object> detailedEndpoint() {
-        // Your protected endpoint logic
-        String scopes = jwt.getClaim("scope");
-        return Map.of(
-            "sub", jwt.getSubject(),
-            "client_id", jwt.<String>getClaim("client_id"),
-            "organization_id", jwt.<String>getClaim("organization_id"),
-            "scopes", scopes,
-            "audience", jwt.getAudience(),
-            "message", "Protected data accessed successfully"
-        );
-    }
 }
 ```

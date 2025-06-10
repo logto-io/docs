@@ -24,18 +24,5 @@ public class ProtectedController {
             "audience", jwt.getAudience()
         );
     }
-
-    @GetMapping("/api/protected/detailed")
-    public Map<String, Object> detailedEndpoint(@AuthenticationPrincipal Jwt jwt) {
-        // Your protected endpoint logic
-        return Map.of(
-            "sub", jwt.getSubject(),
-            "client_id", jwt.getClaimAsString("client_id"),
-            "organization_id", jwt.getClaimAsString("organization_id"),
-            "scopes", jwt.getClaimAsString("scope"),
-            "audience", jwt.getAudience(),
-            "message", "Protected data accessed successfully"
-        );
-    }
 }
 ```

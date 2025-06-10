@@ -20,16 +20,5 @@ class ProtectedController extends AbstractController
         $auth = $request->attributes->get('auth');
         return $this->json(['auth' => $auth->toArray()]);
     }
-
-    #[Route('/detailed', methods: ['GET'])]
-    public function detailed(Request $request): JsonResponse
-    {
-        // Your protected endpoint logic
-        $auth = $request->attributes->get('auth');
-        return $this->json([
-            'auth' => $auth->toArray(),
-            'message' => 'Protected data accessed successfully'
-        ]);
-    }
 }
 ```

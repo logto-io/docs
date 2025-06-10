@@ -14,7 +14,6 @@ public class MainVerticle extends AbstractVerticle {
         // Apply middleware to protected routes
         router.route("/api/protected*").handler(new JwtAuthHandler(vertx));
         router.get("/api/protected").handler(this::protectedEndpoint);
-        router.get("/api/protected/detailed").handler(this::detailedEndpoint);
 
         vertx.createHttpServer()
             .requestHandler(router)
@@ -45,23 +44,6 @@ public class MainVerticle extends AbstractVerticle {
             .put("organization_id", principal.getString("organization_id"))
             .put("scopes", scopes != null ? scopes.split(" ") : new String[0])
             .put("audience", principal.getJsonArray("aud"));
-
-        context.response()
-            .putHeader("Content-Type", "application/json")
-            .end(response.encode());
-    }
-
-    private void detailedEndpoint(RoutingContext context) {
-        // Your protected endpoint logic
-        JsonObject principal = context.get("auth");
-
-        JsonObject response = new JsonObject()
-            .put("sub", principal.getString("sub"))
-            .put("client_id", principal.getString("client_id"))
-            .put("organization_id", principal.getString("organization_id"))
-            .put("scopes", principal.getString("scope"))
-            .put("audience", principal.getJsonArray("aud"))
-            .put("message", "Protected data accessed successfully");
 
         context.response()
             .putHeader("Content-Type", "application/json")

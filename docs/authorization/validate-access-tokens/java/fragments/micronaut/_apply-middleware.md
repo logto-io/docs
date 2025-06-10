@@ -26,18 +26,5 @@ public class ProtectedController {
             "audience", authentication.getAttributes().get("aud")
         );
     }
-
-    @Get("/protected/detailed")
-    public Map<String, Object> detailedEndpoint(Authentication authentication) {
-        // Your protected endpoint logic
-        return Map.of(
-            "sub", authentication.getName(),
-            "client_id", authentication.getAttributes().get("client_id"),
-            "organization_id", authentication.getAttributes().get("organization_id"),
-            "scopes", authentication.getAttributes().get("scope"),
-            "audience", authentication.getAttributes().get("aud"),
-            "message", "Protected data accessed successfully"
-        );
-    }
 }
 ```
