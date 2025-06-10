@@ -129,6 +129,22 @@ export const apiFrameworks = Object.freeze({
     name: 'Django REST Framework',
     language: 'python',
   },
+  axum: {
+    name: 'Axum',
+    language: 'rust',
+  },
+  'actix-web': {
+    name: 'Actix Web',
+    language: 'rust',
+  },
+  rocket: {
+    name: 'Rocket',
+    language: 'rust',
+  },
+  'aspnet-core': {
+    name: 'ASP.NET Core',
+    language: 'dotnet',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;

@@ -235,6 +235,7 @@ export const createCommonThemeConfig = (site: Site) => {
         'ruby',
         'erb',
         'http',
+        'toml',
       ],
     },
     colorMode: {
