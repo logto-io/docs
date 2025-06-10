@@ -1,0 +1,1 @@
+Définissez les constantes et utilitaires nécessaires dans votre code pour gérer l’extraction et la validation du jeton. Une requête valide doit inclure un en-tête `Authorization` sous la forme `Bearer <jeton d’accès (access token)>`.

@@ -1,12 +1,16 @@
 ---
-sidebar_label: Introduction
+sidebar_label: クイックスタート
 ---
 
-# Introduction
+# Logto クイックスタート
 
-Welcome to Logto quick starts. This documentation contains useful guides for integrating Logto into your application.
+Logto クイックスタートへようこそ。このドキュメントには、アプリケーションへ Logto を統合するための便利なガイドが含まれています。
 
-Most of guides uses Logto official SDKs. Please don't hesitate to contact us if you have any questions.
+ほとんどのガイドは Logto 公式 SDK を使用しています。ご不明な点があれば、どうぞお気軽にお問い合わせください。
+
+:::info
+このページは Logto クライアント統合（バックエンド・フォー・フロントエンドパターンを含む）に焦点を当てています。サーバーサイド API 保護については [API 保護](/api-protection) をご覧ください。
+:::
 
 ---
 

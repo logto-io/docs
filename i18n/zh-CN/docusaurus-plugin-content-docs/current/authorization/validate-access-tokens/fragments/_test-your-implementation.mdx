@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### 获取访问令牌 (Access tokens) \{#get-access-tokens}
+
+**从你的客户端应用程序获取：**
+如果你已经完成了客户端集成，你的应用可以自动获取令牌。提取访问令牌 (Access token)，并在 API 请求中使用它。
+
+**使用 curl / Postman 进行测试：**
+
+1. **用户令牌：** 使用你的客户端应用的开发者工具，从 localStorage 或网络面板复制访问令牌 (Access token)
+2. **机器对机器令牌：** 使用客户端凭证流。以下是一个使用 curl 的非规范示例：
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   你可能需要根据你的 API 资源和权限调整 `resource` 和 `scope` 参数；如果你的 API 是组织范围的，还可能需要 `organization_id` 参数。
+
+:::tip
+需要查看令牌内容？使用我们的 [JWT 解码器](https://logto.io/jwt-decoder) 来解码和验证你的 JWT。
+:::
+
+### 测试受保护的端点 \{#test-protected-endpoints}
+
+<details>
+<summary>**有效令牌请求**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**预期响应：**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**缺少令牌**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**预期响应 (401)：**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**无效令牌**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**预期响应 (401)：**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### 权限模型相关测试 \{#permission-model-specific-testing}
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="全局 API 资源">
+
+    针对受全局权限保护的 API 的测试场景：
+
+    - **有效权限 (Scopes)：** 使用包含所需 API 权限（如 `api:read`、`api:write`）的令牌进行测试
+    - **缺少权限 (Scopes)：** 当令牌缺少所需权限时，预期返回 **403 Forbidden**
+    - **受众 (Audience) 错误：** 当受众与 API 资源不匹配时，预期返回 **403 Forbidden**
+
+    ```bash
+    # 缺少权限的令牌 - 预期 403
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="组织 (非 API) 权限">
+
+    针对组织特定访问控制的测试场景：
+
+    - **有效组织令牌 (Organization token)：** 使用包含正确组织上下文（组织 ID 和权限）的令牌进行测试
+    - **缺少权限 (Scopes)：** 当用户没有请求操作的权限时，预期返回 **403 Forbidden**
+    - **组织错误：** 当受众与组织上下文（`urn:logto:organization:<organization_id>`）不匹配时，预期返回 **403 Forbidden**
+
+    ```bash
+    # 错误组织的令牌 - 预期 403
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="组织级 API 资源">
+
+    结合 API 资源验证与组织上下文的测试场景：
+
+    - **有效组织 + API 权限：** 使用同时包含组织上下文和所需 API 权限的令牌进行测试
+    - **缺少 API 权限：** 当组织令牌缺少所需 API 权限时，预期返回 **403 Forbidden**
+    - **组织错误：** 使用来自不同组织的令牌访问 API 时，预期返回 **403 Forbidden**
+    - **受众 (Audience) 错误：** 当受众与组织级 API 资源不匹配时，预期返回 **403 Forbidden**
+
+    ```bash
+    # 组织令牌缺少 API 权限 - 预期 403
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

@@ -1,7 +1,20 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-[github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) を使用して JWT を検証します。まだインストールしていない場合は、インストールしてください：
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+[github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) を使用して JWT の検証を行います。まだインストールしていない場合は、インストールしてください：
 
 ```bash
 go mod init your-project
@@ -23,7 +36,7 @@ import (
 var jwkSet jwk.Set
 
 func init() {
-    // JWKS キャッシュを初期化
+    // JWKS キャッシュの初期化
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
     defer cancel()
 
@@ -34,14 +47,14 @@ func init() {
     }
 }
 
-// validateJWT は JWT トークンを検証し、パース済みトークンを返します
+// validateJWT は JWT を検証し、パース済みトークンを返します
 func validateJWT(tokenString string) (jwt.Token, error) {
     token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
     if err != nil {
         return nil, NewAuthorizationError("Invalid token: "+err.Error(), http.StatusUnauthorized)
     }
 
-    // 発行者 (Issuer) を検証
+    // 発行者 (Issuer) の検証
     if token.Issuer() != ISSUER {
         return nil, NewAuthorizationError("Invalid issuer", http.StatusUnauthorized)
     }
@@ -77,143 +90,20 @@ func getAudienceFromToken(token jwt.Token) []string {
 }
 ```
 
-次に、アクセス トークン (Access token) を検証するミドルウェアを実装します：
+次に、アクセストークンの検証用ミドルウェアを実装します：
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="gin" label="Gin">
-
-```go title="auth_middleware.go"
-import "github.com/gin-gonic/gin"
-
-func VerifyAccessToken() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        // トークンをコンテキストに格納（汎用利用のため）
-        c.Set("auth", token)
-        c.Next()
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="echo" label="Echo">
-
-```go title="auth_middleware.go"
-import "github.com/labstack/echo/v4"
-
-func VerifyAccessToken(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request())
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        // トークンをコンテキストに格納（汎用利用のため）
-        c.Set("auth", token)
-        return next(c)
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="fiber" label="Fiber">
-
-```go title="auth_middleware.go"
-import (
-    "net/http"
-    "github.com/gofiber/fiber/v2"
-)
-
-func VerifyAccessToken(c *fiber.Ctx) error {
-    // 互換性のため fiber リクエストを http.Request に変換
-    req := &http.Request{
-        Header: make(http.Header),
-    }
-    req.Header.Set("Authorization", c.Get("Authorization"))
-
-    tokenString, err := extractBearerTokenFromHeaders(req)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    token, err := validateJWT(tokenString)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    // トークンを locals に格納（汎用利用のため）
-    c.Locals("auth", token)
-    return c.Next()
-}
-```
-
-  </TabItem>
-  <TabItem value="chi" label="Chi">
-
-```go title="auth_middleware.go"
-import (
-    "context"
-    "encoding/json"
-    "net/http"
-)
-
-type contextKey string
-
-const AuthContextKey contextKey = "auth"
-
-func VerifyAccessToken(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        tokenString, err := extractBearerTokenFromHeaders(r)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        token, err := validateJWT(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        // トークンをコンテキストに格納（汎用利用のため）
-        ctx := context.WithValue(r.Context(), AuthContextKey, token)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 権限モデルに応じて、異なる `verifyPayload` ロジックを採用する必要があります：
 
@@ -227,8 +117,8 @@ func verifyPayload(token jwt.Token) error {
         return NewAuthorizationError("Invalid audience")
     }
 
-    // グローバル API リソース用の必要なスコープを確認
-    requiredScopes := []string{"api:read", "api:write"} // 実際の必要スコープに置き換えてください
+    // グローバル API リソースに必要なスコープを確認
+    requiredScopes := []string{"api:read", "api:write"} // 実際に必要なスコープに置き換えてください
     if !hasRequiredScopes(token, requiredScopes) {
         return NewAuthorizationError("Insufficient scope")
     }
@@ -247,14 +137,14 @@ func verifyPayload(token jwt.Token) error {
         return NewAuthorizationError("Invalid audience for organization permissions")
     }
 
-    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出する必要があります）
     expectedOrgID := "your-organization-id" // リクエストコンテキストから抽出
     if !hasMatchingOrganization(token, expectedOrgID) {
         return NewAuthorizationError("Organization ID mismatch")
     }
 
     // 必要な組織スコープを確認
-    requiredScopes := []string{"invite:users", "manage:settings"} // 実際の必要スコープに置き換えてください
+    requiredScopes := []string{"invite:users", "manage:settings"} // 実際に必要なスコープに置き換えてください
     if !hasRequiredScopes(token, requiredScopes) {
         return NewAuthorizationError("Insufficient organization scope")
     }
@@ -273,14 +163,14 @@ func verifyPayload(token jwt.Token) error {
         return NewAuthorizationError("Invalid audience for organization-level API resources")
     }
 
-    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+    // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出する必要があります）
     expectedOrgID := "your-organization-id" // リクエストコンテキストから抽出
     if !hasMatchingOrganizationID(token, expectedOrgID) {
         return NewAuthorizationError("Organization ID mismatch")
     }
 
-    // 組織レベル API リソース用の必要なスコープを確認
-    requiredScopes := []string{"api:read", "api:write"} // 実際の必要スコープに置き換えてください
+    // 組織レベル API リソースに必要なスコープを確認
+    requiredScopes := []string{"api:read", "api:write"} // 実際に必要なスコープに置き換えてください
     if !hasRequiredScopes(token, requiredScopes) {
         return NewAuthorizationError("Insufficient organization-level API scopes")
     }
@@ -295,7 +185,7 @@ func verifyPayload(token jwt.Token) error {
 ペイロード検証用のヘルパー関数を追加します：
 
 ```go title="auth_middleware.go"
-// hasAudience はトークンが指定された audience を持つか確認します
+// hasAudience はトークンに指定された audience が含まれているか確認します
 func hasAudience(token jwt.Token, expectedAud string) bool {
     audiences := token.Audience()
     for _, aud := range audiences {
@@ -306,7 +196,7 @@ func hasAudience(token jwt.Token, expectedAud string) bool {
     return false
 }
 
-// hasOrganizationAudience はトークンが組織 audience フォーマットを持つか確認します
+// hasOrganizationAudience はトークンに組織 audience フォーマットが含まれているか確認します
 func hasOrganizationAudience(token jwt.Token) bool {
     audiences := token.Audience()
     for _, aud := range audiences {
@@ -317,7 +207,7 @@ func hasOrganizationAudience(token jwt.Token) bool {
     return false
 }
 
-// hasRequiredScopes はトークンがすべての必要なスコープを持つか確認します
+// hasRequiredScopes はトークンにすべての必要なスコープが含まれているか確認します
 func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     scopes := getScopesFromToken(token)
     for _, required := range requiredScopes {
@@ -335,13 +225,13 @@ func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
     return true
 }
 
-// hasMatchingOrganization はトークンの audience が期待する組織と一致するか確認します
+// hasMatchingOrganization はトークンの audience が期待される組織と一致するか確認します
 func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
     expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
     return hasAudience(token, expectedAud)
 }
 
-// hasMatchingOrganizationID はトークンの organization_id が期待するものと一致するか確認します
+// hasMatchingOrganizationID はトークンの organization_id が期待されるものと一致するか確認します
 func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
     orgID := getStringClaim(token, "organization_id")
     return orgID == expectedOrgID
