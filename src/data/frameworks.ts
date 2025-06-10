@@ -101,6 +101,34 @@ export const apiFrameworks = Object.freeze({
     name: 'Slim',
     language: 'php',
   },
+  rails: {
+    name: 'Ruby on Rails',
+    language: 'ruby',
+  },
+  sinatra: {
+    name: 'Sinatra',
+    language: 'ruby',
+  },
+  grape: {
+    name: 'Grape',
+    language: 'ruby',
+  },
+  fastapi: {
+    name: 'FastAPI',
+    language: 'python',
+  },
+  flask: {
+    name: 'Flask',
+    language: 'python',
+  },
+  django: {
+    name: 'Django',
+    language: 'python',
+  },
+  'django-rest': {
+    name: 'Django REST Framework',
+    language: 'python',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;
