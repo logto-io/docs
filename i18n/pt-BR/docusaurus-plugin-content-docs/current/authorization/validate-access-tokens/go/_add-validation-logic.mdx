@@ -1,0 +1,239 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+Utilizamos [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) para validar JWTs. Instale-o caso ainda não tenha feito isso:
+
+```bash
+go mod init seu-projeto
+go get github.com/lestrrat-go/jwx/v3
+```
+
+Primeiro, adicione estes componentes compartilhados ao seu `auth_middleware.go`:
+
+```go title="auth_middleware.go"
+import (
+    "context"
+    "strings"
+    "time"
+
+    "github.com/lestrrat-go/jwx/v3/jwk"
+    "github.com/lestrrat-go/jwx/v3/jwt"
+)
+
+var jwkSet jwk.Set
+
+func init() {
+    // Inicializa o cache do JWKS
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
+    if err != nil {
+        panic("Falha ao buscar JWKS: " + err.Error())
+    }
+}
+
+// validateJWT valida o JWT e retorna o token analisado
+func validateJWT(tokenString string) (jwt.Token, error) {
+    token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
+    if err != nil {
+        return nil, NewAuthorizationError("Token inválido: "+err.Error(), http.StatusUnauthorized)
+    }
+
+    // Verifica o emissor
+    if token.Issuer() != ISSUER {
+        return nil, NewAuthorizationError("Emissor inválido", http.StatusUnauthorized)
+    }
+
+    if err := verifyPayload(token); err != nil {
+        return nil, err
+    }
+
+    return token, nil
+}
+
+// Funções auxiliares para extrair dados do token
+func getStringClaim(token jwt.Token, key string) string {
+    if val, ok := token.Get(key); ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getScopesFromToken(token jwt.Token) []string {
+    if val, ok := token.Get("scope"); ok {
+        if scope, ok := val.(string); ok && scope != "" {
+            return strings.Split(scope, " ")
+        }
+    }
+    return []string{}
+}
+
+func getAudienceFromToken(token jwt.Token) []string {
+    return token.Audience()
+}
+```
+
+Em seguida, implemente o middleware para verificar o token de acesso:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+De acordo com seu modelo de permissão, pode ser necessário adotar uma lógica diferente para `verifyPayload`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos globais de API">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Verifica se a reivindicação de público corresponde ao seu indicador de recurso de API
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Público inválido")
+    }
+
+    // Verifica os escopos necessários para recursos globais de API
+    requiredScopes := []string{"api:read", "api:write"} // Substitua pelos escopos necessários
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Escopo insuficiente")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissões de organização (não-API)">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Verifica se a reivindicação de público corresponde ao formato de organização
+    if !hasOrganizationAudience(token) {
+        return NewAuthorizationError("Público inválido para permissões de organização")
+    }
+
+    // Verifica se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+    expectedOrgID := "your-organization-id" // Extraia do contexto da requisição
+    if !hasMatchingOrganization(token, expectedOrgID) {
+        return NewAuthorizationError("ID da organização não corresponde")
+    }
+
+    // Verifica os escopos necessários da organização
+    requiredScopes := []string{"invite:users", "manage:settings"} // Substitua pelos escopos necessários
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Escopo de organização insuficiente")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API em nível de organização">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Verifica se a reivindicação de público corresponde ao seu indicador de recurso de API
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Público inválido para recursos de API em nível de organização")
+    }
+
+    // Verifica se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+    expectedOrgID := "your-organization-id" // Extraia do contexto da requisição
+    if !hasMatchingOrganizationID(token, expectedOrgID) {
+        return NewAuthorizationError("ID da organização não corresponde")
+    }
+
+    // Verifica os escopos necessários para recursos de API em nível de organização
+    requiredScopes := []string{"api:read", "api:write"} // Substitua pelos escopos necessários
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Escopos de API em nível de organização insuficientes")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+</Tabs>
+
+Adicione estas funções auxiliares para verificação do payload:
+
+```go title="auth_middleware.go"
+// hasAudience verifica se o token possui o público especificado
+func hasAudience(token jwt.Token, expectedAud string) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if aud == expectedAud {
+            return true
+        }
+    }
+    return false
+}
+
+// hasOrganizationAudience verifica se o token possui formato de público de organização
+func hasOrganizationAudience(token jwt.Token) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if strings.HasPrefix(aud, "urn:logto:organization:") {
+            return true
+        }
+    }
+    return false
+}
+
+// hasRequiredScopes verifica se o token possui todos os escopos necessários
+func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
+    scopes := getScopesFromToken(token)
+    for _, required := range requiredScopes {
+        found := false
+        for _, scope := range scopes {
+            if scope == required {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return true
+}
+
+// hasMatchingOrganization verifica se o público do token corresponde à organização esperada
+func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
+    expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
+    return hasAudience(token, expectedAud)
+}
+
+// hasMatchingOrganizationID verifica se o organization_id do token corresponde ao esperado
+func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
+    orgID := getStringClaim(token, "organization_id")
+    return orgID == expectedOrgID
+}
+```

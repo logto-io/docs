@@ -1,0 +1,375 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+Nous utilisons [firebase/php-jwt](https://github.com/firebase/php-jwt) pour valider les JWT. Installez-le avec Composer :
+
+<Tabs groupId="api-framework">
+  <TabItem value="laravel" label="Laravel">
+
+```bash
+composer require firebase/php-jwt
+```
+
+  </TabItem>
+  <TabItem value="symfony" label="Symfony">
+
+```bash
+composer require firebase/php-jwt
+```
+
+  </TabItem>
+  <TabItem value="slim" label="Slim">
+
+```bash
+composer require firebase/php-jwt slim/slim:"4.*" slim/psr7
+```
+
+  </TabItem>
+</Tabs>
+
+Commencez par ajouter ces utilitaires partagés pour gérer la validation des JWT :
+
+```php title="JwtValidator.php"
+<?php
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
+
+class JwtValidator
+{
+    use AuthHelpers;
+
+    private static ?array $jwks = null;
+
+    public static function fetchJwks(): array
+    {
+        if (self::$jwks === null) {
+            $jwksData = file_get_contents(AuthConstants::JWKS_URI);
+            if ($jwksData === false) {
+                throw new AuthorizationException('Échec de la récupération du JWKS', 401);
+            }
+
+            self::$jwks = json_decode($jwksData, true);
+        }
+
+        return self::$jwks;
+    }
+
+    public static function validateJwt(string $token): array
+    {
+        try {
+            $jwks = self::fetchJwks();
+            $keys = JWK::parseKeySet($jwks);
+
+            $decoded = JWT::decode($token, $keys);
+            $payload = (array) $decoded;
+
+            // Vérifier l’émetteur
+            if (($payload['iss'] ?? '') !== AuthConstants::ISSUER) {
+                throw new AuthorizationException('Émetteur invalide', 401);
+            }
+
+            self::verifyPayload($payload);
+            return $payload;
+
+        } catch (AuthorizationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new AuthorizationException('Jeton invalide : ' . $e->getMessage(), 401);
+        }
+    }
+
+    public static function createAuthInfo(array $payload): AuthInfo
+    {
+        $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+        $audience = $payload['aud'] ?? [];
+
+        if (is_string($audience)) {
+            $audience = [$audience];
+        }
+
+        return new AuthInfo(
+            sub: $payload['sub'],
+            clientId: $payload['client_id'] ?? null,
+            organizationId: $payload['organization_id'] ?? null,
+            scopes: $scopes,
+            audience: $audience
+        );
+    }
+
+    private static function verifyPayload(array $payload): void
+    {
+        // Implémentez ici votre logique de vérification selon le modèle de permission
+        // Cela sera montré dans la section des modèles de permission ci-dessous
+    }
+}
+```
+
+Ensuite, implémentez le middleware pour vérifier le jeton d’accès :
+
+<Tabs groupId="api-framework">
+  <TabItem value="laravel" label="Laravel">
+
+```php title="app/Http/Middleware/VerifyAccessToken.php"
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+class VerifyAccessToken
+{
+    use AuthHelpers;
+
+    public function handle(Request $request, Closure $next): Response
+    {
+        try {
+            $token = $this->extractBearerToken($request->headers->all());
+            $payload = JwtValidator::validateJwt($token);
+
+            // Stocker les infos d’authentification dans les attributs de la requête pour un usage générique
+            $request->attributes->set('auth', JwtValidator::createAuthInfo($payload));
+
+            return $next($request);
+
+        } catch (AuthorizationException $e) {
+            return response()->json(['error' => $e->getMessage()], $e->statusCode);
+        }
+    }
+}
+```
+
+Enregistrez le middleware dans `app/Http/Kernel.php` :
+
+```php title="app/Http/Kernel.php"
+protected $middlewareAliases = [
+    // ... autres middlewares
+    'auth.token' => \App\Http\Middleware\VerifyAccessToken::class,
+];
+```
+
+  </TabItem>
+  <TabItem value="symfony" label="Symfony">
+
+```php title="src/Security/JwtAuthenticator.php"
+<?php
+
+namespace App\Security;
+
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
+use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPassport;
+
+class JwtAuthenticator extends AbstractAuthenticator
+{
+    use AuthHelpers;
+
+    public function supports(Request $request): ?bool
+    {
+        return $request->headers->has('authorization');
+    }
+
+    public function authenticate(Request $request): Passport
+    {
+        try {
+            $token = $this->extractBearerToken($request->headers->all());
+            $payload = JwtValidator::validateJwt($token);
+            $authInfo = JwtValidator::createAuthInfo($payload);
+
+            // Stocker les infos d’authentification dans les attributs de la requête pour un usage générique
+            $request->attributes->set('auth', $authInfo);
+
+            return new SelfValidatingPassport(new UserBadge($payload['sub']));
+
+        } catch (AuthorizationException $e) {
+            throw new AuthenticationException($e->getMessage());
+        }
+    }
+
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
+    {
+        return null; // Continuer vers le contrôleur
+    }
+
+    public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
+    {
+        return new JsonResponse(['error' => $exception->getMessage()], Response::HTTP_UNAUTHORIZED);
+    }
+}
+```
+
+Configurez la sécurité dans `config/packages/security.yaml` :
+
+```yaml title="config/packages/security.yaml"
+security:
+  firewalls:
+    api:
+      pattern: ^/api/protected
+      stateless: true
+      custom_authenticators:
+        - App\Security\JwtAuthenticator
+```
+
+  </TabItem>
+  <TabItem value="slim" label="Slim">
+
+```php title="src/Middleware/JwtMiddleware.php"
+<?php
+
+namespace App\Middleware;
+
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Slim\Psr7\Response;
+
+class JwtMiddleware implements MiddlewareInterface
+{
+    use AuthHelpers;
+
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        try {
+            $headers = $request->getHeaders();
+            $token = $this->extractBearerToken($headers);
+            $payload = JwtValidator::validateJwt($token);
+
+            // Stocker les infos d’authentification dans les attributs de la requête pour un usage générique
+            $request = $request->withAttribute('auth', JwtValidator::createAuthInfo($payload));
+
+            return $handler->handle($request);
+
+        } catch (AuthorizationException $e) {
+            $response = new Response();
+            $response->getBody()->write(json_encode(['error' => $e->getMessage()]));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus($e->statusCode);
+        }
+    }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+Selon votre modèle de permission, implémentez la logique de vérification appropriée dans `JwtValidator` :
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Ressources API globales">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Vérifier que la revendication d’audience correspond à votre indicateur de ressource API
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Audience invalide');
+    }
+
+    // Vérifier les portées requises pour les ressources API globales
+    $requiredScopes = ['api:read', 'api:write']; // Remplacez par vos portées requises
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Portée insuffisante');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Vérifier que la revendication d’audience correspond au format d’organisation
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    $hasOrgAudience = false;
+    foreach ($audiences as $aud) {
+        if (str_starts_with($aud, 'urn:logto:organization:')) {
+            $hasOrgAudience = true;
+            break;
+        }
+    }
+
+    if (!$hasOrgAudience) {
+        throw new AuthorizationException('Audience invalide pour les permissions d’organisation');
+    }
+
+    // Vérifier que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    $expectedOrgId = 'your-organization-id'; // À extraire du contexte de la requête
+    $expectedAud = "urn:logto:organization:{$expectedOrgId}";
+    if (!in_array($expectedAud, $audiences)) {
+        throw new AuthorizationException('Incohérence de l’ID d’organisation');
+    }
+
+    // Vérifier les portées requises pour l’organisation
+    $requiredScopes = ['invite:users', 'manage:settings']; // Remplacez par vos portées requises
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Portée d’organisation insuffisante');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Ressources API au niveau organisation">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Vérifier que la revendication d’audience correspond à votre indicateur de ressource API
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Audience invalide pour les ressources API au niveau organisation');
+    }
+
+    // Vérifier que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+    $expectedOrgId = 'your-organization-id'; // À extraire du contexte de la requête
+    $orgId = $payload['organization_id'] ?? null;
+    if ($expectedOrgId !== $orgId) {
+        throw new AuthorizationException('Incohérence de l’ID d’organisation');
+    }
+
+    // Vérifier les portées requises pour les ressources API au niveau organisation
+    $requiredScopes = ['api:read', 'api:write']; // Remplacez par vos portées requises
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Portées API au niveau organisation insuffisantes');
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>

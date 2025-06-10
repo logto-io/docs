@@ -41,21 +41,21 @@ function CardContainer({
   );
 }
 
-function CardLayout({
+export function CardLayout({
   href,
   icon,
   title,
   description,
 }: {
   readonly href: string;
-  readonly icon: ReactNode;
+  readonly icon?: ReactNode;
   readonly title: string;
   readonly description?: string;
 }): JSX.Element {
   return (
     <CardContainer href={href}>
       {icon}
-      <label className={clsx('text--truncate', styles.cardTitle)} title={title}>
+      <label className={styles.cardTitle} title={title}>
         {title}
       </label>
       {description && (

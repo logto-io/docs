@@ -1,0 +1,157 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+この例では [jose](https://github.com/panva/jose) を使用して JWT を検証します。まだインストールしていない場合は、インストールしてください：
+
+```bash
+npm install jose
+```
+
+または、お好みのパッケージマネージャー（例： `pnpm` や `yarn`）を使用してください。
+
+まず、JWT 検証を処理するための共通ユーティリティを追加します：
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // 権限モデルに基づく検証ロジックをここに実装してください
+  // この内容は下記の権限モデルセクションで示します
+}
+```
+
+次に、アクセストークンを検証するミドルウェアを実装します：
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+権限モデルに応じて、`jwt-validator.ts` 内で適切な検証ロジックを実装してください：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="グローバル API リソース">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが API リソースインジケーターと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience');
+  }
+
+  // グローバル API リソースに必要なスコープを確認
+  const requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）権限">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが組織フォーマットと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Invalid audience for organization permissions');
+  }
+
+  // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+  const expectedOrgId = 'your-organization-id'; // リクエストコンテキストから抽出
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // 必要な組織スコープを確認
+  const requiredScopes = ['invite:users', 'manage:settings']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織レベル API リソース">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // audience クレームが API リソースインジケーターと一致するか確認
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience for organization-level API resources');
+  }
+
+  // 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから抽出が必要な場合あり）
+  const expectedOrgId = 'your-organization-id'; // リクエストコンテキストから抽出
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // 組織レベル API リソースに必要なスコープを確認
+  const requiredScopes = ['api:read', 'api:write']; // 実際に必要なスコープに置き換えてください
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization-level API scopes');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,239 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+우리는 [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) 를 사용하여 JWT 를 검증합니다. 아직 설치하지 않았다면 설치하세요:
+
+```bash
+go mod init your-project
+go get github.com/lestrrat-go/jwx/v3
+```
+
+먼저, 다음의 공통 컴포넌트를 `auth_middleware.go` 에 추가하세요:
+
+```go title="auth_middleware.go"
+import (
+    "context"
+    "strings"
+    "time"
+
+    "github.com/lestrrat-go/jwx/v3/jwk"
+    "github.com/lestrrat-go/jwx/v3/jwt"
+)
+
+var jwkSet jwk.Set
+
+func init() {
+    // JWKS 캐시 초기화
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
+    if err != nil {
+        panic("Failed to fetch JWKS: " + err.Error())
+    }
+}
+
+// validateJWT 는 JWT 를 검증하고 파싱된 토큰을 반환합니다
+func validateJWT(tokenString string) (jwt.Token, error) {
+    token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
+    if err != nil {
+        return nil, NewAuthorizationError("Invalid token: "+err.Error(), http.StatusUnauthorized)
+    }
+
+    // 발급자(issuer) 검증
+    if token.Issuer() != ISSUER {
+        return nil, NewAuthorizationError("Invalid issuer", http.StatusUnauthorized)
+    }
+
+    if err := verifyPayload(token); err != nil {
+        return nil, err
+    }
+
+    return token, nil
+}
+
+// 토큰 데이터 추출을 위한 헬퍼 함수
+func getStringClaim(token jwt.Token, key string) string {
+    if val, ok := token.Get(key); ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getScopesFromToken(token jwt.Token) []string {
+    if val, ok := token.Get("scope"); ok {
+        if scope, ok := val.(string); ok && scope != "" {
+            return strings.Split(scope, " ")
+        }
+    }
+    return []string{}
+}
+
+func getAudienceFromToken(token jwt.Token) []string {
+    return token.Audience()
+}
+```
+
+그 다음, 액세스 토큰 (Access token) 을 검증하는 미들웨어를 구현하세요:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+권한 (Permission) 모델에 따라, 서로 다른 `verifyPayload` 로직을 적용해야 할 수 있습니다:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="글로벌 API 리소스">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // audience 클레임이 API 리소스 지표와 일치하는지 확인
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Invalid audience")
+    }
+
+    // 글로벌 API 리소스에 필요한 스코프 확인
+    requiredScopes := []string{"api:read", "api:write"} // 실제 필요한 스코프로 교체하세요
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient scope")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="조직 (Organization) (비 API) 권한">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // audience 클레임이 조직 포맷과 일치하는지 확인
+    if !hasOrganizationAudience(token) {
+        return NewAuthorizationError("Invalid audience for organization permissions")
+    }
+
+    // 조직 ID 가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+    expectedOrgID := "your-organization-id" // 요청 컨텍스트에서 추출
+    if !hasMatchingOrganization(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID mismatch")
+    }
+
+    // 필요한 조직 스코프 확인
+    requiredScopes := []string{"invite:users", "manage:settings"} // 실제 필요한 스코프로 교체하세요
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient organization scope")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="조직 레벨 API 리소스">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // audience 클레임이 API 리소스 지표와 일치하는지 확인
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Invalid audience for organization-level API resources")
+    }
+
+    // 조직 ID 가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출 필요)
+    expectedOrgID := "your-organization-id" // 요청 컨텍스트에서 추출
+    if !hasMatchingOrganizationID(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID mismatch")
+    }
+
+    // 조직 레벨 API 리소스에 필요한 스코프 확인
+    requiredScopes := []string{"api:read", "api:write"} // 실제 필요한 스코프로 교체하세요
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient organization-level API scopes")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+</Tabs>
+
+페이로드 검증을 위한 다음 헬퍼 함수들을 추가하세요:
+
+```go title="auth_middleware.go"
+// hasAudience 는 토큰이 지정된 audience 를 가지고 있는지 확인합니다
+func hasAudience(token jwt.Token, expectedAud string) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if aud == expectedAud {
+            return true
+        }
+    }
+    return false
+}
+
+// hasOrganizationAudience 는 토큰이 조직 audience 포맷을 가지고 있는지 확인합니다
+func hasOrganizationAudience(token jwt.Token) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if strings.HasPrefix(aud, "urn:logto:organization:") {
+            return true
+        }
+    }
+    return false
+}
+
+// hasRequiredScopes 는 토큰이 모든 필요한 스코프를 가지고 있는지 확인합니다
+func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
+    scopes := getScopesFromToken(token)
+    for _, required := range requiredScopes {
+        found := false
+        for _, scope := range scopes {
+            if scope == required {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return true
+}
+
+// hasMatchingOrganization 는 토큰 audience 가 기대하는 조직과 일치하는지 확인합니다
+func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
+    expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
+    return hasAudience(token, expectedAud)
+}
+
+// hasMatchingOrganizationID 는 토큰의 organization_id 가 기대하는 값과 일치하는지 확인합니다
+func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
+    orgID := getStringClaim(token, "organization_id")
+    return orgID == expectedOrgID
+}
+```

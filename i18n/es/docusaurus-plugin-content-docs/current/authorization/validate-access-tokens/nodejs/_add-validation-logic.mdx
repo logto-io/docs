@@ -1,0 +1,159 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+Usamos [jose](https://github.com/panva/jose) en este ejemplo para validar el JWT. Instálalo si aún no lo has hecho:
+
+```bash
+npm install jose
+```
+
+O utiliza tu gestor de paquetes preferido (por ejemplo, `pnpm` o `yarn`).
+
+Primero, añade estas utilidades compartidas para manejar la validación de JWT:
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // Implementa aquí tu lógica de verificación basada en el modelo de permisos
+  // Esto se mostrará en la sección de modelos de permisos a continuación
+}
+```
+
+Luego, implementa el middleware para verificar el token de acceso:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+De acuerdo con tu modelo de permisos, implementa la lógica de verificación adecuada en `jwt-validator.ts`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos de API globales">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifica que el reclamo de audiencia coincida con tu indicador de recurso de API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Audiencia no válida');
+  }
+
+  // Verifica los alcances requeridos para recursos de API globales
+  const requiredScopes = ['api:read', 'api:write']; // Reemplaza con tus alcances requeridos reales
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Alcance insuficiente');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permisos de organización (no API)">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifica que el reclamo de audiencia coincida con el formato de organización
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Audiencia no válida para permisos de organización');
+  }
+
+  // Verifica que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la solicitud)
+  const expectedOrgId = 'your-organization-id'; // Extrae del contexto de la solicitud
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('ID de organización no coincide');
+  }
+
+  // Verifica los alcances requeridos de la organización
+  const requiredScopes = ['invite:users', 'manage:settings']; // Reemplaza con tus alcances requeridos reales
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Alcance de organización insuficiente');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API a nivel de organización">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifica que el reclamo de audiencia coincida con tu indicador de recurso de API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError(
+      'Audiencia no válida para recursos de API a nivel de organización'
+    );
+  }
+
+  // Verifica que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la solicitud)
+  const expectedOrgId = 'your-organization-id'; // Extrae del contexto de la solicitud
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('ID de organización no coincide');
+  }
+
+  // Verifica los alcances requeridos para recursos de API a nivel de organización
+  const requiredScopes = ['api:read', 'api:write']; // Reemplaza con tus alcances requeridos reales
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Alcances de API a nivel de organización insuficientes');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

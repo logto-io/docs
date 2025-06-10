@@ -1,0 +1,239 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+我們使用 [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) 來驗證 JWT。如尚未安裝，請先安裝：
+
+```bash
+go mod init your-project
+go get github.com/lestrrat-go/jwx/v3
+```
+
+首先，將這些共用元件加入你的 `auth_middleware.go`：
+
+```go title="auth_middleware.go"
+import (
+    "context"
+    "strings"
+    "time"
+
+    "github.com/lestrrat-go/jwx/v3/jwk"
+    "github.com/lestrrat-go/jwx/v3/jwt"
+)
+
+var jwkSet jwk.Set
+
+func init() {
+    // 初始化 JWKS 快取
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
+    if err != nil {
+        panic("Failed to fetch JWKS: " + err.Error())
+    }
+}
+
+// validateJWT 驗證 JWT 並回傳解析後的權杖
+func validateJWT(tokenString string) (jwt.Token, error) {
+    token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
+    if err != nil {
+        return nil, NewAuthorizationError("Invalid token: "+err.Error(), http.StatusUnauthorized)
+    }
+
+    // 驗證簽發者 (Issuer)
+    if token.Issuer() != ISSUER {
+        return nil, NewAuthorizationError("Invalid issuer", http.StatusUnauthorized)
+    }
+
+    if err := verifyPayload(token); err != nil {
+        return nil, err
+    }
+
+    return token, nil
+}
+
+// 輔助函式：取得權杖中的字串宣告 (Claim)
+func getStringClaim(token jwt.Token, key string) string {
+    if val, ok := token.Get(key); ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getScopesFromToken(token jwt.Token) []string {
+    if val, ok := token.Get("scope"); ok {
+        if scope, ok := val.(string); ok && scope != "" {
+            return strings.Split(scope, " ")
+        }
+    }
+    return []string{}
+}
+
+func getAudienceFromToken(token jwt.Token) []string {
+    return token.Audience()
+}
+```
+
+接著，實作中介軟體來驗證存取權杖 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+根據你的權限模型，你可能需要採用不同的 `verifyPayload` 邏輯：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // 檢查 audience 宣告是否符合你的 API 資源標示符 (Resource indicator)
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Invalid audience")
+    }
+
+    // 檢查全域 API 資源所需的權限範圍 (Scopes)
+    requiredScopes := []string{"api:read", "api:write"} // 請替換為實際所需的權限範圍
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient scope")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // 檢查 audience 宣告是否為組織格式
+    if !hasOrganizationAudience(token) {
+        return NewAuthorizationError("Invalid audience for organization permissions")
+    }
+
+    // 檢查組織 ID 是否與上下文一致（你可能需要從請求上下文中取得）
+    expectedOrgID := "your-organization-id" // 從請求上下文取得
+    if !hasMatchingOrganization(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID mismatch")
+    }
+
+    // 檢查所需的組織權限範圍
+    requiredScopes := []string{"invite:users", "manage:settings"} // 請替換為實際所需的權限範圍
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient organization scope")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // 檢查 audience 宣告是否符合你的 API 資源標示符
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Invalid audience for organization-level API resources")
+    }
+
+    // 檢查組織 ID 是否與上下文一致（你可能需要從請求上下文中取得）
+    expectedOrgID := "your-organization-id" // 從請求上下文取得
+    if !hasMatchingOrganizationID(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID mismatch")
+    }
+
+    // 檢查組織層級 API 資源所需的權限範圍
+    requiredScopes := []string{"api:read", "api:write"} // 請替換為實際所需的權限範圍
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Insufficient organization-level API scopes")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+</Tabs>
+
+新增這些輔助函式以驗證 payload：
+
+```go title="auth_middleware.go"
+// hasAudience 檢查權杖是否包含指定的受眾 (Audience)
+func hasAudience(token jwt.Token, expectedAud string) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if aud == expectedAud {
+            return true
+        }
+    }
+    return false
+}
+
+// hasOrganizationAudience 檢查權杖是否為組織受眾格式
+func hasOrganizationAudience(token jwt.Token) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if strings.HasPrefix(aud, "urn:logto:organization:") {
+            return true
+        }
+    }
+    return false
+}
+
+// hasRequiredScopes 檢查權杖是否包含所有必要的權限範圍 (Scopes)
+func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
+    scopes := getScopesFromToken(token)
+    for _, required := range requiredScopes {
+        found := false
+        for _, scope := range scopes {
+            if scope == required {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return true
+}
+
+// hasMatchingOrganization 檢查權杖受眾是否與預期組織一致
+func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
+    expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
+    return hasAudience(token, expectedAud)
+}
+
+// hasMatchingOrganizationID 檢查權杖中的 organization_id 是否與預期一致
+func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
+    orgID := getStringClaim(token, "organization_id")
+    return orgID == expectedOrgID
+}
+```

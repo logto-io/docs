@@ -1,0 +1,239 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+Wir verwenden [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx), um JWTs zu validieren. Installiere es, falls du es noch nicht getan hast:
+
+```bash
+go mod init your-project
+go get github.com/lestrrat-go/jwx/v3
+```
+
+Füge zunächst diese gemeinsamen Komponenten zu deiner Datei `auth_middleware.go` hinzu:
+
+```go title="auth_middleware.go"
+import (
+    "context"
+    "strings"
+    "time"
+
+    "github.com/lestrrat-go/jwx/v3/jwk"
+    "github.com/lestrrat-go/jwx/v3/jwt"
+)
+
+var jwkSet jwk.Set
+
+func init() {
+    // JWKS-Cache initialisieren
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
+    if err != nil {
+        panic("Fehler beim Abrufen von JWKS: " + err.Error())
+    }
+}
+
+// validateJWT validiert das JWT und gibt das geparste Token zurück
+func validateJWT(tokenString string) (jwt.Token, error) {
+    token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
+    if err != nil {
+        return nil, NewAuthorizationError("Ungültiges Token: "+err.Error(), http.StatusUnauthorized)
+    }
+
+    // Aussteller überprüfen
+    if token.Issuer() != ISSUER {
+        return nil, NewAuthorizationError("Ungültiger Aussteller", http.StatusUnauthorized)
+    }
+
+    if err := verifyPayload(token); err != nil {
+        return nil, err
+    }
+
+    return token, nil
+}
+
+// Hilfsfunktionen zum Extrahieren von Token-Daten
+func getStringClaim(token jwt.Token, key string) string {
+    if val, ok := token.Get(key); ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getScopesFromToken(token jwt.Token) []string {
+    if val, ok := token.Get("scope"); ok {
+        if scope, ok := val.(string); ok && scope != "" {
+            return strings.Split(scope, " ")
+        }
+    }
+    return []string{}
+}
+
+func getAudienceFromToken(token jwt.Token) []string {
+    return token.Audience()
+}
+```
+
+Implementiere anschließend das Middleware, um das Zugangstoken zu überprüfen:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+Je nach deinem Berechtigungsmodell musst du möglicherweise unterschiedliche `verifyPayload`-Logik anwenden:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Globale API-Ressourcen">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Ungültige Zielgruppe")
+    }
+
+    // Überprüfe erforderliche Berechtigungen für globale API-Ressourcen
+    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Unzureichende Berechtigung")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Organisation (nicht-API) Berechtigungen">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Überprüfe, ob der Audience-Anspruch dem Organisationsformat entspricht
+    if !hasOrganizationAudience(token) {
+        return NewAuthorizationError("Ungültige Zielgruppe für Organisationsberechtigungen")
+    }
+
+    // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
+    expectedOrgID := "your-organization-id" // Aus dem Request-Kontext extrahieren
+    if !hasMatchingOrganization(token, expectedOrgID) {
+        return NewAuthorizationError("Organisation-ID stimmt nicht überein")
+    }
+
+    // Überprüfe erforderliche Organisationsberechtigungen
+    requiredScopes := []string{"invite:users", "manage:settings"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Unzureichende Organisationsberechtigung")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Organisationsbezogene API-Ressourcen">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("Ungültige Zielgruppe für organisationsbezogene API-Ressourcen")
+    }
+
+    // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
+    expectedOrgID := "your-organization-id" // Aus dem Request-Kontext extrahieren
+    if !hasMatchingOrganizationID(token, expectedOrgID) {
+        return NewAuthorizationError("Organisation-ID stimmt nicht überein")
+    }
+
+    // Überprüfe erforderliche Berechtigungen für organisationsbezogene API-Ressourcen
+    requiredScopes := []string{"api:read", "api:write"} // Ersetze durch deine tatsächlichen erforderlichen Berechtigungen
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("Unzureichende organisationsbezogene API-Berechtigungen")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+</Tabs>
+
+Füge diese Hilfsfunktionen zur Payload-Überprüfung hinzu:
+
+```go title="auth_middleware.go"
+// hasAudience prüft, ob das Token die angegebene Zielgruppe enthält
+func hasAudience(token jwt.Token, expectedAud string) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if aud == expectedAud {
+            return true
+        }
+    }
+    return false
+}
+
+// hasOrganizationAudience prüft, ob das Token eine Zielgruppe im Organisationsformat enthält
+func hasOrganizationAudience(token jwt.Token) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if strings.HasPrefix(aud, "urn:logto:organization:") {
+            return true
+        }
+    }
+    return false
+}
+
+// hasRequiredScopes prüft, ob das Token alle erforderlichen Berechtigungen enthält
+func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
+    scopes := getScopesFromToken(token)
+    for _, required := range requiredScopes {
+        found := false
+        for _, scope := range scopes {
+            if scope == required {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return true
+}
+
+// hasMatchingOrganization prüft, ob die Token-Zielgruppe mit der erwarteten Organisation übereinstimmt
+func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
+    expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
+    return hasAudience(token, expectedAud)
+}
+
+// hasMatchingOrganizationID prüft, ob die organization_id des Tokens mit der erwarteten übereinstimmt
+func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
+    orgID := getStringClaim(token, "organization_id")
+    return orgID == expectedOrgID
+}
+```
