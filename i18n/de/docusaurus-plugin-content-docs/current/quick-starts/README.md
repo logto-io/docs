@@ -1,15 +1,15 @@
 ---
-sidebar_label: Schnellstartanleitungen
+sidebar_label: Einführung
 ---
 
-# Logto Schnellstartanleitungen
+# Schnellstart
 
-Willkommen bei den Logto Schnellstartanleitungen. Diese Dokumentation enthält nützliche Anleitungen zur Integration von Logto in deine Anwendung.
+Willkommen zu den Logto Schnellstarts. Diese Dokumentation enthält nützliche Anleitungen zur Integration von Logto in deine Anwendung.
 
 Die meisten Anleitungen verwenden die offiziellen Logto SDKs. Zögere nicht, uns zu kontaktieren, wenn du Fragen hast.
 
 :::info
-Diese Seite konzentriert sich auf die Logto Client-Integration, einschließlich Backend-for-Frontend-Muster. Für den Schutz von serverseitigen APIs siehe [API-Schutz](/api-protection).
+Diese Seite konzentriert sich auf die Logto-Client-Integration, einschließlich Backend-for-Frontend-Muster. Für den Schutz von serverseitigen APIs siehe [API-Schutz](/api-protection).
 :::
 
 ---
