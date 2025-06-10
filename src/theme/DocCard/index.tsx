@@ -41,14 +41,14 @@ function CardContainer({
   );
 }
 
-function CardLayout({
+export function CardLayout({
   href,
   icon,
   title,
   description,
 }: {
   readonly href: string;
-  readonly icon: ReactNode;
+  readonly icon?: ReactNode;
   readonly title: string;
   readonly description?: string;
 }): JSX.Element {

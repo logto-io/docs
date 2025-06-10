@@ -1,7 +1,7 @@
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-[PyJWT](https://github.com/jpadilla/pyjwt) を使用して JWT の検証を行います。まだインストールしていない場合は、以下を実行してください：
+[PyJWT](https://github.com/jpadilla/pyjwt) を使用して JWT の検証を行います。まだインストールしていない場合は、次のコマンドでインストールしてください：
 
 ```bash
 pip install pyjwt[crypto]
@@ -17,8 +17,8 @@ from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
 
 jwks_client = PyJWKClient(JWKS_URI)
 
-def validate_jwt_token(token: str) -> Dict[str, Any]:
-    """JWT トークンを検証し、ペイロードを返す"""
+def validate_jwt(token: str) -> Dict[str, Any]:
+    """JWT を検証し、ペイロードを返す"""
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(token)
 
@@ -55,12 +55,11 @@ def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
 
 def verify_payload(payload: Dict[str, Any]) -> None:
     """権限モデルに基づいてペイロードを検証"""
-    # 権限モデルに基づく検証ロジックをここに実装してください
-    # この内容は下記の権限モデルセクションで説明します
+    # 権限モデルに基づく検証ロジックは下記のセクションで示します
     pass
 ```
 
-次に、アクセス トークンの検証用ミドルウェアを実装します：
+次に、アクセス トークン (Access token) を検証するミドルウェアを実装します：
 
 <Tabs groupId="api-framework">
   <TabItem value="fastapi" label="FastAPI">
@@ -68,14 +67,14 @@ def verify_payload(payload: Dict[str, Any]) -> None:
 ```py title="auth_middleware.py"
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 security = HTTPBearer()
 
 async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthInfo:
     try:
         token = credentials.credentials
-        payload = validate_jwt_token(token)
+        payload = validate_jwt(token)
         return create_auth_info(payload)
 
     except AuthorizationError as e:
@@ -88,14 +87,14 @@ async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depend
 ```py title="auth_middleware.py"
 from functools import wraps
 from flask import request, jsonify, g
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 def verify_access_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
             token = extract_bearer_token_from_headers(dict(request.headers))
-            payload = validate_jwt_token(token)
+            payload = validate_jwt(token)
 
             # Flask の g オブジェクトに認証情報を格納
             g.auth = create_auth_info(payload)
@@ -113,7 +112,7 @@ def verify_access_token(f):
 
 ```py title="auth_middleware.py"
 from django.http import JsonResponse
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 def require_access_token(view_func):
     def wrapper(request, *args, **kwargs):
@@ -122,7 +121,7 @@ def require_access_token(view_func):
                       for key, value in request.META.items() if key.startswith('HTTP_')}
 
             token = extract_bearer_token_from_headers(headers)
-            payload = validate_jwt_token(token)
+            payload = validate_jwt(token)
 
             # 認証情報を request に付与
             request.auth = create_auth_info(payload)
@@ -141,7 +140,7 @@ def require_access_token(view_func):
 ```py title="auth_middleware.py"
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 class AccessTokenAuthentication(TokenAuthentication):
     keyword = 'Bearer'  # 'Token' ではなく 'Bearer' を使用
@@ -151,7 +150,7 @@ class AccessTokenAuthentication(TokenAuthentication):
         トークンを JWT として検証し認証します。
         """
         try:
-            payload = validate_jwt_token(key)
+            payload = validate_jwt(key)
             auth_info = create_auth_info(payload)
 
             # 認証情報を保持するユーザーライクなオブジェクトを作成
@@ -182,7 +181,7 @@ class AccessTokenAuthentication(TokenAuthentication):
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """グローバル API リソース用のペイロード検証"""
-    # audience クレームが API リソースインジケーターと一致するか確認
+    # オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -190,7 +189,7 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if 'https://your-api-resource-indicator' not in audiences:
         raise AuthorizationError('Invalid audience')
 
-    # グローバル API リソースに必要なスコープを確認
+    # グローバル API リソースに必要なスコープ (Scope) を確認
     required_scopes = ['api:read', 'api:write']  # 実際に必要なスコープに置き換えてください
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
@@ -198,12 +197,12 @@ def verify_payload(payload: Dict[str, Any]) -> None:
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="組織（非 API）権限">
+<TabItem value="organization-permissions" label="組織 (非 API) 権限">
 
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """組織権限用のペイロード検証"""
-    # audience クレームが組織フォーマットと一致するか確認
+    # オーディエンス (Audience) クレームが組織フォーマットと一致するか確認
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -212,13 +211,13 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if not has_org_audience:
         raise AuthorizationError('Invalid audience for organization permissions')
 
-    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得が必要な場合あり）
+    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
     expected_org_id = 'your-organization-id'  # リクエストコンテキストから取得
     expected_aud = f'urn:logto:organization:{expected_org_id}'
     if expected_aud not in audiences:
         raise AuthorizationError('Organization ID mismatch')
 
-    # 必要な組織スコープを確認
+    # 必要な組織スコープ (Scope) を確認
     required_scopes = ['invite:users', 'manage:settings']  # 実際に必要なスコープに置き換えてください
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
@@ -231,7 +230,7 @@ def verify_payload(payload: Dict[str, Any]) -> None:
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """組織レベル API リソース用のペイロード検証"""
-    # audience クレームが API リソースインジケーターと一致するか確認
+    # オーディエンス (Audience) クレームが API リソースインジケーターと一致するか確認
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -239,13 +238,13 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if 'https://your-api-resource-indicator' not in audiences:
         raise AuthorizationError('Invalid audience for organization-level API resources')
 
-    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得が必要な場合あり）
+    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
     expected_org_id = 'your-organization-id'  # リクエストコンテキストから取得
     org_id = payload.get('organization_id')
     if expected_org_id != org_id:
         raise AuthorizationError('Organization ID mismatch')
 
-    # 組織レベル API リソースに必要なスコープを確認
+    # 組織レベル API リソースに必要なスコープ (Scope) を確認
     required_scopes = ['api:read', 'api:write']  # 実際に必要なスコープに置き換えてください
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):

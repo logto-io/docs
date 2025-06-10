@@ -1,5 +1,20 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
 
 이 예제에서는 JWT를 검증하기 위해 [jose](https://github.com/panva/jose) 를 사용합니다. 아직 설치하지 않았다면 설치하세요:
 
@@ -17,7 +32,7 @@ import { AuthInfo, AuthorizationError } from './auth-middleware.js';
 
 const jwks = createRemoteJWKSet(new URL(JWKS_URI));
 
-export async function validateJwtToken(token: string): Promise<JWTPayload> {
+export async function validateJwt(token: string): Promise<JWTPayload> {
   const { payload } = await jwtVerify(token, jwks, {
     issuer: ISSUER,
   });
@@ -45,155 +60,20 @@ function verifyPayload(payload: JWTPayload): void {
 }
 ```
 
-그 다음, 액세스 토큰 (Access token) 을 검증하는 미들웨어를 구현하세요:
+그 다음, 액세스 토큰 (Access token) 검증을 위한 미들웨어를 구현하세요:
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="express" label="Express.js">
-
-```ts title="auth-middleware.ts"
-import { Request, Response, NextFunction } from 'express';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
-
-// Express Request 인터페이스에 auth를 확장합니다
-declare global {
-  namespace Express {
-    interface Request {
-      auth?: AuthInfo;
-    }
-  }
-}
-
-export async function verifyAccessToken(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = extractBearerTokenFromHeaders(req.headers);
-    const payload = await validateJwtToken(token);
-
-    // 인증 정보를 request에 저장하여 범용적으로 사용
-    req.auth = createAuthInfo(payload);
-
-    next();
-  } catch (err: any) {
-    return res.status(err.status ?? 401).json({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="koa" label="Koa.js">
-
-```ts title="auth-middleware.ts"
-import { Context, Next } from 'koa';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
-
-export async function koaVerifyAccessToken(ctx: Context, next: Next) {
-  try {
-    const token = extractBearerTokenFromHeaders(ctx.request.headers);
-    const payload = await validateJwtToken(token);
-
-    // 인증 정보를 state에 저장하여 범용적으로 사용
-    ctx.state.auth = createAuthInfo(payload);
-
-    await next();
-  } catch (err: any) {
-    ctx.status = err.status ?? 401;
-    ctx.body = { error: err.message };
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="fastify" label="Fastify">
-
-```ts title="auth-middleware.ts"
-import { FastifyRequest, FastifyReply } from 'fastify';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
-
-// Fastify Request 인터페이스에 auth를 확장합니다
-declare module 'fastify' {
-  interface FastifyRequest {
-    auth?: AuthInfo;
-  }
-}
-
-export async function fastifyVerifyAccessToken(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwtToken(token);
-
-    // 인증 정보를 request에 저장하여 범용적으로 사용
-    request.auth = createAuthInfo(payload);
-  } catch (err: any) {
-    reply.code(err.status ?? 401).send({ error: err.message });
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="hapi" label="Hapi.js">
-
-```ts title="auth-middleware.ts"
-import { Request, ResponseToolkit } from '@hapi/hapi';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
-
-export async function hapiVerifyAccessToken(request: Request, h: ResponseToolkit) {
-  try {
-    const token = extractBearerTokenFromHeaders(request.headers);
-    const payload = await validateJwtToken(token);
-
-    // 인증 정보를 request.app에 저장하여 범용적으로 사용
-    request.app.auth = createAuthInfo(payload);
-
-    return h.continue;
-  } catch (err: any) {
-    return h
-      .response({ error: err.message })
-      .code(err.status ?? 401)
-      .takeover();
-  }
-}
-```
-
-  </TabItem>
-  <TabItem value="nestjs" label="NestJS">
-
-```ts title="access-token.guard.ts"
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { extractBearerTokenFromHeaders, AuthorizationError } from './auth-middleware.js';
-import { validateJwtToken, createAuthInfo } from './jwt-validator.js';
-
-@Injectable()
-export class AccessTokenGuard implements CanActivate {
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-
-    try {
-      const token = extractBearerTokenFromHeaders(req.headers);
-      const payload = await validateJwtToken(token);
-
-      // 인증 정보를 request에 저장하여 범용적으로 사용
-      req.auth = createAuthInfo(payload);
-
-      return true;
-    } catch (err: any) {
-      if (err.status === 401) throw new UnauthorizedException(err.message);
-      throw new ForbiddenException(err.message);
-    }
-  }
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
 권한 모델에 따라 `jwt-validator.ts`에서 적절한 검증 로직을 구현하세요:
 
@@ -218,7 +98,7 @@ function verifyPayload(payload: JWTPayload): void {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="조직 (비-API) 권한">
+<TabItem value="organization-permissions" label="조직 (Organization) 권한">
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
@@ -230,8 +110,8 @@ function verifyPayload(payload: JWTPayload): void {
     throw new AuthorizationError('Invalid audience for organization permissions');
   }
 
-  // 조직 ID가 컨텍스트와 일치하는지 확인 (request context에서 추출 필요)
-  const expectedOrgId = 'your-organization-id'; // request context에서 추출
+  // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+  const expectedOrgId = 'your-organization-id'; // 요청 컨텍스트에서 추출
   const expectedAud = `urn:logto:organization:${expectedOrgId}`;
   if (!audiences.includes(expectedAud)) {
     throw new AuthorizationError('Organization ID mismatch');
@@ -247,7 +127,7 @@ function verifyPayload(payload: JWTPayload): void {
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="조직 레벨 API 리소스">
+<TabItem value="organization-level-api-resources" label="조직 수준 API 리소스">
 
 ```ts title="jwt-validator.ts"
 function verifyPayload(payload: JWTPayload): void {
@@ -257,14 +137,14 @@ function verifyPayload(payload: JWTPayload): void {
     throw new AuthorizationError('Invalid audience for organization-level API resources');
   }
 
-  // 조직 ID가 컨텍스트와 일치하는지 확인 (request context에서 추출 필요)
-  const expectedOrgId = 'your-organization-id'; // request context에서 추출
+  // 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+  const expectedOrgId = 'your-organization-id'; // 요청 컨텍스트에서 추출
   const orgId = payload.organization_id as string;
   if (expectedOrgId !== orgId) {
     throw new AuthorizationError('Organization ID mismatch');
   }
 
-  // 조직 레벨 API 리소스에 필요한 스코프 확인
+  // 조직 수준 API 리소스에 필요한 스코프 확인
   const requiredScopes = ['api:read', 'api:write']; // 실제 필요한 스코프로 교체하세요
   const scopes = (payload.scope as string)?.split(' ') ?? [];
   if (!requiredScopes.every((scope) => scopes.includes(scope))) {

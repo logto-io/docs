@@ -131,6 +131,12 @@ export const createCommonThemeConfig = (site: Site) => {
           position: 'left',
           label: 'Integrations',
         },
+        // Uncomment when the API protection page is ready
+        // {
+        //   to: buildUrl('/api-protection', 'main'),
+        //   position: 'left',
+        //   label: 'API protection',
+        // },
         {
           to: buildUrl('/use-cases', 'main'),
           position: 'left',
@@ -139,7 +145,7 @@ export const createCommonThemeConfig = (site: Site) => {
         {
           to: new URL('https://openapi.logto.io', mainSiteUrl).href,
           position: 'left',
-          label: 'API',
+          label: 'Logto APIs',
         },
       ],
     },

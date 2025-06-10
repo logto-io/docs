@@ -17,8 +17,8 @@ from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
 
 jwks_client = PyJWKClient(JWKS_URI)
 
-def validate_jwt_token(token: str) -> Dict[str, Any]:
-    """Validar el token JWT y devolver el payload"""
+def validate_jwt(token: str) -> Dict[str, Any]:
+    """Validar JWT y devolver el payload"""
     try:
         signing_key = jwks_client.get_signing_key_from_jwt(token)
 
@@ -56,7 +56,7 @@ def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
 def verify_payload(payload: Dict[str, Any]) -> None:
     """Verificar el payload según el modelo de permisos"""
     # Implementa aquí tu lógica de verificación basada en el modelo de permisos
-    # Esto se mostrará en la sección de modelos de permisos a continuación
+    # Esto se mostrará en la sección de modelos de permisos más abajo
     pass
 ```
 
@@ -68,14 +68,14 @@ Luego, implementa el middleware para verificar el token de acceso (access token)
 ```py title="auth_middleware.py"
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 security = HTTPBearer()
 
 async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> AuthInfo:
     try:
         token = credentials.credentials
-        payload = validate_jwt_token(token)
+        payload = validate_jwt(token)
         return create_auth_info(payload)
 
     except AuthorizationError as e:
@@ -88,16 +88,16 @@ async def verify_access_token(credentials: HTTPAuthorizationCredentials = Depend
 ```py title="auth_middleware.py"
 from functools import wraps
 from flask import request, jsonify, g
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 def verify_access_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
             token = extract_bearer_token_from_headers(dict(request.headers))
-            payload = validate_jwt_token(token)
+            payload = validate_jwt(token)
 
-            # Almacenar la información de autenticación en el objeto g de Flask para uso general
+            # Almacena la información de autenticación en el objeto g de Flask para uso general
             g.auth = create_auth_info(payload)
 
             return f(*args, **kwargs)
@@ -113,7 +113,7 @@ def verify_access_token(f):
 
 ```py title="auth_middleware.py"
 from django.http import JsonResponse
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 def require_access_token(view_func):
     def wrapper(request, *args, **kwargs):
@@ -122,9 +122,9 @@ def require_access_token(view_func):
                       for key, value in request.META.items() if key.startswith('HTTP_')}
 
             token = extract_bearer_token_from_headers(headers)
-            payload = validate_jwt_token(token)
+            payload = validate_jwt(token)
 
-            # Adjuntar la información de autenticación a la request para uso general
+            # Adjunta la información de autenticación a la request para uso general
             request.auth = create_auth_info(payload)
 
             return view_func(request, *args, **kwargs)
@@ -141,20 +141,20 @@ def require_access_token(view_func):
 ```py title="auth_middleware.py"
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions
-from jwt_validator import validate_jwt_token, create_auth_info
+from jwt_validator import validate_jwt, create_auth_info
 
 class AccessTokenAuthentication(TokenAuthentication):
     keyword = 'Bearer'  # Usar 'Bearer' en lugar de 'Token'
 
     def authenticate_credentials(self, key):
         """
-        Autenticar el token validándolo como un JWT.
+        Autentica el token validándolo como un JWT.
         """
         try:
-            payload = validate_jwt_token(key)
+            payload = validate_jwt(key)
             auth_info = create_auth_info(payload)
 
-            # Crear un objeto tipo usuario que contenga la información de autenticación para uso general
+            # Crea un objeto tipo usuario que contiene la información de autenticación para uso general
             user = type('User', (), {
                 'auth': auth_info,
                 'is_authenticated': True,
@@ -174,7 +174,7 @@ class AccessTokenAuthentication(TokenAuthentication):
   </TabItem>
 </Tabs>
 
-De acuerdo con tu modelo de permisos, implementa la lógica de verificación apropiada en `jwt_validator.py`:
+De acuerdo con tu modelo de permisos, implementa la lógica de verificación adecuada en `jwt_validator.py`:
 
 <Tabs groupId="permission-models">
 <TabItem value="global-api-resources" label="Recursos de API globales">
@@ -182,7 +182,7 @@ De acuerdo con tu modelo de permisos, implementa la lógica de verificación apr
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """Verificar el payload para recursos de API globales"""
-    # Comprobar que el claim de audiencia coincida con tu indicador de recurso de API
+    # Verifica que el claim de audiencia coincida con tu indicador de recurso de API
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -190,7 +190,7 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if 'https://your-api-resource-indicator' not in audiences:
         raise AuthorizationError('Audiencia inválida')
 
-    # Comprobar los alcances requeridos para recursos de API globales
+    # Verifica los alcances requeridos para recursos de API globales
     required_scopes = ['api:read', 'api:write']  # Reemplaza con tus alcances requeridos
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
@@ -203,7 +203,7 @@ def verify_payload(payload: Dict[str, Any]) -> None:
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """Verificar el payload para permisos de organización"""
-    # Comprobar que el claim de audiencia coincida con el formato de organización
+    # Verifica que el claim de audiencia coincida con el formato de organización
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -212,13 +212,13 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if not has_org_audience:
         raise AuthorizationError('Audiencia inválida para permisos de organización')
 
-    # Comprobar que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la request)
+    # Verifica que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la request)
     expected_org_id = 'your-organization-id'  # Extraer del contexto de la request
     expected_aud = f'urn:logto:organization:{expected_org_id}'
     if expected_aud not in audiences:
         raise AuthorizationError('ID de organización no coincide')
 
-    # Comprobar los alcances requeridos de la organización
+    # Verifica los alcances requeridos de la organización
     required_scopes = ['invite:users', 'manage:settings']  # Reemplaza con tus alcances requeridos
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):
@@ -231,7 +231,7 @@ def verify_payload(payload: Dict[str, Any]) -> None:
 ```py title="jwt_validator.py"
 def verify_payload(payload: Dict[str, Any]) -> None:
     """Verificar el payload para recursos de API a nivel de organización"""
-    # Comprobar que el claim de audiencia coincida con tu indicador de recurso de API
+    # Verifica que el claim de audiencia coincida con tu indicador de recurso de API
     audiences = payload.get('aud', [])
     if isinstance(audiences, str):
         audiences = [audiences]
@@ -239,13 +239,13 @@ def verify_payload(payload: Dict[str, Any]) -> None:
     if 'https://your-api-resource-indicator' not in audiences:
         raise AuthorizationError('Audiencia inválida para recursos de API a nivel de organización')
 
-    # Comprobar que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la request)
+    # Verifica que el ID de la organización coincida con el contexto (puede que necesites extraerlo del contexto de la request)
     expected_org_id = 'your-organization-id'  # Extraer del contexto de la request
     org_id = payload.get('organization_id')
     if expected_org_id != org_id:
         raise AuthorizationError('ID de organización no coincide')
 
-    # Comprobar los alcances requeridos para recursos de API a nivel de organización
+    # Verifica los alcances requeridos para recursos de API a nivel de organización
     required_scopes = ['api:read', 'api:write']  # Reemplaza con tus alcances requeridos
     scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
     if not all(scope in scopes for scope in required_scopes):

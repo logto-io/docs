@@ -1,5 +1,18 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
 
 Nous utilisons [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) pour valider les JWT. Installez-le si ce n'est pas déjà fait :
 
@@ -8,7 +21,7 @@ go mod init your-project
 go get github.com/lestrrat-go/jwx/v3
 ```
 
-Tout d'abord, ajoutez ces composants partagés à votre fichier `auth_middleware.go` :
+Commencez par ajouter ces composants partagés à votre fichier `auth_middleware.go` :
 
 ```go title="auth_middleware.go"
 import (
@@ -34,8 +47,8 @@ func init() {
     }
 }
 
-// validateJWTToken valide le jeton JWT et retourne le jeton analysé
-func validateJWTToken(tokenString string) (jwt.Token, error) {
+// validateJWT valide le JWT et retourne le jeton analysé
+func validateJWT(tokenString string) (jwt.Token, error) {
     token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
     if err != nil {
         return nil, NewAuthorizationError("Jeton invalide : "+err.Error(), http.StatusUnauthorized)
@@ -77,145 +90,22 @@ func getAudienceFromToken(token jwt.Token) []string {
 }
 ```
 
-Ensuite, implémentez le middleware pour vérifier le jeton d’accès :
+Ensuite, implémentez le middleware pour vérifier le jeton d’accès (access token) :
+
+{props.framework
+? frameworkContent[props.framework]
+:
 
 <Tabs groupId="api-framework">
-  <TabItem value="gin" label="Gin">
-
-```go title="auth_middleware.go"
-import "github.com/gin-gonic/gin"
-
-func VerifyAccessToken() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        token, err := validateJWTToken(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            c.JSON(authErr.Status, gin.H{"error": authErr.Message})
-            c.Abort()
-            return
-        }
-
-        // Stocker le jeton dans le contexte pour un usage générique
-        c.Set("auth", token)
-        c.Next()
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="echo" label="Echo">
-
-```go title="auth_middleware.go"
-import "github.com/labstack/echo/v4"
-
-func VerifyAccessToken(next echo.HandlerFunc) echo.HandlerFunc {
-    return func(c echo.Context) error {
-        tokenString, err := extractBearerTokenFromHeaders(c.Request())
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        token, err := validateJWTToken(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            return c.JSON(authErr.Status, echo.Map{"error": authErr.Message})
-        }
-
-        // Stocker le jeton dans le contexte pour un usage générique
-        c.Set("auth", token)
-        return next(c)
-    }
-}
-```
-
-  </TabItem>
-  <TabItem value="fiber" label="Fiber">
-
-```go title="auth_middleware.go"
-import (
-    "net/http"
-    "github.com/gofiber/fiber/v2"
-)
-
-func VerifyAccessToken(c *fiber.Ctx) error {
-    // Convertir la requête fiber en http.Request pour la compatibilité
-    req := &http.Request{
-        Header: make(http.Header),
-    }
-    req.Header.Set("Authorization", c.Get("Authorization"))
-
-    tokenString, err := extractBearerTokenFromHeaders(req)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    token, err := validateJWTToken(tokenString)
-    if err != nil {
-        authErr := err.(*AuthorizationError)
-        return c.Status(authErr.Status).JSON(fiber.Map{"error": authErr.Message})
-    }
-
-    // Stocker le jeton dans les locals pour un usage générique
-    c.Locals("auth", token)
-    return c.Next()
-}
-```
-
-  </TabItem>
-  <TabItem value="chi" label="Chi">
-
-```go title="auth_middleware.go"
-import (
-    "context"
-    "encoding/json"
-    "net/http"
-)
-
-type contextKey string
-
-const AuthContextKey contextKey = "auth"
-
-func VerifyAccessToken(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        tokenString, err := extractBearerTokenFromHeaders(r)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        token, err := validateJWTToken(tokenString)
-        if err != nil {
-            authErr := err.(*AuthorizationError)
-            w.Header().Set("Content-Type", "application/json")
-            w.WriteHeader(authErr.Status)
-            json.NewEncoder(w).Encode(map[string]string{"error": authErr.Message})
-            return
-        }
-
-        // Stocker le jeton dans le contexte pour un usage générique
-        ctx := context.WithValue(r.Context(), AuthContextKey, token)
-        next.ServeHTTP(w, r.WithContext(ctx))
-    })
-}
-```
-
-  </TabItem>
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
 </Tabs>
+}
 
-Selon votre modèle de permission, vous devrez peut-être adopter une logique différente pour `verifyPayload` :
+Selon votre modèle de permissions, vous devrez peut-être adopter une logique différente pour `verifyPayload` :
 
 <Tabs groupId="permission-models">
 <TabItem value="global-api-resources" label="Ressources API globales">
@@ -238,7 +128,7 @@ func verifyPayload(token jwt.Token) error {
 ```
 
 </TabItem>
-<TabItem value="organization-permissions" label="Permissions d'organisation (hors API)">
+<TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
@@ -250,7 +140,7 @@ func verifyPayload(token jwt.Token) error {
     // Vérifier que l'ID d'organisation correspond au contexte (vous devrez peut-être l'extraire du contexte de la requête)
     expectedOrgID := "your-organization-id" // À extraire du contexte de la requête
     if !hasMatchingOrganization(token, expectedOrgID) {
-        return NewAuthorizationError("Incohérence de l'ID d'organisation")
+        return NewAuthorizationError("ID d'organisation non correspondant")
     }
 
     // Vérifier les portées requises pour l'organisation
@@ -264,7 +154,7 @@ func verifyPayload(token jwt.Token) error {
 ```
 
 </TabItem>
-<TabItem value="organization-level-api-resources" label="Ressources API au niveau de l'organisation">
+<TabItem value="organization-level-api-resources" label="Ressources API au niveau de l’organisation">
 
 ```go title="auth_middleware.go"
 func verifyPayload(token jwt.Token) error {
@@ -276,7 +166,7 @@ func verifyPayload(token jwt.Token) error {
     // Vérifier que l'ID d'organisation correspond au contexte (vous devrez peut-être l'extraire du contexte de la requête)
     expectedOrgID := "your-organization-id" // À extraire du contexte de la requête
     if !hasMatchingOrganizationID(token, expectedOrgID) {
-        return NewAuthorizationError("Incohérence de l'ID d'organisation")
+        return NewAuthorizationError("ID d'organisation non correspondant")
     }
 
     // Vérifier les portées requises pour les ressources API au niveau de l'organisation
@@ -341,7 +231,7 @@ func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
     return hasAudience(token, expectedAud)
 }
 
-// hasMatchingOrganizationID vérifie si le champ organization_id du jeton correspond à celui attendu
+// hasMatchingOrganizationID vérifie si organization_id du jeton correspond à celui attendu
 func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
     orgID := getStringClaim(token, "organization_id")
     return orgID == expectedOrgID
