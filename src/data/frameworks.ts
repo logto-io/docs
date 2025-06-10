@@ -73,6 +73,22 @@ export const apiFrameworks = Object.freeze({
     name: 'Chi',
     language: 'go',
   },
+  'spring-boot': {
+    name: 'Spring Boot',
+    language: 'java',
+  },
+  quarkus: {
+    name: 'Quarkus',
+    language: 'java',
+  },
+  micronaut: {
+    name: 'Micronaut',
+    language: 'java',
+  },
+  'vertx-web': {
+    name: 'Vert.x Web',
+    language: 'java',
+  },
 } as const satisfies Record<string, ApiFrameworkInfo>);
 
 export type Framework = keyof typeof apiFrameworks;
