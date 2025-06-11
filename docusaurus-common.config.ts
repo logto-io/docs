@@ -146,6 +146,10 @@ export const createCommonThemeConfig = (site: Site) => {
           position: 'left',
           label: 'Logto APIs',
         },
+        {
+          type: 'localeDropdown',
+          position: 'right',
+        },
       ],
     },
     footer: {

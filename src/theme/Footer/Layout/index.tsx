@@ -41,7 +41,7 @@ export default function FooterLayout({ style, links, logo, copyright }: Props): 
           {logo && <div className="margin-bottom--sm">{logo}</div>}
           {copyright}
           <Link className="footer__link-item" to="https://logto.io/trust-and-security">
-            <Translate>Hosted in 🇪🇺🇺🇸🇦🇺</Translate>
+            <Translate>Security</Translate>
           </Link>
           <Link className="footer__link-item" to={getMainSiteLink('/terms/of-service')}>
             <Translate>Terms</Translate>
