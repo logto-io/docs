@@ -1,8 +1,8 @@
 ---
-sidebar_label: Quick starts
+sidebar_label: Introduction
 ---
 
-# Logto quick starts
+# Quick starts
 
 Welcome to Logto quick starts. This documentation contains useful guides for integrating Logto into your application.
 

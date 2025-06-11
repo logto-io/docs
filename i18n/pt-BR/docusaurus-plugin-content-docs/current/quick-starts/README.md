@@ -1,8 +1,8 @@
 ---
-sidebar_label: Inícios rápidos
+sidebar_label: Introdução
 ---
 
-# Inícios rápidos do Logto
+# Inícios rápidos
 
 Bem-vindo aos inícios rápidos do Logto. Esta documentação contém guias úteis para integrar o Logto ao seu aplicativo.
 
