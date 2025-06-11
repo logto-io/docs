@@ -1,8 +1,8 @@
 ---
-sidebar_label: Integraciones de Logto
+sidebar_label: Introducción
 ---
 
-# Introducción
+# Integraciones
 
 Bienvenido a la documentación de integraciones de Logto. Esta documentación contiene guías útiles para integrar un servicio de autenticación de terceros con Logto, a través de conectores de Logto.
 

@@ -1,8 +1,8 @@
 ---
-sidebar_label: Logto integrations
+sidebar_label: はじめに
 ---
 
-# はじめに
+# インテグレーション
 
 Logto インテグレーションドキュメントへようこそ。このドキュメントには、Logto コネクターを介してサードパーティの認証サービスを Logto と統合するための有用なガイドが含まれています。
 
