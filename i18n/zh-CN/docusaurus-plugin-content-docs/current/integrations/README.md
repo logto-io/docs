@@ -1,10 +1,10 @@
 ---
-sidebar_label: Logto 集成
+sidebar_label: 介绍
 ---
 
-# 介绍
+# 集成
 
-欢迎来到 Logto 集成文档。本文档包含通过 Logto 连接器将第三方认证服务与 Logto 集成的实用指南。
+欢迎来到 Logto 集成文档。本部分包含通过 Logto 连接器将第三方认证服务与 Logto 集成的实用指南。
 
 ---
 
