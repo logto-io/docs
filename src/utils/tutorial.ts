@@ -1,12 +1,12 @@
-import { type DocMetadata } from '@docusaurus/plugin-content-docs';
+import { type Metadata } from '@site/src/hooks/use-categorized-tutorial-metadata';
 
-export const getSdkDisplayName = (sdk?: DocMetadata) =>
+export const getSdkDisplayName = (sdk?: Metadata) =>
   String(sdk?.frontMatter.tutorial_name ?? sdk?.frontMatter.sidebar_label ?? '');
 
-export const getConnectorDisplayName = (connector?: DocMetadata) =>
+export const getConnectorDisplayName = (connector?: Metadata) =>
   String(connector?.frontMatter.tutorial_name ?? connector?.frontMatter.sidebar_label ?? '');
 
-export const getSdkPath = (metadata: DocMetadata) => {
+export const getSdkPath = (metadata: Metadata) => {
   const sdkName = String(metadata.frontMatter.tutorial_name ?? '');
 
   return sdkName
@@ -14,7 +14,7 @@ export const getSdkPath = (metadata: DocMetadata) => {
     : metadata.slug.split('/').slice(2).join('-');
 };
 
-export const getConnectorPath = (metadata: DocMetadata) => {
+export const getConnectorPath = (metadata: Metadata) => {
   const connectorName = String(
     metadata.frontMatter.tutorial_name ?? metadata.frontMatter.sidebar_label ?? ''
   );

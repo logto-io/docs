@@ -1,9 +1,9 @@
 import Translate from '@docusaurus/Translate';
-import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { type Nullable } from '@silverhand/essentials';
 import { Fragment, type RefObject, useRef } from 'react';
 import ReactModal from 'react-modal';
 
+import { type Metadata } from '@site/src/hooks/use-categorized-tutorial-metadata';
 import { usePosition } from '@site/src/hooks/use-position';
 import { onKeyDownHandler } from '@site/src/utils/a11y';
 
@@ -12,8 +12,8 @@ import styles from './index.module.scss';
 type DropdownProps = {
   readonly isOpen: boolean;
   readonly anchorRef: RefObject<Nullable<HTMLElement>>;
-  readonly options: Record<string, DocMetadata[]>;
-  readonly onSelect: (option: { displayName: string; metadata: DocMetadata }) => void;
+  readonly options: Record<string, Metadata[]>;
+  readonly onSelect: (option: { displayName: string; metadata: Metadata }) => void;
   readonly onClose: () => void;
   readonly onReset?: () => void;
 };
@@ -59,13 +59,13 @@ const SelectionDropdown = ({
               <label>{groupLabel}</label>
               <div className={styles.dropdownGroup}>
                 {categorizedGuides.map((metadata) => {
-                  const { frontMatter, id } = metadata;
+                  const { frontMatter, file } = metadata;
                   const displayName = String(
                     frontMatter.tutorial_name ?? frontMatter.sidebar_label ?? ''
                   ).replace(' enterprise SSO', '');
                   return (
                     <div
-                      key={id}
+                      key={file}
                       tabIndex={0}
                       role="menuitem"
                       className={styles.dropdownItem}

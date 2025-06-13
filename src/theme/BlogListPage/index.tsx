@@ -11,8 +11,8 @@ import SearchMetadata from '@theme/SearchMetadata';
 import clsx from 'clsx';
 import { useEffect, useMemo } from 'react';
 
-import { getConnectorPath, getSdkPath } from '@site/plugins/tutorial-generator/utils';
 import Pagination from '@site/src/components/Pagination';
+import { getConnectorPath, getSdkPath } from '@site/src/utils/tutorial';
 
 import TitleWithSelectionDropdown from '../BlogPostItem/Header/TitleWithSelectionDropdown';
 

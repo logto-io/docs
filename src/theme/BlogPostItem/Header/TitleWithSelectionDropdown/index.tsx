@@ -1,20 +1,21 @@
 import Translate, { translate } from '@docusaurus/Translate';
 import { type PropBlogPostMetadata } from '@docusaurus/plugin-content-blog';
-import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { useHistory } from '@docusaurus/router';
 import { cond, conditional } from '@silverhand/essentials';
 import { clsx } from 'clsx';
 import { useMemo, useRef, useState } from 'react';
 
+import useCategorizedTutorialMetadata, {
+  type Metadata,
+} from '@site/src/hooks/use-categorized-tutorial-metadata';
+import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
+import { onKeyDownHandler } from '@site/src/utils/a11y';
 import {
   getConnectorDisplayName,
   getConnectorPath,
   getSdkDisplayName,
   getSdkPath,
-} from '@site/plugins/tutorial-generator/utils';
-import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tutorial-metadata';
-import { useCurrentLocalePrefix } from '@site/src/hooks/useCurrentLocalePrefix';
-import { onKeyDownHandler } from '@site/src/utils/a11y';
+} from '@site/src/utils/tutorial';
 
 import { howToBasePath } from '../../utils';
 import Dropdown from '../SelectionDropdown';
@@ -31,8 +32,8 @@ type ListViewProps = {
 };
 
 type Props = (BlogPostProps | ListViewProps) & {
-  readonly onSelectSdk?: (docMetadata?: DocMetadata) => void;
-  readonly onSelectConnector?: (docMetadata?: DocMetadata) => void;
+  readonly onSelectSdk?: (docMetadata?: Metadata) => void;
+  readonly onSelectConnector?: (docMetadata?: Metadata) => void;
 };
 
 type DropdownType = 'sdk' | 'connector';
@@ -120,7 +121,7 @@ const TitleWithSelectionDropdown = (props: Props) => {
   const onSelectDropdown = (option: {
     type: DropdownType;
     displayName: string;
-    metadata: DocMetadata;
+    metadata: Metadata;
   }) => {
     const { type, displayName, metadata } = option;
     const onSelectFn = type === 'sdk' ? onSelectSdk : onSelectConnector;

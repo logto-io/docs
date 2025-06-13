@@ -1,5 +1,4 @@
 import { useBlogPost } from '@docusaurus/plugin-content-blog/client';
-import { type DocMetadata } from '@docusaurus/plugin-content-docs';
 import { condString } from '@silverhand/essentials';
 import type { Props } from '@theme/BlogPostItem';
 import BlogPostItemContainer from '@theme/BlogPostItem/Container';
@@ -9,8 +8,10 @@ import BlogPostItemHeader from '@theme/BlogPostItem/Header';
 import ThemedImage from '@theme/ThemedImage';
 import clsx from 'clsx';
 
-import { getConnectorDisplayName, getSdkDisplayName } from '@site/plugins/tutorial-generator/utils';
-import useCategorizedTutorialMetadata from '@site/src/hooks/use-categorized-tutorial-metadata';
+import useCategorizedTutorialMetadata, {
+  type Metadata,
+} from '@site/src/hooks/use-categorized-tutorial-metadata';
+import { getConnectorDisplayName, getSdkDisplayName } from '@site/src/utils/tutorial';
 
 import styles from './index.module.scss';
 import { isHowToTutorial } from './utils';
@@ -21,7 +22,7 @@ import { isHowToTutorial } from './utils';
 //   return !isBlogPostPage ? 'margin-bottom--xl' : undefined;
 // }
 
-const getLogoFilenames = (data?: DocMetadata) => {
+const getLogoFilenames = (data?: Metadata) => {
   const lastSegmentInSlug = data?.slug.slice(data.slug.lastIndexOf('/') + 1) ?? '';
   const logoFilename = condString(
     data?.frontMatter.sidebar_custom_props?.logoFilename ?? lastSegmentInSlug + '.svg'
