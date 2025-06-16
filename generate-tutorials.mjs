@@ -133,8 +133,8 @@ const generate = async (
   type
 ) => {
   await Promise.all(
-    sdks.map((sdk) =>
-      connectors.map(async (connector) => {
+    sdks.flatMap((sdk) =>
+      connectors.flatMap(async (connector) => {
         const connectorPath = getConnectorPath(connector);
         const sdkPath = getSdkPath(sdk);
 
