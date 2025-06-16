@@ -18,7 +18,6 @@ import {
   mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
-import tutorialGenerator from './plugins/tutorial-generator';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
@@ -61,7 +60,6 @@ const config: Config = {
     addAliasPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
-    tutorialGenerator,
     ogImageGenerator,
     [
       '@docusaurus/plugin-content-blog',

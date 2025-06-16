@@ -1,14 +1,21 @@
-import { type DocMetadata } from '@docusaurus/plugin-content-docs';
+import { type DocFrontMatter } from '@docusaurus/plugin-content-docs';
 import { useMemo } from 'react';
 
 import metadata from '@site/tutorial/build-with-logto/metadata.json';
 
+export type Metadata = {
+  file: string;
+  title: string;
+  slug: string;
+  frontMatter: DocFrontMatter & Record<string, unknown>;
+};
+
 type DocGroups = {
-  sdks: DocMetadata[];
-  socialConnectors: DocMetadata[];
-  emailConnectors: DocMetadata[];
-  smsConnectors: DocMetadata[];
-  ssoConnectors: DocMetadata[];
+  sdks: Metadata[];
+  socialConnectors: Metadata[];
+  emailConnectors: Metadata[];
+  smsConnectors: Metadata[];
+  ssoConnectors: Metadata[];
 };
 
 /**
@@ -22,13 +29,12 @@ export enum DocAppType {
 
 const useCategorizedTutorialMetadata = () => {
   const { sdks, socialConnectors, emailConnectors, smsConnectors, ssoConnectors } =
-    // eslint-disable-next-line no-restricted-syntax
-    metadata as DocGroups;
+    metadata satisfies DocGroups;
 
   const { nativeSdks, traditionalSdks, spaSdks } = sdks.reduce<{
-    nativeSdks: DocMetadata[];
-    traditionalSdks: DocMetadata[];
-    spaSdks: DocMetadata[];
+    nativeSdks: Metadata[];
+    traditionalSdks: Metadata[];
+    spaSdks: Metadata[];
   }>(
     (acc, sdk) => {
       const appType = sdk.frontMatter.app_type;
