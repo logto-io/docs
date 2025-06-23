@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 import type { Config } from '@docusaurus/types';
+import { yes } from '@silverhand/essentials';
 
 import {
   addAliasPlugin,
@@ -18,8 +19,6 @@ import {
   mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
-import tutorialGenerator from './plugins/tutorial-generator';
-import { yes } from '@silverhand/essentials';
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
