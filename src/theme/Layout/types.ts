@@ -27,6 +27,16 @@ export type SiteConfig = {
   };
 };
 
+export type GoogleOneTapCredentialResponse = {
+  credential: string;
+};
+
+export type GoogleOneTapVerifyResponse = {
+  oneTimeToken: string;
+  isNewUser: boolean;
+  email: string;
+};
+
 export type AuthStatusGlobal = {
   authStatus: boolean | undefined;
   authCheckError: string | undefined;
