@@ -1,18 +1,18 @@
-export enum AuthMessageType {
-  CHECK_ADMIN_TOKEN = 'CHECK_ADMIN_TOKEN',
-  ADMIN_TOKEN_STATUS = 'ADMIN_TOKEN_STATUS',
-  ADMIN_TOKEN_ERROR = 'ADMIN_TOKEN_ERROR',
+export const enum AuthMessageType {
+  CheckAdminToken = 'CheckAdminToken',
+  AdminTokenStatus = 'AdminTokenStatus',
+  AdminTokenError = 'AdminTokenError',
 }
 
 export type AuthStatusRequest = {
-  type: AuthMessageType.CHECK_ADMIN_TOKEN;
+  type: AuthMessageType.CheckAdminToken;
   requestId: string;
 };
 
 export type AuthStatusResponse = {
-  type: AuthMessageType.ADMIN_TOKEN_STATUS | AuthMessageType.ADMIN_TOKEN_ERROR;
+  type: AuthMessageType.AdminTokenStatus | AuthMessageType.AdminTokenError;
   requestId: string;
-  hasToken?: boolean;
+  isAuthenticated?: boolean;
   error?: string;
 };
 
