@@ -44,11 +44,24 @@ export function useGoogleOneTapConfig(
 
   useEffect(() => {
     const loadConfig = async () => {
-      const fetchedConfig = await fetchGoogleOneTapConfig({ apiBaseUrl, debugLogger });
-      setConfig(fetchedConfig);
+      try {
+        const fetchedConfig = await fetchGoogleOneTapConfig({ apiBaseUrl, debugLogger });
+        setConfig(fetchedConfig);
+      } catch (error) {
+        debugLogger.error('Failed to load Google One Tap config:', error);
+        // Don't throw, just set config to undefined to prevent render blocking
+        setConfig(undefined);
+      }
     };
 
-    void loadConfig();
+    // Add a small delay to prevent blocking initial render
+    const timeoutId = setTimeout(() => {
+      void loadConfig();
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [apiBaseUrl, debugLogger]);
 
   return config;
@@ -111,16 +124,19 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
       return;
     }
 
-    // Initial check
-    void performAuthCheck();
+    // Delay initial check to prevent blocking initial render
+    const initialCheckTimeout = setTimeout(() => {
+      void performAuthCheck();
+    }, 500);
 
-    // Set up polling
+    // Set up polling after initial check
     const pollInterval = setInterval(() => {
       void performAuthCheck();
     }, authStatusPollInterval);
 
-    // Cleanup interval on unmount
+    // Cleanup timeouts and interval on unmount
     return () => {
+      clearTimeout(initialCheckTimeout);
       clearInterval(pollInterval);
     };
   }, [enableAuthStatusCheck, authStatusCheckerHost, performAuthCheck]);
@@ -169,3 +185,4 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
   };
 }
 /* eslint-enable @silverhand/fp/no-mutation */
+// cspell:ignore silverhand
