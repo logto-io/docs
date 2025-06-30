@@ -1,6 +1,7 @@
 // eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
 import type { Config } from '@docusaurus/types';
+import { cond } from '@silverhand/essentials';
 
 import {
   addAliasPlugin,
@@ -18,6 +19,10 @@ import {
   mainSiteUrl,
 } from './docusaurus-common.config';
 import ogImageGenerator from './plugins/og-image-generator';
+import { howToBasePath } from './src/theme/BlogPostItem/utils';
+
+// Supported locales for the "Build X with Y" tutorials
+const tutorialLocales = ['en', 'es', 'fr', 'ja'];
 
 const getLogtoDocsUrl = () =>
   isCfPagesPreview
@@ -83,6 +88,29 @@ const config: Config = {
         feedOptions: {},
       },
     ],
+    cond(
+      tutorialLocales.includes(currentLocale) && [
+        '@docusaurus/plugin-content-blog',
+        {
+          /**
+           * Required for any multi-instance plugin
+           */
+          id: 'tutorial',
+          /**
+           * URL route for the blog section of your site.
+           * *DO NOT* include a trailing slash.
+           */
+          routeBasePath: howToBasePath,
+          /**
+           * Path to data on filesystem relative to site dir.
+           */
+          path: './tutorial',
+          blogSidebarCount: 0,
+          showReadingTime: false,
+          postsPerPage: 'ALL',
+        },
+      ]
+    ),
   ].filter(Boolean),
   themes: ['@docusaurus/theme-mermaid'],
 };
