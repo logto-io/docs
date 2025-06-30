@@ -47,6 +47,11 @@ export function createAuthStatusChecker({
    */
   const checkAdminTokenStatus = async (): Promise<boolean> => {
     return new Promise((resolve, reject) => {
+      if (typeof document === 'undefined') {
+        reject(new Error('Document not available (SSR environment)'));
+        return;
+      }
+      
       if (!logtoAdminConsoleUrl || !enableAuthStatusCheck || !iframeSrc) {
         reject(new Error('Auth status checker not configured'));
         return;
