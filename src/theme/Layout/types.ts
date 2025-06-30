@@ -1,20 +1,20 @@
-import { z } from 'zod';
+export const enum AuthMessageType {
+  CheckAdminToken = 'CheckAdminToken',
+  AdminTokenStatus = 'AdminTokenStatus',
+  AdminTokenError = 'AdminTokenError',
+}
 
-export const oneTapSchema = z
-  .object({
-    isEnabled: z.boolean().optional(),
-    autoSelect: z.boolean().optional(),
-    closeOnTapOutside: z.boolean().optional(),
-    itpSupport: z.boolean().optional(),
-  })
-  .optional();
+export type AuthStatusRequest = {
+  type: AuthMessageType.CheckAdminToken;
+  requestId: string;
+};
 
-export const googleOneTapConfigSchema = z.object({
-  clientId: z.string(),
-  oneTap: oneTapSchema,
-});
-
-export type GoogleOneTapConfig = z.infer<typeof googleOneTapConfigSchema>;
+export type AuthStatusResponse = {
+  type: AuthMessageType.AdminTokenStatus | AuthMessageType.AdminTokenError;
+  requestId: string;
+  isAuthenticated?: boolean;
+  error?: string;
+};
 
 export type SiteConfig = {
   customFields?: {
@@ -26,3 +26,17 @@ export type SiteConfig = {
     isIframeVisible?: boolean;
   };
 };
+
+export type AuthStatusGlobal = {
+  authStatus: boolean | undefined;
+  authCheckError: string | undefined;
+  checkAdminTokenStatus: () => Promise<boolean>;
+};
+
+// Extend Window interface for TypeScript
+declare global {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  interface Window {
+    __logtoAuthStatus?: AuthStatusGlobal;
+  }
+}

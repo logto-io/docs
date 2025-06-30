@@ -1,21 +1,26 @@
-import type { Optional } from '@silverhand/essentials';
-
 import { cacheKey, cacheExpiryKey, cacheExpiryTime } from './constants';
-import { googleOneTapConfigSchema, type GoogleOneTapConfig } from './types';
+import type { DebugLogger } from './debug-logger';
+import { googleOneTapConfigSchema, type GoogleOneTapConfig } from './google-one-tap';
 
-export async function fetchGoogleOneTapConfig(
-  apiBaseUrl: string
-): Promise<Optional<GoogleOneTapConfig>> {
+export type ConfigFetcherOptions = {
+  apiBaseUrl: string;
+  debugLogger: DebugLogger;
+};
+
+export async function fetchGoogleOneTapConfig({
+  apiBaseUrl,
+  debugLogger,
+}: ConfigFetcherOptions): Promise<GoogleOneTapConfig | undefined> {
   try {
     const cachedConfig = localStorage.getItem(cacheKey);
     const cachedExpiry = localStorage.getItem(cacheExpiryKey);
 
-    if (cachedConfig && cachedExpiry && Number.parseInt(cachedExpiry, 10) > Date.now()) {
+    if (cachedConfig && cachedExpiry && Number(cachedExpiry) > Date.now()) {
       try {
         const parsedConfig = googleOneTapConfigSchema.parse(JSON.parse(cachedConfig));
         return parsedConfig;
       } catch (parseError) {
-        console.error('Cached config validation failed:', parseError);
+        debugLogger.error('Cached config validation failed:', parseError);
       }
     }
 
@@ -37,7 +42,7 @@ export async function fetchGoogleOneTapConfig(
 
     return validatedConfig;
   } catch (error) {
-    console.error('Error fetching or validating Google One Tap config:', error);
+    debugLogger.error('Error fetching or validating Google One Tap config:', error);
     return undefined;
   }
 }
