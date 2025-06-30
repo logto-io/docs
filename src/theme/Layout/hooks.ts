@@ -4,7 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { createAuthStatusChecker } from './auth-status';
 import { fetchGoogleOneTapConfig } from './config-fetcher';
-import { defaultApiBaseProdUrl, defaultApiBaseDevUrl, authStatusPollInterval } from './constants';
+import {
+  defaultApiBaseProdUrl,
+  defaultApiBaseDevUrl,
+  authStatusMaxRetries,
+  authStatusRetryDelay,
+  configLoadDelay,
+  initialAuthCheckDelay,
+  authCheckFallbackTimeout,
+} from './constants';
 import { createDebugLogger, type DebugLogger } from './debug-logger';
 import type { GoogleOneTapConfig } from './google-one-tap';
 import type { SiteConfig } from './types';
@@ -47,7 +55,7 @@ export function useGoogleOneTapConfig(
     // Add a small delay to prevent blocking initial render
     const timeoutId = setTimeout(() => {
       void loadConfig();
-    }, 100);
+    }, configLoadDelay);
 
     return () => {
       clearTimeout(timeoutId);
@@ -86,50 +94,89 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
     [logtoAdminConsoleUrl, enableAuthStatusCheck, isDebugMode, isIframeVisible, debugLogger]
   );
 
-  const performAuthCheck = useCallback(async () => {
-    if (isChecking) {
-      debugLogger.log('Auth check already in progress, skipping...');
+  const performAuthCheckWithRetry = useCallback(
+    async (retryCount = 0): Promise<void> => {
+      if (isChecking) {
+        debugLogger.log('Auth check already in progress, skipping...');
+        return;
+      }
+
+      try {
+        setIsChecking(true);
+        setAuthCheckError(undefined);
+        debugLogger.log(
+          `Starting auth check... (attempt ${retryCount + 1}/${authStatusMaxRetries + 1})`
+        );
+        const isAuthenticated = await checkAdminTokenStatus();
+        debugLogger.log('Auth check completed with result:', isAuthenticated);
+        setAuthStatus(isAuthenticated);
+      } catch (error) {
+        debugLogger.error(`Failed to check auth status (attempt ${retryCount + 1}):`, error);
+
+        if (retryCount < authStatusMaxRetries) {
+          debugLogger.log(`Retrying auth check in ${authStatusRetryDelay}ms...`);
+          setTimeout(() => {
+            setIsChecking(false);
+            void performAuthCheckWithRetry(retryCount + 1);
+          }, authStatusRetryDelay);
+        } else {
+          debugLogger.error('Auth check failed, setting authStatus to false');
+          setAuthCheckError(error instanceof Error ? error.message : 'Unknown error');
+          setAuthStatus(false);
+          setIsChecking(false);
+        }
+      } finally {
+        // Ensure isChecking is always reset
+        if (retryCount >= authStatusMaxRetries) {
+          setIsChecking(false);
+        }
+      }
+    },
+    [checkAdminTokenStatus, debugLogger, isChecking]
+  );
+
+  // Check auth status only on component mount (no polling)
+  useEffect(() => {
+    if (!enableAuthStatusCheck || !authStatusCheckerHost) {
+      debugLogger.log('Auth status check disabled, setting authStatus to false');
+      setAuthStatus(false);
       return;
     }
 
-    try {
-      setIsChecking(true);
-      setAuthCheckError(undefined);
-      debugLogger.log('Starting auth check...');
-      const isAuthenticated = await checkAdminTokenStatus();
-      debugLogger.log('Auth check completed with result:', isAuthenticated);
-      setAuthStatus(isAuthenticated);
-    } catch (error) {
-      debugLogger.error('Failed to check auth status:', error);
-      setAuthCheckError(error instanceof Error ? error.message : 'Unknown error');
-      setAuthStatus(false);
-    } finally {
-      setIsChecking(false);
-    }
-  }, [checkAdminTokenStatus, debugLogger, isChecking]);
-
-  // Check auth status on component mount and set up polling
-  useEffect(() => {
-    if (!enableAuthStatusCheck || !authStatusCheckerHost) {
+    // Only run if authStatus is undefined (initial state)
+    if (authStatus !== undefined) {
       return;
     }
 
     // Delay initial check to prevent blocking initial render
     const initialCheckTimeout = setTimeout(() => {
-      void performAuthCheck();
-    }, 1000); // Reduced from 500 to 1000
+      void performAuthCheckWithRetry();
+    }, initialAuthCheckDelay);
 
-    // Set up polling after initial check
-    const pollInterval = setInterval(() => {
-      void performAuthCheck();
-    }, authStatusPollInterval);
+    // Fallback timeout to ensure authStatus is set to false if no response
+    const fallbackTimeout = setTimeout(() => {
+      setAuthStatus((currentStatus) => {
+        if (currentStatus === undefined) {
+          debugLogger.warn('Auth check timeout reached, setting authStatus to false');
+          setAuthCheckError('Authentication check timeout');
+          return false;
+        }
+        return currentStatus;
+      });
+    }, authCheckFallbackTimeout);
 
-    // Cleanup timeouts and interval on unmount
+    // Cleanup timeouts on unmount
     return () => {
       clearTimeout(initialCheckTimeout);
-      clearInterval(pollInterval);
+      clearTimeout(fallbackTimeout);
     };
-  }, [enableAuthStatusCheck, authStatusCheckerHost, performAuthCheck]);
+  }, [
+    enableAuthStatusCheck,
+    authStatusCheckerHost,
+    debugLogger,
+    performAuthCheckWithRetry,
+    authStatus,
+  ]);
 
   // Expose auth status to global scope for external access
   useEffect(() => {
