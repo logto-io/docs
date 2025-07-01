@@ -51,7 +51,7 @@ export function createAuthStatusChecker({
         reject(new Error('Document not available (SSR environment)'));
         return;
       }
-      
+
       if (!logtoAdminConsoleUrl || !enableAuthStatusCheck || !iframeSrc) {
         reject(new Error('Auth status checker not configured'));
         return;
