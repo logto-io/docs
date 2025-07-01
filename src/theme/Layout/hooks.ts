@@ -13,6 +13,7 @@ import {
   initialAuthCheckDelay,
   authCheckFallbackTimeout,
 } from './constants';
+import { verifyGoogleOneTapCredential } from './credential-verifier';
 import { createDebugLogger, type DebugLogger } from './debug-logger';
 import type { GoogleOneTapConfig } from './google-one-tap';
 import type {
@@ -87,32 +88,7 @@ export function useGoogleOneTapVerify(
 ): (response: GoogleOneTapCredentialResponse) => Promise<Optional<GoogleOneTapVerifyResponse>> {
   return useCallback(
     async (response: GoogleOneTapCredentialResponse) => {
-      debugLogger.log('Google One Tap credential response received:', response);
-
-      try {
-        const verifyResponse = await fetch(`${apiBaseUrl}/api/google-one-tap/verify`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Origin: window.location.origin,
-          },
-          body: JSON.stringify({
-            idToken: response.credential,
-          }),
-        });
-
-        if (!verifyResponse.ok) {
-          throw new Error(`Verification failed: ${verifyResponse.status}`);
-        }
-
-        const data = await verifyResponse.json();
-        debugLogger.log('Google One Tap verification successful:', data);
-
-        // eslint-disable-next-line no-restricted-syntax
-        return data as GoogleOneTapVerifyResponse;
-      } catch (error) {
-        debugLogger.error('Google One Tap verification failed:', error);
-      }
+      return verifyGoogleOneTapCredential({ apiBaseUrl, debugLogger }, response);
     },
     [apiBaseUrl, debugLogger]
   );
