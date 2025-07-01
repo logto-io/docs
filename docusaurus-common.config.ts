@@ -87,6 +87,13 @@ export const injectHeadTagsPlugin: PluginConfig = () => ({
           content: '3EYzsnarDwG6zL2dlHvyC8ySVcV6Q3RGlvh7-bvhb2k',
         },
       },
+      {
+        tagName: 'meta',
+        attributes: {
+          name: 'referrer',
+          content: 'strict-origin-when-cross-origin',
+        },
+      },
     ],
   }),
 });
