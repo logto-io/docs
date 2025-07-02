@@ -32,6 +32,7 @@ export function useApiBaseUrl(siteConfig: SiteConfig): {
   baseUrl: string;
   authUrl: string;
   redirectUri: string;
+  logtoAdminConsoleUrl?: string;
 } {
   return useMemo(() => {
     const logtoApiBaseUrl = siteConfig.customFields?.logtoApiBaseUrl;
@@ -43,12 +44,18 @@ export function useApiBaseUrl(siteConfig: SiteConfig): {
           : defaultApiBaseProdUrl;
     const authUrl = `${baseUrl}/oidc/auth`;
     const redirectUri = `${typeof logtoApiBaseUrl === 'string' ? `${logtoApiBaseUrl}/${new URL(logtoApiBaseUrl).hostname === 'localhost' ? 'demo-app' : 'callback'}` : `${defaultApiBaseProdUrl}/callback`}`;
+    const logtoAdminConsoleUrl = siteConfig.customFields?.logtoAdminConsoleUrl;
     return {
       baseUrl,
       authUrl,
       redirectUri,
+      logtoAdminConsoleUrl,
     };
-  }, [siteConfig.customFields?.logtoApiBaseUrl, siteConfig.customFields?.isDevFeatureEnabled]);
+  }, [
+    siteConfig.customFields?.logtoApiBaseUrl,
+    siteConfig.customFields?.isDevFeatureEnabled,
+    siteConfig.customFields?.logtoAdminConsoleUrl,
+  ]);
 }
 
 export function useGoogleOneTapConfig(

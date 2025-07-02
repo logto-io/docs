@@ -8,6 +8,7 @@ import type {
   GoogleOneTapCredentialResponse,
   GoogleOneTapVerifyResponse,
 } from './types';
+import { appendPath } from '@silverhand/essentials';
 
 type GoogleOneTapInitializerProps = {
   readonly config: GoogleOneTapConfig;
@@ -20,23 +21,24 @@ export default function GoogleOneTapInitializer({
   debugLogger,
   siteConfig,
 }: GoogleOneTapInitializerProps): ReactNode {
-  const { baseUrl: apiBaseUrl, authUrl, redirectUri } = useApiBaseUrl(siteConfig);
+  const { baseUrl: apiBaseUrl, logtoAdminConsoleUrl } = useApiBaseUrl(siteConfig);
+
   const verifyGoogleOneTap = useGoogleOneTapVerify(apiBaseUrl, debugLogger);
 
   // Function to manually build Logto sign-in URL
   const buildSignInUrl = useCallback(
     ({ oneTimeToken, email, isNewUser }: GoogleOneTapVerifyResponse) => {
       try {
-        const signInUrl = new URL(authUrl);
+        if (!logtoAdminConsoleUrl) {
+          throw new Error('Logto admin console URL is not set');
+        }
 
-        // Standard OIDC parameters: client_id
-        signInUrl.searchParams.set('client_id', 'admin-console');
-        signInUrl.searchParams.set('redirect_uri', redirectUri);
-        signInUrl.searchParams.set('first_screen', isNewUser ? 'register' : 'sign_in');
+        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'one-time-token-landing'));
 
         // Add one-time token parameters
         signInUrl.searchParams.set('one_time_token', oneTimeToken);
-        signInUrl.searchParams.set('login_hint', email);
+        signInUrl.searchParams.set('email', email);
+        signInUrl.searchParams.set('is_new_user', isNewUser ? 'true' : 'false');
 
         return signInUrl.toString();
       } catch (error) {
@@ -44,7 +46,7 @@ export default function GoogleOneTapInitializer({
         return null;
       }
     },
-    [authUrl, redirectUri, debugLogger]
+    [logtoAdminConsoleUrl, debugLogger]
   );
 
   const handleCredentialResponse = useCallback(
