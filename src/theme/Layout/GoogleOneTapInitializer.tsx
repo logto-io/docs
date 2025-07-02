@@ -63,7 +63,7 @@ export default function GoogleOneTapInitializer({
           if (signInUrl) {
             // Open sign-in URL in new tab
             window.open(signInUrl, '_blank', 'noopener,noreferrer');
-            debugLogger.log('Logto sign-in URL opened in new tab with one-time token');
+            debugLogger.log('Logto sign-in URL opened in new tab with one-time token', signInUrl);
           } else {
             debugLogger.error('Failed to build sign-in URL');
           }

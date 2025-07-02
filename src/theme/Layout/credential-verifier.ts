@@ -13,16 +13,10 @@ export async function verifyGoogleOneTapCredential(
   debugLogger.log('Google One Tap credential response received:', response);
 
   try {
-    const verifyResponse = await fetch(`${apiBaseUrl}/api/google-one-tap/verify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Origin: window.location.origin,
-      },
-      body: JSON.stringify({
-        idToken: response.credential,
-      }),
-    });
+    const verifyResponse = await fetch(
+      `${apiBaseUrl}/api/google-one-tap/verify?idToken=${response.credential}`,
+      { method: 'GET' }
+    );
 
     if (!verifyResponse.ok) {
       throw new Error(`Verification failed: ${verifyResponse.status}`);
