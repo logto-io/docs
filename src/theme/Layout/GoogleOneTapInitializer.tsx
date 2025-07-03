@@ -63,9 +63,30 @@ export default function GoogleOneTapInitializer({
           const signInUrl = buildSignInUrl(verifyData);
 
           if (signInUrl) {
-            // Open sign-in URL in new tab
-            window.open(signInUrl, '_blank', 'noopener,noreferrer');
-            debugLogger.log('Logto sign-in URL opened in new tab with one-time token', signInUrl);
+            try {
+              // Open sign-in URL in new tab
+              const newWindow = window.open(signInUrl, '_blank', 'noopener,noreferrer');
+              
+              // Check if popup was blocked
+              if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                // Popup was blocked, provide fallback option
+                const fallback = window.confirm(
+                  'Popup was blocked by browser. Click OK to open the login page in the current window.'
+                );
+                
+                if (fallback) {
+                  window.location.href = signInUrl;
+                  debugLogger.log('Redirecting to Logto sign-in URL in current window', signInUrl);
+                }
+              } else {
+                debugLogger.log('Logto sign-in URL opened in new tab with one-time token', signInUrl);
+              }
+            } catch (error) {
+              debugLogger.error('Failed to open popup, falling back to current window:', error);
+              // Fallback to current window navigation
+              window.location.href = signInUrl;
+              debugLogger.log('Redirecting to Logto sign-in URL in current window', signInUrl);
+            }
           } else {
             debugLogger.error('Failed to build sign-in URL');
           }
