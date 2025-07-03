@@ -33,7 +33,7 @@ export default function GoogleOneTapInitializer({
           throw new Error('Logto admin console URL is not set');
         }
 
-        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'one-time-token-landing'));
+        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'one-time-token'));
 
         // Add one-time token parameters
         signInUrl.searchParams.set('one_time_token', oneTimeToken);
@@ -63,30 +63,9 @@ export default function GoogleOneTapInitializer({
           const signInUrl = buildSignInUrl(verifyData);
 
           if (signInUrl) {
-            try {
-              // Open sign-in URL in new tab
-              const newWindow = window.open(signInUrl, '_blank', 'noopener,noreferrer');
-              
-              // Check if popup was blocked
-              if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                // Popup was blocked, provide fallback option
-                const fallback = window.confirm(
-                  'Popup was blocked by browser. Click OK to open the login page in the current window.'
-                );
-                
-                if (fallback) {
-                  window.location.href = signInUrl;
-                  debugLogger.log('Redirecting to Logto sign-in URL in current window', signInUrl);
-                }
-              } else {
-                debugLogger.log('Logto sign-in URL opened in new tab with one-time token', signInUrl);
-              }
-            } catch (error) {
-              debugLogger.error('Failed to open popup, falling back to current window:', error);
-              // Fallback to current window navigation
-              window.location.href = signInUrl;
-              debugLogger.log('Redirecting to Logto sign-in URL in current window', signInUrl);
-            }
+            // Directly navigate to sign-in URL in current window
+            window.location.href = signInUrl;
+            debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
           } else {
             debugLogger.error('Failed to build sign-in URL');
           }
