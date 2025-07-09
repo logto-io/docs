@@ -59,6 +59,7 @@ export function createAuthStatusChecker({
 
       const iframe = document.createElement('iframe');
       iframe.src = iframeSrc;
+      iframe.sandbox = 'allow-scripts allow-same-origin';
 
       if (isIframeVisible) {
         // Temporarily show iframe for debugging

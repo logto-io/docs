@@ -21,24 +21,19 @@ export default function GoogleOneTapInitializer({
   debugLogger,
   siteConfig,
 }: GoogleOneTapInitializerProps): ReactNode {
-  const { baseUrl: apiBaseUrl, logtoAdminConsoleUrl } = useApiBaseUrl(siteConfig);
-
-  const verifyGoogleOneTap = useGoogleOneTapVerify(apiBaseUrl, debugLogger);
+  const { logtoAdminConsoleUrl } = useApiBaseUrl(siteConfig);
 
   // Function to manually build Logto sign-in URL
   const buildSignInUrl = useCallback(
-    ({ oneTimeToken, email, isNewUser }: GoogleOneTapVerifyResponse) => {
+    ({ credential }: GoogleOneTapVerifyResponse) => {
       try {
         if (!logtoAdminConsoleUrl) {
           throw new Error('Logto admin console URL is not set');
         }
 
-        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'one-time-token'));
+        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'google-one-tap'));
 
-        // Add one-time token parameters
-        signInUrl.searchParams.set('one_time_token', oneTimeToken);
-        signInUrl.searchParams.set('email', email);
-        signInUrl.searchParams.set('is_new_user', isNewUser ? 'true' : 'false');
+        signInUrl.searchParams.set('google_one_tap_credential', credential);
 
         return signInUrl.toString();
       } catch (error) {
@@ -53,28 +48,22 @@ export default function GoogleOneTapInitializer({
     async (response: GoogleOneTapCredentialResponse) => {
       debugLogger.log('handleCredentialResponse received response:', response);
 
-      const verifyData = await verifyGoogleOneTap(response);
+      try {
+        // Build Logto sign-in URL with one-time token
+        const signInUrl = buildSignInUrl(response);
 
-      if (verifyData) {
-        debugLogger.log('Verification completed:', verifyData);
-
-        try {
-          // Build Logto sign-in URL with one-time token
-          const signInUrl = buildSignInUrl(verifyData);
-
-          if (signInUrl) {
-            // Directly navigate to sign-in URL in current window
-            window.location.href = signInUrl;
-            debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
-          } else {
-            debugLogger.error('Failed to build sign-in URL');
-          }
-        } catch (error) {
-          debugLogger.error('Failed to open sign-in URL:', error);
+        if (signInUrl) {
+          // Directly navigate to sign-in URL in current window
+          window.location.href = signInUrl;
+          debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
+        } else {
+          debugLogger.error('Failed to build sign-in URL');
         }
+      } catch (error) {
+        debugLogger.error('Failed to open sign-in URL:', error);
       }
     },
-    [verifyGoogleOneTap, debugLogger, buildSignInUrl]
+    [debugLogger, buildSignInUrl]
   );
 
   useEffect(() => {

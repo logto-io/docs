@@ -32,9 +32,7 @@ export type GoogleOneTapCredentialResponse = {
 };
 
 export type GoogleOneTapVerifyResponse = {
-  oneTimeToken: string;
-  isNewUser: boolean;
-  email: string;
+  credential: string;
 };
 
 export type AuthStatusGlobal = {
