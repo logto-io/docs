@@ -24,11 +24,7 @@ export async function fetchGoogleOneTapConfig({
       }
     }
 
-    const response = await fetch(`${apiBaseUrl}/api/google-one-tap/config`, {
-      headers: {
-        Origin: window.location.origin,
-      },
-    });
+    const response = await fetch(`${apiBaseUrl}/api/google-one-tap/config`);
 
     if (!response.ok) {
       throw new Error('Failed to fetch Google One Tap config');

@@ -1,5 +1,5 @@
 /* eslint-disable @silverhand/fp/no-mutation */
-import { condString } from '@silverhand/essentials';
+import { condString, type Optional } from '@silverhand/essentials';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { createAuthStatusChecker } from './auth-status';
@@ -13,9 +13,14 @@ import {
   initialAuthCheckDelay,
   authCheckFallbackTimeout,
 } from './constants';
+import { verifyGoogleOneTapCredential } from './credential-verifier';
 import { createDebugLogger, type DebugLogger } from './debug-logger';
 import type { GoogleOneTapConfig } from './google-one-tap';
-import type { SiteConfig } from './types';
+import type {
+  SiteConfig,
+  GoogleOneTapCredentialResponse,
+  GoogleOneTapVerifyResponse,
+} from './types';
 
 export function useDebugLogger(siteConfig: SiteConfig): DebugLogger {
   const isDebugMode = Boolean(siteConfig.customFields?.isDebuggingEnabled);
@@ -23,21 +28,40 @@ export function useDebugLogger(siteConfig: SiteConfig): DebugLogger {
   return useMemo(() => createDebugLogger(isDebugMode), [isDebugMode]);
 }
 
-export function useApiBaseUrl(siteConfig: SiteConfig): string {
+export function useApiBaseUrl(siteConfig: SiteConfig): {
+  baseUrl: string;
+  authUrl: string;
+  redirectUri: string;
+  logtoAdminConsoleUrl?: string;
+} {
   return useMemo(() => {
     const logtoApiBaseUrl = siteConfig.customFields?.logtoApiBaseUrl;
-    return typeof logtoApiBaseUrl === 'string'
-      ? logtoApiBaseUrl
-      : siteConfig.customFields?.isDevFeatureEnabled
-        ? defaultApiBaseDevUrl
-        : defaultApiBaseProdUrl;
-  }, [siteConfig.customFields?.logtoApiBaseUrl, siteConfig.customFields?.isDevFeatureEnabled]);
+    const baseUrl =
+      typeof logtoApiBaseUrl === 'string'
+        ? logtoApiBaseUrl
+        : siteConfig.customFields?.isDevFeatureEnabled
+          ? defaultApiBaseDevUrl
+          : defaultApiBaseProdUrl;
+    const authUrl = `${baseUrl}/oidc/auth`;
+    const redirectUri = `${typeof logtoApiBaseUrl === 'string' ? `${logtoApiBaseUrl}/${new URL(logtoApiBaseUrl).hostname === 'localhost' ? 'demo-app' : 'callback'}` : `${defaultApiBaseProdUrl}/callback`}`;
+    const logtoAdminConsoleUrl = siteConfig.customFields?.logtoAdminConsoleUrl;
+    return {
+      baseUrl,
+      authUrl,
+      redirectUri,
+      logtoAdminConsoleUrl,
+    };
+  }, [
+    siteConfig.customFields?.logtoApiBaseUrl,
+    siteConfig.customFields?.isDevFeatureEnabled,
+    siteConfig.customFields?.logtoAdminConsoleUrl,
+  ]);
 }
 
 export function useGoogleOneTapConfig(
   apiBaseUrl: string,
   debugLogger: DebugLogger
-): GoogleOneTapConfig | undefined {
+): Optional<GoogleOneTapConfig> {
   const [config, setConfig] = useState<GoogleOneTapConfig>();
 
   useEffect(() => {
@@ -63,6 +87,18 @@ export function useGoogleOneTapConfig(
   }, [apiBaseUrl, debugLogger]);
 
   return config;
+}
+
+export function useGoogleOneTapVerify(
+  apiBaseUrl: string,
+  debugLogger: DebugLogger
+): (response: GoogleOneTapCredentialResponse) => Promise<Optional<GoogleOneTapVerifyResponse>> {
+  return useCallback(
+    async (response: GoogleOneTapCredentialResponse) => {
+      return verifyGoogleOneTapCredential({ apiBaseUrl, debugLogger }, response);
+    },
+    [apiBaseUrl, debugLogger]
+  );
 }
 
 export type AuthStatusResult = {
