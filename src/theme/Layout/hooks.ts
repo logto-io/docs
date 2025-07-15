@@ -105,6 +105,8 @@ export type AuthStatusResult = {
   authStatus?: boolean;
   authCheckError?: string;
   checkAdminTokenStatus: () => Promise<boolean>;
+  checkStorageAccess: () => Promise<boolean>;
+  requestStorageAccess: () => Promise<boolean>;
 };
 
 export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger): AuthStatusResult {
@@ -117,18 +119,19 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
   const isDebugMode = Boolean(siteConfig.customFields?.isDebuggingEnabled);
   const isIframeVisible = Boolean(siteConfig.customFields?.isIframeVisible);
 
-  const { checkAdminTokenStatus, authStatusCheckerHost } = useMemo(
-    () =>
-      createAuthStatusChecker({
-        logtoAdminConsoleUrl:
-          typeof logtoAdminConsoleUrl === 'string' ? logtoAdminConsoleUrl : undefined,
-        enableAuthStatusCheck: Boolean(enableAuthStatusCheck),
-        isDebugMode,
-        isIframeVisible,
-        debugLogger,
-      }),
-    [logtoAdminConsoleUrl, enableAuthStatusCheck, isDebugMode, isIframeVisible, debugLogger]
-  );
+  const { checkAdminTokenStatus, checkStorageAccess, requestStorageAccess, authStatusCheckerHost } =
+    useMemo(
+      () =>
+        createAuthStatusChecker({
+          logtoAdminConsoleUrl:
+            typeof logtoAdminConsoleUrl === 'string' ? logtoAdminConsoleUrl : undefined,
+          enableAuthStatusCheck: Boolean(enableAuthStatusCheck),
+          isDebugMode,
+          isIframeVisible,
+          debugLogger,
+        }),
+      [logtoAdminConsoleUrl, enableAuthStatusCheck, isDebugMode, isIframeVisible, debugLogger]
+    );
 
   const performAuthCheckWithRetry = useCallback(
     async (retryCount = 0): Promise<void> => {
@@ -221,9 +224,11 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
         authStatus,
         authCheckError,
         checkAdminTokenStatus,
+        checkStorageAccess,
+        requestStorageAccess,
       };
     }
-  }, [authStatus, authCheckError, checkAdminTokenStatus]);
+  }, [authStatus, authCheckError, checkAdminTokenStatus, checkStorageAccess, requestStorageAccess]);
 
   // Debug logging
   useEffect(() => {
@@ -255,6 +260,8 @@ export function useAuthStatus(siteConfig: SiteConfig, debugLogger: DebugLogger):
     authStatus,
     authCheckError,
     checkAdminTokenStatus,
+    checkStorageAccess,
+    requestStorageAccess,
   };
 }
 /* eslint-enable @silverhand/fp/no-mutation */
