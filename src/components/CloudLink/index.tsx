@@ -46,7 +46,7 @@ const CloudLink = ({ to, children }: Props) => {
   const link = getCloudConsoleUrl(to);
 
   return (
-    <Url hasIcon={false} type="inline" href={link}>
+    <Url hasIcon={false} href={link}>
       {children || toTitleCaseLabel(to)}
     </Url>
   );
