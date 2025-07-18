@@ -51,7 +51,9 @@ Some frequent use cases are listed below:
 To learn more about the available APIs, please visit [Logto Account API Reference](https://openapi.logto.io/group/endpoint-my-account) and [Logto Verification API Reference](https://openapi.logto.io/group/endpoint-verifications).
 
 :::note
-Dedicated Account APIs for the following settings are coming soon: MFA, SSO, Custom data (user), and Account deletion. In the meantime, you can implement these features using the Logto Management APIs. See [Account settings by Management API](/end-user-flows/account-settings/by-management-api) for more details.
+Dedicated Account APIs for the following settings are coming soon: SSO, Custom data (user), and Account deletion. In the meantime, you can implement these features using the Logto Management APIs. See [Account settings by Management API](/end-user-flows/account-settings/by-management-api) for more details.
+
+MFA management APIs (TOTP and backup codes) are currently under development and only available when the `isDevFeaturesEnabled` flag is set to `true`. WebAuthn passkey management is fully available.
 :::
 
 ## How to enable Account API \{#how-to-enable-account-api}
@@ -256,7 +258,7 @@ curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/v
 After verifying the code, you can now update the user's email, set the `verificationId` to the request body as `newIdentifierVerificationRecordId`.
 
 ```bash
-curl -X PATCH https://[tenant-id].logto.app/api/my-account/primary-email \
+curl -X POST https://[tenant-id].logto.app/api/my-account/primary-email \
   -H 'authorization: Bearer <access_token>' \
   -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
@@ -460,3 +462,153 @@ curl -X DELETE https://[tenant-id].logto.app/api/my-account/mfa-verifications/{v
   -H 'authorization: Bearer <access_token>' \
   -H 'logto-verification-id: <verification_record_id>'
 ```
+
+### Link a new TOTP \{#link-a-new-totp}
+
+:::note
+Remember to [enable MFA and TOTP](/end-user-flows/mfa) first.
+:::
+
+:::note
+To use this method, you need to enable the `mfa` field in the account center settings.
+:::
+
+**Step 1: Generate a TOTP secret.**
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/totp-secret/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+The response body would be like:
+
+```json
+{
+  "secret": "..."
+}
+```
+
+**Step 2: Display the TOTP secret to the user.**
+
+Use the secret to generate a QR code or display it directly to the user. The user should add it to their authenticator app (such as Google Authenticator, Microsoft Authenticator, or Authy).
+
+The URI format for the QR code should be:
+
+```
+otpauth://totp/[Issuer]:[Account]?secret=[Secret]&issuer=[Issuer]
+```
+
+Example:
+
+```
+otpauth://totp/YourApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=YourApp
+```
+
+**Step 3: Bind the TOTP factor.**
+
+After the user has added the secret to their authenticator app, they need to verify it and bind it to their account:
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"Totp","secret":"..."}'
+```
+
+- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
+- `type`: must be `Totp`.
+- `secret`: the TOTP secret generated in step 1.
+
+:::note
+A user can only have one TOTP factor at a time. If the user already has a TOTP factor, attempting to add another one will result in a 422 error.
+:::
+
+### Manage backup codes \{#manage-backup-codes}
+
+:::note
+Remember to [enable MFA and backup codes](/end-user-flows/mfa) first.
+:::
+
+:::note
+To use this method, you need to enable the `mfa` field in the account center settings.
+:::
+
+**Step 1: Generate new backup codes:**
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+The response body would be like:
+
+```json
+{
+  "codes": ["...", "...", "..."]
+}
+```
+
+**Step 2: Display backup codes to the user:**
+
+:::important
+Before binding the backup codes to the user's account, you must display them to the user and instruct them to:
+
+- Download or write down these codes immediately
+- Store them in a secure location
+- Understand that each code can only be used once
+- Know that these codes are their last resort if they lose access to their primary MFA methods
+
+You should display the codes in a clear, easy-to-copy format and consider providing a download option (e.g., as a text file or PDF).
+:::
+
+**Step 3: Bind backup codes to the user account:**
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"BackupCode","codes":["...","...","..."]}'
+```
+
+- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
+- `type`: must be `BackupCode`.
+- `codes`: the array of backup codes generated in the previous step.
+
+:::note
+
+- A user can only have one set of backup codes at a time. If all codes have been used, the user needs to generate and bind new codes.
+- Backup codes cannot be the only MFA factor. The user must have at least one other MFA factor (such as WebAuthn or TOTP) enabled.
+- Each backup code can only be used once.
+
+:::
+
+**View existing backup codes:**
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes \
+  -H 'authorization: Bearer <access_token>'
+```
+
+The response body would be like:
+
+```json
+{
+  "codes": [
+    {
+      "code": "...",
+      "usedAt": null
+    },
+    {
+      "code": "...",
+      "usedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+- `code`: the backup code.
+- `usedAt`: the timestamp when the code was used, `null` if not used yet.
