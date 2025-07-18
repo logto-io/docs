@@ -14,7 +14,7 @@ export default function LayoutWrapper(props: Props): ReactNode {
   // Hooks must be called at the top level, outside of try-catch
   const { siteConfig } = useDocusaurusContext();
   const debugLogger = useDebugLogger(siteConfig);
-  const apiBaseUrl = useApiBaseUrl(siteConfig);
+  const { baseUrl: apiBaseUrl } = useApiBaseUrl(siteConfig);
   const config = useGoogleOneTapConfig(apiBaseUrl, debugLogger);
   const { authStatus } = useAuthStatus(siteConfig, debugLogger);
 
@@ -28,7 +28,13 @@ export default function LayoutWrapper(props: Props): ReactNode {
       <Layout {...props} />
       {authStatus === false && config?.oneTap?.isEnabled && (
         <BrowserOnly fallback={<div>Loading Google Sign-In...</div>}>
-          {() => <GoogleOneTapInitializer config={config} debugLogger={debugLogger} />}
+          {() => (
+            <GoogleOneTapInitializer
+              config={config}
+              debugLogger={debugLogger}
+              siteConfig={siteConfig}
+            />
+          )}
         </BrowserOnly>
       )}
     </>
