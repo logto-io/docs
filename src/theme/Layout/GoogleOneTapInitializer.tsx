@@ -31,9 +31,9 @@ export default function GoogleOneTapInitializer({
           throw new Error('Logto admin console URL is not set');
         }
 
-        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'google-one-tap'));
+        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'external-google-one-tap'));
 
-        signInUrl.searchParams.set('google_one_tap_credential', credential);
+        signInUrl.searchParams.set('credential', credential);
 
         return signInUrl.toString();
       } catch (error) {
