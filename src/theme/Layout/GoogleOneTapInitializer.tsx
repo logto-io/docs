@@ -1,9 +1,10 @@
-import { type ReactNode, useCallback, useEffect } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import type { DebugLogger } from './debug-logger';
 import type { GoogleOneTapConfig } from './google-one-tap';
 import type { GoogleOneTapCredentialResponse, GoogleOneTapVerifyResponse } from './types';
-import { appendPath } from '@silverhand/essentials';
+import { appendPath, yes } from '@silverhand/essentials';
+import { isGoogleOneTapTriggeredKey } from './constants';
 
 type GoogleOneTapInitializerProps = {
   readonly config: GoogleOneTapConfig;
@@ -16,6 +17,13 @@ export default function GoogleOneTapInitializer({
   debugLogger,
   logtoAdminConsoleUrl,
 }: GoogleOneTapInitializerProps): ReactNode {
+  const [isGoogleOneTapTriggered, setIsGoogleOneTapTriggered] = useState(false);
+
+  useEffect(() => {
+    const isTriggered = yes(localStorage.getItem(isGoogleOneTapTriggeredKey));
+    setIsGoogleOneTapTriggered(isTriggered);
+  }, []);
+
   // Function to manually build Logto sign-in URL
   const buildSignInUrl = useCallback(
     ({ credential }: GoogleOneTapVerifyResponse) => {
@@ -45,6 +53,8 @@ export default function GoogleOneTapInitializer({
         // Build Logto sign-in URL with credential
         const signInUrl = buildSignInUrl(response);
 
+        localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
+
         if (signInUrl) {
           // Directly navigate to sign-in URL in current window
           window.location.href = signInUrl;
@@ -60,7 +70,7 @@ export default function GoogleOneTapInitializer({
   );
 
   useEffect(() => {
-    if (logtoAdminConsoleUrl && config.oneTap?.isEnabled && window.google?.accounts.id) {
+    if (!isGoogleOneTapTriggered && logtoAdminConsoleUrl && config.oneTap?.isEnabled && window.google?.accounts.id) {
       debugLogger.log('Initializing Google One Tap');
 
       try {
