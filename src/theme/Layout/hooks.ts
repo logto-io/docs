@@ -1,77 +1,109 @@
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { trySafe, type Optional } from '@silverhand/essentials';
 import { useEffect, useMemo, useState } from 'react';
 
 import { defaultApiBaseProdUrl, defaultApiBaseDevUrl } from './constants';
-import { createDebugLogger, type DebugLogger } from './debug-logger';
 import { type GoogleOneTapConfig, googleOneTapConfigSchema } from './google-one-tap';
-import type { SiteConfig } from './types';
+import { type RawSiteConfig, rawSiteConfigSchema } from './types';
 
-export function useDebugLogger(siteConfig: SiteConfig): DebugLogger {
-  const isDebugMode = Boolean(siteConfig.customFields?.isDebuggingEnabled);
+type DebugLogger = {
+  log: (...args: unknown[]) => void;
+  warn: (...args: unknown[]) => void;
+  error: (...args: unknown[]) => void;
+};
 
-  return useMemo(() => createDebugLogger(isDebugMode), [isDebugMode]);
+const createDebugLogger = (isDebugMode: boolean): DebugLogger => {
+  return {
+    log: (...args: unknown[]) => {
+      if (isDebugMode) {
+        console.log(...args);
+      }
+    },
+    warn: (...args: unknown[]) => {
+      if (isDebugMode) {
+        console.warn(...args);
+      }
+    },
+    error: (...args: unknown[]) => {
+      if (isDebugMode) {
+        console.error(...args);
+      }
+    },
+  };
+};
+
+const useSiteConfig = (): { siteConfig: RawSiteConfig } => {
+  const { siteConfig: rawSiteConfig } = useDocusaurusContext();
+  const parsedRawSiteConfig = rawSiteConfigSchema.safeParse(rawSiteConfig);
+  if (!parsedRawSiteConfig.success) {
+    throw new Error('Invalid site config');
+  }
+  return { siteConfig: parsedRawSiteConfig.data };
+};
+
+export function useDebugLogger(): { debugLogger: DebugLogger } {
+  const {
+    siteConfig: { customFields },
+  } = useSiteConfig();
+  const isDebugMode = Boolean(customFields?.isDebuggingEnabled);
+
+  return { debugLogger: useMemo(() => createDebugLogger(isDebugMode), [isDebugMode]) };
 }
 
-export function useApiBaseUrl(siteConfig: SiteConfig): {
+export function useApiBaseUrl(): {
   baseUrl: string;
   logtoAdminConsoleUrl?: string;
 } {
-  return useMemo(() => {
-    const logtoApiBaseUrl = siteConfig.customFields?.logtoApiBaseUrl;
+  const {
+    siteConfig: { customFields },
+  } = useSiteConfig();
+  const { logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl } = customFields ?? {};
 
+  return useMemo(() => {
     const baseUrl =
       typeof logtoApiBaseUrl === 'string'
         ? logtoApiBaseUrl
-        : siteConfig.customFields?.isDevFeatureEnabled
+        : isDevFeatureEnabled
           ? defaultApiBaseDevUrl
           : defaultApiBaseProdUrl;
-
-    const logtoAdminConsoleUrl = siteConfig.customFields?.logtoAdminConsoleUrl;
 
     return {
       baseUrl,
       logtoAdminConsoleUrl,
     };
-  }, [
-    siteConfig.customFields?.logtoApiBaseUrl,
-    siteConfig.customFields?.isDevFeatureEnabled,
-    siteConfig.customFields?.logtoAdminConsoleUrl,
-  ]);
+  }, [logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl]);
 }
 
-export function useGoogleOneTapConfig(
-  siteConfig: SiteConfig,
-  debugLogger: DebugLogger
-): { config: Optional<GoogleOneTapConfig> } {
+export function useGoogleOneTapConfig(): {
+  config: Optional<GoogleOneTapConfig>;
+} {
   const [config, setConfig] = useState<GoogleOneTapConfig>();
+  const { debugLogger } = useDebugLogger();
+  const {
+    siteConfig: { customFields },
+  } = useSiteConfig();
 
   useEffect(() => {
     const loadConfig = async () => {
-      try {
-        const rawConfig = siteConfig.customFields?.googleOneTapConfig;
-        if (typeof rawConfig !== 'string') {
-          throw new TypeError('Google One Tap config is not a string');
-        }
-        const parsedConfig = googleOneTapConfigSchema.safeParse(
-          // eslint-disable-next-line no-restricted-syntax
-          trySafe(() => JSON.parse(rawConfig) as unknown)
-        );
+      const rawConfig = customFields?.googleOneTapConfig;
+      if (typeof rawConfig !== 'string') {
+        throw new TypeError('Google One Tap config is not a string');
+      }
+      const parsedConfig = googleOneTapConfigSchema.safeParse(
+        // eslint-disable-next-line no-restricted-syntax
+        trySafe(() => JSON.parse(rawConfig) as unknown)
+      );
 
-        if (parsedConfig.success) {
-          setConfig(parsedConfig.data);
-        } else {
-          debugLogger.error('Failed to parse Google One Tap config:', parsedConfig.error);
-          setConfig(undefined);
-        }
-      } catch (error) {
-        debugLogger.error('Failed to load Google One Tap config:', error);
-        // Don't throw, just set config to undefined to prevent render blocking
+      if (parsedConfig.success) {
+        setConfig(parsedConfig.data);
+      } else {
+        debugLogger.error('Failed to parse Google One Tap config:', parsedConfig.error);
         setConfig(undefined);
       }
     };
 
     void loadConfig();
-  }, [siteConfig.customFields?.googleOneTapConfig, debugLogger]);
+  }, [customFields?.googleOneTapConfig, debugLogger]);
 
   return { config };
 }
