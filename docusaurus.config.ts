@@ -56,9 +56,8 @@ const config: Config = {
     logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
     isDevFeatureEnabled: yes(process.env.IS_DEV_FEATURE_ENABLED),
     isDebuggingEnabled: yes(process.env.IS_DEBUGGING_ENABLED),
-    isIframeVisible: yes(process.env.IS_IFRAME_VISIBLE),
     logtoAdminConsoleUrl: process.env.LOGTO_ADMIN_CONSOLE_URL,
-    enableAuthStatusCheck: yes(process.env.ENABLE_AUTH_STATUS_CHECK),
+    googleOneTapConfig: process.env.GOOGLE_ONE_TAP_CONFIG,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],

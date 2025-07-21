@@ -2,27 +2,20 @@ import { type ReactNode, useCallback, useEffect } from 'react';
 
 import type { DebugLogger } from './debug-logger';
 import type { GoogleOneTapConfig } from './google-one-tap';
-import { useApiBaseUrl, useGoogleOneTapVerify } from './hooks';
-import type {
-  SiteConfig,
-  GoogleOneTapCredentialResponse,
-  GoogleOneTapVerifyResponse,
-} from './types';
+import type { GoogleOneTapCredentialResponse, GoogleOneTapVerifyResponse } from './types';
 import { appendPath } from '@silverhand/essentials';
 
 type GoogleOneTapInitializerProps = {
   readonly config: GoogleOneTapConfig;
   readonly debugLogger: DebugLogger;
-  readonly siteConfig: SiteConfig;
+  readonly logtoAdminConsoleUrl?: string;
 };
 
 export default function GoogleOneTapInitializer({
   config,
   debugLogger,
-  siteConfig,
+  logtoAdminConsoleUrl,
 }: GoogleOneTapInitializerProps): ReactNode {
-  const { logtoAdminConsoleUrl } = useApiBaseUrl(siteConfig);
-
   // Function to manually build Logto sign-in URL
   const buildSignInUrl = useCallback(
     ({ credential }: GoogleOneTapVerifyResponse) => {
@@ -49,7 +42,7 @@ export default function GoogleOneTapInitializer({
       debugLogger.log('handleCredentialResponse received response:', response);
 
       try {
-        // Build Logto sign-in URL with one-time token
+        // Build Logto sign-in URL with credential
         const signInUrl = buildSignInUrl(response);
 
         if (signInUrl) {
@@ -67,7 +60,7 @@ export default function GoogleOneTapInitializer({
   );
 
   useEffect(() => {
-    if (config.oneTap?.isEnabled && window.google?.accounts.id) {
+    if (logtoAdminConsoleUrl && config.oneTap?.isEnabled && window.google?.accounts.id) {
       debugLogger.log('Initializing Google One Tap');
 
       try {
@@ -87,7 +80,7 @@ export default function GoogleOneTapInitializer({
         console.error('Error initializing Google One Tap:', error);
       }
     }
-  }, [config, debugLogger]);
+  }, [config, debugLogger, logtoAdminConsoleUrl]);
 
   return null;
 }
