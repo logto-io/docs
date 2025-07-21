@@ -6,6 +6,7 @@ import {
   debugIframeTimeoutDelay,
 } from './constants';
 import type { DebugLogger } from './debug-logger';
+import { createStorageAccessChecker } from './storage-access';
 import { AuthMessageType, type AuthStatusRequest, type AuthStatusResponse } from './types';
 
 export type AuthStatusCheckerOptions = {
@@ -36,6 +37,12 @@ export function createAuthStatusChecker({
   const authStatusCheckerHost =
     typeof logtoAdminConsoleUrl === 'string' ? new URL(logtoAdminConsoleUrl).origin : undefined;
 
+  const { checkStorageAccess, requestStorageAccess } = createStorageAccessChecker({
+    logtoAdminConsoleUrl,
+    enableAuthStatusCheck,
+    debugLogger,
+  });
+
   /**
    * Function to check admin token status via cross-domain iframe communication
    *
@@ -46,6 +53,27 @@ export function createAuthStatusChecker({
    * @throws Error if auth status checker is not configured or request fails
    */
   const checkAdminTokenStatus = async (): Promise<boolean> => {
+    try {
+      debugLogger.log('Checking storage access before admin token check');
+
+      const hasStorageAccess = await checkStorageAccess();
+      debugLogger.log('Storage access check result:', hasStorageAccess);
+
+      if (!hasStorageAccess) {
+        debugLogger.log('Storage access not available, requesting access');
+        const storageAccessGranted = await requestStorageAccess();
+        debugLogger.log('Storage access request result:', storageAccessGranted);
+
+        if (!storageAccessGranted) {
+          throw new Error('Storage access required but not granted');
+        }
+      }
+
+      debugLogger.log('Storage access confirmed, proceeding with admin token check');
+    } catch (error) {
+      debugLogger.warn('Storage access check/request failed:', error);
+    }
+
     return new Promise((resolve, reject) => {
       if (typeof document === 'undefined') {
         reject(new Error('Document not available (SSR environment)'));
@@ -59,6 +87,7 @@ export function createAuthStatusChecker({
 
       const iframe = document.createElement('iframe');
       iframe.src = iframeSrc;
+      iframe.sandbox = 'allow-scripts allow-same-origin allow-storage-access-by-user-activation';
 
       if (isIframeVisible) {
         // Temporarily show iframe for debugging
@@ -232,6 +261,8 @@ export function createAuthStatusChecker({
 
   return {
     checkAdminTokenStatus,
+    checkStorageAccess,
+    requestStorageAccess,
     authStatusCheckerHost,
     iframeSrc,
   };
