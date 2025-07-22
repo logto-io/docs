@@ -67,6 +67,10 @@ export default function GoogleOneTapInitializer(): ReactNode {
           auto_select: config.oneTap.autoSelect,
           cancel_on_tap_outside: config.oneTap.closeOnTapOutside,
           itp_support: config.oneTap.itpSupport,
+          // Disable FedCM for prompt.
+          use_fedcm_for_prompt: false,
+          // Set context to use, to show "Use xxx" in Google One Tap prompt.
+          context: 'use',
         });
 
         // Show One Tap prompt
