@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
+
 import type { Config } from '@docusaurus/types';
 import { yes } from '@silverhand/essentials';
 
@@ -54,6 +55,9 @@ const config: Config = {
     inkeepApiKey: process.env.INKEEP_API_KEY,
     logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
     isDevFeatureEnabled: yes(process.env.IS_DEV_FEATURE_ENABLED),
+    isDebuggingEnabled: yes(process.env.IS_DEBUGGING_ENABLED),
+    logtoAdminConsoleUrl: process.env.LOGTO_ADMIN_CONSOLE_URL,
+    googleOneTapConfig: process.env.GOOGLE_ONE_TAP_CONFIG,
   },
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
