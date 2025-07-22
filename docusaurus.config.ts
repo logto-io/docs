@@ -10,10 +10,12 @@ import {
   classicPresetConfig,
   commonMarkdown,
   commonStylesheets,
+  createCommonCustomFields,
   createCommonThemeConfig,
   currentLocale,
   defaultLocale,
   getCloudflareSubdomain,
+  googleOneTapScripts,
   injectHeadTagsPlugin,
   isCfPagesPreview,
   localeConfigs,
@@ -37,13 +39,7 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
-  scripts: [
-    {
-      src: 'https://accounts.google.com/gsi/client',
-      async: true,
-      defer: true,
-    },
-  ],
+  scripts: googleOneTapScripts,
 
   i18n: {
     defaultLocale,
@@ -51,14 +47,11 @@ const config: Config = {
     localeConfigs,
   },
 
-  customFields: {
+  customFields: createCommonCustomFields({
     inkeepApiKey: process.env.INKEEP_API_KEY,
     logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
     isDevFeatureEnabled: yes(process.env.IS_DEV_FEATURE_ENABLED),
-    isDebuggingEnabled: yes(process.env.IS_DEBUGGING_ENABLED),
-    logtoAdminConsoleUrl: process.env.LOGTO_ADMIN_CONSOLE_URL,
-    googleOneTapConfig: process.env.GOOGLE_ONE_TAP_CONFIG,
-  },
+  }),
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
 

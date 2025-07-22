@@ -10,10 +10,12 @@ import {
   classicPresetConfig,
   commonMarkdown,
   commonStylesheets,
+  createCommonCustomFields,
   createCommonThemeConfig,
   currentLocale,
   defaultLocale,
   getCloudflareSubdomain,
+  googleOneTapScripts,
   injectHeadTagsPlugin,
   isCfPagesPreview,
   localeConfigs,
@@ -41,17 +43,19 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
+  scripts: googleOneTapScripts,
+
   i18n: {
     defaultLocale,
     locales: ['en', 'es', 'fr', 'ja'],
     localeConfigs,
   },
 
-  customFields: {
+  customFields: createCommonCustomFields({
     mainSiteUrl,
     // Remove this on purpose to avoid rendering search bar in the tutorials site
     // inkeepApiKey: process.env.INKEEP_API_KEY,
-  },
+  }),
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
 
