@@ -1,9 +1,9 @@
+import { appendPath, yes } from '@silverhand/essentials';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
-import type { GoogleOneTapCredentialResponse } from './types';
-import { appendPath, yes } from '@silverhand/essentials';
 import { isGoogleOneTapTriggeredKey } from './constants';
 import { useApiBaseUrl, useDebugLogger, useGoogleOneTapConfig } from './hooks';
+import type { GoogleOneTapCredentialResponse } from './types';
 
 export default function GoogleOneTapInitializer(): ReactNode {
   const [isGoogleOneTapTriggered, setIsGoogleOneTapTriggered] = useState(false);
@@ -24,7 +24,9 @@ export default function GoogleOneTapInitializer(): ReactNode {
           throw new Error('Logto admin console URL is not set');
         }
 
-        const signInUrl = new URL(appendPath(new URL(logtoAdminConsoleUrl), 'external-google-one-tap'));
+        const signInUrl = new URL(
+          appendPath(new URL(logtoAdminConsoleUrl), 'external-google-one-tap')
+        );
 
         signInUrl.searchParams.set('credential', credential);
 
@@ -47,6 +49,7 @@ export default function GoogleOneTapInitializer(): ReactNode {
       if (signInUrl) {
         localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
         // Directly navigate to sign-in URL in current window
+        // eslint-disable-next-line @silverhand/fp/no-mutation
         window.location.href = signInUrl;
         debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
       }
@@ -55,14 +58,20 @@ export default function GoogleOneTapInitializer(): ReactNode {
   );
 
   useEffect(() => {
-    if (!isGoogleOneTapTriggered && logtoAdminConsoleUrl && config && config.oneTap?.isEnabled && window.google?.accounts.id) {
+    if (
+      !isGoogleOneTapTriggered &&
+      logtoAdminConsoleUrl &&
+      config &&
+      config.oneTap?.isEnabled &&
+      window.google?.accounts.id
+    ) {
       debugLogger.log('Initializing Google One Tap');
 
       try {
         // Initialize Google One Tap
         window.google.accounts.id.initialize({
           client_id: config.clientId,
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
           callback: handleCredentialResponse,
           auto_select: config.oneTap.autoSelect,
           cancel_on_tap_outside: config.oneTap.closeOnTapOutside,
@@ -79,7 +88,13 @@ export default function GoogleOneTapInitializer(): ReactNode {
         console.error('Error initializing Google One Tap:', error);
       }
     }
-  }, [config, debugLogger, logtoAdminConsoleUrl]);
+  }, [
+    config,
+    debugLogger,
+    logtoAdminConsoleUrl,
+    isGoogleOneTapTriggered,
+    handleCredentialResponse,
+  ]);
 
   return null;
 }
