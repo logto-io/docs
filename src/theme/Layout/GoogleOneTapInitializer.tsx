@@ -7,7 +7,7 @@ import type { GoogleOneTapCredentialResponse } from './types';
 
 export default function GoogleOneTapInitializer(): ReactNode {
   const [isGoogleOneTapTriggered, setIsGoogleOneTapTriggered] = useState(false);
-  const { logtoAdminConsoleUrl } = useApiBaseUrl();
+  const { logtoAdminConsoleUrl, baseUrl } = useApiBaseUrl();
   const { config } = useGoogleOneTapConfig();
   const { debugLogger } = useDebugLogger();
 
@@ -43,18 +43,60 @@ export default function GoogleOneTapInitializer(): ReactNode {
     async (response: GoogleOneTapCredentialResponse) => {
       debugLogger.log('handleCredentialResponse received response:', response);
 
-      // Build Logto sign-in URL with credential
-      const signInUrl = buildSignInUrl(response);
+      // // Build Logto sign-in URL with credential
+      // const signInUrl = buildSignInUrl(response);
 
-      if (signInUrl) {
+      // if (signInUrl) {
+      //   localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
+      //   // Directly navigate to sign-in URL in current window
+      //   // eslint-disable-next-line @silverhand/fp/no-mutation
+      //   // window.location.href = signInUrl;
+      //   debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
+      // }
+
+      const query = new URLSearchParams({
+        isExternal: 'true',
+      });
+      const fetchResponse = await fetch(
+        appendPath(new URL(baseUrl), `callback/muxb1fikb86yh9jose3q6?${query.toString()}`),
+        {
+          method: 'POST',
+          mode: 'cors',
+          credentials: 'omit',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            google_one_tap_credential: response.credential,
+          }),
+          redirect: 'manual',
+        }
+      );
+
+      if (fetchResponse.status === 200) {
         localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
-        // Directly navigate to sign-in URL in current window
+        // eslint-disable-next-line no-restricted-syntax
+        const json = (await fetchResponse.json()) as {
+          success: boolean;
+          redirectUrl: string;
+        };
+        console.log('json', JSON.stringify(json, null, 2));
+        const redirectUrl = new URL(json.redirectUrl);
         // eslint-disable-next-line @silverhand/fp/no-mutation
-        window.location.href = signInUrl;
-        debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
+        redirectUrl.search = '';
+        const finalRedirectUrl = redirectUrl.toString();
+        console.log('finalRedirectUrl', finalRedirectUrl);
+
+        // Wait 2 seconds to allow viewing console logs
+        await new Promise((resolve) => {
+          setTimeout(resolve, 2000);
+        });
+
+        // eslint-disable-next-line @silverhand/fp/no-mutation
+        window.location.href = 'https://cloud.logto.dev/external-google-one-tap';
       }
     },
-    [debugLogger, buildSignInUrl]
+    [debugLogger, baseUrl]
   );
 
   useEffect(() => {
