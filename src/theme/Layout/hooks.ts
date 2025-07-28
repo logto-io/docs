@@ -51,7 +51,7 @@ export function useDebugLogger(): { debugLogger: DebugLogger } {
 }
 
 export function useApiBaseUrl(): {
-  baseUrl: string;
+  baseCloudApiUrl: string;
   logtoAdminConsoleUrl?: string;
 } {
   const {
@@ -60,7 +60,7 @@ export function useApiBaseUrl(): {
   const { logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl } = customFields ?? {};
 
   return useMemo(() => {
-    const baseUrl =
+    const baseCloudApiUrl =
       typeof logtoApiBaseUrl === 'string'
         ? logtoApiBaseUrl
         : isDevFeatureEnabled
@@ -68,7 +68,7 @@ export function useApiBaseUrl(): {
           : defaultApiBaseProdUrl;
 
     return {
-      baseUrl,
+      baseCloudApiUrl,
       logtoAdminConsoleUrl,
     };
   }, [logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl]);

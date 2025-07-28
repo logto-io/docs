@@ -7,7 +7,7 @@ import type { GoogleOneTapCredentialResponse } from './types';
 
 export default function GoogleOneTapInitializer(): ReactNode {
   const [isGoogleOneTapTriggered, setIsGoogleOneTapTriggered] = useState(false);
-  const { logtoAdminConsoleUrl, baseUrl } = useApiBaseUrl();
+  const { logtoAdminConsoleUrl, baseCloudApiUrl } = useApiBaseUrl();
   const { config } = useGoogleOneTapConfig();
   const { debugLogger } = useDebugLogger();
 
@@ -16,76 +16,51 @@ export default function GoogleOneTapInitializer(): ReactNode {
     setIsGoogleOneTapTriggered(isTriggered);
   }, []);
 
-  // Function to manually build Logto sign-in URL
-  const buildSignInUrl = useCallback(
-    ({ credential }: GoogleOneTapCredentialResponse) => {
-      try {
-        if (!logtoAdminConsoleUrl) {
-          throw new Error('Logto admin console URL is not set');
-        }
-
-        const signInUrl = new URL(
-          appendPath(new URL(logtoAdminConsoleUrl), 'external-google-one-tap')
-        );
-
-        signInUrl.searchParams.set('credential', credential);
-
-        return signInUrl.toString();
-      } catch (error) {
-        debugLogger.error('Failed to build sign-in URL:', error);
-        return null;
-      }
-    },
-    [logtoAdminConsoleUrl, debugLogger]
-  );
-
   const handleCredentialResponse = useCallback(
-    async (response: GoogleOneTapCredentialResponse) => {
+    (response: GoogleOneTapCredentialResponse) => {
+      /* eslint-disable @silverhand/fp/no-mutation */
       debugLogger.log('handleCredentialResponse received response:', response);
 
-      // // Build Logto sign-in URL with credential
-      // const signInUrl = buildSignInUrl(response);
+      // Set localStorage before form submission
+      localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
 
-      // if (signInUrl) {
-      //   localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
-      //   // Directly navigate to sign-in URL in current window
-      //   // eslint-disable-next-line @silverhand/fp/no-mutation
-      //   // window.location.href = signInUrl;
-      //   debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
-      // }
+      // Create a hidden form for POST submission
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = appendPath(new URL(baseCloudApiUrl), 'api/external-google-one-tap').toString();
+      form.style.display = 'none';
 
-      const formData = new URLSearchParams({
-        credential: response.credential,
-      });
-      
-      const fetchResponse = await fetch(
-        'https://cloud.logto.dev/api/anonymous/external-google-one-tap',
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: formData.toString(),
-          redirect: 'manual',
-        }
-      );
+      // Add credential as hidden input
+      const credentialInput = document.createElement('input');
+      credentialInput.type = 'hidden';
+      credentialInput.name = 'credential';
+      credentialInput.value = response.credential;
+      form.append(credentialInput);
 
-      if (fetchResponse.status === 200) {
-        localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
-        const json = (await fetchResponse.json());
-        console.log('json', JSON.stringify(json, null, 2));
+      const redirectUriInput = document.createElement('input');
+      redirectUriInput.type = 'hidden';
+      redirectUriInput.name = 'redirectUri';
+      /**
+       * The redirect URI is the URL of the Logto admin console.
+       * If no `logtoAdminConsoleUrl` is set, the Google One Tap will not show up, and here is the Google One Tap handler.
+       * The existence of this callback method presupposes that Google One Tap is present, so the `logtoAdminConsoleUrl` here cannot be undefined.
+       */
+      redirectUriInput.value = appendPath(
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        new URL(logtoAdminConsoleUrl!),
+        'external-google-one-tap'
+      ).toString();
+      form.append(redirectUriInput);
 
-        // Wait 2 seconds to allow viewing console logs
-        await new Promise((resolve) => {
-          setTimeout(resolve, 2000);
-        });
+      // Append form to body and submit
+      document.body.append(form);
+      form.submit();
 
-        // eslint-disable-next-line @silverhand/fp/no-mutation
-        window.location.href = 'https://cloud.logto.dev/external-google-one-tap';
-      }
+      // Clean up the form element
+      form.remove();
     },
-    [debugLogger, baseUrl]
+    /* eslint-enable @silverhand/fp/no-mutation */
+    [debugLogger, baseCloudApiUrl, logtoAdminConsoleUrl]
   );
 
   useEffect(() => {
