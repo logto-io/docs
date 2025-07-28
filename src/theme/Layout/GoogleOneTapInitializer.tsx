@@ -54,38 +54,27 @@ export default function GoogleOneTapInitializer(): ReactNode {
       //   debugLogger.log('Redirecting to Logto sign-in URL', signInUrl);
       // }
 
-      const query = new URLSearchParams({
-        isExternal: 'true',
+      const formData = new URLSearchParams({
+        credential: response.credential,
       });
+      
       const fetchResponse = await fetch(
-        appendPath(new URL(baseUrl), `callback/muxb1fikb86yh9jose3q6?${query.toString()}`),
+        'https://cloud.logto.dev/api/anonymous/external-google-one-tap',
         {
           method: 'POST',
-          mode: 'cors',
-          credentials: 'omit',
+          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: JSON.stringify({
-            google_one_tap_credential: response.credential,
-          }),
+          body: formData.toString(),
           redirect: 'manual',
         }
       );
 
       if (fetchResponse.status === 200) {
         localStorage.setItem(isGoogleOneTapTriggeredKey, '1');
-        // eslint-disable-next-line no-restricted-syntax
-        const json = (await fetchResponse.json()) as {
-          success: boolean;
-          redirectUrl: string;
-        };
+        const json = (await fetchResponse.json());
         console.log('json', JSON.stringify(json, null, 2));
-        const redirectUrl = new URL(json.redirectUrl);
-        // eslint-disable-next-line @silverhand/fp/no-mutation
-        redirectUrl.search = '';
-        const finalRedirectUrl = redirectUrl.toString();
-        console.log('finalRedirectUrl', finalRedirectUrl);
 
         // Wait 2 seconds to allow viewing console logs
         await new Promise((resolve) => {
