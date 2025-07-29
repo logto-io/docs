@@ -13,6 +13,7 @@ import Organization from '@site/src/assets/organization.svg';
 import Security from '@site/src/assets/security.svg';
 import UserFlows from '@site/src/assets/user-flows.svg';
 import UserManagement from '@site/src/assets/user-management.svg';
+import Vault from '@site/src/assets/vault.svg';
 
 type SvgComponent = ComponentType<SVGProps<SVGSVGElement> & { title?: string }>;
 
@@ -36,6 +37,7 @@ const icons: IconMap = Object.freeze({
   'logto-oss': OpenSource,
   concepts: Concepts,
   security: Security,
+  'secret-vault': Vault,
 });
 
 export default icons;
