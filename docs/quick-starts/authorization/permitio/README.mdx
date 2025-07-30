@@ -1,0 +1,159 @@
+---
+slug: /quick-starts/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: Integrate Logto with Permit.io.
+---
+
+# Add authorization to your Logto application with Permit.io
+
+[Permit.io](https://permit.io/) is an authorization platform that provides fine-grained access control for applications. While Logto handles authentication (who the user is), Permit.io manages authorization (what the user can do).
+
+This guide will show you how to connect Logto with Permit.io to implement authorization in your application.
+
+## Prerequisites
+
+- A [Logto Cloud](https://cloud.logto.io/) account or a [self-hosted Logto](https://docs.logto.io/introduction/set-up-logto-oss).
+- A Next.js application with Logto authentication already set up (follow our [Next.js guide](https://docs.logto.io/quick-starts/next) if you haven't)
+- A [Permit.io](https://app.permit.io/) account. Follow the official [Permit.io quickstart guide](https://docs.permit.io/quickstart/) to set up your Permit.io project before proceeding.
+
+## Get started \{#get-started}
+
+### 1. Install Permit.io SDK \{#1-install-permitio-sdk}
+
+Add the Permit.io SDK to your application:
+
+```bash
+npm install permitio
+```
+
+### 2. Create a Permit.io project \{#2-create-a-permitio-project}
+
+1. Sign up for a free account at [permit.io](https://app.permit.io/)
+2. Create a new project and obtain your API key
+3. Add the API key to your environment variables:
+
+```bash
+PERMIT_API_KEY=your-permit-api-key
+```
+
+### 3. Set up Permit.io client \{#3-set-up-permitio-client}
+
+Create a file to handle the Permit.io integration:
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// Initialize the Permit.io client
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'your-permitio-api-key',
+});
+
+// Sync a user with Permit.io
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // First, sync the user
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // Then assign a role to the user
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### 4. Create a Logto webhook for user registration \{#4-create-a-logto-webhook-for-user-registration}
+
+Logto provides webhooks that can notify your application when events occur. We'll use the `PostRegister` webhook to [sync users to Permit.io](https://docs.permit.io/authentication/permit-and-authentication) when they sign up.
+
+Create a webhook endpoint in your application:
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // Log the webhook payload for debugging
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // Process user registration events
+  if (event === 'PostRegister') {
+    try {
+      // Determine the user's role (you can implement your own logic here)
+      let role = 'viewer'; // Default role
+
+      // Sync the user to Permit.io
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error syncing user:', error);
+      return res.status(500).json({ error: 'Failed to sync user' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Event ignored' });
+}
+```
+
+### 5. Configure the webhook in Logto Console \{#5-configure-the-webhook-in-logto-console}
+
+1. Go to the Webhooks section in your Logto Console
+2. Click "Create Webhook"
+3. Give your webhook a name
+4. Enter your endpoint URL (e.g., `https://your-app.com/api/webhooks/logto`)
+5. Select the `PostRegister` event
+6. Save the webhook
+
+**Note**: For local development, you can use tools like [ngrok](https://ngrok.com/) to expose your local server to the internet.
+
+### 6. Test user sync \{#6-test-user-sync}
+
+To test that users are being synced correctly:
+
+1. Create a new user account in your application
+2. Check the Permit.io dashboard under "Directory" → "Users" to verify the user was synced
+3. Verify that the correct role was assigned to the user upon sign-up
+
+<img src="/img/assets/permitio.png" alt="Logto Users Synced to Permit.io with Role Assignments" />
+
+### 7. Use Permit.io for authorization \{#7-use-permitio-for-authorization}
+
+Once users are synced, you can use Permit.io to check permissions:
+
+```jsx
+// Example of checking a permission
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // User is allowed to view resources
+  // Show the resources UI
+} else {
+  // User is not allowed to view resources
+  // Show an access denied message
+}
+```
+
+## Conclusion \{#conclusion}
+
+You've successfully connected Logto with Permit.io to automatically sync users and implement authorization in your application. With this integration:
+
+1. Users authenticate through Logto
+2. New users are automatically synced to Permit.io via webhooks
+3. You can use Permit.io to check permissions and implement access control
+
+This setup provides a strong foundation for implementing more advanced authorization patterns as your application grows.
+
+For more advanced authorization use cases, explore [Permit.io's documentation](https://docs.permit.io/) on creating policies, enforcing permissions, and implementing role-based access control.
