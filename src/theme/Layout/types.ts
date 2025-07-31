@@ -6,7 +6,6 @@ export type RawSiteConfig = {
     isDebuggingEnabled?: boolean;
     logtoApiBaseUrl?: string;
     isDevFeatureEnabled?: boolean;
-    logtoAdminConsoleUrl?: string;
     googleOneTapConfig?: string;
   };
 };
@@ -18,7 +17,6 @@ export const rawSiteConfigSchema = z.object({
       isDebuggingEnabled: z.boolean().optional(),
       logtoApiBaseUrl: z.string().optional(),
       isDevFeatureEnabled: z.boolean().optional(),
-      logtoAdminConsoleUrl: z.string().optional(),
       googleOneTapConfig: z.string().optional(),
     })
     .optional(),

@@ -52,12 +52,11 @@ export function useDebugLogger(): { debugLogger: DebugLogger } {
 
 export function useApiBaseUrl(): {
   baseCloudApiUrl: string;
-  logtoAdminConsoleUrl?: string;
 } {
   const {
     siteConfig: { customFields },
   } = useSiteConfig();
-  const { logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl } = customFields ?? {};
+  const { logtoApiBaseUrl, isDevFeatureEnabled } = customFields ?? {};
 
   return useMemo(() => {
     const baseCloudApiUrl =
@@ -69,9 +68,8 @@ export function useApiBaseUrl(): {
 
     return {
       baseCloudApiUrl,
-      logtoAdminConsoleUrl,
     };
-  }, [logtoApiBaseUrl, isDevFeatureEnabled, logtoAdminConsoleUrl]);
+  }, [logtoApiBaseUrl, isDevFeatureEnabled]);
 }
 
 export function useGoogleOneTapConfig(): {

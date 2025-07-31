@@ -7,7 +7,7 @@ import type { GoogleOneTapCredentialResponse } from './types';
 
 export default function GoogleOneTapInitializer(): ReactNode {
   const [isGoogleOneTapTriggered, setIsGoogleOneTapTriggered] = useState(false);
-  const { logtoAdminConsoleUrl, baseCloudApiUrl } = useApiBaseUrl();
+  const { baseCloudApiUrl } = useApiBaseUrl();
   const { config } = useGoogleOneTapConfig();
   const { debugLogger } = useDebugLogger();
 
@@ -37,21 +37,6 @@ export default function GoogleOneTapInitializer(): ReactNode {
       credentialInput.value = response.credential;
       form.append(credentialInput);
 
-      const redirectUriInput = document.createElement('input');
-      redirectUriInput.type = 'hidden';
-      redirectUriInput.name = 'redirectUri';
-      /**
-       * The redirect URI is the URL of the Logto admin console.
-       * If no `logtoAdminConsoleUrl` is set, the Google One Tap will not show up, and here is the Google One Tap handler.
-       * The existence of this callback method presupposes that Google One Tap is present, so the `logtoAdminConsoleUrl` here cannot be undefined.
-       */
-      redirectUriInput.value = appendPath(
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        new URL(logtoAdminConsoleUrl!),
-        'external-google-one-tap'
-      ).toString();
-      form.append(redirectUriInput);
-
       // Append form to body and submit
       document.body.append(form);
       form.submit();
@@ -60,13 +45,12 @@ export default function GoogleOneTapInitializer(): ReactNode {
       form.remove();
     },
     /* eslint-enable @silverhand/fp/no-mutation */
-    [debugLogger, baseCloudApiUrl, logtoAdminConsoleUrl]
+    [debugLogger, baseCloudApiUrl]
   );
 
   useEffect(() => {
     if (
       !isGoogleOneTapTriggered &&
-      logtoAdminConsoleUrl &&
       config &&
       config.oneTap?.isEnabled &&
       window.google?.accounts.id
@@ -94,13 +78,7 @@ export default function GoogleOneTapInitializer(): ReactNode {
         console.error('Error initializing Google One Tap:', error);
       }
     }
-  }, [
-    config,
-    debugLogger,
-    logtoAdminConsoleUrl,
-    isGoogleOneTapTriggered,
-    handleCredentialResponse,
-  ]);
+  }, [config, debugLogger, isGoogleOneTapTriggered, handleCredentialResponse]);
 
   return null;
 }

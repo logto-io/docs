@@ -323,7 +323,6 @@ export const googleOneTapScripts = [
 ];
 
 export const createGoogleOneTapCustomFields = () => ({
-  logtoAdminConsoleUrl: process.env.LOGTO_ADMIN_CONSOLE_URL,
   isDebuggingEnabled: yes(process.env.IS_DEBUGGING_ENABLED),
   googleOneTapConfig: process.env.GOOGLE_ONE_TAP_CONFIG,
 });
