@@ -1,6 +1,8 @@
 // eslint-disable-next-line import/no-unassigned-import
 import 'dotenv/config';
+
 import type { Config } from '@docusaurus/types';
+import { yes } from '@silverhand/essentials';
 
 import {
   addAliasPlugin,
@@ -8,10 +10,12 @@ import {
   classicPresetConfig,
   commonMarkdown,
   commonStylesheets,
+  createCommonCustomFields,
   createCommonThemeConfig,
   currentLocale,
   defaultLocale,
   getCloudflareSubdomain,
+  googleOneTapScripts,
   injectHeadTagsPlugin,
   isCfPagesPreview,
   localeConfigs,
@@ -35,15 +39,19 @@ const config: Config = {
   organizationName: 'logto-io',
   projectName: 'docs',
 
+  scripts: googleOneTapScripts,
+
   i18n: {
     defaultLocale,
     locales: ['de', 'en', 'es', 'fr', 'ja', 'ko', 'pt-BR', 'zh-CN', 'zh-TW'],
     localeConfigs,
   },
 
-  customFields: {
+  customFields: createCommonCustomFields({
     inkeepApiKey: process.env.INKEEP_API_KEY,
-  },
+    logtoApiBaseUrl: process.env.LOGTO_API_BASE_URL,
+    isDevFeatureEnabled: yes(process.env.IS_DEV_FEATURE_ENABLED),
+  }),
 
   staticDirectories: ['static', 'static-localized/' + currentLocale],
 
