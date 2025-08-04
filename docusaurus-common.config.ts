@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { PluginConfig, ThemeConfig } from '@docusaurus/types';
+import { yes } from '@silverhand/essentials';
 import { themes } from 'prism-react-renderer';
 import rehypeKatex from 'rehype-katex';
 import remarkMath from 'remark-math';
@@ -311,3 +312,23 @@ export const classicPresetConfig = {
     },
   },
 };
+
+// Google One Tap related configurations
+export const googleOneTapScripts = [
+  {
+    src: 'https://accounts.google.com/gsi/client',
+    async: true,
+    defer: true,
+  },
+];
+
+export const createGoogleOneTapCustomFields = () => ({
+  isProduction: yes(process.env.IS_PRODUCTION),
+  isDebuggingEnabled: yes(process.env.IS_DEBUGGING_ENABLED),
+  googleOneTapConfig: process.env.GOOGLE_ONE_TAP_CONFIG,
+});
+
+export const createCommonCustomFields = (siteSpecificFields: Record<string, unknown> = {}) => ({
+  ...createGoogleOneTapCustomFields(),
+  ...siteSpecificFields,
+});
