@@ -4,8 +4,7 @@ export type RawSiteConfig = {
   customFields?: {
     inkeepApiKey?: string;
     isDebuggingEnabled?: boolean;
-    logtoApiBaseUrl?: string;
-    isDevFeatureEnabled?: boolean;
+    isProduction?: boolean;
     googleOneTapConfig?: string;
   };
 };
@@ -15,8 +14,7 @@ export const rawSiteConfigSchema = z.object({
     .object({
       inkeepApiKey: z.string().optional(),
       isDebuggingEnabled: z.boolean().optional(),
-      logtoApiBaseUrl: z.string().optional(),
-      isDevFeatureEnabled: z.boolean().optional(),
+      isProduction: z.boolean().optional(),
       googleOneTapConfig: z.string().optional(),
     })
     .optional(),

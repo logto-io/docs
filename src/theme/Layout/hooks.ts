@@ -56,20 +56,15 @@ export function useApiBaseUrl(): {
   const {
     siteConfig: { customFields },
   } = useSiteConfig();
-  const { logtoApiBaseUrl, isDevFeatureEnabled } = customFields ?? {};
+  const { isProduction } = customFields ?? {};
 
   return useMemo(() => {
-    const baseCloudApiUrl =
-      typeof logtoApiBaseUrl === 'string'
-        ? logtoApiBaseUrl
-        : isDevFeatureEnabled
-          ? defaultApiBaseDevUrl
-          : defaultApiBaseProdUrl;
+    const baseCloudApiUrl = isProduction ? defaultApiBaseProdUrl : defaultApiBaseDevUrl;
 
     return {
       baseCloudApiUrl,
     };
-  }, [logtoApiBaseUrl, isDevFeatureEnabled]);
+  }, [isProduction]);
 }
 
 export function useGoogleOneTapConfig(): {
