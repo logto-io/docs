@@ -4,23 +4,25 @@ sidebar_position: 5
 
 # 用户迁移
 
-Logto 支持将现有用户从其他平台手动迁移，本文将向你展示如何通过 Management API 导入现有用户，并介绍迁移前你需要考虑的事项。
+Logto 支持将现有用户从其他平台手动迁移，本指南将向你展示如何通过 Management API 导入现有用户，并介绍在迁移前你需要考虑的事项。
 
 ## 用户 schema \{#user-schema}
 
-在开始之前，让我们先看一下 Logto 中的 [用户 schema](/user-management/user-data/#user-profile)。你需要关注用户 schema 的三个部分：
+在开始之前，让我们先了解一下 Logto 中的 [用户 schema](/user-management/user-data/#user-profile)。用户 schema 有 3 个部分需要你注意：
 
-1. **基础数据**：来自用户资料的基本信息，你可以将现有用户资料中的数据映射到这里。
-2. **自定义数据**：用于存储额外的用户信息，你可以用它来存储无法匹配基础数据的字段。
+1. **基础数据**：来自用户资料的基本信息，你可以将现有用户资料中的数据与其对应。
+2. **自定义数据**：用于存储额外的用户信息，你可以用它来存储无法匹配基础数据的内容。
 3. **社交身份**：存储通过社交登录获取的用户信息。
 
 你可以创建一个映射，将现有用户资料中的信息对应到 **基础数据** 和 **自定义数据**。对于社交登录，你需要额外的步骤来导入社交身份，请参考 [关联社交身份到用户](https://openapi.logto.io/operation/operation-createuseridentity) 的 API。
 
 ## 密码哈希 \{#password-hashing}
 
-Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 对用户密码进行哈希，同时也支持 `MD5`、`SHA1`、`SHA256` 和 `Bcrypt` 等其他算法，方便迁移。这些算法被认为是不安全的，相应的密码哈希将在用户首次成功登录时迁移到 Argon2。
+Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 对用户密码进行哈希，同时也支持 `MD5`、`SHA1`、`SHA256` 和 `Bcrypt` 等其他算法，方便迁移。这些算法被认为是不安全的，相应的密码哈希将在用户首次成功登录时迁移为 Argon2。
 
-如果你使用了其他哈希算法或加盐方式，可以将 `passwordAlgorithm` 设置为 `Legacy`，这样你就可以使用 Node.js 支持的任意哈希算法。你可以在 [Node.js crypto 文档](https://nodejs.org/api/crypto.html#cryptogethashes) 中找到支持的算法列表。在这种情况下，`passwordDigest` 应为包含哈希算法及其他算法参数的 JSON 字符串。
+如果你使用了其他哈希算法或加盐方式，可以将 `passwordAlgorithm` 设置为 `Legacy`，这样你可以使用 Node.js 支持的任何哈希算法。支持的算法列表可在 [Node.js crypto 文档](https://nodejs.org/api/crypto.html#cryptogethashes) 中找到。在这种情况下，`passwordDigest` 将是一个包含哈希算法及其他算法参数的 JSON 字符串。
+
+### 通用 Legacy 格式 \{#general-legacy-format}
 
 JSON 字符串的格式如下：
 
@@ -28,9 +30,9 @@ JSON 字符串的格式如下：
 ["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
 ```
 
-你可以在参数中用 `@` 作为实际密码值的占位符。
+你可以用 `@` 作为参数中实际密码值的占位符。
 
-例如，如果你使用 SHA256 并加盐，可以按如下格式存储密码：
+例如，如果你使用 SHA256 加盐，可以按如下格式存储密码：
 
 ```json
 ["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
@@ -44,10 +46,40 @@ hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
 
+### PBKDF2 支持 \{#pbkdf2-support}
+
+Logto 特别支持 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
+
+要迁移使用 PBKDF2 哈希的密码，将 `passwordAlgorithm` 设置为 `Legacy`，并将 `passwordDigest` 格式化如下：
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+参数说明：
+
+- **`salt`**：原始哈希中使用的盐值
+- **`iterations`**：迭代次数（如 `"1000"`）
+- **`keylen`**：派生密钥的字节长度（如 `"20"`）
+- **`digest`**：使用的哈希函数（如 `"sha512"`、`"sha256"`、`"sha1"`）
+- **`@`**：实际密码值的占位符
+- **`expected_hashed_value`**：期望的哈希结果（十六进制字符串）
+
+**迁移示例 payload：**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
 ## 迁移步骤 \{#steps-to-migrate}
 
 1.  **准备用户数据**  
-    你应先从现有平台导出用户数据，然后将用户信息映射到 Logto 用户 schema。我们建议你将映射后的数据整理为 JSON 格式。以下是用户数据的示例：
+    你应先从现有平台导出用户数据，然后将用户信息映射到 Logto 用户 schema。建议你将映射后的数据整理为 JSON 格式。以下是用户数据的示例：
 
     ```json
     [
@@ -69,7 +101,7 @@ const expectedHashedValue = hash.digest('hex');
 3.  **配置 Management API 连接**  
     我们将使用 Management API 导入用户数据，你可以参考 [Management API](/integrate-logto/interact-with-management-api) 了解如何在开发环境中配置连接。
 4.  **导入用户数据**  
-    建议你编写脚本逐个导入用户数据，我们将调用 [create user](https://openapi.logto.io/operation/operation-createuser) API 导入用户数据。以下是脚本示例：
+    建议你编写脚本逐个导入用户数据，我们将调用 [create user](https://openapi.logto.io/operation/operation-createuser) API 来导入用户数据。以下是脚本示例：
 
     ```jsx
     const users = require('./users.json');
@@ -85,7 +117,7 @@ const expectedHashedValue = hash.digest('hex');
             },
             body: JSON.stringify(user),
           });
-          // 为避免触发限流，适当休眠
+          // 为避免触发速率限制，适当延时
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
           console.error(`Failed to import user ${user.username}: ${error.message}`);
@@ -96,7 +128,7 @@ const expectedHashedValue = hash.digest('hex');
     importUsers();
     ```
 
-请注意该 API 接口有速率限制，你应在每次请求之间添加休眠以避免触发限流。详情请查看我们的 [速率限制](/integrate-logto/interact-with-management-api/#rate-limit) 页面。
+请注意，API 接口有速率限制，你应在每次请求之间添加延时以避免触发速率限制。详情请查看我们的 [速率限制](/integrate-logto/interact-with-management-api/#rate-limit) 页面。
 
 如果你有大量用户数据（10 万以上），可以[联系我们](https://logto.io/contact)以提升速率限制。
 
