@@ -11,16 +11,18 @@ Logto prend en charge la migration manuelle des utilisateurs existants depuis un
 Avant de commencer, examinons le [schéma utilisateur](/user-management/user-data/#user-profile) dans Logto. Il y a 3 parties du schéma utilisateur dont vous devez être conscient :
 
 1. **Données de base** : il s'agit des informations de base du profil utilisateur, vous pouvez faire correspondre les données de votre profil utilisateur existant.
-2. **Données personnalisées** : stocke des informations utilisateur supplémentaires, vous pouvez l'utiliser pour stocker des fichiers qui ne correspondent pas aux données de base.
+2. **Données personnalisées** : stocke des informations utilisateur supplémentaires, vous pouvez utiliser cette section pour stocker des fichiers qui ne correspondent pas aux données de base.
 3. **Identités sociales** : stocke les informations utilisateur récupérées lors de la connexion sociale.
 
-Vous pouvez créer une correspondance pour faire le lien entre les informations de votre profil utilisateur existant et les **données de base** et **données personnalisées**. Pour la connexion sociale, des étapes supplémentaires sont nécessaires pour importer les identités sociales ; veuillez vous référer à l’API de [Lier une identité sociale à un utilisateur](https://openapi.logto.io/operation/operation-createuseridentity).
+Vous pouvez créer une correspondance pour faire le lien entre les informations de votre profil utilisateur existant et les **données de base** et **données personnalisées**. Pour la connexion sociale, des étapes supplémentaires sont nécessaires pour importer les identités sociales ; veuillez consulter l’API [Lier une identité sociale à un utilisateur](https://openapi.logto.io/operation/operation-createuseridentity).
 
 ## Hachage des mots de passe \{#password-hashing}
 
-Logto utilise [Argon2](https://en.wikipedia.org/wiki/Argon2) pour hacher le mot de passe de l'utilisateur, et prend également en charge d'autres algorithmes comme `MD5`, `SHA1`, `SHA256` et `Bcrypt` pour faciliter la migration. Ces algorithmes sont considérés comme non sécurisés, les mots de passe correspondants seront migrés vers Argon2 lors de la première connexion réussie de l'utilisateur.
+Logto utilise [Argon2](https://en.wikipedia.org/wiki/Argon2) pour hacher le mot de passe de l'utilisateur, et prend également en charge d'autres algorithmes comme `MD5`, `SHA1`, `SHA256` et `Bcrypt` pour faciliter la migration. Ces algorithmes sont considérés comme non sécurisés, les hachages de mots de passe correspondants seront migrés vers Argon2 lors de la première connexion réussie de l'utilisateur.
 
-Si vous utilisez d'autres algorithmes de hachage ou du sel, vous pouvez définir `passwordAlgorithm` sur `Legacy`, ce qui vous permet d'utiliser n'importe quel algorithme de hachage pris en charge par Node.js. Vous pouvez trouver la liste des algorithmes pris en charge dans la [documentation Node.js crypto](https://nodejs.org/api/crypto.html#cryptogethashes). Dans ce cas, le `passwordDigest` sera une chaîne JSON contenant l'algorithme de hachage et d'autres paramètres spécifiques à l'algorithme.
+Si vous utilisez d'autres algorithmes de hachage ou du sel, vous pouvez définir `passwordAlgorithm` sur `Legacy`, ce qui vous permet d'utiliser n'importe quel algorithme de hachage pris en charge par Node.js. Vous trouverez la liste des algorithmes pris en charge dans la [documentation crypto de Node.js](https://nodejs.org/api/crypto.html#cryptogethashes). Dans ce cas, le `passwordDigest` sera une chaîne JSON contenant l'algorithme de hachage et d'autres paramètres spécifiques à l'algorithme.
+
+### Format général Legacy \{#general-legacy-format}
 
 Le format de la chaîne JSON est le suivant :
 
@@ -44,6 +46,36 @@ hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
 
+### Prise en charge de PBKDF2 \{#pbkdf2-support}
+
+Logto prend spécifiquement en charge [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2).
+
+Pour migrer des mots de passe hachés avec PBKDF2, définissez `passwordAlgorithm` sur `Legacy` et formatez le `passwordDigest` comme suit :
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+Les paramètres sont :
+
+- **`salt`** : La valeur du sel utilisée dans le hachage d'origine
+- **`iterations`** : Nombre d'itérations (ex : `"1000"`)
+- **`keylen`** : Longueur de la clé dérivée en octets (ex : `"20"`)
+- **`digest`** : La fonction de hachage utilisée (ex : `"sha512"`, `"sha256"`, `"sha1"`)
+- **`@`** : Espace réservé pour la valeur réelle du mot de passe
+- **`expected_hashed_value`** : Le résultat attendu du hachage sous forme de chaîne hexadécimale
+
+**Exemple de charge utile de migration :**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
 ## Étapes de migration \{#steps-to-migrate}
 
 1.  **Préparer les données utilisateur**  
@@ -65,11 +97,11 @@ const expectedHashedValue = hash.digest('hex');
     ```
 
 2.  **Créer un tenant Logto**  
-    Vous devrez configurer un tenant dans Logto. Vous pouvez utiliser Logto Cloud ou Logto OSS. Si ce n'est pas déjà fait, veuillez consulter le guide [Configurer Logto cloud](/introduction/set-up-logto-cloud/#create-logto-tenant).
+    Vous devrez configurer un tenant dans Logto. Vous pouvez utiliser Logto Cloud ou Logto OSS. Si ce n'est pas encore fait, veuillez consulter le guide [Configurer Logto cloud](/introduction/set-up-logto-cloud/#create-logto-tenant).
 3.  **Configurer la connexion à Management API**  
     Nous utiliserons Management API pour importer les données utilisateur. Vous pouvez consulter la page [Management API](/integrate-logto/interact-with-management-api) pour apprendre à configurer la connexion dans votre environnement de développement.
 4.  **Importer les données utilisateur**  
-    Il est recommandé de préparer un script pour importer les données utilisateur une par une. Nous appellerons l’API [create user](https://openapi.logto.io/operation/operation-createuser) pour importer les données utilisateur. Voici un exemple de script :
+    Il est recommandé de préparer un script pour importer les données utilisateur une par une. Nous appellerons l’API [créer un utilisateur](https://openapi.logto.io/operation/operation-createuser) pour importer les données utilisateur. Voici un exemple de script :
 
     ```jsx
     const users = require('./users.json');
@@ -85,10 +117,12 @@ const expectedHashedValue = hash.digest('hex');
             },
             body: JSON.stringify(user),
           });
-          // Sleep for a while to avoid rate limit
+          // Pause pour éviter la limite de débit
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Failed to import user ${user.username}: ${error.message}`);
+          console.error(
+            `Échec de l'importation de l'utilisateur ${user.username} : ${error.message}`
+          );
         }
       }
     };
@@ -96,7 +130,7 @@ const expectedHashedValue = hash.digest('hex');
     importUsers();
     ```
 
-Veuillez noter que le point d’API est soumis à une limitation de débit ; vous devez ajouter une pause entre chaque requête pour éviter d’atteindre la limite. Veuillez consulter notre page sur les [limitations de débit](/integrate-logto/interact-with-management-api/#rate-limit) pour plus de détails.
+Veuillez noter que le point d'accès API est soumis à une limite de débit ; vous devez ajouter une pause entre chaque requête pour éviter la limite. Veuillez consulter notre page [limites de débit](/integrate-logto/interact-with-management-api/#rate-limit) pour plus de détails.
 
 Si vous avez un grand volume de données utilisateur (plus de 100 000 utilisateurs), vous pouvez [nous contacter](https://logto.io/contact) pour augmenter la limite de débit.
 

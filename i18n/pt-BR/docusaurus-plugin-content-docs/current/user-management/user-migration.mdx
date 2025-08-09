@@ -6,21 +6,23 @@ sidebar_position: 5
 
 O Logto suporta a migração manual de usuários existentes de outra plataforma. Este guia mostrará como importar usuários existentes via Management API e falará sobre pontos que você deve considerar antes de migrar.
 
-## Esquema de usuário \{#user-schema}
+## Esquema do usuário \{#user-schema}
 
-Antes de começarmos, vamos dar uma olhada no [esquema de usuário](/user-management/user-data/#user-profile) no Logto. Existem 3 partes do esquema de usuário que você deve conhecer:
+Antes de começarmos, vamos dar uma olhada no [esquema do usuário](/user-management/user-data/#user-profile) no Logto. Existem 3 partes do esquema do usuário que você deve conhecer:
 
-1. **Dados básicos**: são as informações básicas do perfil do usuário, você pode mapear os dados do seu perfil de usuário existente.
-2. **Dados personalizados**: armazena informações adicionais do usuário, você pode usar isso para armazenar arquivos que não podem ser mapeados nos dados básicos.
+1. **Dados básicos**: são as informações básicas do perfil do usuário; você pode mapear os dados do seu perfil de usuário existente.
+2. **Dados personalizados**: armazena informações adicionais do usuário; você pode usar isso para armazenar arquivos que não podem ser mapeados para os dados básicos.
 3. **Identidades sociais**: armazena as informações do usuário recuperadas do login social.
 
-Você pode criar um mapa para associar as informações do seu perfil de usuário existente aos **dados básicos** e **dados personalizados**. Para login social, serão necessários passos adicionais para importar as identidades sociais; consulte a API de [Vincular identidade social ao usuário](https://openapi.logto.io/operation/operation-createuseridentity).
+Você pode criar um mapa para corresponder as informações do seu perfil de usuário existente com os **dados básicos** e **dados personalizados**. Para login social, você precisará de etapas adicionais para importar as identidades sociais; consulte a API de [Vincular identidade social ao usuário](https://openapi.logto.io/operation/operation-createuseridentity).
 
 ## Hash de senha \{#password-hashing}
 
 O Logto utiliza [Argon2](https://en.wikipedia.org/wiki/Argon2) para hashear a senha do usuário, e também suporta outros algoritmos como `MD5`, `SHA1`, `SHA256` e `Bcrypt` para facilitar a migração. Esses algoritmos são considerados inseguros; os hashes de senha correspondentes serão migrados para Argon2 no primeiro login bem-sucedido do usuário.
 
-Se você estiver usando outros algoritmos de hash ou salt, pode definir o `passwordAlgorithm` como `Legacy`, permitindo o uso de qualquer algoritmo de hash suportado pelo Node.js. Você pode encontrar a lista de algoritmos suportados na [documentação do Node.js crypto](https://nodejs.org/api/crypto.html#cryptogethashes). Nesse caso, o `passwordDigest` será uma string JSON que contém o algoritmo de hash e outros parâmetros específicos do algoritmo.
+Se você estiver usando outros algoritmos de hash ou salt, pode definir o `passwordAlgorithm` como `Legacy`, o que permite usar qualquer algoritmo de hash suportado pelo Node.js. Você pode encontrar a lista de algoritmos suportados na [documentação do Node.js crypto](https://nodejs.org/api/crypto.html#cryptogethashes). Nesse caso, o `passwordDigest` será uma string JSON que contém o algoritmo de hash e outros parâmetros específicos do algoritmo.
+
+### Formato geral Legacy \{#general-legacy-format}
 
 O formato da string JSON é o seguinte:
 
@@ -44,10 +46,40 @@ hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
 
+### Suporte a PBKDF2 \{#pbkdf2-support}
+
+O Logto suporta especificamente [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2).
+
+Para migrar senhas hasheadas com PBKDF2, defina o `passwordAlgorithm` como `Legacy` e formate o `passwordDigest` da seguinte forma:
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+Os parâmetros são:
+
+- **`salt`**: O valor do salt usado na hash original
+- **`iterations`**: Número de iterações (ex: `"1000"`)
+- **`keylen`**: Tamanho da chave derivada em bytes (ex: `"20"`)
+- **`digest`**: A função de hash utilizada (ex: `"sha512"`, `"sha256"`, `"sha1"`)
+- **`@`**: Placeholder para o valor real da senha
+- **`expected_hashed_value`**: O resultado esperado do hash como uma string hexadecimal
+
+**Exemplo de payload de migração:**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
 ## Etapas para migrar \{#steps-to-migrate}
 
-1.  **Prepare os dados do usuário**  
-    Você deve primeiro exportar os dados dos usuários da sua plataforma atual e, em seguida, mapear as informações do usuário para o esquema de usuário do Logto. Recomendamos preparar os dados mapeados em formato JSON. Aqui está um exemplo dos dados do usuário:
+1.  **Prepare os dados dos usuários**  
+    Primeiro, você deve exportar os dados dos usuários da sua plataforma atual e, em seguida, mapear as informações dos usuários para o esquema de usuário do Logto. Recomendamos que você prepare os dados mapeados em formato JSON. Aqui está um exemplo dos dados do usuário:
 
     ```json
     [
@@ -64,12 +96,12 @@ const expectedHashedValue = hash.digest('hex');
     ]
     ```
 
-2.  **Crie um tenant Logto**  
+2.  **Crie um tenant no Logto**  
     Você precisará configurar um tenant no Logto. Você pode usar tanto o Logto Cloud quanto o Logto OSS. Se ainda não fez isso, consulte o guia [Configurar Logto cloud](/introduction/set-up-logto-cloud/#create-logto-tenant).
 3.  **Configure a conexão com a Management API**  
-    Usaremos a Management API para importar os dados dos usuários. Você pode consultar a [Management API](/integrate-logto/interact-with-management-api) para aprender como configurar a conexão em seu ambiente de desenvolvimento.
+    Usaremos a Management API para importar os dados dos usuários. Você pode consultar a [Management API](/integrate-logto/interact-with-management-api) para aprender como configurar a conexão no seu ambiente de desenvolvimento.
 4.  **Importe os dados dos usuários**  
-    Recomenda-se preparar um script para importar os dados dos usuários um por um. Chamaremos a API [criar usuário](https://openapi.logto.io/operation/operation-createuser) para importar os dados. Veja um exemplo de script:
+    Recomenda-se preparar um script para importar os dados dos usuários um por um. Chamaremos a API [create user](https://openapi.logto.io/operation/operation-createuser) para importar os dados dos usuários. Aqui está um exemplo de script:
 
     ```jsx
     const users = require('./users.json');
@@ -85,10 +117,10 @@ const expectedHashedValue = hash.digest('hex');
             },
             body: JSON.stringify(user),
           });
-          // Aguarde um tempo para evitar limite de taxa
+          // Sleep for a while to avoid rate limit
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Falha ao importar usuário ${user.username}: ${error.message}`);
+          console.error(`Failed to import user ${user.username}: ${error.message}`);
         }
       }
     };
@@ -96,7 +128,7 @@ const expectedHashedValue = hash.digest('hex');
     importUsers();
     ```
 
-Observe que o endpoint da API possui limite de taxa; você deve adicionar uma pausa entre cada requisição para evitar o rate limit. Consulte nossa página de [limites de taxa](/integrate-logto/interact-with-management-api/#rate-limit) para mais detalhes.
+Observe que o endpoint da API possui limite de taxa; você deve adicionar um tempo de espera entre cada requisição para evitar o rate limit. Consulte nossa página de [limites de taxa](/integrate-logto/interact-with-management-api/#rate-limit) para mais detalhes.
 
 Se você tiver uma grande quantidade de dados de usuários (100k+ usuários), pode [entrar em contato conosco](https://logto.io/contact) para aumentar o limite de taxa.
 

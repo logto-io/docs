@@ -4,23 +4,25 @@ sidebar_position: 5
 
 # 使用者遷移 (User migration)
 
-Logto 支援手動將現有使用者從其他平台遷移，本指南將說明如何透過 Management API 匯入現有使用者，並介紹遷移前你應考慮的事項。
+Logto 支援從其他平台手動遷移現有使用者。本指南將說明如何透過 Management API 匯入現有使用者，以及遷移前你應考慮的事項。
 
 ## 使用者結構 (User schema) \{#user-schema}
 
 在開始之前，讓我們先看看 Logto 的 [使用者結構](/user-management/user-data/#user-profile)。你需要注意使用者結構的三個部分：
 
 1. **基本資料 (Basic data)**：來自使用者檔案的基本資訊，你可以將現有使用者檔案的資料對應到這裡。
-2. **自訂資料 (Custom data)**：儲存額外的使用者資訊，適合存放無法對應到基本資料的欄位。
+2. **自訂資料 (Custom data)**：儲存額外的使用者資訊，可用於存放無法對應到基本資料的欄位。
 3. **社交身分 (Social identities)**：儲存從社交登入取得的使用者資訊。
 
-你可以建立一個對應表，將現有使用者檔案的資訊對應到 **基本資料 (basic data)** 與 **自訂資料 (custom data)**。若有社交登入，需額外步驟匯入社交身分，請參考 [連結社交身分至使用者 (Link social identity to user)](https://openapi.logto.io/operation/operation-createuseridentity) 的 API。
+你可以建立對照表，將現有使用者檔案的資訊對應到 **基本資料 (basic data)** 與 **自訂資料 (custom data)**。若有社交登入，需額外步驟匯入社交身分，請參考 [連結社交身分至使用者 (Link social identity to user)](https://openapi.logto.io/operation/operation-createuseridentity) 的 API。
 
 ## 密碼雜湊 (Password hashing) \{#password-hashing}
 
-Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 進行使用者密碼雜湊，並為遷移方便，也支援 `MD5`、`SHA1`、`SHA256` 和 `Bcrypt` 等其他演算法。這些演算法被認為不安全，對應的密碼雜湊值會在使用者首次成功登入時自動遷移為 Argon2。
+Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 進行使用者密碼雜湊，並為遷移方便支援其他演算法，如 `MD5`、`SHA1`、`SHA256` 及 `Bcrypt`。這些演算法被認為不安全，對應的密碼雜湊值會在使用者首次成功登入時自動遷移為 Argon2。
 
-如果你使用其他雜湊演算法或加鹽，可以將 `passwordAlgorithm` 設為 `Legacy`，這樣可使用 Node.js 支援的任何雜湊演算法。支援的演算法列表可參考 [Node.js crypto 文件](https://nodejs.org/api/crypto.html#cryptogethashes)。此情況下，`passwordDigest` 需為包含雜湊演算法及其他參數的 JSON 字串。
+如果你使用其他雜湊演算法或加鹽，可以將 `passwordAlgorithm` 設為 `Legacy`，這允許你使用 Node.js 支援的任何雜湊演算法。支援的演算法列表可參考 [Node.js crypto 文件](https://nodejs.org/api/crypto.html#cryptogethashes)。此情況下，`passwordDigest` 需為包含雜湊演算法及其他參數的 JSON 字串。
+
+### 一般 Legacy 格式 \{#general-legacy-format}
 
 JSON 字串格式如下：
 
@@ -28,9 +30,9 @@ JSON 字串格式如下：
 ["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
 ```
 
-你可以用 `@` 作為參數中的實際密碼值佔位符。
+你可以用 `@` 作為實際密碼值的佔位符。
 
-例如，若你使用 SHA256 並加鹽，可將密碼儲存為下列格式：
+例如，若你使用 SHA256 並加鹽，可如下儲存密碼：
 
 ```json
 ["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
@@ -44,10 +46,40 @@ hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
 
+### PBKDF2 支援 \{#pbkdf2-support}
+
+Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
+
+若要遷移 PBKDF2 雜湊的密碼，請將 `passwordAlgorithm` 設為 `Legacy`，並將 `passwordDigest` 格式化如下：
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+參數說明：
+
+- **`salt`**：原始雜湊時使用的鹽值
+- **`iterations`**：迭代次數（如 `"1000"`）
+- **`keylen`**：導出金鑰長度（位元組，例 `"20"`）
+- **`digest`**：使用的雜湊函式（如 `"sha512"`、`"sha256"`、`"sha1"`）
+- **`@`**：實際密碼值的佔位符
+- **`expected_hashed_value`**：預期的雜湊結果（十六進位字串）
+
+**範例遷移 payload：**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
 ## 遷移步驟 (Steps to migrate) \{#steps-to-migrate}
 
-1.  **準備使用者資料 (Prepare the user data)**
-    你應先從現有平台匯出使用者資料，並將使用者資訊對應到 Logto 的使用者結構。我們建議你將對應後的資料整理為 JSON 格式。以下為使用者資料範例：
+1.  **準備使用者資料**
+    你應先從現有平台匯出使用者資料，並將資訊對應到 Logto 的使用者結構。我們建議你將對應後的資料整理為 JSON 格式。以下為範例：
 
     ```json
     [
@@ -64,12 +96,12 @@ const expectedHashedValue = hash.digest('hex');
     ]
     ```
 
-2.  **建立 Logto 租戶 (Create a Logto tenant)**
+2.  **建立 Logto 租戶 (tenant)**
     你需要在 Logto 建立一個租戶。可選擇 Logto Cloud 或 Logto OSS。若尚未建立，請參考 [設定 Logto Cloud](/introduction/set-up-logto-cloud/#create-logto-tenant) 指南。
-3.  **設定 Management API 連線 (Setup the connection of Management API)**
-    我們將使用 Management API 匯入使用者資料，請參考 [Management API](/integrate-logto/interact-with-management-api) 了解如何在開發環境中設定連線。
-4.  **匯入使用者資料 (Import the user data)**
-    建議你撰寫腳本逐一匯入使用者資料，將呼叫 [建立使用者 (create user)](https://openapi.logto.io/operation/operation-createuser) API 來匯入。以下為腳本範例：
+3.  **設置 Management API 連線**
+    我們將使用 Management API 匯入使用者資料，請參考 [Management API](/integrate-logto/interact-with-management-api) 了解如何在開發環境設置連線。
+4.  **匯入使用者資料**
+    建議你撰寫腳本逐一匯入使用者資料，將呼叫 [建立使用者 (create user)](https://openapi.logto.io/operation/operation-createuser) API。以下為腳本範例：
 
     ```jsx
     const users = require('./users.json');
@@ -85,7 +117,7 @@ const expectedHashedValue = hash.digest('hex');
             },
             body: JSON.stringify(user),
           });
-          // Sleep for a while to avoid rate limit
+          // 為避免觸發速率限制，請暫停一段時間
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
           console.error(`Failed to import user ${user.username}: ${error.message}`);
@@ -96,7 +128,7 @@ const expectedHashedValue = hash.digest('hex');
     importUsers();
     ```
 
-請注意 API 端點有速率限制，你應在每次請求間加入延遲以避免觸發限制。詳情請參閱 [速率限制 (rate limits)](/integrate-logto/interact-with-management-api/#rate-limit) 頁面。
+請注意，API 端點有速率限制，請於每次請求間加入暫停以避免觸發限制。詳情請參閱 [速率限制](/integrate-logto/interact-with-management-api/#rate-limit) 頁面。
 
 若你有大量使用者資料（10 萬以上），可[聯絡我們](https://logto.io/contact)以提升速率限制。
 

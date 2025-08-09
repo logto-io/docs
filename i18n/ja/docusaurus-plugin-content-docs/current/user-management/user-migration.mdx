@@ -11,16 +11,18 @@ Logto は、他のプラットフォームから既存ユーザーを手動で�
 始める前に、Logto の [ユーザースキーマ](/user-management/user-data/#user-profile) を見てみましょう。ユーザースキーマには、次の 3 つの部分があります：
 
 1. **基本データ**：ユーザープロファイルからの基本情報で、既存のユーザープロファイルのデータとマッチさせることができます。
-2. **カスタムデータ**：追加のユーザー情報を保存します。基本データにマッチできないファイルなどを保存するのに利用できます。
+2. **カスタムデータ**：追加のユーザー情報を保存します。基本データにマッチしないファイルなどを保存するのに利用できます。
 3. **ソーシャルアイデンティティ**：ソーシャルサインインから取得したユーザー情報を保存します。
 
-既存のユーザープロファイルから **基本データ** および **カスタムデータ** へ情報をマッピングするためのマップを作成できます。ソーシャルサインインの場合は、ソーシャルアイデンティティをインポートするために追加の手順が必要です。詳細は [Link social identity to user](https://openapi.logto.io/operation/operation-createuseridentity) の API を参照してください。
+既存のユーザープロファイルから **基本データ** および **カスタムデータ** へ情報をマッピングするためのマップを作成できます。ソーシャルサインインの場合は、ソーシャルアイデンティティをインポートするために追加の手順が必要です。詳細は [ソーシャルアイデンティティをユーザーにリンクする](https://openapi.logto.io/operation/operation-createuseridentity) API を参照してください。
 
 ## パスワードハッシュ化 \{#password-hashing}
 
 Logto は [Argon2](https://en.wikipedia.org/wiki/Argon2) を使ってユーザーのパスワードをハッシュ化していますが、移行の利便性のために `MD5`、`SHA1`、`SHA256`、`Bcrypt` など他のアルゴリズムもサポートしています。これらのアルゴリズムは安全ではないと考えられており、該当するパスワードハッシュはユーザーが初めてサインインに成功した際に Argon2 へ移行されます。
 
-他のハッシュアルゴリズムやソルトを使用している場合は、`passwordAlgorithm` を `Legacy` に設定できます。これにより、Node.js でサポートされている任意のハッシュアルゴリズムを利用できます。サポートされているアルゴリズムの一覧は [Node.js crypto ドキュメント](https://nodejs.org/api/crypto.html#cryptogethashes) で確認できます。この場合、`passwordDigest` はハッシュアルゴリズムやその他のアルゴリズム固有のパラメータを含む JSON 文字列になります。
+他のハッシュアルゴリズムやソルトを使用している場合は、`passwordAlgorithm` を `Legacy` に設定できます。これにより、Node.js でサポートされている任意のハッシュアルゴリズムを利用できます。サポートされているアルゴリズムの一覧は [Node.js crypto ドキュメント](https://nodejs.org/api/crypto.html#cryptogethashes) で確認できます。この場合、`passwordDigest` はハッシュアルゴリズムやその他のアルゴリズム固有のパラメータを含む JSON 文字列となります。
+
+### 一般的な Legacy フォーマット \{#general-legacy-format}
 
 JSON 文字列のフォーマットは次の通りです：
 
@@ -30,7 +32,7 @@ JSON 文字列のフォーマットは次の通りです：
 
 引数内で実際のパスワード値のプレースホルダーとして `@` を使用できます。
 
-例えば、SHA256 とソルトを使っている場合、パスワードは次の形式で保存できます：
+例えば、SHA256 とソルトを使っている場合、パスワードは次のような形式で保存できます：
 
 ```json
 ["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
@@ -44,10 +46,40 @@ hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
 
+### PBKDF2 サポート \{#pbkdf2-support}
+
+Logto は [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2) を特別にサポートしています。
+
+PBKDF2 でハッシュ化されたパスワードを移行するには、`passwordAlgorithm` を `Legacy` に設定し、`passwordDigest` を次のようにフォーマットします：
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+各パラメータの意味は以下の通りです：
+
+- **`salt`**：元のハッシュ化で使用したソルト値
+- **`iterations`**：イテレーション回数（例: `"1000"`）
+- **`keylen`**：導出キーのバイト長（例: `"20"`）
+- **`digest`**：使用したハッシュ関数（例: `"sha512"`、`"sha256"`、`"sha1"`）
+- **`@`**：実際のパスワード値のプレースホルダー
+- **`expected_hashed_value`**：16 進数文字列としての期待されるハッシュ結果
+
+**移行ペイロード例：**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
 ## 移行手順 \{#steps-to-migrate}
 
 1.  **ユーザーデータの準備**
-    まず既存プラットフォームからユーザーデータをエクスポートし、Logto のユーザースキーマに情報をマッピングします。マッピングしたデータは JSON 形式で準備することを推奨します。以下はユーザーデータの例です：
+    まず既存プラットフォームからユーザーデータをエクスポートし、Logto のユーザースキーマに情報をマッピングします。マッピング済みデータは JSON 形式で準備することを推奨します。ユーザーデータの例は以下の通りです：
 
     ```json
     [
@@ -65,9 +97,9 @@ const expectedHashedValue = hash.digest('hex');
     ```
 
 2.  **Logto テナントの作成**
-    Logto でテナントをセットアップする必要があります。Logto Cloud または Logto OSS のいずれかを利用できます。まだセットアップしていない場合は、[Logto cloud のセットアップ](/introduction/set-up-logto-cloud/#create-logto-tenant) ガイドを参照してください。
+    Logto でテナントをセットアップする必要があります。Logto Cloud または Logto OSS のいずれかを利用できます。まだセットアップしていない場合は、[Logto Cloud のセットアップ](/introduction/set-up-logto-cloud/#create-logto-tenant) ガイドを参照してください。
 3.  **Management API の接続設定**
-    Management API を使ってユーザーデータをインポートします。開発環境での接続方法については [Management API](/integrate-logto/interact-with-management-api) を参照してください。
+    Management API を使ってユーザーデータをインポートします。開発環境での接続方法は [Management API](/integrate-logto/interact-with-management-api) を参照してください。
 4.  **ユーザーデータのインポート**
     ユーザーデータを 1 件ずつインポートするスクリプトを用意することを推奨します。[create user](https://openapi.logto.io/operation/operation-createuser) API を呼び出してユーザーデータをインポートします。スクリプト例は以下の通りです：
 
@@ -88,7 +120,7 @@ const expectedHashedValue = hash.digest('hex');
           // レートリミット回避のため少し待機
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Failed to import user ${user.username}: ${error.message}`);
+          console.error(`ユーザー ${user.username} のインポートに失敗しました: ${error.message}`);
         }
       }
     };
@@ -96,9 +128,9 @@ const expectedHashedValue = hash.digest('hex');
     importUsers();
     ```
 
-API エンドポイントにはレートリミットがあるため、各リクエストの間に待機時間を設けてください。詳細は [レートリミット](/integrate-logto/interact-with-management-api/#rate-limit) ページを確認してください。
+API エンドポイントにはレートリミットがあるため、各リクエストの間にスリープを入れてレートリミットを回避してください。詳細は [レートリミット](/integrate-logto/interact-with-management-api/#rate-limit) ページをご確認ください。
 
-大量のユーザーデータ（10 万件以上）がある場合は、[こちらからご連絡ください](https://logto.io/contact) 。レートリミットの引き上げが可能です。
+大量のユーザーデータ（10 万件以上）がある場合は、[こちらからお問い合わせください](https://logto.io/contact) 。レートリミットの引き上げが可能です。
 
 ## 関連リソース \{#related-resources}
 
