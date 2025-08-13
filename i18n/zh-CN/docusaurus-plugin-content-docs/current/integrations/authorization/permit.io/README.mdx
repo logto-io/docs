@@ -1,0 +1,165 @@
+---
+slug: /integrations/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: 将 Logto 集成到 Permit.io。
+---
+
+# 使用 Permit.io 设置授权 (Authorization)
+
+[Permit.io](https://permit.io/) 是一个授权 (Authorization) 平台，为应用程序提供细粒度的访问控制。你可以将 Logto 与 Permit.io 结合使用，管理用户认证 (Authentication) 和授权 (Authorization)。
+
+:::tip
+要了解认证 (Authentication) 与授权 (Authorization) 的关键区别，请参阅 [认证 (Authentication) 与授权 (Authorization)](/concepts/authn-vs-authz)。
+:::
+
+本指南将向你展示如何将 Logto 与 Permit.io 连接，在你的应用中实现授权 (Authorization)。
+
+## 前置条件 \{#prerequisites}
+
+- 一个 [Logto Cloud](https://cloud.logto.io/) 账户或 [自托管 Logto](https://docs.logto.io/introduction/set-up-logto-oss)。
+- 一个已设置 Logto 认证 (Authentication) 的 Next.js 应用（如果还没有，请按照我们的 [Next.js 指南](https://docs.logto.io/quick-starts/next) 操作）
+- 一个 [Permit.io](https://app.permit.io/) 账户。请按照官方 [Permit.io 快速入门指南](https://docs.permit.io/quickstart/) 设置你的 Permit.io 项目后再继续。
+
+## 集成 \{#integration}
+
+### 安装 Permit.io SDK \{#install-permitio-sdk}
+
+将 Permit.io SDK 添加到你的应用中：
+
+```bash
+npm install permitio
+```
+
+### 创建 Permit.io 项目 \{#create-a-permitio-project}
+
+1. 在 [permit.io](https://app.permit.io/) 注册免费账户
+2. 创建新项目并获取你的 API 密钥
+3. 将 API 密钥添加到你的环境变量中：
+
+```bash
+PERMIT_API_KEY=your-permit-api-key
+```
+
+### 设置 Permit.io 客户端 \{#set-up-permitio-client}
+
+创建一个文件用于处理 Permit.io 集成：
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// 初始化 Permit.io 客户端
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'your-permitio-api-key',
+});
+
+// 同步用户到 Permit.io
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // 首先，同步用户
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // 然后为用户分配角色
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### 为用户注册创建 Logto Webhook \{#create-a-logto-webhook-for-user-registration}
+
+Logto 提供了 [webhook](/developers/webhooks)，可以在事件发生时通知你的应用。我们将使用 `PostRegister` webhook，在用户注册时 [同步用户到 Permit.io](https://docs.permit.io/authentication/permit-and-authentication)。
+
+在你的应用中创建一个 webhook 端点：
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // 打印 webhook 负载以便调试
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // 处理用户注册事件
+  if (event === 'PostRegister') {
+    try {
+      // 确定用户角色（你可以在这里实现自己的逻辑）
+      let role = 'viewer'; // 默认角色
+
+      // 同步用户到 Permit.io
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error syncing user:', error);
+      return res.status(500).json({ error: 'Failed to sync user' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Event ignored' });
+}
+```
+
+### 在 Logto 控制台配置 Webhook \{#configure-the-webhook-in-logto-console}
+
+1. 进入 Logto 控制台的 Webhook 部分
+2. 点击“创建 Webhook”
+3. 给你的 webhook 命名
+4. 输入你的端点 URL（例如 `https://your-app.com/api/webhooks/logto`）
+5. 选择 `PostRegister` 事件
+6. 保存 webhook
+
+:::note
+本地开发时，你可以使用 [ngrok](https://ngrok.com/) 等工具将本地服务器暴露到互联网。
+:::
+
+### 测试用户同步 \{#test-user-sync}
+
+测试用户是否被正确同步：
+
+1. 在你的应用中创建一个新用户账户
+2. 在 Permit.io 控制台的“Directory” → “Users”下检查用户是否已同步
+3. 验证用户注册时是否被分配了正确的角色
+
+<img src="/img/assets/permitio.png" alt="Logto 用户已同步到 Permit.io 并分配了角色" />
+
+### 使用 Permit.io 进行授权 (Authorization) \{#use-permitio-for-authorization}
+
+用户同步后，你可以使用 Permit.io 检查权限：
+
+```jsx
+// 检查权限的示例
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // 用户被允许查看资源
+  // 显示资源界面
+} else {
+  // 用户不被允许查看资源
+  // 显示无权访问提示
+}
+```
+
+## 总结 \{#conclusion}
+
+你已成功将 Logto 与 Permit.io 连接，实现了用户自动同步和授权 (Authorization) 功能。通过这种集成：
+
+1. 用户通过 Logto 进行认证 (Authentication)
+2. 新用户通过 webhook 自动同步到 Permit.io
+3. 你可以使用 Permit.io 检查权限并实现访问控制
+
+这种设置为你的应用后续实现更高级的授权 (Authorization) 模式打下了坚实基础。
+
+如需了解更多高级授权 (Authorization) 用例，请查阅 [Permit.io 文档](https://docs.permit.io/)，了解如何创建策略、强制执行权限和实现基于角色的访问控制 (RBAC)。

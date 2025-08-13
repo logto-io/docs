@@ -6,10 +6,27 @@ const headingRegex = /^(#+)\s+(.*?)(\s*{#(.*?)})?$/;
 
 const generateHeadingId = (text) =>
   text
+    // Normalize and strip diacritics (e.g., Café -> Cafe)
+    .normalize('NFKD')
+    .replaceAll(/[\u0300-\u036F]/g, '')
+    // Ignore apostrophes to align with GitHub/Docusaurus heading slug convention
+    .replaceAll("'", '')
+    .replaceAll('’', '')
     .toLowerCase()
-    .split(/[^\da-z-]/gi)
-    .filter(Boolean)
-    .join('-');
+    // Replace non-alphanumeric sequences with single hyphen
+    .replaceAll(/[^\da-z]+/g, '-')
+    // Trim leading/trailing hyphens
+    .replaceAll(/(^-+)|(-+$)/g, '');
+
+function ensureUniqueId(baseId, used) {
+  let id = baseId;
+  let i = 1;
+  while (used.has(id)) {
+    id = `${baseId}-${i++}`;
+  }
+  used.add(id);
+  return id;
+}
 
 async function getFiles(dir) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -66,6 +83,7 @@ async function processFile(filePath) {
 
   const lines = content.split('\n');
   const generatedIds = [];
+  const usedIds = new Set();
   let modified = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -78,10 +96,12 @@ async function processFile(filePath) {
 
     if (existingIdMark && existingId) {
       generatedIds.push(existingId);
+      usedIds.add(existingId);
       continue;
     }
 
-    const newId = generateHeadingId(text);
+    const baseId = generateHeadingId(text);
+    const newId = ensureUniqueId(baseId, usedIds);
     const idStr = ext === '.mdx' ? `\\{#${newId}}` : `{#${newId}}`;
     lines[i] = `${hashes} ${text.replace(' \\', '')} ${idStr}`;
     generatedIds.push(newId);
