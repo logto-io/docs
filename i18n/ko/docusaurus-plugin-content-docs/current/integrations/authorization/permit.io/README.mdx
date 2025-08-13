@@ -1,0 +1,165 @@
+---
+slug: /integrations/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: Logto를 Permit.io와 통합하세요.
+---
+
+# Permit.io로 인가 (Authorization) 설정하기
+
+[Permit.io](https://permit.io/)는 애플리케이션을 위한 세밀한 접근 제어를 제공하는 인가 (Authorization) 플랫폼입니다. Logto를 Permit.io와 함께 사용하여 사용자 인증 (Authentication) 및 인가 (Authorization)를 관리할 수 있습니다.
+
+:::tip
+인증 (Authentication)과 인가 (Authorization)의 주요 차이점을 이해하려면 [인증 (Authentication) vs. 인가 (Authorization)](/concepts/authn-vs-authz)를 참고하세요.
+:::
+
+이 가이드는 Logto와 Permit.io를 연결하여 애플리케이션에 인가 (Authorization)를 구현하는 방법을 안내합니다.
+
+## 사전 준비 사항 \{#prerequisites}
+
+- [Logto Cloud](https://cloud.logto.io/) 계정 또는 [셀프 호스팅 Logto](https://docs.logto.io/introduction/set-up-logto-oss)
+- Logto 인증 (Authentication)이 이미 설정된 Next.js 애플리케이션 ([Next.js 가이드](https://docs.logto.io/quick-starts/next)를 참고하세요)
+- [Permit.io](https://app.permit.io/) 계정. 진행하기 전에 공식 [Permit.io 빠른 시작 가이드](https://docs.permit.io/quickstart/)를 따라 Permit.io 프로젝트를 설정하세요.
+
+## 통합 (Integration) \{#integration}
+
+### Permit.io SDK 설치하기 \{#install-permitio-sdk}
+
+애플리케이션에 Permit.io SDK를 추가하세요:
+
+```bash
+npm install permitio
+```
+
+### Permit.io 프로젝트 생성하기 \{#create-a-permitio-project}
+
+1. [permit.io](https://app.permit.io/)에서 무료 계정에 가입하세요.
+2. 새 프로젝트를 생성하고 API 키를 받으세요.
+3. API 키를 환경 변수에 추가하세요:
+
+```bash
+PERMIT_API_KEY=your-permit-api-key
+```
+
+### Permit.io 클라이언트 설정하기 \{#set-up-permitio-client}
+
+Permit.io 통합을 처리할 파일을 만드세요:
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// Permit.io 클라이언트 초기화
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'your-permitio-api-key',
+});
+
+// 사용자를 Permit.io와 동기화
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // 먼저 사용자를 동기화합니다
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // 그런 다음 사용자에게 역할을 할당합니다
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### 사용자 등록을 위한 Logto Webhook 만들기 \{#create-a-logto-webhook-for-user-registration}
+
+Logto는 이벤트 발생 시 애플리케이션에 알릴 수 있는 [웹훅 (Webhook)](/developers/webhooks)을 제공합니다. 회원가입 시 사용자를 [Permit.io로 동기화](https://docs.permit.io/authentication/permit-and-authentication)하기 위해 `PostRegister` 웹훅을 사용할 것입니다.
+
+애플리케이션에 웹훅 엔드포인트를 만드세요:
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // 디버깅을 위해 웹훅 페이로드를 출력
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // 사용자 등록 이벤트 처리
+  if (event === 'PostRegister') {
+    try {
+      // 사용자의 역할을 결정 (여기서 직접 로직을 구현할 수 있습니다)
+      let role = 'viewer'; // 기본 역할
+
+      // 사용자를 Permit.io로 동기화
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error syncing user:', error);
+      return res.status(500).json({ error: 'Failed to sync user' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Event ignored' });
+}
+```
+
+### Logto 콘솔에서 웹훅 설정하기 \{#configure-the-webhook-in-logto-console}
+
+1. Logto 콘솔의 Webhooks 섹션으로 이동하세요.
+2. "Create Webhook"을 클릭하세요.
+3. 웹훅 이름을 입력하세요.
+4. 엔드포인트 URL을 입력하세요 (예: `https://your-app.com/api/webhooks/logto`)
+5. `PostRegister` 이벤트를 선택하세요.
+6. 웹훅을 저장하세요.
+
+:::note
+로컬 개발 시 [ngrok](https://ngrok.com/)과 같은 도구를 사용하여 로컬 서버를 인터넷에 노출할 수 있습니다.
+:::
+
+### 사용자 동기화 테스트하기 \{#test-user-sync}
+
+사용자가 올바르게 동기화되는지 테스트하려면:
+
+1. 애플리케이션에서 새 사용자 계정을 만드세요.
+2. Permit.io 대시보드의 "Directory" → "Users"에서 사용자가 동기화되었는지 확인하세요.
+3. 회원가입 시 올바른 역할이 할당되었는지 확인하세요.
+
+![Logto 사용자가 Permit.io에 역할 할당과 함께 동기화됨](./permitio.png)
+
+### Permit.io로 인가 (Authorization) 사용하기 \{#use-permitio-for-authorization}
+
+사용자가 동기화되면 Permit.io를 사용하여 권한을 확인할 수 있습니다:
+
+```jsx
+// 권한 확인 예시
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // 사용자가 리소스를 볼 수 있음
+  // 리소스 UI를 표시
+} else {
+  // 사용자가 리소스를 볼 수 없음
+  // 접근 거부 메시지 표시
+}
+```
+
+## 결론 \{#conclusion}
+
+Logto와 Permit.io를 성공적으로 연결하여 사용자를 자동으로 동기화하고 애플리케이션에 인가 (Authorization)를 구현했습니다. 이 통합을 통해:
+
+1. 사용자는 Logto를 통해 인증 (Authentication)합니다.
+2. 신규 사용자는 웹훅을 통해 Permit.io로 자동 동기화됩니다.
+3. Permit.io를 사용하여 권한을 확인하고 접근 제어를 구현할 수 있습니다.
+
+이 설정은 애플리케이션이 성장함에 따라 더 고급 인가 (Authorization) 패턴을 구현할 수 있는 강력한 기반을 제공합니다.
+
+더 고급 인가 (Authorization) 사용 사례는 [Permit.io 문서](https://docs.permit.io/)에서 정책 생성, 권한 적용, 역할 기반 접근 제어 (RBAC) 구현 방법을 확인하세요.
