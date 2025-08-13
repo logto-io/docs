@@ -26,6 +26,11 @@ const integrations: SidebarConfig = [
   {
     type: 'link',
     label: 'Enterprise connectors',
+    /**
+     * The "additionalLabel" prop is used in "Gallery" component where the sidebar config is used
+     * to generate the gallery items. The additional label is appended to the label, in order to
+     * provide additional information about the category.
+     */
     customProps: { additionalLabel: '(SP-initiated SSO)' },
     href: '#',
     className: 'sidebar-section',
