@@ -80,7 +80,8 @@ export function useGoogleOneTapConfig(): {
     const loadConfig = async () => {
       const rawConfig = customFields?.googleOneTapConfig;
       if (typeof rawConfig !== 'string') {
-        throw new TypeError('Google One Tap config is not a string');
+        debugLogger.error('Google One Tap config is not a string');
+        return;
       }
       const parsedConfig = googleOneTapConfigSchema.safeParse(
         // eslint-disable-next-line no-restricted-syntax
