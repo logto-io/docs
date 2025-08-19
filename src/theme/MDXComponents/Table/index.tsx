@@ -73,11 +73,11 @@ export default function Table(props: HTMLAttributes<HTMLTableElement>) {
   const parsedHeadCells = Children.toArray(headRow.props.children).map((cell) =>
     parseHeaderCell(cell)
   );
-  const headCellElements = parsedHeadCells.map(async ({ element }) => element);
+  const headCellElements = parsedHeadCells.map(({ element }): ReactNode => element);
   const rebuiltHeadRow = cloneElement(headRow, {}, headCellElements);
   const rebuiltThead = cloneElement(theadNode, {}, rebuiltHeadRow);
-  const finalChildren = tableNodes.map(async (node, index) =>
-    index === theadPosition ? rebuiltThead : node
+  const finalChildren = tableNodes.map(
+    (node, index): ReactNode => (index === theadPosition ? rebuiltThead : node)
   );
 
   const hasWidths = parsedHeadCells.some((cell) => Boolean(cell.width));
