@@ -7,6 +7,8 @@ import Url from '@site/src/components/Url';
 
 import DocCardList from '../DocCardList';
 
+import Table from './Table';
+
 const components = {
   ...MDXComponents,
   CloudLink,
@@ -14,6 +16,7 @@ const components = {
   NavGroup,
   Url,
   MainSiteUrl,
+  table: Table,
 };
 
 export default components;
