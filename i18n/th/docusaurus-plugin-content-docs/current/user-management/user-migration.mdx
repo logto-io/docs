@@ -1,0 +1,139 @@
+---
+sidebar_position: 5
+---
+
+# การย้ายผู้ใช้ (User migration)
+
+Logto รองรับการย้ายผู้ใช้ที่มีอยู่จากแพลตฟอร์มอื่นแบบแมนนวล คู่มือนี้จะแสดงวิธีนำเข้าผู้ใช้ที่มีอยู่ผ่าน Management API และพูดถึงสิ่งที่ควรพิจารณาก่อนการย้ายข้อมูล
+
+## สคีมาผู้ใช้ (User schema) \{#user-schema}
+
+ก่อนเริ่มต้น มาดู [สคีมาผู้ใช้](/user-management/user-data/#user-profile) ใน Logto กันก่อน โดยสคีมาผู้ใช้ใน Logto มี 3 ส่วนที่ควรทราบ:
+
+1. **ข้อมูลพื้นฐาน**: คือข้อมูลพื้นฐานจากโปรไฟล์ผู้ใช้ คุณสามารถจับคู่ข้อมูลนี้กับโปรไฟล์ผู้ใช้เดิมของคุณได้
+2. **ข้อมูลกำหนดเอง**: เก็บข้อมูลเพิ่มเติมของผู้ใช้ ใช้สำหรับเก็บไฟล์หรือข้อมูลที่ไม่สามารถจับคู่กับข้อมูลพื้นฐานได้
+3. **โซเชียลไอดี (Social identities)**: เก็บข้อมูลผู้ใช้ที่ได้จากการลงชื่อเข้าใช้ผ่านโซเชียล
+
+คุณสามารถสร้างแผนที่ (mapping) เพื่อจับคู่ข้อมูลจากโปรไฟล์ผู้ใช้เดิมของคุณไปยัง **ข้อมูลพื้นฐาน** และ **ข้อมูลกำหนดเอง** สำหรับการลงชื่อเข้าใช้ผ่านโซเชียล จะต้องมีขั้นตอนเพิ่มเติมในการนำเข้า social identities โปรดดู API ของ [เชื่อมต่อโซเชียลไอดีเข้ากับผู้ใช้ (Link social identity to user)](https://openapi.logto.io/operation/operation-createuseridentity)
+
+## การแฮชรหัสผ่าน (Password hashing) \{#password-hashing}
+
+Logto ใช้ [Argon2](https://en.wikipedia.org/wiki/Argon2) ในการแฮชรหัสผ่านของผู้ใช้ และยังรองรับอัลกอริทึมอื่น ๆ เช่น `MD5`, `SHA1`, `SHA256` และ `Bcrypt` เพื่อความสะดวกในการย้ายข้อมูล อัลกอริทึมเหล่านี้ถือว่าไม่ปลอดภัย แฮชรหัสผ่านที่เกี่ยวข้องจะถูกย้ายไปเป็น Argon2 เมื่อผู้ใช้ลงชื่อเข้าใช้สำเร็จครั้งแรก
+
+หากคุณใช้อัลกอริทึมหรือ salt อื่น ๆ สามารถตั้งค่า `passwordAlgorithm` เป็น `Legacy` เพื่อให้คุณใช้แฮชอัลกอริทึมใด ๆ ที่ Node.js รองรับได้ ดูรายการอัลกอริทึมที่รองรับได้ใน [Node.js crypto documentation](https://nodejs.org/api/crypto.html#cryptogethashes) ในกรณีนี้ `passwordDigest` จะเป็นสตริง JSON ที่มีอัลกอริทึมแฮชและพารามิเตอร์เฉพาะของอัลกอริทึมนั้น ๆ
+
+### รูปแบบ Legacy ทั่วไป (General Legacy format) \{#general-legacy-format}
+
+รูปแบบของสตริง JSON เป็นดังนี้:
+
+```json
+["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
+```
+
+และคุณสามารถใช้ `@` เป็นตัวแทนรหัสผ่านจริงใน arguments ได้
+
+ตัวอย่างเช่น หากคุณใช้ SHA256 พร้อม salt คุณสามารถเก็บรหัสผ่านในรูปแบบนี้:
+
+```json
+["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
+```
+
+ซึ่งเทียบเท่ากับโค้ดนี้:
+
+```ts
+const hash = crypto.createHash('sha256');
+hash.update('salt123' + 'password123');
+const expectedHashedValue = hash.digest('hex');
+```
+
+### รองรับ PBKDF2 (PBKDF2 support) \{#pbkdf2-support}
+
+Logto รองรับ [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2) โดยเฉพาะ
+
+หากต้องการย้ายรหัสผ่านที่แฮชด้วย PBKDF2 ให้ตั้งค่า `passwordAlgorithm` เป็น `Legacy` และจัดรูปแบบ `passwordDigest` ดังนี้:
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+พารามิเตอร์คือ:
+
+- **`salt`**: ค่า salt ที่ใช้ในการแฮชเดิม
+- **`iterations`**: จำนวนรอบ (เช่น `"1000"`)
+- **`keylen`**: ความยาวของคีย์ที่ได้ (หน่วยเป็นไบต์ เช่น `"20"`)
+- **`digest`**: ฟังก์ชันแฮชที่ใช้ (เช่น `"sha512"`, `"sha256"`, `"sha1"`)
+- **`@`**: ตัวแทนรหัสผ่านจริง
+- **`expected_hashed_value`**: ผลลัพธ์แฮชที่คาดหวังในรูปแบบ hexadecimal string
+
+**ตัวอย่าง payload สำหรับการย้ายข้อมูล:**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
+## ขั้นตอนการย้ายข้อมูล (Steps to migrate) \{#steps-to-migrate}
+
+1.  **เตรียมข้อมูลผู้ใช้**
+    คุณควรส่งออกข้อมูลผู้ใช้จากแพลตฟอร์มเดิมก่อน แล้วแมปข้อมูลผู้ใช้ไปยังสคีมาผู้ใช้ของ Logto แนะนำให้เตรียมข้อมูลที่แมปแล้วในรูปแบบ JSON ตัวอย่างข้อมูลผู้ใช้:
+
+    ```json
+    [
+      {
+        "username": "user1",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      },
+      {
+        "username": "user2",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      }
+    ]
+    ```
+
+2.  **สร้าง tenant ใน Logto**
+    คุณต้องตั้งค่า tenant ใน Logto สามารถใช้ได้ทั้ง Logto Cloud หรือ Logto OSS หากยังไม่ได้ตั้งค่า โปรดดูคู่มือ [ตั้งค่า Logto cloud](/introduction/set-up-logto-cloud/#create-logto-tenant)
+3.  **ตั้งค่าการเชื่อมต่อ Management API**
+    เราจะใช้ Management API ในการนำเข้าข้อมูลผู้ใช้ สามารถดูวิธีตั้งค่าการเชื่อมต่อในสภาพแวดล้อมพัฒนาของคุณได้ที่ [Management API](/integrate-logto/interact-with-management-api)
+4.  **นำเข้าข้อมูลผู้ใช้**
+    แนะนำให้เตรียมสคริปต์สำหรับนำเข้าข้อมูลผู้ทีละคน โดยจะเรียก API [create user](https://openapi.logto.io/operation/operation-createuser) เพื่อเพิ่มข้อมูลผู้ใช้ ตัวอย่างสคริปต์:
+
+    ```jsx
+    const users = require('./users.json');
+
+    const importUsers = async () => {
+      for (const user of users) {
+        try {
+          await fetch('https://[tenant_id].logto.app/api/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer [your-access-token]',
+            },
+            body: JSON.stringify(user),
+          });
+          // หน่วงเวลาเพื่อหลีกเลี่ยง rate limit
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } catch (error) {
+          console.error(`นำเข้าผู้ใช้ ${user.username} ไม่สำเร็จ: ${error.message}`);
+        }
+      }
+    };
+
+    importUsers();
+    ```
+
+โปรดทราบว่า endpoint ของ API มีการจำกัดอัตรา (rate limit) ควรเพิ่มการหน่วงเวลาระหว่างแต่ละ request เพื่อหลีกเลี่ยง rate limit โปรดตรวจสอบหน้า [rate limits](/integrate-logto/interact-with-management-api/#rate-limit) ของเราเพื่อดูรายละเอียด
+
+หากคุณมีข้อมูลผู้ใช้จำนวนมาก (100,000+ users) สามารถ [ติดต่อเรา](https://logto.io/contact) เพื่อขอเพิ่ม rate limit ได้
+
+## แหล่งข้อมูลที่เกี่ยวข้อง (Related resources) \{#related-resources}
+
+<Url href="https://blog.logto.io/general-migration-guide">
+  แนวทางทั่วไปสำหรับการย้ายฐานข้อมูลผู้ใช้เดิมของคุณไปยัง Logto
+</Url>

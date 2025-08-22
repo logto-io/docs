@@ -1,0 +1,224 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import LaravelValidation from './fragments/laravel/_validation.md';
+import SlimValidation from './fragments/slim/_validation.md';
+import SymfonyValidation from './fragments/symfony/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  laravel: <LaravelValidation />,
+  symfony: <SymfonyValidation />,
+  slim: <SlimValidation />,
+});
+
+เราใช้ [firebase/php-jwt](https://github.com/firebase/php-jwt) สำหรับตรวจสอบความถูกต้องของ JWT ติดตั้งโดยใช้ Composer:
+
+```bash
+composer require firebase/php-jwt
+```
+
+ก่อนอื่น เพิ่มยูทิลิตี้ที่ใช้ร่วมกันเหล่านี้เพื่อจัดการการตรวจสอบ JWT:
+
+```php title="JwtValidator.php"
+<?php
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
+
+class JwtValidator
+{
+    use AuthHelpers;
+
+    private static ?array $jwks = null;
+
+    public static function fetchJwks(): array
+    {
+        if (self::$jwks === null) {
+            $jwksData = file_get_contents(AuthConstants::JWKS_URI);
+            if ($jwksData === false) {
+                throw new AuthorizationException('ไม่สามารถดึง JWKS ได้', 401);
+            }
+
+            self::$jwks = json_decode($jwksData, true);
+        }
+
+        return self::$jwks;
+    }
+
+    public static function validateJwt(string $token): array
+    {
+        try {
+            $jwks = self::fetchJwks();
+            $keys = JWK::parseKeySet($jwks);
+
+            $decoded = JWT::decode($token, $keys);
+            $payload = (array) $decoded;
+
+            // ตรวจสอบผู้ออก (issuer)
+            if (($payload['iss'] ?? '') !== AuthConstants::ISSUER) {
+                throw new AuthorizationException('ผู้ออกไม่ถูกต้อง', 401);
+            }
+
+            self::verifyPayload($payload);
+            return $payload;
+
+        } catch (AuthorizationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new AuthorizationException('โทเค็นไม่ถูกต้อง: ' . $e->getMessage(), 401);
+        }
+    }
+
+    public static function createAuthInfo(array $payload): AuthInfo
+    {
+        $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+        $audience = $payload['aud'] ?? [];
+
+        if (is_string($audience)) {
+            $audience = [$audience];
+        }
+
+        return new AuthInfo(
+            sub: $payload['sub'],
+            clientId: $payload['client_id'] ?? null,
+            organizationId: $payload['organization_id'] ?? null,
+            scopes: $scopes,
+            audience: $audience
+        );
+    }
+
+    private static function verifyPayload(array $payload): void
+    {
+        // เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตามโมเดลสิทธิ์
+        // ตัวอย่างจะอยู่ในส่วนโมเดลสิทธิ์ด้านล่าง
+    }
+}
+```
+
+จากนั้น ให้สร้างมิดเดิลแวร์เพื่อตรวจสอบ access token:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ของคุณ ให้เพิ่มตรรกะการตรวจสอบที่เหมาะสมใน `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // ตรวจสอบการอ้างสิทธิ์ผู้รับ (audience claim) ให้ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('ผู้รับไม่ถูกต้อง');
+    }
+
+    // ตรวจสอบขอบเขตที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+    $requiredScopes = ['api:read', 'api:write']; // เปลี่ยนเป็นขอบเขตที่คุณต้องการจริง
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('ขอบเขตไม่เพียงพอ');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // ตรวจสอบการอ้างสิทธิ์ผู้รับให้ตรงกับรูปแบบขององค์กร
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    $hasOrgAudience = false;
+    foreach ($audiences as $aud) {
+        if (str_starts_with($aud, 'urn:logto:organization:')) {
+            $hasOrgAudience = true;
+            break;
+        }
+    }
+
+    if (!$hasOrgAudience) {
+        throw new AuthorizationException('ผู้รับไม่ถูกต้องสำหรับสิทธิ์ขององค์กร');
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    $expectedOrgId = 'your-organization-id'; // ดึงจาก request context
+    $expectedAud = "urn:logto:organization:{$expectedOrgId}";
+    if (!in_array($expectedAud, $audiences)) {
+        throw new AuthorizationException('Organization ID ไม่ตรงกัน');
+    }
+
+    // ตรวจสอบขอบเขตที่จำเป็นขององค์กร
+    $requiredScopes = ['invite:users', 'manage:settings']; // เปลี่ยนเป็นขอบเขตที่คุณต้องการจริง
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('ขอบเขตขององค์กรไม่เพียงพอ');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // ตรวจสอบการอ้างสิทธิ์ผู้รับให้ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('ผู้รับไม่ถูกต้องสำหรับทรัพยากร API ระดับองค์กร');
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    $expectedOrgId = 'your-organization-id'; // ดึงจาก request context
+    $orgId = $payload['organization_id'] ?? null;
+    if ($expectedOrgId !== $orgId) {
+        throw new AuthorizationException('Organization ID ไม่ตรงกัน');
+    }
+
+    // ตรวจสอบขอบเขตที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+    $requiredScopes = ['api:read', 'api:write']; // เปลี่ยนเป็นขอบเขตที่คุณต้องการจริง
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('ขอบเขตของทรัพยากร API ระดับองค์กรไม่เพียงพอ');
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,114 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import MicronautValidation from './fragments/micronaut/_validation.md';
+import QuarkusValidation from './fragments/quarkus/_validation.md';
+import SpringBootValidation from './fragments/spring-boot/_validation.md';
+import VertxValidation from './fragments/vertx-web/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  'spring-boot': <SpringBootValidation />,
+  quarkus: <QuarkusValidation />,
+  micronaut: <MicronautValidation />,
+  'vertx-web': <VertxValidation />,
+});
+
+เราใช้ไลบรารี JWT ที่แตกต่างกันขึ้นอยู่กับเฟรมเวิร์ก กรุณาติดตั้ง dependencies ที่จำเป็น:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ (permission model) ของคุณ ให้ดำเนินการตรรกะการตรวจสอบที่เหมาะสม:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล (Global API resources)">
+
+```java
+// ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+List<String> audiences = extractAudiences(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+if (!audiences.contains("https://your-api-resource-indicator")) {
+    throw new AuthorizationException("Audience ไม่ถูกต้อง");
+}
+
+// ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // แทนที่ด้วย scope ที่ต้องการจริง
+String scopes = extractScopes(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
+
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("ขอบเขตไม่เพียงพอ");
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API) (Organization (non-API) permissions)">
+
+```java
+// ตรวจสอบว่า audience claim ตรงกับรูปแบบขององค์กร
+List<String> audiences = extractAudiences(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+boolean hasOrgAudience = audiences.stream()
+    .anyMatch(aud -> aud.startsWith("urn:logto:organization:"));
+
+if (!hasOrgAudience) {
+    throw new AuthorizationException("Audience สำหรับสิทธิ์องค์กรไม่ถูกต้อง");
+}
+
+// ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+String expectedOrgId = "your-organization-id"; // ดึงจาก request context
+String expectedAud = "urn:logto:organization:" + expectedOrgId;
+if (!audiences.contains(expectedAud)) {
+    throw new AuthorizationException("Organization ID ไม่ตรงกัน");
+}
+
+// ตรวจสอบ scope ขององค์กรที่จำเป็น
+List<String> requiredScopes = Arrays.asList("invite:users", "manage:settings"); // แทนที่ด้วย scope ที่ต้องการจริง
+String scopes = extractScopes(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
+
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("ขอบเขตขององค์กรไม่เพียงพอ");
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร (Organization-level API resources)">
+
+```java
+// ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+List<String> audiences = extractAudiences(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+if (!audiences.contains("https://your-api-resource-indicator")) {
+    throw new AuthorizationException("Audience ไม่ถูกต้องสำหรับทรัพยากร API ระดับองค์กร");
+}
+
+// ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+String expectedOrgId = "your-organization-id"; // ดึงจาก request context
+String orgId = extractOrganizationId(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+if (!expectedOrgId.equals(orgId)) {
+    throw new AuthorizationException("Organization ID ไม่ตรงกัน");
+}
+
+// ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+List<String> requiredScopes = Arrays.asList("api:read", "api:write"); // แทนที่ด้วย scope ที่ต้องการจริง
+String scopes = extractScopes(token); // การดึงข้อมูลเฉพาะแต่ละเฟรมเวิร์ก
+List<String> tokenScopes = scopes != null ? Arrays.asList(scopes.split(" ")) : List.of();
+
+if (!tokenScopes.containsAll(requiredScopes)) {
+    throw new AuthorizationException("ขอบเขตของ API ระดับองค์กรไม่เพียงพอ");
+}
+```
+
+</TabItem>
+</Tabs>
+
+เมธอดช่วยเหลือสำหรับการดึง claim ต่าง ๆ จะขึ้นอยู่กับแต่ละเฟรมเวิร์ก ดูรายละเอียดการใช้งานในไฟล์ validation เฉพาะแต่ละเฟรมเวิร์กด้านบน

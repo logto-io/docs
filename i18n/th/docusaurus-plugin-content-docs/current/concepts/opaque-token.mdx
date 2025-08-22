@@ -1,0 +1,56 @@
+---
+sidebar_position: 6
+---
+
+# โทเค็นทึบ (Opaque token)
+
+ระหว่างกระบวนการการยืนยันตัวตน (Authentication) หากไม่ได้ระบุ resource ใด Logto จะออกโทเค็นการเข้าถึงแบบทึบ (opaque access token) แทน JWT โดยโทเค็นทึบจะเป็นสตริงสุ่มและสั้นกว่า JWT มาก:
+
+```json
+{
+  "access_token": "some-random-string", // โทเค็นทึบ
+  "expires_in": 3600,
+  "id_token": "eyJhbGc...aBc", // JWT
+  "scope": "openid profile email",
+  "token_type": "Bearer"
+}
+```
+
+โทเค็นทึบสามารถใช้เรียก [userinfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) และเข้าถึงทรัพยากรที่ได้รับการป้องกันซึ่งต้องการการยืนยันตัวตน (Authentication) เนื่องจากมันไม่ใช่ JWT แล้ว resource server จะตรวจสอบความถูกต้องได้อย่างไร?
+
+Logto มี [introspection endpoint](https://www.rfc-editor.org/rfc/rfc7662.html) สำหรับตรวจสอบความถูกต้องของโทเค็นทึบ โดยค่าเริ่มต้น introspection endpoint คือ `/oidc/token/introspection` และรับ `POST` requests โดยต้องมีพารามิเตอร์ดังนี้:
+
+- `token`: โทเค็นทึบที่ต้องการตรวจสอบ
+
+endpoint นี้ต้องการการยืนยันตัวตนของ client ด้วย คุณสามารถใช้วิธีใดวิธีหนึ่งต่อไปนี้:
+
+- HTTP Basic authentication: ใช้ header `Authorization` ที่มีค่า `Basic <base64-encoded-credentials>` โดย credentials ต้องเป็น client ID และ client secret คั่นด้วย colon (`:`) และเข้ารหัส base64
+- HTTP POST authentication: ใช้พารามิเตอร์ `client_id` และ `client_secret`:
+  - `client_id`: client ID ของแอปที่ขอโทเค็น
+  - `client_secret`: client secret ของแอปที่ขอโทเค็น
+
+client ID (app ID) และ client secret (app secret) สามารถใช้ข้อมูลประจำตัวของแอปจากแอป "traditional web" หรือ "machine-to-machine" ใด ๆ ใน Logto ก็ได้ หาก credentials ไม่ถูกต้อง introspection endpoint จะส่ง error กลับมา
+
+introspection endpoint จะส่งคืนอ็อบเจกต์ JSON ที่มีการอ้างสิทธิ์ (claims) ของโทเค็น:
+
+```json
+{
+  "active": true, // โทเค็นนี้ใช้ได้หรือไม่
+  "sub": "1234567890" // ผู้ถูกอ้างถึง (subject) ของโทเค็น (user ID)
+}
+```
+
+หากโทเค็นไม่ถูกต้อง ฟิลด์ `active` จะเป็น `false` และจะไม่มีฟิลด์ `sub`
+
+ตัวอย่างที่ไม่เป็นทางการของ introspection request:
+
+```bash
+curl --location \
+  --request POST 'https://[tenant-id].logto.app/oidc/token/introspection' \
+  --header 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode 'token=some-random-string' \
+  --data-urlencode 'client_id=1234567890' \
+  --data-urlencode 'client_secret=1234567890'
+```
+
+อย่าลืมแทนที่ `[tenant-id]` ด้วย tenant ID ของคุณ

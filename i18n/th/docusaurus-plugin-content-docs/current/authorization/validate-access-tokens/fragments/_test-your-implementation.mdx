@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### รับโทเค็นการเข้าถึง (Access tokens) \{#get-access-tokens}
+
+**จากแอปพลิเคชันไคลเอนต์ของคุณ:**
+หากคุณได้ตั้งค่าการเชื่อมต่อไคลเอนต์แล้ว แอปของคุณจะสามารถรับโทเค็นได้โดยอัตโนมัติ ดึงโทเค็นการเข้าถึงและนำไปใช้ในคำขอ API
+
+**สำหรับการทดสอบด้วย curl / Postman:**
+
+1. **โทเค็นผู้ใช้:** ใช้เครื่องมือสำหรับนักพัฒนาของแอปไคลเอนต์ของคุณเพื่อคัดลอกโทเค็นการเข้าถึงจาก localStorage หรือแท็บ network
+2. **โทเค็นเครื่องต่อเครื่อง:** ใช้ client credentials flow ตัวอย่างที่ไม่เป็นทางการโดยใช้ curl:
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   คุณอาจต้องปรับพารามิเตอร์ `resource` และ `scope` ให้ตรงกับทรัพยากร API และสิทธิ์ของคุณ; อาจต้องใช้พารามิเตอร์ `organization_id` หาก API ของคุณอยู่ในขอบเขตองค์กร
+
+:::tip
+ต้องการตรวจสอบเนื้อหาโทเค็นใช่ไหม? ใช้ [JWT decoder](https://logto.io/jwt-decoder) ของเราเพื่อถอดรหัสและตรวจสอบ JWT ของคุณ
+:::
+
+### ทดสอบ endpoint ที่ได้รับการป้องกัน \{#test-protected-endpoints}
+
+<details>
+<summary>**คำขอที่มีโทเค็นถูกต้อง**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**ผลลัพธ์ที่คาดหวัง:**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**ไม่มีโทเค็น**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**ผลลัพธ์ที่คาดหวัง (401):**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**โทเค็นไม่ถูกต้อง**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**ผลลัพธ์ที่คาดหวัง (401):**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### การทดสอบเฉพาะโมเดลสิทธิ์ (Permission model-specific testing) \{#permission-model-specific-testing}
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล (Global API resources)">
+
+    กรณีทดสอบสำหรับ API ที่ได้รับการป้องกันด้วย global scopes:
+
+    - **ขอบเขตถูกต้อง:** ทดสอบด้วยโทเค็นที่มีขอบเขต API ที่ต้องการ (เช่น `api:read`, `api:write`)
+    - **ขาดขอบเขต:** คาดหวัง **403 Forbidden** เมื่อโทเค็นไม่มีขอบเขตที่จำเป็น
+    - **audience ไม่ถูกต้อง:** คาดหวัง **403 Forbidden** เมื่อ audience ไม่ตรงกับทรัพยากร API
+
+    ```bash
+    # โทเค็นที่ขาดขอบเขต - คาดหวัง 403
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API) (Organization (non-API) permissions)">
+
+    กรณีทดสอบสำหรับการควบคุมการเข้าถึงเฉพาะองค์กร:
+
+    - **โทเค็นองค์กรถูกต้อง:** ทดสอบด้วยโทเค็นที่มี context ขององค์กรที่ถูกต้อง (organization ID และ scopes)
+    - **ขาดขอบเขต:** คาดหวัง **403 Forbidden** เมื่อผู้ใช้ไม่มีสิทธิ์สำหรับการกระทำที่ร้องขอ
+    - **องค์กรไม่ถูกต้อง:** คาดหวัง **403 Forbidden** เมื่อ audience ไม่ตรงกับ context ขององค์กร (`urn:logto:organization:<organization_id>`)
+
+    ```bash
+    # โทเค็นสำหรับองค์กรผิด - คาดหวัง 403
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร (Organization-level API resources)">
+
+    กรณีทดสอบที่ผสมผสานการตรวจสอบทรัพยากร API กับ context ขององค์กร:
+
+    - **องค์กร + ขอบเขต API ถูกต้อง:** ทดสอบด้วยโทเค็นที่มีทั้ง context ขององค์กรและขอบเขต API ที่ต้องการ
+    - **ขาดขอบเขต API:** คาดหวัง **403 Forbidden** เมื่อโทเค็นองค์กรไม่มีสิทธิ์ API ที่จำเป็น
+    - **องค์กรไม่ถูกต้อง:** คาดหวัง **403 Forbidden** เมื่อเข้าถึง API ด้วยโทเค็นจากองค์กรอื่น
+    - **audience ไม่ถูกต้อง:** คาดหวัง **403 Forbidden** เมื่อ audience ไม่ตรงกับทรัพยากร API ระดับองค์กร
+
+    ```bash
+    # โทเค็นองค์กรที่ไม่มีขอบเขต API - คาดหวัง 403
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

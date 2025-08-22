@@ -1,0 +1,181 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
+
+เราใช้ [jwt](https://github.com/jwt/ruby-jwt) gem สำหรับตรวจสอบความถูกต้องของ JWT เพิ่ม gem นี้ลงใน Gemfile ของคุณ:
+
+```ruby title="Gemfile"
+gem 'jwt'
+# net-http เป็นส่วนหนึ่งของ Ruby standard library ตั้งแต่ Ruby 2.7 ไม่จำเป็นต้องเพิ่มแยกต่างหาก
+```
+
+จากนั้นรัน:
+
+```bash
+bundle install
+```
+
+ก่อนอื่น เพิ่ม utilities ที่ใช้ร่วมกันเหล่านี้เพื่อจัดการ JWKS และการตรวจสอบโทเค็น:
+
+```ruby title="jwt_validator.rb"
+require 'jwt'
+require 'net/http'
+require 'json'
+
+class JwtValidator
+  include AuthHelpers
+
+  def self.fetch_jwks
+    @jwks ||= begin
+      uri = URI(AuthConstants::JWKS_URI)
+      response = Net::HTTP.get_response(uri)
+      raise AuthorizationError.new('ไม่สามารถดึง JWKS ได้', 401) unless response.is_a?(Net::HTTPSuccess)
+
+      jwks_data = JSON.parse(response.body)
+      JWT::JWK::Set.new(jwks_data)
+    end
+  end
+
+  def self.validate_jwt(token)
+    jwks = fetch_jwks
+
+    # ให้ไลบรารี JWT จัดการตรวจจับอัลกอริทึมจาก JWKS
+    decoded_token = JWT.decode(token, nil, true, {
+      iss: AuthConstants::ISSUER,
+      verify_iss: true,
+      verify_aud: false, # เราจะตรวจสอบ audience ด้วยตนเองตาม permission model
+      jwks: jwks
+    })[0]
+
+    verify_payload(decoded_token)
+    decoded_token
+  end
+
+  def self.create_auth_info(payload)
+    scopes = payload['scope']&.split(' ') || []
+    audience = payload['aud'] || []
+
+    AuthInfo.new(
+      payload['sub'],
+      payload['client_id'],
+      payload['organization_id'],
+      scopes,
+      audience
+    )
+  end
+
+  def self.verify_payload(payload)
+    # เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตาม permission model
+    # ตัวอย่างจะอยู่ในหัวข้อ permission models ด้านล่าง
+  end
+end
+```
+
+จากนั้น สร้าง middleware เพื่อตรวจสอบ access token:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตาม permission model ของคุณ ให้เพิ่มตรรกะการตรวจสอบที่เหมาะสมใน `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล (Global API resources)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Audience ไม่ถูกต้อง')
+  end
+
+  # ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+  required_scopes = ['api:read', 'api:write'] # เปลี่ยนเป็น scope ที่คุณต้องการจริง
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Scope ไม่เพียงพอ')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API) (Organization (non-API) permissions)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # ตรวจสอบว่า audience claim อยู่ในรูปแบบขององค์กร
+  audiences = payload['aud'] || []
+  has_org_audience = audiences.any? { |aud| aud.start_with?('urn:logto:organization:') }
+
+  unless has_org_audience
+    raise AuthorizationError.new('Audience สำหรับสิทธิ์องค์กรไม่ถูกต้อง')
+  end
+
+  # ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+  expected_org_id = 'your-organization-id' # ดึงจาก request context
+  expected_aud = "urn:logto:organization:#{expected_org_id}"
+  unless audiences.include?(expected_aud)
+    raise AuthorizationError.new('Organization ID ไม่ตรงกัน')
+  end
+
+  # ตรวจสอบ scope ที่จำเป็นสำหรับสิทธิ์องค์กร
+  required_scopes = ['invite:users', 'manage:settings'] # เปลี่ยนเป็น scope ที่คุณต้องการจริง
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Scope ขององค์กรไม่เพียงพอ')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร (Organization-level API resources)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Audience สำหรับทรัพยากร API ระดับองค์กรไม่ถูกต้อง')
+  end
+
+  # ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+  expected_org_id = 'your-organization-id' # ดึงจาก request context
+  org_id = payload['organization_id']
+  unless expected_org_id == org_id
+    raise AuthorizationError.new('Organization ID ไม่ตรงกัน')
+  end
+
+  # ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+  required_scopes = ['api:read', 'api:write'] # เปลี่ยนเป็น scope ที่คุณต้องการจริง
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Scope สำหรับทรัพยากร API ระดับองค์กรไม่เพียงพอ')
+  end
+end
+```
+
+</TabItem>
+</Tabs>
