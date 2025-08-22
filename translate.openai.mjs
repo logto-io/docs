@@ -52,6 +52,7 @@ const buildInstructions = (locale, asIsTerms, terms, patterns) => {
     'Irregular whitespaces are not allowed in the translated content.',
     locale.startsWith('ja') &&
       'Do not violating the "end-tag-mismatch" lint rule in translated MDX. When a line starts with custom component tags like `<CloudLink>`, remember to wrap any content after the ending tag `</CloudLink>` into the next line. E.g. `<CloudLink to="path">\n  some text\n</CloudLink> some other text.` should be `<CloudLink to="path">\n  some text\n</CloudLink>\nsome other text.`.',
+    'Do not translate programming language code identifiers in fenced code blocks. E.g. ```go title="_init.go"\nfunc (e *AuthorizationError) Error() string { return e.Message }```. Only translate comments and output messages.',
   ].filter(Boolean);
 };
 
