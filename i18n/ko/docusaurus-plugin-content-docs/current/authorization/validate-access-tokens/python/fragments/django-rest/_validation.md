@@ -3,7 +3,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions
 from jwt_validator import validate_jwt, create_auth_info
 
-class 액세스 토큰 (Access token) 인증 (Authentication)(TokenAuthentication):
+class AccessTokenAuthentication(TokenAuthentication):
     keyword = 'Bearer'  # 'Token' 대신 'Bearer'를 사용하세요
 
     def authenticate_credentials(self, key):
