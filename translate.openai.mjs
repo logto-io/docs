@@ -50,7 +50,8 @@ const buildInstructions = (locale, asIsTerms, terms, patterns) => {
       'Include spaces around links and email addresses in the translated content, e.g., `访问 [Logto](https://logto.io) 网站`.',
     "Respond with only the translated content, don't wrap it in any other text or code blocks.",
     'Irregular whitespaces are not allowed in the translated content.',
-    'Do not violating the "end-tag-mismatch" lint rule in translated MDX. When a line starts with custom component tags like `<CloudLink>`, remember to wrap any content after the ending tag `</CloudLink>` into the next line. E.g. `<CloudLink to="path">\n  some text\n</CloudLink> some other text.` should be `<CloudLink to="path">\n  some text\n</CloudLink>\nsome other text.`.',
+    locale.startsWith('ja') &&
+      'Do not violating the "end-tag-mismatch" lint rule in translated MDX. When a line starts with custom component tags like `<CloudLink>`, remember to wrap any content after the ending tag `</CloudLink>` into the next line. E.g. `<CloudLink to="path">\n  some text\n</CloudLink> some other text.` should be `<CloudLink to="path">\n  some text\n</CloudLink>\nsome other text.`.',
   ].filter(Boolean);
 };
 
