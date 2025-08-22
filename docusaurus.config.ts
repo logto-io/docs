@@ -8,12 +8,14 @@ import {
   addAliasPlugin,
   cfPagesBranch,
   classicPresetConfig,
+  commonConfigs,
   commonMarkdown,
   commonStylesheets,
   createCommonCustomFields,
   createCommonThemeConfig,
   currentLocale,
   defaultLocale,
+  disableExpensiveBundlerOptimizationPlugin,
   getCloudflareSubdomain,
   googleOneTapScripts,
   injectHeadTagsPlugin,
@@ -29,15 +31,8 @@ const getLogtoDocsUrl = () =>
     : mainSiteUrl;
 
 const config: Config = {
-  title: 'Logto docs',
+  ...commonConfigs,
   url: getLogtoDocsUrl(),
-  baseUrl: '/',
-  onBrokenLinks: 'throw',
-  onBrokenAnchors: 'throw',
-  onBrokenMarkdownLinks: 'throw',
-  favicon: '/img/favicon.ico',
-  organizationName: 'logto-io',
-  projectName: 'docs',
 
   scripts: googleOneTapScripts,
 
@@ -69,6 +64,7 @@ const config: Config = {
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
     ogImageGenerator,
+    disableExpensiveBundlerOptimizationPlugin,
     [
       '@docusaurus/plugin-content-blog',
       {

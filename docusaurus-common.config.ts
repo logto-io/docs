@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { PluginConfig, ThemeConfig } from '@docusaurus/types';
+import type { Config, PluginConfig, ThemeConfig } from '@docusaurus/types';
 import { yes } from '@silverhand/essentials';
 import { themes } from 'prism-react-renderer';
 import rehypeKatex from 'rehype-katex';
@@ -91,6 +91,43 @@ export const injectHeadTagsPlugin: PluginConfig = () => ({
     ],
   }),
 });
+
+/**
+ * Disable the expensive bundler optimizations for non-production deployments, including previews.
+ * @see https://github.com/facebook/docusaurus/discussions/11199
+ */
+const isProductionDeployment = yes(process.env.IS_PRODUCTION) && !isCfPagesPreview;
+export const disableExpensiveBundlerOptimizationPlugin: PluginConfig = () => ({
+  name: 'disable-expensive-bundler-optimizations',
+  configureWebpack(_config, isServer) {
+    return {
+      optimization: {
+        concatenateModules: isProductionDeployment ? !isServer : false,
+      },
+    };
+  },
+});
+
+export const commonConfigs = {
+  title: 'Logto docs',
+  baseUrl: '/',
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
+  onBrokenMarkdownLinks: 'throw',
+  favicon: '/img/favicon.ico',
+  organizationName: 'logto-io',
+  projectName: 'docs',
+  future: {
+    v4: {
+      removeLegacyPostBuildHeadAttribute: true,
+    },
+    experimental_faster: {
+      rspackBundler: true,
+      rspackPersistentCache: process.env.NODE_ENV === 'development',
+      ssgWorkerThreads: true,
+    },
+  },
+} satisfies Partial<Config>;
 
 /**
  * Create a common theme config for a Docusaurus site.
