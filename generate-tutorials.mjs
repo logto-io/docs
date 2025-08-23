@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { load } from 'js-yaml';
 
-const locales = ['en', 'es', 'fr', 'ja'];
+const locales = ['en', 'es', 'fr', 'ja', 'th'];
 
 const getDocRelativePath = (fullPath) => fullPath.split('/').slice(0, -1).join('/');
 
