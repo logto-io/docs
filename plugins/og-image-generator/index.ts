@@ -15,6 +15,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const currentLocale = String(process.env.DOCUSAURUS_CURRENT_LOCALE ?? 'en');
 const outputDir = path.join(__dirname, `../../static-localized/${currentLocale}/img/og`);
 const templateImagePath = path.join(__dirname, './template.png');
+const cssClampStyles = (lineCount: number) => ({
+  display: '-webkit-box',
+  WebkitLineClamp: lineCount,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+});
 
 const ogImageGenerator: PluginConfig = () => {
   return {
@@ -71,10 +78,11 @@ const ogImageGenerator: PluginConfig = () => {
                       style: {
                         color: 'white',
                         margin: 0,
-                        fontSize: '64px',
-                        lineHeight: '72px',
+                        fontSize: '60px',
+                        lineHeight: '68px',
                         fontWeight: 700,
                         letterSpacing: '0.64px',
+                        ...cssClampStyles(3),
                       },
                       children: title,
                     },
@@ -88,11 +96,7 @@ const ogImageGenerator: PluginConfig = () => {
                         fontSize: '32px',
                         lineHeight: '42px',
                         letterSpacing: '0.64px',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
+                        ...cssClampStyles(3),
                       },
                       children: description,
                     },
