@@ -1,0 +1,22 @@
+```tsx title="AccessToken.tsx"
+import { useLogto } from '@logto/rn';
+
+const AccessToken = () => {
+  const { isAuthenticated, getAccessToken } = useLogto();
+  const [accessToken, setAccessToken] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      if (isAuthenticated) {
+        // highlight-start
+        // ดึงโทเค็นการเข้าถึง (Access token) สำหรับ API เฉพาะ
+        const token = await getAccessToken('https://shopping.your-app.com/api');
+        // highlight-end
+        setAccessToken(token);
+      }
+    })();
+  }, [isAuthenticated, getAccessToken]);
+
+  return <p>{{ accessToken }}</p>;
+};
+```

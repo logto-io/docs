@@ -1,0 +1,144 @@
+import CodeBlock from '@theme/CodeBlock';
+
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris, {
+  defaultBaseUrl,
+  defaultRedirectUri,
+} from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+### เพิ่มการอ้างอิงสคริปต์ \{#add-script-references}
+
+เพิ่ม `Blorc.Core/injector.js` ลงในไฟล์ `index.html`:
+
+```html title="index.html"
+<head>
+  <!-- ... -->
+  <script src="_content/Blorc.Core/injector.js"></script>
+  <!-- ... -->
+</head>
+```
+
+### ลงทะเบียนบริการ \{#register-services}
+
+เพิ่มโค้ดต่อไปนี้ในไฟล์ `Program.cs`:
+
+```csharp title="Program.cs"
+using Blorc.OpenIdConnect;
+using Blorc.Services;
+
+builder.Services.AddBlorcCore();
+builder.Services.AddAuthorizationCore();
+builder.Services.AddBlorcOpenIdConnect(
+    options =>
+    {
+        builder.Configuration.Bind("IdentityServer", options);
+    });
+
+var webAssemblyHost = builder.Build();
+
+await webAssemblyHost
+    .ConfigureDocumentAsync(async documentService =>
+    {
+        await documentService.InjectBlorcCoreJsAsync();
+        await documentService.InjectOpenIdConnectAsync();
+    });
+
+await webAssemblyHost.RunAsync();
+```
+
+:::info
+ไม่จำเป็นต้องใช้แพ็กเกจ `Microsoft.AspNetCore.Components.WebAssembly.Authentication` แพ็กเกจ `Blorc.OpenIdConnect` จะดูแลกระบวนการยืนยันตัวตนให้เอง
+:::
+
+### กำหนดค่า redirect URI \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### กำหนดค่าแอปพลิเคชัน \{#configure-application}
+
+เพิ่มโค้ดต่อไปนี้ในไฟล์ `appsettings.json`:
+
+<CodeBlock language="json5" title="appsettings.json">
+  {`{
+  // ...
+  IdentityServer: {
+    Authority: 'https://<your-logto-endpoint>/oidc',
+    ClientId: '<your-logto-app-id>',
+    PostLogoutRedirectUri: '${defaultBaseUrl}',
+    RedirectUri: '${defaultRedirectUri}',
+    ResponseType: 'code',
+    Scope: 'openid profile', // เพิ่มขอบเขต (scopes) เพิ่มเติมหากต้องการ
+  },
+}`}
+</CodeBlock>
+
+อย่าลืมเพิ่ม `RedirectUri` และ `PostLogoutRedirectUri` ลงในรายการ redirect URI ที่อนุญาตในหน้าตั้งค่าแอป Logto ทั้งสองคือ URL ของแอป WASM ของคุณ
+
+### เพิ่มคอมโพเนนต์ `AuthorizeView` \{#add-authorizeview-component}
+
+ในหน้า Razor ที่ต้องการการยืนยันตัวตน ให้เพิ่มคอมโพเนนต์ `AuthorizeView` สมมติว่าเป็นหน้า `Home.razor`:
+
+```cshtml title="Pages/Home.razor"
+@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
+
+<AuthorizeView>
+    <Authorized>
+        @* มุมมองเมื่อเข้าสู่ระบบแล้ว *@
+        <button @onclick="OnLogoutButtonClickAsync">
+            Sign out
+        </button>
+    </Authorized>
+    <NotAuthorized>
+        @* มุมมองเมื่อยังไม่ได้เข้าสู่ระบบ *@
+        <button @onclick="OnLoginButtonClickAsync">
+            Sign in
+        </button>
+    </NotAuthorized>
+</AuthorizeView>
+```
+
+### ตั้งค่าการยืนยันตัวตน \{#set-up-authentication}
+
+ในไฟล์ `Home.razor.cs` (สร้างไฟล์นี้หากยังไม่มี) เพิ่มโค้ดต่อไปนี้:
+
+```csharp title="Pages/Home.razor.cs"
+// using ต่าง ๆ เหมือนเดิม
+
+[Authorize]
+public partial class Home : ComponentBase
+{
+    [Inject]
+    public required IUserManager UserManager { get; set; }
+
+    public User<Profile>? User { get; set; }
+
+    [CascadingParameter]
+    protected Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await UserManager.GetUserAsync<User<Profile>>(AuthenticationStateTask!);
+    }
+
+    private async Task OnLoginButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignInRedirectAsync();
+    }
+
+    private async Task OnLogoutButtonClickAsync(MouseEventArgs obj)
+    {
+        await UserManager.SignOutRedirectAsync();
+    }
+}
+```
+
+เมื่อผู้ใช้ได้รับการยืนยันตัวตนแล้ว property `User` จะถูกเติมข้อมูลผู้ใช้โดยอัตโนมัติ
+
+<Checkpoint />

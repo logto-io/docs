@@ -62,7 +62,7 @@ const ogImageGenerator: PluginConfig = () => {
                   flexDirection: 'column',
                   justifyContent: 'center',
                   gap: '20px',
-                  fontFamily: 'Inter, NotoSans',
+                  fontFamily: 'Inter, NotoSans, NotoSansThai',
                 },
                 children: [
                   {

@@ -1,0 +1,374 @@
+---
+slug: /quick-starts/traditional-web
+sidebar_label: เว็บแบบดั้งเดิม
+sidebar_custom_props:
+  description: เชื่อมต่อ Logto กับแอปเว็บแบบดั้งเดิมที่ทำงานบนเซิร์ฟเวอร์
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import AppNote from '../../fragments/_app-note.mdx';
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import FurtherReadings from '../../fragments/_further-readings.md';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+# เพิ่มการยืนยันตัวตนให้กับแอปเว็บแบบดั้งเดิมของคุณ (Add authentication to your traditional web application)
+
+<AppNote type="Traditional web" />
+
+แอปของคุณอาจทำงานฝั่งเซิร์ฟเวอร์แทนที่จะทำงานในเบราว์เซอร์ โดยใช้เฟรมเวิร์กอย่าง Django, Laravel ฯลฯ ซึ่งเรียกว่าเว็บแอปแบบดั้งเดิม หากคุณไม่พบ SDK ที่เหมาะสมในหน้านี้ คุณอาจต้องเชื่อมต่อเองแบบแมนนวล
+
+บทความนี้จะแนะนำวิธีดำเนินการทีละขั้นตอน โดยจะยกตัวอย่าง Express บน Node.js
+
+:::tip
+
+บทความนี้ไม่ได้จำกัดเฉพาะ Express หากคุณใช้เฟรมเวิร์กอื่นหรือภาษาอื่น ๆ สามารถแทนที่ `@logto/js` ด้วย core SDK ของภาษานั้น ๆ และปรับบางขั้นตอนให้เหมาะสม
+
+:::
+
+## รับซอร์สโค้ดตัวอย่าง \{#get-source-code}
+
+คุณสามารถเข้าไปที่ [GitHub](https://github.com/logto-io/express-example) เพื่อดูโค้ดตัวอย่างฉบับสมบูรณ์สำหรับคู่มือนี้
+
+## เริ่มต้นโปรเจกต์ Express \{#start-an-express-project}
+
+ด้วย `express-generator` คุณสามารถเริ่มโปรเจกต์ Express ได้อย่างรวดเร็ว
+
+```bash
+mkdir express-logto
+cd express-logto
+npx express-generator
+```
+
+## ติดตั้ง dependencies \{#install-dependencies}
+
+แอปตัวอย่างนี้จะใช้ dependencies 4 ตัวดังนี้:
+
+1. **@logto/js**: Core SDK ของ Logto สำหรับ JavaScript
+2. **node-fetch**: โค้ดขนาดเล็กสำหรับ API ที่เข้ากันได้กับ `window.fetch` บน Node.js
+3. **express-session**: มิดเดิลแวร์สำหรับ session เราจะใช้ session เพื่อเก็บโทเค็นของผู้ใช้
+4. **js-base64**: ตัวแปลงรหัส Base64
+
+<Tabs>
+
+<TabItem value="npm" label="npm">
+
+```bash
+npm i @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="yarn" label="Yarn">
+
+```bash
+yarn add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+<TabItem value="pnpm" label="pnpm">
+
+```bash
+pnpm add @logto/js node-fetch@v2 express-session js-base64
+```
+
+</TabItem>
+
+</Tabs>
+
+## ใช้งาน session \{#use-session}
+
+เมื่อผู้ใช้ลงชื่อเข้าใช้ พวกเขาจะได้รับชุดโทเค็น (โทเค็นการเข้าถึง (Access token), โทเค็น ID (ID token), โทเค็นรีเฟรช (Refresh token)) และข้อมูลการโต้ตอบต่าง ๆ โดย session เป็นที่เก็บข้อมูลเหล่านี้ได้อย่างดี
+
+เราได้ติดตั้ง [express-session](https://github.com/expressjs/session) ในขั้นตอนก่อนหน้าแล้ว ดังนั้นให้เพิ่มโค้ดต่อไปนี้เพื่อเซ็ตอัป:
+
+```js
+// app.js
+
+const session = require('express-session');
+
+app.use(
+  session({
+    secret: 'keyboard cat', // เปลี่ยนเป็น secret key ของคุณเอง
+    cookie: { maxAge: 86400 },
+  })
+);
+```
+
+## สร้างฟังก์ชันสำหรับยืนยันตัวตนผู้ใช้ \{#implement-functions-to-authenticate-users}
+
+:::tip
+
+ตัวอย่างโค้ดต่อไปนี้ สมมติว่าแอปพลิเคชันรันอยู่ที่ `http://localhost:3000`
+
+:::
+
+ในขั้นตอนนี้ เราต้องสร้างฟังก์ชันสำหรับยืนยันตัวตนดังนี้:
+
+1. `getSignInUrl`: สร้างและคืน URL แบบสมบูรณ์ของ Logto Authorization Server เพื่อเปลี่ยนเส้นทางผู้ใช้ไป
+2. `handleSignIn`: แยกวิเคราะห์ callback URL หลังจากกระบวนการยืนยันตัวตนเสร็จสิ้น ดึง query parameter ชื่อ code และดึงโทเค็น (โทเค็นการเข้าถึง, โทเค็นรีเฟรช, โทเค็น ID) เพื่อจบขั้นตอนการลงชื่อเข้าใช้
+3. `refreshTokens`: ขอแลกเปลี่ยนโทเค็นการเข้าถึงใหม่โดยใช้โทเค็นรีเฟรช
+
+<GetAppSecret />
+
+```js
+// logto.js
+
+const {
+  withReservedScopes,
+  fetchOidcConfig,
+  discoveryPath,
+  generateSignInUri,
+  verifyAndParseCodeFromCallbackUri,
+  fetchTokenByAuthorizationCode,
+  fetchTokenByRefreshToken,
+} = require('@logto/js');
+const fetch = require('node-fetch');
+const { randomFillSync, createHash } = require('crypto');
+const { fromUint8Array } = require('js-base64');
+
+const config = {
+  endpoint: 'https://logto.dev',
+  appId: 'foo',
+  appSecret: '<your-app-secret-copied-from-console>',
+  redirectUri: 'http://localhost:3000/callback', // คุณอาจต้องเปลี่ยนเป็น address ของแอปใน production
+  scopes: withReservedScopes().split(' '),
+};
+
+const requester = (input, init) => {
+  const { appId, appSecret } = config;
+
+  return fetch(input, {
+    ...init,
+    headers: {
+      ...init?.headers,
+      authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`, 'utf8').toString('base64')}`,
+    },
+  });
+};
+
+const generateRandomString = (length = 64) => {
+  return fromUint8Array(randomFillSync(new Uint8Array(length)), true);
+};
+
+const generateCodeChallenge = async (codeVerifier) => {
+  const encodedCodeVerifier = new TextEncoder().encode(codeVerifier);
+  const hash = createHash('sha256');
+  hash.update(encodedCodeVerifier);
+  const codeChallenge = hash.digest();
+  return fromUint8Array(codeChallenge, true);
+};
+
+const getOidcConfig = async () => {
+  return fetchOidcConfig(new URL(discoveryPath, config.endpoint).toString(), requester);
+};
+
+exports.getSignInUrl = async () => {
+  const { authorizationEndpoint } = await getOidcConfig();
+  const codeVerifier = generateRandomString();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const state = generateRandomString();
+
+  const { redirectUri, scopes, appId: clientId } = config;
+
+  const signInUri = generateSignInUri({
+    authorizationEndpoint,
+    clientId,
+    redirectUri: redirectUri,
+    codeChallenge,
+    state,
+    scopes,
+  });
+
+  return { redirectUri, codeVerifier, state, signInUri };
+};
+
+exports.handleSignIn = async (signInSession, callbackUri) => {
+  const { redirectUri, state, codeVerifier } = signInSession;
+  const code = verifyAndParseCodeFromCallbackUri(callbackUri, redirectUri, state);
+
+  const { appId: clientId } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const codeTokenResponse = await fetchTokenByAuthorizationCode(
+    {
+      clientId,
+      tokenEndpoint,
+      redirectUri,
+      codeVerifier,
+      code,
+    },
+    requester
+  );
+
+  return codeTokenResponse;
+};
+
+exports.refreshTokens = async (refreshToken) => {
+  const { appId: clientId, scopes } = config;
+  const { tokenEndpoint } = await getOidcConfig();
+  const tokenResponse = await fetchTokenByRefreshToken(
+    {
+      clientId,
+      tokenEndpoint,
+      refreshToken,
+      scopes,
+    },
+    requester
+  );
+
+  return tokenResponse;
+};
+```
+
+## ลงชื่อเข้าใช้ \{#sign-in}
+
+<SignInFlowSummary />
+
+### ตั้งค่า Redirect URI \{#configure-redirect-uri}
+
+<ConfigureRedirectUri
+  figureSrc="/img/assets/web-redirect-uri.png"
+  redirectUri="http://localhost:3000/callback"
+/>
+
+### สร้าง route สำหรับลงชื่อเข้าใช้ \{#implement-sign-in-route}
+
+<SignInNote calling="getSignInUrl()" />
+
+สร้าง route ใน Express สำหรับลงชื่อเข้าใช้:
+
+```js
+const { getSignInUrl } = require('./logto');
+
+app.get('/sign-in', async (req, res) => {
+  const { redirectUri, codeVerifier, state, signInUri } = await getSignInUrl();
+  req.session.signIn = { codeVerifier, state, redirectUri };
+  res.redirect(signInUri);
+});
+```
+
+และ route สำหรับจัดการ callback:
+
+```js
+app.get('/callback', async (req, res) => {
+  if (!req.session.signIn) {
+    res.send('Bad request.');
+    return;
+  }
+
+  const response = await handleSignIn(
+    req.session.signIn,
+    `${req.protocol}://${req.get('host')}${req.originalUrl}`
+  );
+  req.session.tokens = {
+    ...response,
+    expiresAt: response.expiresIn + Date.now(),
+    idToken: decodeIdToken(response.idToken),
+  };
+  req.session.signIn = null;
+
+  res.redirect('/');
+});
+```
+
+## ลงชื่อออก \{#sign-out}
+
+TODO: ลิงก์ไปยังบท "session & cookies" ในส่วนอ้างอิงผู้ใช้
+
+คุณสามารถลบโทเค็นใน session เพื่อให้ผู้ใช้ลงชื่อออกจากแอปนี้ และอ่านข้อมูลเพิ่มเติมเกี่ยวกับ "sign out" ได้ที่ลิงก์นี้
+
+```js
+app.get('/sign-out', (req, res) => {
+  req.session.tokens = null;
+  res.send('Sign out successful');
+});
+```
+
+## เข้าถึงทรัพยากรที่ต้องได้รับอนุญาต \{#access-protected-resource}
+
+สร้างมิดเดิลแวร์ชื่อ `withAuth` เพื่อแนบอ็อบเจกต์ `auth` เข้ากับ `req` และตรวจสอบว่าผู้ใช้ลงชื่อเข้าใช้หรือไม่
+
+```js
+// auth.js
+
+const { decodeIdToken } = require('@logto/js');
+const { refreshTokens } = require('./logto');
+
+const withAuth =
+  ({ requireAuth } = { requireAuth: true }) =>
+  async (req, res, next) => {
+    if (requireAuth && !req.session.tokens) {
+      res.redirect('/sign-in');
+      return;
+    }
+
+    if (req.session.tokens) {
+      if (req.session.tokens.expiresAt >= Date.now()) {
+        // โทเค็นการเข้าถึงหมดอายุ รีเฟรชเพื่อรับโทเค็นใหม่
+        try {
+          const response = await refreshTokens(req.session.tokens.refreshToken);
+          req.session.tokens = {
+            ...response,
+            expiresAt: response.expiresIn + Date.now(),
+            idToken: decodeIdToken(response.idToken),
+          };
+        } catch {
+          // แลกเปลี่ยนโทเค็นล้มเหลว เปลี่ยนเส้นทางไปลงชื่อเข้าใช้ใหม่
+          res.redirect('/sign-in');
+          return;
+        }
+      }
+
+      req.auth = req.session.tokens.idToken.sub;
+    }
+
+    next();
+  };
+
+module.exports = withAuth;
+```
+
+สร้างหน้า `index` แสดงลิงก์ลงชื่อเข้าใช้สำหรับผู้เยี่ยมชม และลิงก์ไปโปรไฟล์สำหรับผู้ใช้ที่ลงชื่อเข้าใช้แล้ว:
+
+```js
+router.get('/', withAuth({ requireAuth: false }), function (req, res, next) {
+  res.render('index', { auth: Boolean(req.auth) });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  if auth
+    p: a(href="/user") ไปที่โปรไฟล์
+  else
+    p: a(href="/sign-in") คลิกที่นี่เพื่อเข้าสู่ระบบ
+```
+
+สร้างหน้า `user` เพื่อแสดง `userId` (`subject`):
+
+```js
+app.get('/user', withAuth(), (req, res, next) => {
+  res.render('user', { userId: req.auth });
+});
+```
+
+```jade
+extends layout
+
+block content
+  h1 Hello logto
+  p userId: #{userId}
+```
+
+## อ่านเพิ่มเติม \{#further-readings}
+
+<FurtherReadings />
+
+<Url href="https://blog.logto.io/gpt-action-oauth">
+  ยืนยันตัวตนผู้ใช้ใน GPT actions: สร้างผู้ช่วยจัดการตารางส่วนตัว
+</Url>

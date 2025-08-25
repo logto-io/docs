@@ -1,0 +1,227 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+เพิ่มแพ็กเกจ NuGet ที่จำเป็นสำหรับการยืนยันตัวตนด้วย JWT:
+
+```xml
+<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+```
+
+สร้างบริการสำหรับตรวจสอบความถูกต้องของโทเค็น:
+
+```csharp title="JwtValidationService.cs"
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using YourApiNamespace.Exceptions;
+
+namespace YourApiNamespace.Services
+{
+    public interface IJwtValidationService
+    {
+        Task ValidateTokenAsync(TokenValidatedContext context);
+    }
+
+    public class JwtValidationService : IJwtValidationService
+    {
+        public async Task ValidateTokenAsync(TokenValidatedContext context)
+        {
+            var principal = context.Principal!;
+
+            try
+            {
+                // เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตามโมเดลสิทธิ์ (permission model)
+                ValidatePayload(principal);
+            }
+            catch (AuthorizationException)
+            {
+                throw; // ส่งต่อข้อยกเว้นการอนุญาต
+            }
+            catch (Exception ex)
+            {
+                throw new AuthorizationException($"Token validation failed: {ex.Message}", 401);
+            }
+        }
+
+        private void ValidatePayload(ClaimsPrincipal principal)
+        {
+            // นำตรรกะการตรวจสอบของคุณมาใช้ที่นี่ตามโมเดลสิทธิ์ (permission model)
+            // ตัวอย่างจะอธิบายในส่วนโมเดลสิทธิ์ด้านล่าง
+        }
+    }
+}
+```
+
+กำหนดค่า JWT authentication ใน `Program.cs` ของคุณ:
+
+```csharp title="Program.cs"
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using YourApiNamespace.Services;
+using YourApiNamespace.Exceptions;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// เพิ่มบริการลงใน container
+builder.Services.AddControllers();
+builder.Services.AddScoped<IJwtValidationService, JwtValidationService>();
+
+// กำหนดค่า JWT authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = AuthConstants.Issuer;
+        options.MetadataAddress = $"{AuthConstants.Issuer}/.well-known/openid-configuration";
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = AuthConstants.Issuer,
+            ValidateAudience = false, // เราจะตรวจสอบ audience ด้วยตนเองตาม permission model
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(5)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var validationService = context.HttpContext.RequestServices
+                    .GetRequiredService<IJwtValidationService>();
+
+                await validationService.ValidateTokenAsync(context);
+            },
+            OnAuthenticationFailed = context =>
+            {
+                // จัดการข้อผิดพลาดของ JWT library เป็น 401
+                context.Response.StatusCode = 401;
+                context.Response.ContentType = "application/json";
+                context.Response.WriteAsync($"{{\"error\": \"Invalid token\"}}");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+var app = builder.Build();
+
+// การจัดการข้อผิดพลาดแบบ global สำหรับการยืนยันตัวตน / การอนุญาตที่ล้มเหลว
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (AuthorizationException ex)
+    {
+        context.Response.StatusCode = ex.StatusCode;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync($"{{\"error\": \"{ex.Message}\"}}");
+    }
+});
+
+// กำหนด HTTP request pipeline
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+```
+
+ตามโมเดลสิทธิ์ (permission model) ของคุณ ให้นำตรรกะการตรวจสอบที่เหมาะสมมาใช้ใน `JwtValidationService`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล (Global API resources)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience");
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+    var requiredScopes = new[] { "api:read", "api:write" }; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API) (Organization (non-API) permissions)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // ตรวจสอบว่า audience claim อยู่ในรูปแบบขององค์กร
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    var hasOrgAudience = audiences.Any(aud => aud.StartsWith("urn:logto:organization:"));
+
+    if (!hasOrgAudience)
+    {
+        throw new AuthorizationException("Invalid audience for organization permissions");
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    var expectedOrgId = "your-organization-id"; // ดึงจาก request context
+    var expectedAud = $"urn:logto:organization:{expectedOrgId}";
+    if (!audiences.Contains(expectedAud))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับองค์กร
+    var requiredScopes = new[] { "invite:users", "manage:settings" }; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization scope");
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร (Organization-level API resources)">
+
+```csharp title="JwtValidationService.cs"
+private void ValidatePayload(ClaimsPrincipal principal)
+{
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    var audiences = principal.FindAll("aud").Select(c => c.Value).ToList();
+    if (!audiences.Contains("https://your-api-resource-indicator"))
+    {
+        throw new AuthorizationException("Invalid audience for organization-level API resources");
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    var expectedOrgId = "your-organization-id"; // ดึงจาก request context
+    var orgId = principal.FindFirst("organization_id")?.Value;
+    if (!expectedOrgId.Equals(orgId))
+    {
+        throw new AuthorizationException("Organization ID mismatch");
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+    var requiredScopes = new[] { "api:read", "api:write" }; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    var tokenScopes = principal.FindFirst("scope")?.Value?.Split(' ') ?? Array.Empty<string>();
+
+    if (!requiredScopes.All(scope => tokenScopes.Contains(scope)))
+    {
+        throw new AuthorizationException("Insufficient organization-level API scopes");
+    }
+}
+```
+
+</TabItem>
+</Tabs>

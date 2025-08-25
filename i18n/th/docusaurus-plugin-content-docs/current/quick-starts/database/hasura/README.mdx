@@ -1,0 +1,107 @@
+---
+slug: /quick-starts/hasura
+sidebar_label: Hasura
+sidebar_custom_props:
+  description: ผสานรวม Logto กับ Hasura
+---
+
+# เพิ่มการยืนยันตัวตนให้กับแอป Hasura ของคุณ (Add authentication to your Hasura application)
+
+[Hasura](https://hasura.io/) เป็นเครื่องมือที่สามารถสร้าง GraphQL และ REST API ที่เหมาะสมกับข้อมูลของคุณได้อย่างรวดเร็ว เพื่อความปลอดภัยของข้อมูล Hasura ยังมีความสามารถในการปรับแต่งการควบคุมการเข้าถึงสำหรับแต่ละ API ได้อย่างละเอียด
+
+โดยปกติแล้ว ผู้ใช้ Hasura จะใช้บริการจัดการข้อมูลระบุตัวตนและการยืนยันตัวตนอื่น ๆ ร่วมด้วย ซึ่ง Logto เป็นหนึ่งในตัวเลือกยอดนิยม
+
+ในบทความนี้ เราจะสมมติว่าคุณใช้งาน Hasura อยู่แล้ว และจะแนะนำวิธีผสานรวม Hasura กับ Logto เพื่อเพิ่มความปลอดภัยสูงสุดให้กับข้อมูลของคุณ หากคุณยังไม่มีบัญชี Logto สมัครและเริ่มใช้งานได้เลย!
+
+## พื้นหลัง \{#background}
+
+Hasura ใช้ [การจัดการการเข้าถึงตามบทบาท (role-based access management)](https://hasura.io/docs/latest/auth/overview/) ขณะที่ Logto ใช้มาตรฐาน [การควบคุมการเข้าถึงตามบทบาท (RBAC)](/authorization/role-based-access-control)
+
+ในโมเดลและแนวปฏิบัติที่ดีที่สุดของ Logto สำหรับ RBAC เราแนะนำให้ใช้ `scope` เพื่อกำหนดสิทธิ์ในระดับละเอียดที่สุด ใช้ `role` เป็นกลุ่มของ `scope` เพื่อความสะดวกในการจัดการแบบกลุ่ม และสุดท้ายให้ตรวจสอบ `scope` (โดยปกติที่ฝั่งผู้ให้บริการทรัพยากร) เพื่อยืนยันว่าผู้ใช้สามารถดำเนินการใด ๆ ได้หรือไม่
+
+ใน Hasura `role` จะตรงกับสิทธิ์ในระดับละเอียดที่สุด และการตรวจสอบสิทธิ์จะอิงกับ `role` ดังนั้น ในการตั้งค่า Logto เราแนะนำให้แมป `role` หนึ่งตัวกับ `scope` หนึ่งตัวแบบหนึ่งต่อหนึ่ง วิธีนี้จะเชื่อมโยงสิทธิ์ของ Logto และ Hasura เข้าด้วยกัน เพื่อลดความสับสนและการใช้งานผิดพลาด
+
+Hasura รองรับการควบคุมการเข้าถึงด้วย Webhook หรือ JWT บทความ [ก่อนหน้านี้](https://blog.logto.io/logto-x-hasura) ของเราได้แนะนำวิธีใช้ Webhook แล้ว ส่วนในหัวข้อต่อไปนี้จะอธิบายวิธีใช้การควบคุมการเข้าถึงแบบ JWT ของ Hasura
+
+## เริ่มต้นใช้งาน \{#get-started}
+
+มาดูตัวอย่างง่าย ๆ สมมติว่าผู้ใช้มี API ใน Hasura อยู่สองตัว คือ `GET /user` และ `PATCH /user` ซึ่งตรงกับสองบทบาท: `user:reader` และ `user:maintainer` ตามลำดับ
+
+### 1. สร้างทรัพยากร API ของ Hasura ใน Logto \{#1-create-hasura-api-resource-in-logto}
+
+สร้างทรัพยากร API ของ Hasura ใน Logto
+
+<img src="/img/assets/hasura-api.webp" alt="Hasura API" />
+
+### 2. สร้างบทบาทตามการตั้งค่า Hasura ใน Logto \{#2-create-roles-according-to-hasura-setup-in-logto}
+
+เราต้องสร้าง `scope` สองตัวสำหรับทรัพยากร API ของ Hasura ที่กล่าวถึงในขั้นตอนที่ 1 ได้แก่ `read:user` และ `maintain:user` จากนั้นสร้างบทบาทสองตัวคือ `user:reader` (มี scope `read:user`) และ `user:maintainer` (มี scope `maintain:user`) เพื่อให้ตรงกับบทบาทของ Hasura แบบหนึ่งต่อหนึ่ง และกำหนดบทบาทเหล่านี้ให้กับผู้ใช้ Logto ตามต้องการ
+
+<img src="/img/assets/hasura-api-with-scopes.webp" alt="Hasura API with scopes" />
+
+<img src="/img/assets/user-reader-role.webp" alt="User reader role" />
+
+<img src="/img/assets/user-maintainer-role.webp" alt="User maintainer role" />
+
+### 3. กำหนดค่าตัวแปรสภาพแวดล้อมของ Hasura `HASURA_GRAPHQL_JWT_SECRET` เพื่อเปิดใช้งานโหมด JWT \{#3-configure-hasura-environment-variable-hasura_graphql_jwt_secret-to-enable-jwt-mode}
+
+จาก [ตัวเลือกการตั้งค่า JWT ของ Hasura](https://hasura.io/docs/latest/auth/authentication/jwt/#hasura-jwt-configuration-options) เราต้องเพิ่มและกำหนดค่าตัวแปรสภาพแวดล้อม `HASURA_GRAPHQL_JWT_SECRET` ก่อนจึงจะใช้ JWT สำหรับการควบคุมการเข้าถึงได้
+
+มีตัวเลือกให้กำหนดค่าหลายแบบ แต่ที่นี่จะแนะนำกรณีที่ง่ายที่สุด: เพียงกำหนดค่า `jwk_url` ซึ่งสามารถหาได้จาก OpenID configuration endpoint ของ Logto ของคุณ (https://your.logto.domain/oidc/.well-known/openid-configuration)
+
+<img src="/img/assets/hasura-jwt-config.webp" alt="Hasura JWT config" />
+
+### 4. ปรับแต่ง claim พิเศษใน user access token \{#4-customize-user-access-token-extra-claims}
+
+ใช้ฟีเจอร์ custom token claims ของ Logto เพื่อปรับแต่งตรรกะในการเพิ่ม claim พิเศษลงใน user access token
+
+<img src="/img/assets/user-access-token-script.webp" alt="User access token script" />
+
+ปรับแต่งเมธอด `getCustomJwtClaims` เพื่อเพิ่มข้อมูลใน JWT ที่ Hasura ใช้สำหรับควบคุมการเข้าถึง ซึ่งอาจรวมถึงข้อมูลเกี่ยวกับผู้ใช้ที่ได้รับอนุญาตในขณะนั้น เช่น `role` ที่ผู้ใช้มี ซึ่งสามารถเข้าถึงได้ผ่าน `context`
+
+เรายังได้กำหนดตัวแปรสภาพแวดล้อม `USER_DEFAULT_ROLE_NAMES` เพื่อหลีกเลี่ยงการเขียนค่าคงที่ลงไปโดยตรง
+
+### 5. ผสานรวม Logto SDK \{#5-integrate-logto-sdk}
+
+หลังจากตั้งค่า Logto และ Hasura แล้ว ให้ผสานรวมแอปของคุณกับ Logto SDK ที่นี่เรายกตัวอย่าง React เพื่อดูตัวอย่าง user access token ที่ Logto ออกให้หลังผู้ใช้ลงชื่อเข้าใช้
+
+<img src="/img/assets/user-with-roles.webp" alt="User with roles" />
+
+ก่อนอื่น กำหนดบทบาท `user:reader` และ `user:maintainer` ที่สร้างไว้ก่อนหน้านี้ให้กับผู้ใช้ แล้วเข้าสู่ระบบในฐานะผู้ใช้นั้น
+
+```tsx
+const config: LogtoConfig = {
+  endpoint: 'http://localhost:3001',
+  appId: '<your-application-id>',
+  appSecret: '<your-application-secret>',
+  scopes: [
+    ...// scopes ที่มีอยู่เดิม
+    'read:user',
+    'maintain:user',
+  ],
+  resources: [
+    ...// resources ที่มีอยู่เดิม
+    'https://*.hasura.app/api',
+  ],
+};
+```
+
+รับ user access token และเรียก Hasura API:
+
+```tsx
+const accessToken = await logto.getAccessToken('https://*.hasura.app/api');
+
+// ก่อนส่งคำขอไปยัง Hasura
+request.headers.set('Authorization', `Bearer ${accessToken}`);
+request.headers.set('x-Hasura-Role', '<required-role-for-the-endpoint>');
+```
+
+## สรุป \{#conclusion}
+
+ในบทความนี้ เราได้นำเสนอวิธีการควบคุมการเข้าถึงแบบใช้ JWT ที่ Hasura รองรับ นอกเหนือจาก Webhook
+
+เมื่อเปรียบเทียบกระบวนการของ [Webhook](https://hasura.io/docs/latest/auth/authentication/webhook/) และ [JWT](https://hasura.io/docs/latest/auth/authentication/jwt/) ของ Hasura จะเห็นว่าแบบ Webhook จะส่ง Webhook ไปยัง Logto และรอการตอบกลับทุกครั้งที่มีการร้องขอจาก Hasura ในขณะที่แบบ JWT สามารถใช้งานได้ต่อเนื่องจนกว่า JWT จะหมดอายุ
+
+วิธี JWT สามารถลดภาระเครือข่ายและขจัดความหน่วงที่เกิดจาก Webhook ในขณะที่ Webhook สามารถซิงโครไนซ์การเปลี่ยนแปลงสิทธิ์ของผู้ใช้ได้แบบเรียลไทม์
+
+ผู้ใช้สามารถเลือกวิธีที่เหมาะสมโดยพิจารณาจากข้อสรุปเหล่านี้ร่วมกับความต้องการทางธุรกิจจริง

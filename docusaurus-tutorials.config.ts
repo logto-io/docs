@@ -32,7 +32,7 @@ const getLogtoDocsUrl = () =>
     : tutorialsSiteUrl;
 
 // Supported locales for the "Build X with Y" tutorials
-const tutorialLocales = ['en', 'es', 'fr', 'ja'];
+const tutorialLocales = ['en', 'es', 'fr', 'ja', 'th'];
 
 const config: Config = {
   ...commonConfigs,
@@ -42,7 +42,7 @@ const config: Config = {
 
   i18n: {
     defaultLocale,
-    locales: ['en', 'es', 'fr', 'ja'],
+    locales: tutorialLocales,
     localeConfigs,
   },
 

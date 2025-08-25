@@ -24,6 +24,8 @@ const fontsMetadata = [
   // NotoSansSC also includes JP characters
   { name: 'NotoSans', filename: 'NotoSansSC-Regular.ttf', weight: 400 },
   { name: 'NotoSans', filename: 'NotoSansSC-Bold.ttf', weight: 700 },
+  { name: 'NotoSansThai', filename: 'NotoSansThai-Regular.ttf', weight: 400 },
+  { name: 'NotoSansThai', filename: 'NotoSansThai-Bold.ttf', weight: 700 },
 ] satisfies FontMetadata[];
 
 export const getFonts = async (): Promise<Font[]> => {

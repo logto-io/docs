@@ -1,0 +1,347 @@
+---
+id: platform-sdk-convention
+title: แนวทางปฏิบัติของ Platform SDK
+sidebar_label: แนวทางปฏิบัติของ Platform SDK
+sidebar_position: 4
+---
+
+# แนวทางปฏิบัติของ Platform SDK
+
+Platform SDK มอบวิธีมาตรฐานในการเชื่อมต่อไคลเอนต์กับบริการ Logto บนแพลตฟอร์มเฉพาะ และช่วยเร่งกระบวนการผสานรวม
+
+- Platform SDK ห่อหุ้ม [แกนหลัก](/developers/sdk-conventions/core-sdk-convention) ด้วยการนำไปใช้เฉพาะแพลตฟอร์ม
+- Platform SDK ควรจัดเตรียมประเภทข้อมูลพื้นฐานที่ทำให้ SDK ใช้งานง่ายขึ้น
+- Platform SDK ควรถูกส่งออกเป็นคลาสชื่อ `LogtoClient`
+
+## ประเภทข้อมูลพื้นฐาน \{#basic-types}
+
+<details>
+  <summary>
+
+### LogtoConfig \{#logtoconfig}
+
+</summary>
+
+| ชื่อ                | ประเภท     | จำเป็น | ค่าเริ่มต้น                         | หมายเหตุ                                                   |
+| ------------------- | ---------- | ------ | ----------------------------------- | ---------------------------------------------------------- |
+| endpoint            | `string`   | ✅     |                                     | จุดปลายทางของบริการ OIDC                                   |
+| appId               | `string`   | ✅     |                                     | รหัสแอปพลิเคชันที่ได้จากแอปที่เราลงทะเบียนใน Logto Service |
+| scopes              | `string[]` |        | `[openid, offline_access, profile]` | ฟิลด์นี้จะมี `openid`, `offline_access` และ `profile` เสมอ |
+| resources           | `string[]` |        |                                     | ตัวบ่งชี้ทรัพยากรที่เราต้องการใช้                          |
+| prompt              | `string`   |        | `consent`                           | ค่าพรอมต์ที่ใช้ใน `generateSignInUri`                      |
+| usingPersistStorage | `boolean`  |        | `true`                              | ตัดสินใจว่าจะเก็บข้อมูลรับรองบนเครื่องหรือไม่              |
+
+**\*หมายเหตุ**
+
+- คุณสามารถขยาย `LogtoConfig` นี้ได้หากจำเป็น
+- `usingPersistStorage` มีเฉพาะใน client SDK เช่น iOS, Android และ SPA
+
+</details>
+
+<details>
+  <summary>
+
+### โทเค็นการเข้าถึง (AccessToken) \{#accesstoken}
+
+</summary>
+
+| ชื่อ      | ประเภท   | หมายเหตุ               |
+| --------- | -------- | ---------------------- |
+| token     | `string` |                        |
+| scope     | `string` |                        |
+| expiresAt | `number` | ตราประทับเวลา (วินาที) |
+
+</details>
+
+## LogtoClient \{#logtoclient}
+
+### คุณสมบัติ (Properties) \{#properties}
+
+<details>
+  <summary>
+
+### logtoConfig \{#logtoconfig-1}
+
+</summary>
+
+**ประเภท**
+
+`LogtoConfig`
+
+</details>
+
+<details>
+  <summary>
+
+### oidcConfig \{#oidcconfig}
+
+</summary>
+
+**ประเภท**
+
+`OidcConfigResponse?`
+
+</details>
+
+<details>
+  <summary>
+
+### accessTokenMap \{#accesstokenmap}
+
+</summary>
+
+**ประเภท**
+
+`Map<string, AccessToken>`
+
+**คีย์**
+
+- คีย์ควรถูกสร้างด้วย `scope` และ `resource`
+- ค่าต่างๆ ใน `scope` ควรเรียงตามตัวอักษรและเชื่อมด้วยช่องว่าง
+- คีย์ควรถูกสร้างตามรูปแบบ: `${scope}@${resource}`
+- หาก `scope` หรือ `resource` เป็น null หรือว่าง ให้ถือว่าค่านั้นว่าง
+
+เช่น `"offline_access openid read:usr@https://logto.dev/api"`, `"@https://logto.dev/api"`, `"openid@"`, `"@"`
+
+**ค่า**
+
+- `AccessToken` ซึ่งใช้พร็อพเพอร์ตี้ `expiresAt` เพื่อระบุเวลาหมดอายุของโทเค็นการเข้าถึง
+
+**หมายเหตุ**
+
+- `scope` จะเป็นค่า null เสมอ เพราะเราไม่รองรับ custom scopes ใน Logto V1
+- เมื่อสร้างคีย์ access token เพื่อเก็บ access token:
+  - `scope` จะเป็นค่า null เสมอ
+  - ถ้า access token ไม่ใช่ jwt ให้ถือว่า `resource` เป็นค่า null
+  - ถ้า access token เป็น jwt ให้ถอดรหัส access token และใช้ค่า `aud` claim ใน payload เป็นส่วน `resource` ของคีย์ access token
+
+</details>
+
+<details>
+  <summary>
+
+### โทเค็นรีเฟรช (refreshToken) \{#refreshtoken}
+
+</summary>
+
+**ประเภท**
+
+`string?`
+
+**หมายเหตุ**
+
+`refreshToken` จะถูกตั้งค่าหรืออัปเดตในสถานการณ์ต่อไปนี้:
+
+- โหลด `refreshToken` จาก storage
+- เซิร์ฟเวอร์ส่งคืน `refreshToken` ใน response เมื่อดึงโทเค็นสำเร็จ
+- ลงชื่อออก (จะถูกตั้งค่าเป็น `null`)
+
+</details>
+
+<details>
+  <summary>
+
+### โทเค็น ID (idToken) \{#idtoken}
+
+</summary>
+
+**ประเภท**
+
+`string?`
+
+**หมายเหตุ**
+
+- `idToken` ควรถูกตรวจสอบหากมาจาก backend
+- `idToken` จะถูกตั้งค่าหรืออัปเดตในสถานการณ์ต่อไปนี้:
+  - โหลด `idToken` จาก storage
+  - เซิร์ฟเวอร์ส่งคืน `idToken` ใน response เมื่อดึงโทเค็นสำเร็จ
+  - ลงชื่อออก (จะถูกตั้งค่าเป็น `null`)
+
+</details>
+
+### เมธอด (Methods) \{#methods}
+
+<details>
+  <summary>
+
+### constructor \{#constructor}
+
+</summary>
+
+**พารามิเตอร์**
+
+| พารามิเตอร์ | ประเภท        |
+| ----------- | ------------- |
+| logtoConfig | `LogtoConfig` |
+
+**ประเภทที่ส่งคืน**
+
+`LogtoClient`
+
+**หมายเหตุ**
+
+- คุณสามารถเพิ่มพารามิเตอร์เพิ่มเติมได้หากจำเป็น
+- หากเปิดใช้ usePersistStorage ใน logtoConfig, platform SDK จะมีฟังก์ชันต่อไปนี้:
+  - เก็บข้อมูลถาวรด้วยคีย์เฉพาะตาม `clientId`
+  - โหลด `refreshToken` และ `idToken` จากเครื่องในขั้นตอนเริ่มต้น
+  - เก็บ `refreshToken` และ `idToken` ไว้ในเครื่องเมื่อเรียก `Core.fetchTokenByAuthorizationCode` และ `Core.fetchTokenByRefreshToken`
+
+</details>
+
+<details>
+  <summary>
+
+### isAuthenticated \{#isauthenticated}
+
+</summary>
+
+ใช้เพื่อตรวจสอบว่าผู้ใช้ได้รับการยืนยันตัวตนหรือไม่  
+สามารถกำหนดเป็น getter ได้เช่นกัน
+
+ผู้ใช้จะถือว่าได้รับการยืนยันตัวตนเมื่อ:
+
+- ได้รับโทเค็น ID สำเร็จ
+- โหลดโทเค็น ID จากเครื่องสำเร็จ
+
+**พารามิเตอร์**
+
+ไม่มี
+
+**ประเภทที่ส่งคืน**
+
+`boolean`
+
+</details>
+
+<details>
+  <summary>
+
+### SignIn \{#signin}
+
+</summary>
+
+เมธอดนี้ควรเริ่มต้น flow การลงชื่อเข้าใช้ และ Platform SDK ควรดูแลทุกขั้นตอนที่การอนุญาตต้องการให้เสร็จสมบูรณ์ รวมถึงกระบวนการ redirect ลงชื่อเข้าใช้
+
+ผู้ใช้จะได้รับการยืนยันตัวตนหลังจากเรียกเมธอดนี้สำเร็จ
+
+กระบวนการลงชื่อเข้าใช้จะอาศัยฟังก์ชัน Core SDK ดังนี้:
+
+- `generateSignInUri`
+- `verifyAndParseCodeFromCallbackUri`
+- `fetchTokenByAuthorizationCode`
+
+หมายเหตุ:
+
+- เนื่องจาก generateSignInUri รวม resource ที่เราต้องการแล้ว จึงไม่จำเป็นต้องส่ง resource ไปที่ฟังก์ชัน fetchTokenByAuthorizationCode
+
+**พารามิเตอร์**
+
+| พารามิเตอร์ | ประเภท   |
+| ----------- | -------- |
+| redirectUri | `string` |
+
+**ประเภทที่ส่งคืน**
+
+`void`
+
+**Throws**
+
+- ข้อผิดพลาดใดๆ ที่เกิดขึ้นระหว่างกระบวนการลงชื่อเข้าใช้นี้
+
+</details>
+
+<details>
+  <summary>
+
+### SignOut \{#signout}
+
+</summary>
+
+กระบวนการลงชื่อออกควรดำเนินตามขั้นตอนดังนี้:
+
+1. ล้าง local storage, คุกกี้, ข้อมูลถาวร หรืออื่นๆ
+2. เพิกถอน refresh token ที่ได้รับผ่าน `Core.revoke` (Logto service จะเพิกถอนโทเค็นที่เกี่ยวข้องทั้งหมดหาก refresh token ถูกเพิกถอน)
+3. เปลี่ยนเส้นทางผู้ใช้ไปยัง endpoint ลงชื่อออกของ Logto เว้นแต่ขั้นตอนที่ 1 จะลบ session ของหน้าลงชื่อเข้าใช้แล้ว
+
+หมายเหตุ:
+
+- ในขั้นตอนที่ 2, `Core.revoke` เป็น async call และจะไม่บล็อกกระบวนการลงชื่อออกแม้จะล้มเหลว
+- ขั้นตอนที่ 3 อาศัย `Core.generateSignOutUri` เพื่อสร้าง endpoint ลงชื่อออกของ Logto
+
+**พารามิเตอร์**
+
+| พารามิเตอร์           | ประเภท   | จำเป็น | ค่าเริ่มต้น |
+| --------------------- | -------- | ------ | ----------- |
+| postLogoutRedirectUri | `string` |        | `null`      |
+
+**ประเภทที่ส่งคืน**
+
+`void`
+
+**Throws**
+
+- ข้อผิดพลาดใดๆ ที่เกิดขึ้นระหว่างกระบวนการลงชื่อออกนี้
+
+</details>
+
+<details>
+  <summary>
+
+### getAccessToken \{#getaccesstoken}
+
+</summary>
+
+`getAccessToken` จะดึง `AccessToken` โดยใช้ `resource` และ `scope` จาก `accessTokenMap` แล้วคืนค่า `token` ของ `AccessToken` นั้น
+
+เราตั้งค่า `scope` เป็น `null` เมื่อสร้างคีย์ของ `accessTokenMap` เพราะเราไม่รองรับ custom scopes ใน Logto V1
+
+**หมายเหตุ**
+
+- หากไม่พบ `AccessToken` ที่ตรงกัน ให้ดำเนินการ `Core.fetchTokenByRefreshToken` เพื่อดึงโทเค็นที่ต้องการ
+- หาก `accessToken` ยังไม่หมดอายุ ให้คืนค่า `token` ภายใน
+- หาก `accessToken` หมดอายุ ให้ดำเนินการ `Core.fetchTokenByRefreshToken` เพื่อดึง `accessToken` ใหม่ อัปเดต `accessTokenMap` ในเครื่อง และคืนค่า `token` ใหม่
+- หาก `Core.fetchTokenByRefreshToken` ล้มเหลว ให้แจ้งผู้ใช้ด้วย exception ที่เกิดขึ้น
+- หากไม่พบ refreshToken ให้แจ้งผู้ใช้ด้วย exception ว่าไม่ได้รับอนุญาต
+- ต้องได้รับ refreshToken หลังลงชื่อเข้าใช้เท่านั้นจึงจะสามารถดำเนินการ `Core.fetchTokenByRefreshToken` ได้
+
+**พารามิเตอร์**
+
+| พารามิเตอร์ | ประเภท   | จำเป็น | ค่าเริ่มต้น |
+| ----------- | -------- | ------ | ----------- |
+| resource    | `string` |        | `null`      |
+
+**ประเภทที่ส่งคืน**
+
+`string`
+
+**Throws**
+
+- ผู้ใช้ไม่ได้รับการยืนยันตัวตน
+- `resource` ที่ป้อนไม่ได้ถูกตั้งค่าใน `logtoConfig`
+- ไม่พบ refresh token ก่อน `Core.fetchTokenByRefreshToken`
+- `Core.fetchTokenByRefreshToken` ล้มเหลว
+
+</details>
+
+<details>
+  <summary>
+
+### getIdTokenClaims \{#getidtokenclaims}
+
+</summary>
+
+`getIdTokenClaims` คืนอ็อบเจกต์ที่มีการอ้างสิทธิ์ (claims) ของพร็อพเพอร์ตี้ `idToken`
+
+**พารามิเตอร์**
+
+ไม่มี
+
+**ประเภทที่ส่งคืน**
+
+`IdTokenClaims`
+
+**Throws**
+
+- ผู้ใช้ไม่ได้รับการยืนยันตัวตน
+
+</details>
