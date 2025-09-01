@@ -28,13 +28,12 @@ const fontsMetadata = [
   { name: 'NotoSansThai', filename: 'NotoSansThai-Bold.ttf', weight: 700 },
 ] satisfies FontMetadata[];
 
-export const getFonts = async (): Promise<Font[]> => {
-  const fonts = await Promise.all(
-    fontsMetadata.map(async ({ filename, ...rest }) => {
-      const font = await fs.readFile(path.join(__dirname, filename));
-      return { ...rest, data: font };
-    })
-  );
+// Eager immutable promise so we avoid any runtime reassignments or repeated allocations.
+const fontsPromise: Promise<Font[]> = Promise.all(
+  fontsMetadata.map(async ({ filename, ...rest }) => {
+    const font = await fs.readFile(path.join(__dirname, filename));
+    return { ...rest, data: font };
+  })
+);
 
-  return fonts;
-};
+export const getFonts = async (): Promise<Font[]> => fontsPromise;
