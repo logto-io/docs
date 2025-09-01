@@ -123,7 +123,7 @@ export const commonConfigs = {
     },
     experimental_faster: {
       rspackBundler: true,
-      rspackPersistentCache: process.env.NODE_ENV === 'development',
+      rspackPersistentCache: false,
       ssgWorkerThreads: true,
     },
   },
