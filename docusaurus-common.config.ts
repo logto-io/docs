@@ -119,12 +119,12 @@ export const commonConfigs = {
   projectName: 'docs',
   future: {
     v4: {
-      removeLegacyPostBuildHeadAttribute: true,
+      removeLegacyPostBuildHeadAttribute: false,
     },
     experimental_faster: {
       rspackBundler: true,
-      rspackPersistentCache: process.env.NODE_ENV === 'development',
-      ssgWorkerThreads: true,
+      rspackPersistentCache: false,
+      ssgWorkerThreads: false,
     },
   },
 } satisfies Partial<Config>;

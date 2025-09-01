@@ -50,83 +50,98 @@ const ogImageGenerator: PluginConfig = () => {
         await fs.mkdir(outputDir, { recursive: true });
       }
 
-      await Promise.all(
-        docs.map(async ({ permalink, title, description }) => {
-          const permalinkWithoutTrailingSlash = permalink.endsWith('/')
-            ? permalink.slice(0, -1)
-            : permalink;
-          const docKey = permalinkWithoutTrailingSlash.replaceAll('/', '_');
-          const textSvg = await satori(
-            {
-              type: 'div',
-              key: docKey,
-              props: {
-                style: {
-                  width: 1000,
-                  height: 562,
-                  padding: '140px 56px 40px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  gap: '20px',
-                  fontFamily: 'Inter, NotoSans, NotoSansThai',
-                },
-                children: [
-                  {
-                    type: 'h1',
-                    props: {
-                      style: {
-                        color: 'white',
-                        margin: 0,
-                        fontSize: '60px',
-                        lineHeight: '68px',
-                        fontWeight: 700,
-                        letterSpacing: '0.64px',
-                        ...cssClampStyles(3),
-                      },
-                      children: title,
-                    },
-                  },
-                  {
-                    type: 'p',
-                    props: {
-                      style: {
-                        color: 'rgba(255, 255, 255, 0.80)',
-                        margin: 0,
-                        fontSize: '32px',
-                        lineHeight: '42px',
-                        letterSpacing: '0.64px',
-                        ...cssClampStyles(3),
-                      },
-                      children: description,
-                    },
-                  },
-                ],
-              },
-            },
-            {
-              width: 1000,
-              height: 562,
-              fonts,
-            }
-          );
+      // Preload template image buffer once to avoid re-reading from disk for each doc.
+      const templateBuffer = await fs.readFile(templateImagePath);
 
-          const outputFilename = `${docKey}.png`;
-          const outputPath = path.join(outputDir, outputFilename);
+      // Concurrency limiter to avoid large simultaneous sharp + satori allocations.
+      const concurrency = Number(process.env.OG_IMAGE_CONCURRENCY || 20);
 
-          await sharp(templateImagePath)
-            .composite([
+      const processChunk = async (start: number): Promise<void> => {
+        if (start >= docs.length) {
+          return;
+        }
+        const slice = docs.slice(start, start + concurrency);
+        await Promise.all(
+          slice.map(async ({ permalink, title, description }) => {
+            const permalinkWithoutTrailingSlash = permalink.endsWith('/')
+              ? permalink.slice(0, -1)
+              : permalink;
+            const docKey = permalinkWithoutTrailingSlash.replaceAll('/', '_');
+            const textSvg = await satori(
               {
-                input: Buffer.from(textSvg),
-                top: 0,
-                left: 0,
+                type: 'div',
+                key: docKey,
+                props: {
+                  style: {
+                    width: 1000,
+                    height: 562,
+                    padding: '140px 56px 40px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    gap: '20px',
+                    fontFamily: 'Inter, NotoSans, NotoSansThai',
+                  },
+                  children: [
+                    {
+                      type: 'h1',
+                      props: {
+                        style: {
+                          color: 'white',
+                          margin: 0,
+                          fontSize: '60px',
+                          lineHeight: '68px',
+                          fontWeight: 700,
+                          letterSpacing: '0.64px',
+                          ...cssClampStyles(3),
+                        },
+                        children: title,
+                      },
+                    },
+                    {
+                      type: 'p',
+                      props: {
+                        style: {
+                          color: 'rgba(255, 255, 255, 0.80)',
+                          margin: 0,
+                          fontSize: '32px',
+                          lineHeight: '42px',
+                          letterSpacing: '0.64px',
+                          ...cssClampStyles(3),
+                        },
+                        children: description,
+                      },
+                    },
+                  ],
+                },
               },
-            ])
-            .toFile(outputPath);
+              {
+                width: 1000,
+                height: 562,
+                fonts,
+              }
+            );
 
-          console.log('Generated og:image', outputFilename);
-        })
-      );
+            const outputFilename = `${docKey}.png`;
+            const outputPath = path.join(outputDir, outputFilename);
+
+            await sharp(templateBuffer)
+              .composite([
+                {
+                  input: Buffer.from(textSvg),
+                  top: 0,
+                  left: 0,
+                },
+              ])
+              .toFile(outputPath);
+
+            console.log('Generated og:image', outputFilename);
+          })
+        );
+        await processChunk(start + concurrency);
+      };
+
+      await processChunk(0);
     },
   };
 };
