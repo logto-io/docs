@@ -63,7 +63,9 @@ const configs = [
     },
     languageOptions: {
       globals: {
-        node: true,
+        node: {
+          process: false,
+        },
       },
     },
   },
