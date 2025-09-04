@@ -11,15 +11,18 @@ import { howToBasePath } from './src/theme/BlogPostItem/utils';
 
 export const defaultLocale = 'en';
 
-// A workaround for locale-specific values in the config
-// https://github.com/facebook/docusaurus/issues/4542#issuecomment-1434839071
-export const currentLocale = String(process.env.DOCUSAURUS_CURRENT_LOCALE ?? defaultLocale);
+const docusaurusDefaultLocale = process.env.DOCUSAURUS_DEFAULT_LOCALE;
+export const currentLocale =
+  docusaurusDefaultLocale && docusaurusDefaultLocale !== 'undefined'
+    ? docusaurusDefaultLocale
+    : defaultLocale;
+
 export const localePath = currentLocale === defaultLocale ? '' : currentLocale;
 export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const mainSiteUrl = 'https://docs.logto.io/';
 export const tutorialsSiteUrl = 'https://tutorials.logto.io/';
-export const cfPagesBranch = String(process.env.CF_PAGES_BRANCH);
+export const cfPagesBranch = process.env.CF_PAGES_BRANCH ?? '';
 export const isCfPagesPreview = Boolean(cfPagesBranch && cfPagesBranch !== 'master');
 export const siteUrls = Object.freeze({
   main: mainSiteUrl,
