@@ -8,6 +8,7 @@ import Customization from '@site/src/assets/customization.svg';
 import Developer from '@site/src/assets/developer.svg';
 import Integrate from '@site/src/assets/integrate.svg';
 import Introduction from '@site/src/assets/introduction.svg';
+import LightBulb from '@site/src/assets/light-bulb.svg';
 import OpenSource from '@site/src/assets/open-source.svg';
 import Organization from '@site/src/assets/organization.svg';
 import Security from '@site/src/assets/security.svg';
@@ -38,6 +39,7 @@ const icons: IconMap = Object.freeze({
   concepts: Concepts,
   security: Security,
   'secret-vault': Vault,
+  'use-cases': LightBulb,
 });
 
 export default icons;
