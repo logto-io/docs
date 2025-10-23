@@ -246,7 +246,7 @@ export const createCommonThemeConfig = (site: Site) => {
             },
             {
               label: 'Request a new feature',
-              href: 'https://logto.productlane.com/roadmap',
+              href: 'https://feedback.logto.io/roadmap',
               icon: 'roadmap',
               hideExternalLinkIcon: true,
             },
