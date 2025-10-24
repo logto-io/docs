@@ -1,0 +1,80 @@
+---
+sidebar_position: 2
+---
+
+# Logto Management API로 앱 서비스 설정하기
+
+Logto **Management API**를 사용하여 앱에서 맞춤형 **조직 플로우**를 구축할 수 있습니다. 아래는 Management API 통합을 위한 기본 설정 단계입니다. 이미 익숙하다면 [튜토리얼](/integrate-logto/interact-with-management-api)로 바로 넘어가도 됩니다.
+
+설정에 익숙해지면, 추가 API를 탐색하여 나머지 플로우를 비즈니스 요구에 맞게 맞춤화할 수 있습니다.
+
+## 기계 간 (M2M) 연결 설정하기 \{#establish-a-machine-to-machine-connection}
+
+Logto는 **기계 간 (M2M) 인증 (Authentication)**을 사용하여 백엔드 서비스를 Logto Management API 엔드포인트에 안전하게 연결합니다.
+이후 백엔드 서비스는 Management API를 사용하여 **조직 생성**, **멤버 추가 또는 제거** 등 조직 관련 작업을 처리할 수 있습니다.
+
+이 과정은 다음과 같습니다:
+
+1. Logto 콘솔에서 **기계 간 (M2M) 앱**을 생성합니다.
+
+<img src="/img/assets/m2m-app.png" alt="M2M 앱 세부 정보" />
+
+2. Logto에서 **M2M 액세스 토큰 (Access token)**을 획득합니다. [자세히 알아보기](/integrate-logto/interact-with-management-api#fetch-an-access-token).
+3. 백엔드 서비스에서 Logto Management API를 호출합니다. 예를 들어, 모든 조직을 나열하려면:
+
+```bash
+curl \
+ -X GET https://[tenant_id].logto.app/api/organizations \
+ -H "Authorization: Bearer $M2M_ACCESS_TOKEN" \
+ -H "Content-Type: application/json"
+```
+
+## 앱 서버 보호하기 \{#protect-your-app-server}
+
+최종 사용자가 일부 조직 작업을 셀프 서비스로 수행할 수 있으므로, 최종 사용자와 앱 서버 사이에 인가 (Authorization) 계층을 추가하세요. 서버는 모든 요청을 중재하고, 사용자의 조직 토큰 (Organization token)과 필요한 스코프 (Scope)를 검증한 후에만 서버에 저장된 M2M 자격 증명을 사용하여 Management API를 호출해야 합니다.
+
+사용자가 조직 토큰 (Organization token)을 제시하여 작업(예: 조직 생성)을 요청하면, 서버는 먼저 토큰의 스코프 (Scope)를 검증합니다. 토큰에 `org:create`와 같은 필요한 스코프가 포함되어 있으면 요청을 인가 (Authorize)하고, M2M 플로우를 통해 Logto Management API를 호출하여 조직을 생성합니다.
+
+토큰에 필요한 스코프가 없으면 403 Forbidden을 반환하고 M2M 로직을 건너뜁니다. 이를 통해 적절한 권한이 없는 사용자가 조직을 생성하지 못하도록 보장할 수 있습니다.
+
+아래는 일반적인 인가 (Authorization) 패턴입니다.
+
+### 조직 권한 (Permission) 사용하기 \{#using-organization-permissions}
+
+먼저, [이전 섹션](/end-user-flows/organization-experience/organization-management#define-access-control-within-organizations)에서 조직 권한 (Permission)과 역할 (Role)을 조직 템플릿에 정의했는지 확인하세요.
+
+그런 다음, Logto 설정에 `UserScope.Organizations` (값: `urn:logto:organization`)이 포함되어 있는지 확인하세요. React SDK를 예로 들면:
+
+```jsx
+// src/App.js
+import { UserScope } from '@logto/react';
+
+const config = {
+  endpoint: 'https://<tenant-id>.logto.app/', // Logto 엔드포인트
+  appId: '40fmibayagoo00lj26coc', // 앱 ID
+  resources: [
+    'https://my.company.com/api', // 글로벌 API 리소스 식별자
+  ],
+  scopes: [
+    UserScope.Email,
+    UserScope.Phone,
+    UserScope.CustomData,
+    UserScope.Identities,
+    // highlight-start
+    UserScope.Organizations, // 조직 토큰 (Organization token) 요청
+    // highlight-end
+  ],
+};
+```
+
+이렇게 하면 `getOrganizationToken(organizationId)`를 호출할 때, 클라이언트 SDK가 사용자에게 할당된 조직 권한 (Permission)이 포함된 조직 토큰 (Organization token)을 요청하게 됩니다. 이후 백엔드 서비스는 이 토큰을 검증하고, 해당 권한에 따라 후속 요청을 인가 (Authorize)할 수 있습니다.
+
+조직 수준(비 API) 권한 보호에 대한 자세한 내용은 [전체 가이드](/authorization/organization-permissions)를 참고하세요.
+
+### 조직 수준 권한과 API 수준 권한 혼합 사용하기 \{#mixing-organization-level-permissions-and-api-level-permissions}
+
+API 리소스와 권한이 글로벌로 등록되어 있지만, 역할 (Role)이 조직 수준에서 정의된 경우에 해당합니다(조직 템플릿에서 조직 역할에 API 수준 권한을 할당할 수 있습니다).
+
+구현 방식은 이전 섹션과 동일합니다. 항상 조직 ID를 제공하고 `getOrganizationToken(organizationId)`를 호출하여 조직 토큰 (Organization token)을 받아야 합니다. 그렇지 않으면 조직 권한이 포함되지 않습니다.
+
+조직 수준 API 권한 보호에 대한 자세한 내용은 [전체 가이드](/authorization/organization-level-api-resources)를 참고하세요.

@@ -1,0 +1,80 @@
+---
+sidebar_position: 2
+---
+
+# Configurez votre service d’application avec l’API de gestion Logto
+
+Utilisez l’**API de gestion (Management API)** Logto pour créer des **flux d’organisation** personnalisés dans votre application. Voici les étapes de base pour intégrer l’API de gestion. Si vous êtes déjà familier, vous pouvez passer directement au [tutoriel](/integrate-logto/interact-with-management-api).
+
+Une fois que vous maîtrisez la configuration, vous pouvez explorer d’autres API pour adapter le reste des flux à vos besoins métier.
+
+## Établir une connexion machine à machine \{#establish-a-machine-to-machine-connection}
+
+Logto utilise l’**authentification machine à machine (M2M)** pour connecter en toute sécurité votre service backend au point de terminaison de l’API de gestion Logto.
+Votre service backend peut alors utiliser l’API de gestion pour gérer les tâches liées aux organisations telles que **créer des organisations**, **ajouter ou supprimer des membres**, et plus encore.
+
+Cela implique :
+
+1. **Créer une application Machine à Machine (M2M)** dans la console Logto.
+
+<img src="/img/assets/m2m-app.png" alt="Détails de l’application M2M" />
+
+2. **Obtenir un jeton d’accès M2M** depuis Logto. [En savoir plus](/integrate-logto/interact-with-management-api#fetch-an-access-token).
+3. **Appeler les API de gestion Logto** depuis votre service backend. Par exemple, lister toutes les organisations :
+
+```bash
+curl \
+ -X GET https://[tenant_id].logto.app/api/organizations \
+ -H "Authorization: Bearer $M2M_ACCESS_TOKEN" \
+ -H "Content-Type: application/json"
+```
+
+## Protégez votre serveur d’application \{#protect-your-app-server}
+
+Parce que les utilisateurs finaux peuvent effectuer certaines opérations d’organisation en libre-service, ajoutez une couche d’autorisation entre l’utilisateur final et votre serveur d’application. Le serveur doit intercepter chaque requête, valider le jeton d’organisation de l’utilisateur et les portées requises, puis seulement utiliser un identifiant M2M détenu côté serveur pour invoquer l’API de gestion.
+
+Lorsqu’un utilisateur présente un jeton d’organisation pour demander une action (par exemple, créer une organisation), le serveur valide d’abord les portées dans le jeton. Si le jeton inclut la portée nécessaire, telle que `org:create`, autorisez la requête et appelez l’API de gestion Logto via le flux M2M pour créer l’organisation.
+
+Si le jeton ne contient pas les portées requises, retournez un 403 Forbidden et ignorez la logique M2M. Cela garantit que les utilisateurs sans les privilèges appropriés ne peuvent pas créer d’organisations.
+
+Voici des schémas courants d’autorisation.
+
+### Utilisation des permissions d’organisation \{#using-organization-permissions}
+
+Tout d’abord, assurez-vous d’avoir défini les permissions et rôles d’organisation dans votre modèle d’organisation dans [la section précédente](/end-user-flows/organization-experience/organization-management#define-access-control-within-organizations).
+
+Ensuite, assurez-vous que `UserScope.Organizations` (valeur : `urn:logto:organization`) est inclus dans la configuration Logto. Prenons l’exemple du SDK React :
+
+```jsx
+// src/App.js
+import { UserScope } from '@logto/react';
+
+const config = {
+  endpoint: 'https://<tenant-id>.logto.app/', // Votre point de terminaison Logto
+  appId: '40fmibayagoo00lj26coc', // L’identifiant de votre application
+  resources: [
+    'https://my.company.com/api', // L’identifiant global de votre ressource API
+  ],
+  scopes: [
+    UserScope.Email,
+    UserScope.Phone,
+    UserScope.CustomData,
+    UserScope.Identities,
+    // highlight-start
+    UserScope.Organizations, // Demander un jeton d’organisation
+    // highlight-end
+  ],
+};
+```
+
+Cela garantit que lors de l’appel à `getOrganizationToken(organizationId)`, le SDK client demande un jeton d’organisation contenant les permissions d’organisation attribuées à l’utilisateur. Votre service backend peut alors valider le jeton et autoriser les requêtes suivantes en fonction de ces permissions.
+
+Pour plus de détails sur la protection des permissions au niveau organisation (hors API), consultez le [guide complet](/authorization/organization-permissions).
+
+### Combiner permissions au niveau organisation et permissions au niveau API \{#mixing-organization-level-permissions-and-api-level-permissions}
+
+Cela s’applique lorsque vos ressources API et permissions sont enregistrées globalement, mais que les rôles sont définis au niveau de l’organisation (vous pouvez attribuer des permissions au niveau API aux rôles d’organisation dans le modèle d’organisation).
+
+La mise en œuvre est la même que dans la section précédente. Fournissez toujours l’identifiant de l’organisation et appelez `getOrganizationToken(organizationId)` pour obtenir un jeton d’organisation ; sinon, les permissions d’organisation ne seront pas incluses.
+
+Pour plus de détails sur la protection des permissions API au niveau organisation, consultez le [guide complet](/authorization/organization-level-api-resources).
