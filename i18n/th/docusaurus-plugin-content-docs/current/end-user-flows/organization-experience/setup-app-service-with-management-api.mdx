@@ -1,0 +1,80 @@
+---
+sidebar_position: 2
+---
+
+# ตั้งค่าบริการแอปของคุณด้วย Logto Management API
+
+ใช้ **Management API** ของ Logto เพื่อสร้าง **ประสบการณ์องค์กร (organization flows)** แบบกำหนดเองในแอปของคุณ ด้านล่างนี้คือขั้นตอนพื้นฐานสำหรับการเชื่อมต่อ Management API หากคุณคุ้นเคยอยู่แล้ว สามารถข้ามไปที่ [บทแนะนำ](/integrate-logto/interact-with-management-api) ได้เลย
+
+เมื่อคุณเข้าใจขั้นตอนการตั้งค่าแล้ว คุณสามารถสำรวจ API อื่น ๆ เพื่อปรับแต่ง flow ที่เหลือให้เหมาะกับความต้องการทางธุรกิจของคุณ
+
+## สร้างการเชื่อมต่อเครื่องต่อเครื่อง \{#establish-a-machine-to-machine-connection}
+
+Logto ใช้ **การยืนยันตัวตนระหว่างเครื่อง (Machine-to-machine; M2M)** เพื่อเชื่อมต่อบริการ backend ของคุณกับ Management API endpoint ของ Logto อย่างปลอดภัย
+บริการ backend ของคุณจะสามารถใช้ Management API เพื่อจัดการงานที่เกี่ยวข้องกับองค์กร เช่น **สร้างองค์กร**, **เพิ่มหรือลบสมาชิก** และอื่น ๆ
+
+ขั้นตอนประกอบด้วย:
+
+1. **สร้างแอป Machine-to-Machine (M2M)** ใน Logto Console
+
+<img src="/img/assets/m2m-app.png" alt="รายละเอียดแอป M2M" />
+
+2. **ขอรับโทเค็นการเข้าถึง M2M (M2M access token)** จาก Logto [เรียนรู้เพิ่มเติม](/integrate-logto/interact-with-management-api#fetch-an-access-token)
+3. **เรียกใช้ Logto Management API** จากบริการ backend ของคุณ ตัวอย่างเช่น แสดงรายการองค์กรทั้งหมด:
+
+```bash
+curl \
+ -X GET https://[tenant_id].logto.app/api/organizations \
+ -H "Authorization: Bearer $M2M_ACCESS_TOKEN" \
+ -H "Content-Type: application/json"
+```
+
+## ปกป้องเซิร์ฟเวอร์แอปของคุณ \{#protect-your-app-server}
+
+เนื่องจากผู้ใช้ปลายทางสามารถดำเนินการบางอย่างเกี่ยวกับองค์กรได้ด้วยตนเอง ควรเพิ่มเลเยอร์การอนุญาต (authorization layer) ระหว่างผู้ใช้กับเซิร์ฟเวอร์แอปของคุณ เซิร์ฟเวอร์ควรเป็นตัวกลางสำหรับทุกคำขอ ตรวจสอบโทเค็นองค์กรของผู้ใช้และขอบเขต (scopes) ที่จำเป็น และใช้ข้อมูลรับรอง M2M ที่เก็บไว้ในเซิร์ฟเวอร์เพื่อเรียก Management API เท่านั้น
+
+เมื่อผู้ใช้ส่งโทเค็นองค์กรเพื่อขอดำเนินการ (เช่น สร้างองค์กร) เซิร์ฟเวอร์จะตรวจสอบขอบเขตในโทเค็นก่อน หากโทเค็นมีขอบเขตที่จำเป็น เช่น `org:create` ให้อนุญาตคำขอและเรียก Logto Management API ผ่าน flow M2M เพื่อสร้างองค์กร
+
+หากโทเค็นไม่มีขอบเขตที่จำเป็น ให้ส่งกลับ 403 Forbidden และข้ามตรรกะ M2M เพื่อให้แน่ใจว่าผู้ใช้ที่ไม่มีสิทธิ์จะไม่สามารถสร้างองค์กรได้
+
+ด้านล่างนี้คือลักษณะการอนุญาตที่พบบ่อย
+
+### การใช้สิทธิ์ขององค์กร \{#using-organization-permissions}
+
+ก่อนอื่น ตรวจสอบให้แน่ใจว่าคุณได้กำหนดสิทธิ์ (permissions) และบทบาท (roles) ขององค์กรไว้ในเทมเพลตองค์กรของคุณใน [หัวข้อก่อนหน้า](/end-user-flows/organization-experience/organization-management#define-access-control-within-organizations)
+
+จากนั้น ตรวจสอบให้แน่ใจว่า `UserScope.Organizations` (ค่า: `urn:logto:organization`) ถูกเพิ่มไว้ใน config ของ Logto ยกตัวอย่าง React SDK:
+
+```jsx
+// src/App.js
+import { UserScope } from '@logto/react';
+
+const config = {
+  endpoint: 'https://<tenant-id>.logto.app/', // Logto endpoint ของคุณ
+  appId: '40fmibayagoo00lj26coc', // app id ของคุณ
+  resources: [
+    'https://my.company.com/api', // ตัวระบุทรัพยากร API ระดับโกลบอลของคุณ
+  ],
+  scopes: [
+    UserScope.Email,
+    UserScope.Phone,
+    UserScope.CustomData,
+    UserScope.Identities,
+    // highlight-start
+    UserScope.Organizations, // ขอรับโทเค็นองค์กร
+    // highlight-end
+  ],
+};
+```
+
+สิ่งนี้จะทำให้เมื่อเรียก `getOrganizationToken(organizationId)` ตัว client SDK จะขอโทเค็นองค์กรที่มีสิทธิ์ขององค์กรที่กำหนดให้กับผู้ใช้ บริการ backend ของคุณสามารถตรวจสอบโทเค็นและอนุญาตคำขอถัดไปตามสิทธิ์เหล่านี้
+
+สำหรับรายละเอียดเกี่ยวกับการปกป้องสิทธิ์ระดับองค์กร (ที่ไม่ใช่ API) ดู [คู่มือฉบับเต็ม](/authorization/organization-permissions)
+
+### ผสมผสานสิทธิ์ระดับองค์กรและสิทธิ์ระดับ API \{#mixing-organization-level-permissions-and-api-level-permissions}
+
+กรณีนี้ใช้เมื่อทรัพยากร API และสิทธิ์ของคุณถูกลงทะเบียนในระดับโกลบอล แต่บทบาทถูกกำหนดในระดับองค์กร (คุณสามารถกำหนดสิทธิ์ระดับ API ให้กับบทบาทขององค์กรในเทมเพลตองค์กรได้)
+
+การใช้งานเหมือนกับหัวข้อก่อนหน้าเสมอ ให้ระบุ organization ID และเรียก `getOrganizationToken(organizationId)` เพื่อขอโทเค็นองค์กร มิฉะนั้นสิทธิ์ขององค์กรจะไม่ถูกรวมอยู่ด้วย
+
+สำหรับรายละเอียดเกี่ยวกับการปกป้องสิทธิ์ API ระดับองค์กร ดู [คู่มือฉบับเต็ม](/authorization/organization-level-api-resources)
