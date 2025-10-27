@@ -31,7 +31,7 @@ const quickStartSidebar: SidebarConfig = [
      * to generate the gallery items. The additional label is appended to the label, in order to
      * provide additional information about the category.
      */
-    customProps: { additionalLabel: '(Logto as Idp)' },
+    customProps: { additionalLabel: '(Logto as IdP)' },
     href: '#',
     className: 'sidebar-section',
   },
