@@ -40,7 +40,14 @@ for (const [from, to] of entries) {
     continue;
   }
 
-  const mappedFrom = from.endsWith('/') ? from.slice(0, -1) : from + '/';
+  // Support "from" entries that include a hash fragment by toggling the trailing
+  // slash on the path portion only, then re-attaching the original fragment.
+  const hashIndex = from.indexOf('#');
+  const baseFrom = hashIndex >= 0 ? from.slice(0, hashIndex) : from;
+  const fragment = hashIndex >= 0 ? from.slice(hashIndex) : '';
+
+  const toggledBase = baseFrom.endsWith('/') ? baseFrom.slice(0, -1) : baseFrom + '/';
+  const mappedFrom = `${toggledBase}${fragment}`;
   const mappedTo = entries.get(mappedFrom);
 
   if (!mappedTo) {
