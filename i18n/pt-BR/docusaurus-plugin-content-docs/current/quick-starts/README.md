@@ -1,5 +1,5 @@
 ---
-sidebar_label: Introdução
+sidebar_label: Inícios rápidos do Logto
 ---
 
 # Inícios rápidos
