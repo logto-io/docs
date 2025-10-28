@@ -1,5 +1,5 @@
 ---
-sidebar_label: Introduction
+sidebar_label: Logto quick starts
 ---
 
 # Quick starts
