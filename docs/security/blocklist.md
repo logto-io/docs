@@ -31,7 +31,7 @@ For instance, adding `@example.com` to the blocklist will block all email addres
 Disposable emails, subaddressing, and custom email are restricted during [new-user registration](/end-user-flows/sign-up-and-sign-in/sign-up), [linking email during social sign-in](/end-user-flows/sign-up-and-sign-in/social-sign-in#collect-sign-up-identifiers), and updating emails via [Account API](/end-user-flows/account-settings/by-account-api#update-or-link-new-email). Existing users with these email addresses can still sign in.
 
 - Admins can "bypass restrictions" by manually adding users in <CloudLink to="/users">Console > User management</CloudLink>, or via [Management API](https://openapi.logto.io/operation/operation-createuser). E.g., Create an user with a subaddress email when subaddressing is blocked.
-- Block exsiting accounts by deleting or suspending them in <CloudLink to="/users">Console > User management</CloudLink>.
+- Block existing accounts by deleting or suspending them in <CloudLink to="/users">Console > User management</CloudLink>.
 
 :::
 
