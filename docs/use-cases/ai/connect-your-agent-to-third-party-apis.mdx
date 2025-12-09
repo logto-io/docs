@@ -117,24 +117,20 @@ async function getGoogleAccessToken(userAccessToken: string) {
     }
   );
 
-  if (response.ok) {
-    return response.json(); // { accessToken: "...", expiresAt: 1700000000 }
-  }
-
-  if (response.status === 404) {
-    return null; // User hasn't authorized Google yet
-  }
-
-  throw new Error('Failed to retrieve access token');
+  return response.json();
 }
 ```
 
 ### Step 2: Request authorization if needed \{#step-2-request-authorization-if-needed}
 
-If no token exists, use Logto's [Social Verification API](/secret-vault/federated-token-set#reauthentication-and-token-renewal) to initiate the authorization flow:
+If no token exists, the token has expired, or you need to extend the access token's scope, use Logto's [Social Verification API](/secret-vault/federated-token-set#reauthentication-and-token-renewal) to initiate the authorization flow:
 
 ```tsx
 async function requestGoogleAuthorization(userAccessToken: string, scopes: string) {
+  // Generate a random state for CSRF protection
+  const state = crypto.randomUUID();
+  sessionStorage.setItem('oauth_state', state);
+
   // Initiate social verification
   const response = await fetch('https://[tenant-id].logto.app/api/verification/social', {
     method: 'POST',
@@ -144,6 +140,7 @@ async function requestGoogleAuthorization(userAccessToken: string, scopes: strin
     },
     body: JSON.stringify({
       connectorId: '<google_connector_id>',
+      state,
       redirectUri: 'https://your-ai-agent.com/callback',
       scope: scopes,
     }),
@@ -169,8 +166,14 @@ async function handleAuthorizationCallback(
   callbackParams: URLSearchParams
 ) {
   const verificationRecordId = sessionStorage.getItem('verificationRecordId');
+  const storedState = sessionStorage.getItem('oauth_state');
   const code = callbackParams.get('code');
   const state = callbackParams.get('state');
+
+  // Validate state to prevent CSRF attacks
+  if (state !== storedState) {
+    throw new Error('Invalid state parameter');
+  }
 
   // Verify the authorization
   await fetch('https://[tenant-id].logto.app/api/verification/social/verify', {
@@ -200,6 +203,10 @@ async function handleAuthorizationCallback(
       verificationRecordId,
     }),
   });
+
+  // Clean up
+  sessionStorage.removeItem('verificationRecordId');
+  sessionStorage.removeItem('oauth_state');
 }
 ```
 
