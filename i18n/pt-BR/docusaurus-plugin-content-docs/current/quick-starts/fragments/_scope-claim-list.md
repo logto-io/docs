@@ -8,18 +8,18 @@ Aqui está a lista de escopos suportados e as reivindicações correspondentes:
 
 **`profile`**
 
-| Nome da reivindicação | Tipo     | Descrição                                                                                                                                                                                                                                                                                                                                                                                            | Precisa de userinfo? |
-| --------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| name                  | `string` | O nome completo do usuário                                                                                                                                                                                                                                                                                                                                                                           | Não                  |
-| username              | `string` | O nome de usuário do usuário                                                                                                                                                                                                                                                                                                                                                                         | Não                  |
-| picture               | `string` | URL da foto de perfil do Usuário Final. Este URL DEVE referir-se a um arquivo de imagem (por exemplo, um arquivo de imagem PNG, JPEG ou GIF), em vez de uma página da Web contendo uma imagem. Note que este URL DEVE referir-se especificamente a uma foto de perfil do Usuário Final adequada para exibição ao descrever o Usuário Final, em vez de uma foto arbitrária tirada pelo Usuário Final. | Não                  |
-| created_at            | `number` | Hora em que o Usuário Final foi criado. O tempo é representado como o número de milissegundos desde a época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                                             | Não                  |
-| updated_at            | `number` | Hora em que as informações do Usuário Final foram atualizadas pela última vez. O tempo é representado como o número de milissegundos desde a época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                      | Não                  |
+| Nome da reivindicação | Tipo     | Descrição                                                                                                                                                                                                                                                                                                                                                                                              | Precisa de userinfo? |
+| --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| name                  | `string` | O nome completo do usuário                                                                                                                                                                                                                                                                                                                                                                             | Não                  |
+| username              | `string` | O nome de usuário do usuário                                                                                                                                                                                                                                                                                                                                                                           | Não                  |
+| picture               | `string` | URL da foto de perfil do usuário final. Esta URL DEVE se referir a um arquivo de imagem (por exemplo, um arquivo de imagem PNG, JPEG ou GIF), em vez de uma página da Web contendo uma imagem. Observe que esta URL DEVE referenciar especificamente uma foto de perfil do usuário final adequada para exibição ao descrever o usuário final, em vez de uma foto arbitrária tirada pelo usuário final. | Não                  |
+| created_at            | `number` | Momento em que o usuário final foi criado. O tempo é representado como o número de milissegundos desde a época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                                                            | Não                  |
+| updated_at            | `number` | Momento em que as informações do usuário final foram atualizadas pela última vez. O tempo é representado como o número de milissegundos desde a época Unix (1970-01-01T00:00:00Z).                                                                                                                                                                                                                     | Não                  |
 
-Outras [reivindicações padrão](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) incluem `family_name`, `given_name`, `middle_name`, `nickname`, `preferred_username`, `profile`, `website`, `gender`, `birthdate`, `zoneinfo` e `locale` também serão incluídas no escopo `profile` sem a necessidade de solicitar o endpoint userinfo. Uma diferença em relação às reivindicações acima é que essas reivindicações só serão retornadas quando seus valores não estiverem vazios, enquanto as reivindicações acima retornarão `null` se os valores estiverem vazios.
+Outras [reivindicações padrão](https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims) incluem `family_name`, `given_name`, `middle_name`, `nickname`, `preferred_username`, `profile`, `website`, `gender`, `birthdate`, `zoneinfo` e `locale` também serão incluídas no escopo `profile` sem a necessidade de solicitar o endpoint userinfo. Uma diferença em relação às reivindicações acima é que essas reivindicações só serão retornadas quando seus valores não forem vazios, enquanto as reivindicações acima retornarão `null` se os valores estiverem vazios.
 
 :::note
-Ao contrário das reivindicações padrão, as reivindicações `created_at` e `updated_at` estão usando milissegundos em vez de segundos.
+Diferente das reivindicações padrão, as reivindicações `created_at` e `updated_at` usam milissegundos em vez de segundos.
 :::
 
 **`email`**
@@ -38,7 +38,7 @@ Ao contrário das reivindicações padrão, as reivindicações `created_at` e `
 
 **`address`**
 
-Por favor, consulte o [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim) para os detalhes da reivindicação de endereço.
+Consulte o [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim) para detalhes da reivindicação de endereço.
 
 **`custom_data`**
 
@@ -66,12 +66,16 @@ Por favor, consulte o [OpenID Connect Core 1.0](https://openid.net/specs/openid-
 | organizations         | `string[]` | Os IDs das organizações às quais o usuário pertence   | Não                  |
 | organization_data     | `object[]` | Os dados das organizações às quais o usuário pertence | Sim                  |
 
+:::note
+Essas reivindicações de organização também podem ser recuperadas via endpoint userinfo ao usar um [token opaco](/concepts/opaque-token). No entanto, tokens opacos não podem ser usados como tokens de organização para acessar recursos específicos da organização. Veja [Token opaco e organizações](/concepts/opaque-token#opaque-token-and-organizations) para mais detalhes.
+:::
+
 **`urn:logto:scope:organization_roles`**
 
-| Nome da reivindicação | Tipo       | Descrição                                                                                            | Precisa de userinfo? |
-| --------------------- | ---------- | ---------------------------------------------------------------------------------------------------- | -------------------- |
-| organization_roles    | `string[]` | Os papéis das organizações às quais o usuário pertence com o formato `<organization_id>:<role_name>` | Não                  |
+| Nome da reivindicação | Tipo       | Descrição                                                                                        | Precisa de userinfo? |
+| --------------------- | ---------- | ------------------------------------------------------------------------------------------------ | -------------------- |
+| organization_roles    | `string[]` | Os papéis da organização aos quais o usuário pertence no formato `<organization_id>:<role_name>` | Não                  |
 
 ---
 
-Considerando o desempenho e o tamanho dos dados, se "Precisa de userinfo?" for "Sim", isso significa que a reivindicação não aparecerá no Token de ID, mas será retornada na resposta do [endpoint userinfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).
+Considerando desempenho e o tamanho dos dados, se "Precisa de userinfo?" for "Sim", isso significa que a reivindicação não aparecerá no token de ID, mas será retornada na resposta do [endpoint userinfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo).
