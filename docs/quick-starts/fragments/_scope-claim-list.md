@@ -66,6 +66,10 @@ Please refer to the [OpenID Connect Core 1.0](https://openid.net/specs/openid-co
 | organizations     | `string[]` | The organization IDs the user belongs to  | No              |
 | organization_data | `object[]` | The organization data the user belongs to | Yes             |
 
+:::note
+These organization claims can also be retrieved via the userinfo endpoint when using an [opaque token](/concepts/opaque-token). However, opaque tokens cannot be used as organization tokens for accessing organization-specific resources. See [Opaque token and organizations](/concepts/opaque-token#opaque-token-and-organizations) for more details.
+:::
+
 **`urn:logto:scope:organization_roles`**
 
 | Claim name         | Type       | Description                                                                                   | Needs userinfo? |
