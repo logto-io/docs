@@ -19,6 +19,7 @@ reCAPTCHA Enterprise is a Google service that protects websites from fraud and a
    - **Display name**: Any name you want to give to the key
    - **Application type**: Website
    - **Domain list**: Add Logto's endpoint domain
+   - **Verification type**: Choose between **Score-based (invisible)** or **Checkbox challenge**. This determines how reCAPTCHA will be displayed to users. See [Verification mode](#verification-mode) for more details.
 4. After creating the key, you will be redirected to the key details page, copy the **ID**.
 
 ## Setup an API key {#setup-an-api-key}
@@ -32,6 +33,28 @@ reCAPTCHA Enterprise is a Google service that protects websites from fraud and a
 ## Get project ID {#get-project-id}
 
 1. Copy the **Project ID** from the [home page of Google Cloud Console](https://console.cloud.google.com/welcome).
+
+## Verification mode {#verification-mode}
+
+reCAPTCHA Enterprise supports two verification modes:
+
+- **Invisible**: Score-based verification that runs automatically in the background without user interaction. This is the default mode.
+- **Checkbox**: Displays the classic "I'm not a robot" checkbox widget that requires user interaction.
+
+:::note
+The verification mode you select in Logto must match the key type you created in Google Cloud Console. If you created a score-based key, select **Invisible**. If you created a checkbox challenge key, select **Checkbox**.
+:::
+
+## Custom domain {#custom-domain}
+
+By default, Logto loads the reCAPTCHA script from `www.google.com`. However, in some regions where Google's standard domain is inaccessible, you can configure an alternative domain.
+
+Supported domains:
+
+- `www.google.com` (default)
+- `recaptcha.net`
+
+To configure a custom domain, enter the domain in the **Domain** field when setting up reCAPTCHA Enterprise in Logto Console.
 
 ## Enable CAPTCHA {#enable-captcha}
 
