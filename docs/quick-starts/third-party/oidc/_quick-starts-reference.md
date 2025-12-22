@@ -1,11 +1,11 @@
-Under the hood, a third-party app is just a standard OAuth 2.0 / OIDC client. This means you (or the third-party developer) can use any OAuth 2.0 / OIDC library or framework to integrate with Logto.
-
-If you're not familiar with OAuth 2.0 or OIDC, you can start by following one of our “Traditional web” quick start guides.
+Under the hood, a third-party app is a standard OAuth 2.0 / OIDC client. This means you (or the third-party developer) can use any OAuth 2.0 / OIDC library or framework to integrate with Logto.
 
 A few things to keep in mind:
 
-1. Logto currently requires third-party apps to be “Traditional web” apps. In other words, the app needs a backend server (or backend-for-frontend) to securely store the client secret.
-2. Most our quick start guides are written for first-party apps, but you can still use them as a reference for third-party app integration.
+1. When creating a third-party app, select the appropriate application type based on the app's architecture:
+   - **Traditional web**: Uses client secret for authentication.
+   - **Single page app / Native**: Uses PKCE for secure authorization without a client secret.
+2. Most of our quick start guides are written for first-party apps, but you can still use them as a reference for third-party app integration.
 3. The main difference is that third-party apps will show a consent screen, asking users for explicit permission to access their data.
 
-You can find more information in our [quick start guides](/quick-starts).
+See [Third-party applications](/integrate-logto/third-party-applications) for full integration guide.
