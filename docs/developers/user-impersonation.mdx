@@ -5,6 +5,8 @@ sidebar_label: User impersonation
 sidebar_position: 3
 ---
 
+import TokenExchangePrerequisites from './fragments/_token-exchange-prerequisites.mdx';
+
 # User impersonation
 
 Imagine Sarah, a support engineer at TechCorp, receives an urgent ticket from Alex, a customer who can't access a critical resource. To efficiently diagnose and resolve the issue, Sarah needs to see exactly what Alex sees in the system. This is where Logto's user impersonation feature comes in handy.
@@ -109,9 +111,29 @@ TechCorp's server should then return this subject token to Sarah's application.
 
 ### Step 3: Exchanging the subject token for an access token \{#step-3-exchanging-the-subject-token-for-an-access-token}
 
+<TokenExchangePrerequisites />
+
 Now, Sarah's application exchanges this subject token for an access token representing Alex, specifying the resource where the token will be used.
 
 **Request (Sarah's application to Logto's token endpoint)**
+
+For traditional web applications or machine-to-machine applications with app secret, include the credentials in the `Authorization` header:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+For single-page applications (SPA) or native applications without app secret, include `client_id` in the request body:
 
 ```bash
 POST /oidc/token HTTP/1.1
@@ -119,6 +141,7 @@ Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2
@@ -140,19 +163,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 The `access_token` returned will be bound to the specified resource, ensuring it can only be used with TechCorp's customer data API.
 
-**Note**: For traditional web applications, include `client_id` and `client_secret` in the header of the token request to prevent a 401 invalid_client error.
-
-Here's a Node.js example:
-
-```json
-Authorization: `Basic ${Buffer.from(`${client_id}:${client_secret}`, 'utf8').toString('base64')}`
-```
-
 ## Example usage \{#example-usage}
 
 Here's how Sarah might use this in a Node.js support application:
 
-```jsx
+```tsx
 interface ImpersonationResponse {
   subjectToken: string;
   expiresIn: number;
@@ -170,7 +185,9 @@ async function impersonateUser(
   userId: string,
   clientId: string,
   ticketId: string,
-  resource: string
+  resource: string,
+  // highlight-next-line
+  clientSecret?: string // Required for traditional web or machine-to-machine apps
 ): Promise<string> {
   try {
     // Step 1 & 2: Request impersonation and get subject token
@@ -197,18 +214,34 @@ async function impersonateUser(
     const { subjectToken } = (await impersonationResponse.json()) as ImpersonationResponse;
 
     // Step 3: Exchange subject token for access token
+    // highlight-start
+    // For traditional web or M2M apps, use Basic auth with client secret
+    // For SPA or native apps, include client_id in the request body
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
     const tokenExchangeBody = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      client_id: clientId,
       scope: 'openid profile resource.read',
       subject_token: subjectToken,
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       resource: resource,
     });
 
+    if (clientSecret) {
+      // Confidential client: use Basic auth
+      headers['Authorization'] =
+        `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    } else {
+      // Public client: include client_id in body
+      tokenExchangeBody.append('client_id', clientId);
+    }
+    // highlight-end
+
     const tokenExchangeResponse = await fetch('https://techcorp.logto.app/oidc/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers,
       body: tokenExchangeBody,
     });
 
@@ -227,12 +260,16 @@ async function impersonateUser(
 // Sarah uses this function to impersonate Alex
 async function performImpersonation(): Promise<void> {
   try {
+    // highlight-start
+    // For traditional web or M2M apps, pass the client secret
     const accessToken = await impersonateUser(
       'alex123',
       'techcorp_support_app',
       'TECH-1234',
-      'https://api.techcorp.com/customer-data'
+      'https://api.techcorp.com/customer-data',
+      'your-client-secret' // Omit this for SPA or native apps
     );
+    // highlight-end
     console.log('Impersonation access token for Alex:', accessToken);
   } catch (error) {
     console.error('Failed to perform impersonation:', error);
@@ -240,7 +277,7 @@ async function performImpersonation(): Promise<void> {
 }
 
 // Execute the impersonation
-void performImpersonation()
+void performImpersonation();
 ```
 
 :::note
@@ -257,12 +294,33 @@ When using the token exchange flow for impersonation, the issued access token ca
 
 To include the `act` claim, Sarah's application needs to provide an `actor_token` in the token exchange request. This token should be a valid access token for Sarah with the `openid` scope. Here's how to include it in the token exchange request:
 
+For traditional web applications or machine-to-machine applications:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+For SPA or native applications, include `client_id` in the request body instead:
+
 ```bash
 POST /oidc/token HTTP/1.1
 Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2
