@@ -5,11 +5,13 @@ sidebar_label: Usurpation d’identité utilisateur
 sidebar_position: 3
 ---
 
+import TokenExchangePrerequisites from './fragments/_token-exchange-prerequisites.mdx';
+
 # Usurpation d’identité utilisateur
 
 Imaginez Sarah, une ingénieure support chez TechCorp, qui reçoit un ticket urgent d’Alex, un client qui ne peut pas accéder à une ressource critique. Pour diagnostiquer et résoudre efficacement le problème, Sarah doit voir exactement ce qu’Alex voit dans le système. C’est là que la fonctionnalité d’usurpation d’identité utilisateur de Logto devient précieuse.
 
-L’usurpation d’identité utilisateur permet à des utilisateurs autorisés comme Sarah d’agir temporairement au nom d’autres utilisateurs comme Alex dans le système. Cette fonctionnalité puissante est inestimable pour le dépannage, le support client et l’exécution de tâches administratives.
+L’usurpation d’identité utilisateur permet à des utilisateurs autorisés comme Sarah d’agir temporairement au nom d’autres utilisateurs comme Alex dans le système. Cette fonctionnalité puissante est inestimable pour le dépannage, l’assistance client et l’exécution de tâches administratives.
 
 ## Comment ça fonctionne ? \{#how-it-works}
 
@@ -46,7 +48,7 @@ Voyons comment Sarah peut utiliser cette fonctionnalité pour aider Alex.
 
 ### Étape 1 : Demander l’usurpation \{#step-1-requesting-impersonation}
 
-Tout d’abord, l’application de support de Sarah doit demander l’usurpation au serveur backend de TechCorp.
+Tout d’abord, l’application de support de Sarah doit demander l’usurpation auprès du serveur backend de TechCorp.
 
 **Requête (application de Sarah vers le serveur de TechCorp)**
 
@@ -109,9 +111,29 @@ Le serveur de TechCorp doit ensuite retourner ce jeton de sujet à l’applicati
 
 ### Étape 3 : Échanger le jeton de sujet contre un jeton d’accès \{#step-3-exchanging-the-subject-token-for-an-access-token}
 
-L’application de Sarah échange maintenant ce jeton de sujet contre un jeton d’accès représentant Alex, en spécifiant la ressource où le jeton sera utilisé.
+<TokenExchangePrerequisites />
+
+À présent, l’application de Sarah échange ce jeton de sujet contre un jeton d’accès représentant Alex, en spécifiant la ressource où le jeton sera utilisé.
 
 **Requête (application de Sarah vers le point de terminaison de jeton Logto)**
+
+Pour les applications web traditionnelles ou les applications machine à machine avec secret d’application, incluez les identifiants dans l’en-tête `Authorization` :
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+Pour les applications monopage (SPA) ou les applications natives sans secret d’application, incluez `client_id` dans le corps de la requête :
 
 ```bash
 POST /oidc/token HTTP/1.1
@@ -119,6 +141,7 @@ Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2
@@ -138,21 +161,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 }
 ```
 
-Le `access_token` retourné sera lié à la ressource spécifiée, garantissant qu’il ne peut être utilisé qu’avec l’API de données clients de TechCorp.
-
-**Remarque** : Pour les applications web traditionnelles, incluez `client_id` et `client_secret` dans l’en-tête de la requête de jeton pour éviter une erreur 401 invalid_client.
-
-Voici un exemple Node.js :
-
-```json
-Authorization: `Basic ${Buffer.from(`${client_id}:${client_secret}`, 'utf8').toString('base64')}`
-```
+Le `access_token` retourné sera lié à la ressource spécifiée, garantissant qu’il ne peut être utilisé qu’avec l’API de données client de TechCorp.
 
 ## Exemple d’utilisation \{#example-usage}
 
 Voici comment Sarah pourrait utiliser cela dans une application de support Node.js :
 
-```jsx
+```tsx
 interface ImpersonationResponse {
   subjectToken: string;
   expiresIn: number;
@@ -170,7 +185,9 @@ async function impersonateUser(
   userId: string,
   clientId: string,
   ticketId: string,
-  resource: string
+  resource: string,
+  // highlight-next-line
+  clientSecret?: string // Requis pour les applications web traditionnelles ou machine à machine
 ): Promise<string> {
   try {
     // Étapes 1 & 2 : Demander l’usurpation et obtenir le jeton de sujet
@@ -191,56 +208,76 @@ async function impersonateUser(
     );
 
     if (!impersonationResponse.ok) {
-      throw new Error(`HTTP error occurred. Status: ${impersonationResponse.status}`);
+      throw new Error(`Erreur HTTP. Statut : ${impersonationResponse.status}`);
     }
 
     const { subjectToken } = (await impersonationResponse.json()) as ImpersonationResponse;
 
     // Étape 3 : Échanger le jeton de sujet contre un jeton d’accès
+    // highlight-start
+    // Pour les applications web traditionnelles ou M2M, utiliser l’authentification Basic avec le secret client
+    // Pour les SPA ou applications natives, inclure client_id dans le corps de la requête
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
     const tokenExchangeBody = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      client_id: clientId,
       scope: 'openid profile resource.read',
       subject_token: subjectToken,
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       resource: resource,
     });
 
+    if (clientSecret) {
+      // Client confidentiel : utiliser l’authentification Basic
+      headers['Authorization'] =
+        `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    } else {
+      // Client public : inclure client_id dans le corps
+      tokenExchangeBody.append('client_id', clientId);
+    }
+    // highlight-end
+
     const tokenExchangeResponse = await fetch('https://techcorp.logto.app/oidc/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers,
       body: tokenExchangeBody,
     });
 
     if (!tokenExchangeResponse.ok) {
-      throw new Error(`HTTP error! status: ${tokenExchangeResponse.status}`);
+      throw new Error(`Erreur HTTP ! statut : ${tokenExchangeResponse.status}`);
     }
 
     const tokenData = (await tokenExchangeResponse.json()) as TokenExchangeResponse;
     return tokenData.access_token;
   } catch (error) {
-    console.error('Impersonation failed:', error);
+    console.error('Échec de l’usurpation :', error);
     throw error;
   }
 }
 
-// Sarah utilise cette fonction pour usurper l’identité d’Alex
+// Sarah utilise cette fonction pour usurper Alex
 async function performImpersonation(): Promise<void> {
   try {
+    // highlight-start
+    // Pour les applications web traditionnelles ou M2M, passer le secret client
     const accessToken = await impersonateUser(
       'alex123',
       'techcorp_support_app',
       'TECH-1234',
-      'https://api.techcorp.com/customer-data'
+      'https://api.techcorp.com/customer-data',
+      'your-client-secret' // Omettez ceci pour les SPA ou applications natives
     );
-    console.log('Impersonation access token for Alex:', accessToken);
+    // highlight-end
+    console.log('Jeton d’accès d’usurpation pour Alex :', accessToken);
   } catch (error) {
-    console.error('Failed to perform impersonation:', error);
+    console.error('Échec de l’usurpation :', error);
   }
 }
 
 // Exécuter l’usurpation
-void performImpersonation()
+void performImpersonation();
 ```
 
 :::note
@@ -257,12 +294,33 @@ Lors de l’utilisation du flux d’échange de jetons pour l’usurpation, le j
 
 Pour inclure la revendication `act`, l’application de Sarah doit fournir un `actor_token` dans la requête d’échange de jeton. Ce jeton doit être un jeton d’accès valide pour Sarah avec la portée `openid`. Voici comment l’inclure dans la requête d’échange de jeton :
 
+Pour les applications web traditionnelles ou les applications machine à machine :
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+Pour les SPA ou applications natives, incluez `client_id` dans le corps de la requête :
+
 ```bash
 POST /oidc/token HTTP/1.1
 Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2

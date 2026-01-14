@@ -1,13 +1,15 @@
 ---
 id: user-impersonation
-title: Imitação de usuário
-sidebar_label: Imitação de usuário
+title: Imitação de usuário (User impersonation)
+sidebar_label: Imitação de usuário (User impersonation)
 sidebar_position: 3
 ---
 
+import TokenExchangePrerequisites from './fragments/_token-exchange-prerequisites.mdx';
+
 # Imitação de usuário (User impersonation)
 
-Imagine que Sarah, uma engenheira de suporte na TechCorp, recebe um chamado urgente de Alex, um cliente que não consegue acessar um recurso crítico. Para diagnosticar e resolver o problema de forma eficiente, Sarah precisa ver exatamente o que Alex vê no sistema. É aí que o recurso de imitação de usuário do Logto se torna útil.
+Imagine que Sarah, uma engenheira de suporte na TechCorp, recebe um chamado urgente de Alex, um cliente que não consegue acessar um recurso crítico. Para diagnosticar e resolver o problema de forma eficiente, Sarah precisa ver exatamente o que Alex vê no sistema. É aqui que o recurso de imitação de usuário do Logto se torna útil.
 
 A imitação de usuário permite que usuários autorizados como Sarah atuem temporariamente em nome de outros usuários como Alex dentro do sistema. Esse recurso poderoso é inestimável para solução de problemas, suporte ao cliente e execução de tarefas administrativas.
 
@@ -30,7 +32,7 @@ sequenceDiagram
     TechCorp-->>Sarah: Retorna token de sujeito
 
     Sarah->>LogtoToken: POST /oidc/token
-    Note over Sarah,LogtoToken: Troca token de sujeito por token de acesso
+    Note over Sarah,LogtoToken: Troca o token de sujeito por um token de acesso
 
     LogtoToken-->>Sarah: Retorna token de acesso
     Note over Sarah: Sarah agora pode acessar recursos como Alex
@@ -63,11 +65,11 @@ Content-Type: application/json
 }
 ```
 
-Nesta API, o backend deve realizar verificações adequadas de autorização para garantir que Sarah tenha as permissões necessárias para imitar Alex.
+Nesta API, o backend deve realizar verificações de autorização adequadas para garantir que Sarah tenha as permissões necessárias para imitar Alex.
 
 ### Etapa 2: Obtendo um token de sujeito \{#step-2-obtaining-a-subject-token}
 
-Após validar a solicitação de Sarah, o servidor da TechCorp irá chamar a [Management API](/integrate-logto/interact-with-management-api) do Logto para obter um token de sujeito.
+O servidor da TechCorp, após validar a solicitação da Sarah, irá então chamar a [Management API](/integrate-logto/interact-with-management-api) do Logto para obter um token de sujeito.
 
 **Requisição (servidor da TechCorp para a Management API do Logto)**
 
@@ -109,9 +111,29 @@ O servidor da TechCorp deve então retornar esse token de sujeito para o aplicat
 
 ### Etapa 3: Trocando o token de sujeito por um token de acesso \{#step-3-exchanging-the-subject-token-for-an-access-token}
 
+<TokenExchangePrerequisites />
+
 Agora, o aplicativo da Sarah troca esse token de sujeito por um token de acesso representando Alex, especificando o recurso onde o token será usado.
 
 **Requisição (aplicativo da Sarah para o endpoint de token do Logto)**
+
+Para aplicativos web tradicionais ou aplicativos máquina para máquina com segredo do aplicativo, inclua as credenciais no cabeçalho `Authorization`:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+Para aplicativos single-page (SPA) ou aplicativos nativos sem segredo do aplicativo, inclua o `client_id` no corpo da requisição:
 
 ```bash
 POST /oidc/token HTTP/1.1
@@ -119,6 +141,7 @@ Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2
@@ -140,19 +163,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 O `access_token` retornado estará vinculado ao recurso especificado, garantindo que só possa ser usado com a API de dados do cliente da TechCorp.
 
-**Nota**: Para aplicações web tradicionais, inclua `client_id` e `client_secret` no cabeçalho da requisição de token para evitar um erro 401 invalid_client.
-
-Veja um exemplo em Node.js:
-
-```json
-Authorization: `Basic ${Buffer.from(`${client_id}:${client_secret}`, 'utf8').toString('base64')}`
-```
-
 ## Exemplo de uso \{#example-usage}
 
 Veja como Sarah pode usar isso em um aplicativo de suporte Node.js:
 
-```jsx
+```tsx
 interface ImpersonationResponse {
   subjectToken: string;
   expiresIn: number;
@@ -170,10 +185,12 @@ async function impersonateUser(
   userId: string,
   clientId: string,
   ticketId: string,
-  resource: string
+  resource: string,
+  // highlight-next-line
+  clientSecret?: string // Necessário para apps web tradicionais ou M2M
 ): Promise<string> {
   try {
-    // Etapas 1 e 2: Solicita imitação e obtém token de sujeito
+    // Etapas 1 e 2: Solicitar imitação e obter token de sujeito
     const impersonationResponse = await fetch(
       'https://api.techcorp.com/api/request-impersonation',
       {
@@ -191,24 +208,40 @@ async function impersonateUser(
     );
 
     if (!impersonationResponse.ok) {
-      throw new Error(`Erro HTTP. Status: ${impersonationResponse.status}`);
+      throw new Error(`Erro HTTP ocorrido. Status: ${impersonationResponse.status}`);
     }
 
     const { subjectToken } = (await impersonationResponse.json()) as ImpersonationResponse;
 
-    // Etapa 3: Troca token de sujeito por token de acesso
+    // Etapa 3: Trocar token de sujeito por token de acesso
+    // highlight-start
+    // Para apps web tradicionais ou M2M, use autenticação Basic com segredo do cliente
+    // Para SPA ou apps nativos, inclua client_id no corpo da requisição
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
     const tokenExchangeBody = new URLSearchParams({
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-      client_id: clientId,
       scope: 'openid profile resource.read',
       subject_token: subjectToken,
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
       resource: resource,
     });
 
+    if (clientSecret) {
+      // Cliente confidencial: use autenticação Basic
+      headers['Authorization'] =
+        `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    } else {
+      // Cliente público: inclua client_id no corpo
+      tokenExchangeBody.append('client_id', clientId);
+    }
+    // highlight-end
+
     const tokenExchangeResponse = await fetch('https://techcorp.logto.app/oidc/token', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers,
       body: tokenExchangeBody,
     });
 
@@ -227,35 +260,59 @@ async function impersonateUser(
 // Sarah usa esta função para imitar Alex
 async function performImpersonation(): Promise<void> {
   try {
+    // highlight-start
+    // Para apps web tradicionais ou M2M, passe o segredo do cliente
     const accessToken = await impersonateUser(
       'alex123',
       'techcorp_support_app',
       'TECH-1234',
-      'https://api.techcorp.com/customer-data'
+      'https://api.techcorp.com/customer-data',
+      'your-client-secret' // Omitir para SPA ou apps nativos
     );
+    // highlight-end
     console.log('Token de acesso de imitação para Alex:', accessToken);
   } catch (error) {
-    console.error('Falha ao realizar imitação:', error);
+    console.error('Falha ao realizar a imitação:', error);
   }
 }
 
 // Executa a imitação
-void performImpersonation()
+void performImpersonation();
 ```
 
 :::note
 
 1. O token de sujeito é de curta duração e para uso único.
 2. O token de acesso de imitação não vem com um [token de atualização (Refresh token)](https://auth.wiki/refresh-token). Sarah precisará repetir esse processo se o token expirar antes de resolver o problema de Alex.
-3. O servidor backend da TechCorp deve implementar verificações adequadas de autorização para garantir que apenas membros autorizados do suporte, como Sarah, possam solicitar imitação.
+3. O servidor backend da TechCorp deve implementar verificações de autorização adequadas para garantir que apenas membros autorizados do suporte, como Sarah, possam solicitar imitação.
 
 :::
 
 ## Reivindicação `act` \{#act-claim}
 
-Ao usar o fluxo de troca de token para imitação, o token de acesso emitido pode incluir uma reivindicação adicional `act` (ator). Essa reivindicação representa a identidade da "parte atuante" — no nosso exemplo, Sarah, que está realizando a imitação.
+Ao usar o fluxo de troca de token para imitação, o token de acesso emitido pode incluir uma reivindicação adicional `act` (ator). Essa reivindicação representa a identidade da "parte atuante" — em nosso exemplo, Sarah, que está realizando a imitação.
 
-Para incluir a reivindicação `act`, o aplicativo da Sarah precisa fornecer um `actor_token` na solicitação de troca de token. Esse token deve ser um token de acesso válido para Sarah com o escopo `openid`. Veja como incluí-lo na solicitação de troca de token:
+Para incluir a reivindicação `act`, o aplicativo da Sarah precisa fornecer um `actor_token` na requisição de troca de token. Esse token deve ser um token de acesso válido para Sarah com o escopo `openid`. Veja como incluí-lo na requisição de troca de token:
+
+Para aplicativos web tradicionais ou aplicativos máquina para máquina:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+Para SPA ou aplicativos nativos, inclua o `client_id` no corpo da requisição:
 
 ```bash
 POST /oidc/token HTTP/1.1
@@ -263,6 +320,7 @@ Host: techcorp.logto.app
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
 &client_id=techcorp_support_app
 &scope=resource:read
 &subject_token=alx_7h32jf8sK3j2
@@ -286,11 +344,11 @@ Se um `actor_token` for fornecido, o token de acesso resultante conterá uma rei
 }
 ```
 
-Essa reivindicação `act` indica claramente que Sarah (sarah789) está atuando em nome de Alex (alex123). A reivindicação `act` pode ser útil para auditoria e rastreamento de ações de imitação.
+Essa reivindicação `act` indica claramente que Sarah (sarah789) está agindo em nome de Alex (alex123). A reivindicação `act` pode ser útil para auditoria e rastreamento de ações de imitação.
 
 ## Personalizando as reivindicações do token \{#customizing-token-claims}
 
-O Logto permite [personalizar as reivindicações do token](/developers/custom-token-claims) para tokens de imitação. Isso pode ser útil para adicionar contexto ou metadados adicionais ao processo de imitação, como o motivo da imitação ou o chamado de suporte associado.
+O Logto permite que você [personalize as reivindicações do token](/developers/custom-token-claims) para tokens de imitação. Isso pode ser útil para adicionar contexto ou metadados adicionais ao processo de imitação, como o motivo da imitação ou o chamado de suporte associado.
 
 Quando o servidor da TechCorp solicita um token de sujeito à Management API do Logto, ele pode incluir um objeto `context`:
 
@@ -338,7 +396,7 @@ O token de acesso resultante que Sarah recebe pode ser assim:
 }
 ```
 
-Ao personalizar as reivindicações do token de acesso dessa forma, a TechCorp pode incluir informações valiosas sobre o contexto da imitação, facilitando a auditoria e o entendimento das atividades de imitação em seu sistema.
+Personalizando as reivindicações do token de acesso dessa forma, a TechCorp pode incluir informações valiosas sobre o contexto da imitação, facilitando a auditoria e o entendimento das atividades de imitação em seu sistema.
 
 :::note
 Tenha cautela ao adicionar reivindicações personalizadas aos seus tokens. Evite incluir informações sensíveis que possam representar riscos de segurança caso o token seja interceptado ou vazado. Os JWTs são assinados, mas não criptografados, portanto as reivindicações são visíveis para qualquer pessoa com acesso ao token.
