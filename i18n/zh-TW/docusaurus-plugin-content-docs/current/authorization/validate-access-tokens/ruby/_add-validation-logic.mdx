@@ -1,0 +1,181 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
+
+我們使用 [jwt](https://github.com/jwt/ruby-jwt) gem 來驗證 JWT。請將其加入你的 Gemfile：
+
+```ruby title="Gemfile"
+gem 'jwt'
+# net-http 自 Ruby 2.7 起已是標準函式庫，無需額外加入
+```
+
+然後執行：
+
+```bash
+bundle install
+```
+
+首先，新增這些共用工具來處理 JWKS 與權杖驗證：
+
+```ruby title="jwt_validator.rb"
+require 'jwt'
+require 'net/http'
+require 'json'
+
+class JwtValidator
+  include AuthHelpers
+
+  def self.fetch_jwks
+    @jwks ||= begin
+      uri = URI(AuthConstants::JWKS_URI)
+      response = Net::HTTP.get_response(uri)
+      raise AuthorizationError.new('Failed to fetch JWKS', 401) unless response.is_a?(Net::HTTPSuccess)
+
+      jwks_data = JSON.parse(response.body)
+      JWT::JWK::Set.new(jwks_data)
+    end
+  end
+
+  def self.validate_jwt(token)
+    jwks = fetch_jwks
+
+    # 讓 JWT 函式庫自 JWKS 偵測演算法
+    decoded_token = JWT.decode(token, nil, true, {
+      iss: AuthConstants::ISSUER,
+      verify_iss: true,
+      verify_aud: false, # 依據權限模型手動驗證 audience
+      jwks: jwks
+    })[0]
+
+    verify_payload(decoded_token)
+    decoded_token
+  end
+
+  def self.create_auth_info(payload)
+    scopes = payload['scope']&.split(' ') || []
+    audience = payload['aud'] || []
+
+    AuthInfo.new(
+      payload['sub'],
+      payload['client_id'],
+      payload['organization_id'],
+      scopes,
+      audience
+    )
+  end
+
+  def self.verify_payload(payload)
+    # 根據權限模型實作驗證邏輯
+    # 相關內容將於下方權限模型區段說明
+  end
+end
+```
+
+接著，實作中介軟體以驗證存取權杖 (Access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+根據你的權限模型，在 `JwtValidator` 中實作相應的驗證邏輯：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 檢查 audience 宣告是否符合你的 API 資源標示符
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Invalid audience')
+  end
+
+  # 檢查全域 API 資源所需的權限範圍 (Scopes)
+  required_scopes = ['api:read', 'api:write'] # 請替換為實際所需權限範圍
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient scope')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 檢查 audience 宣告是否符合組織格式
+  audiences = payload['aud'] || []
+  has_org_audience = audiences.any? { |aud| aud.start_with?('urn:logto:organization:') }
+
+  unless has_org_audience
+    raise AuthorizationError.new('Invalid audience for organization permissions')
+  end
+
+  # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+  expected_org_id = 'your-organization-id' # 從請求內容取得
+  expected_aud = "urn:logto:organization:#{expected_org_id}"
+  unless audiences.include?(expected_aud)
+    raise AuthorizationError.new('Organization ID mismatch')
+  end
+
+  # 檢查所需組織權限範圍
+  required_scopes = ['invite:users', 'manage:settings'] # 請替換為實際所需權限範圍
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient organization scope')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # 檢查 audience 宣告是否符合你的 API 資源標示符
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Invalid audience for organization-level API resources')
+  end
+
+  # 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+  expected_org_id = 'your-organization-id' # 從請求內容取得
+  org_id = payload['organization_id']
+  unless expected_org_id == org_id
+    raise AuthorizationError.new('Organization ID mismatch')
+  end
+
+  # 檢查組織層級 API 資源所需的權限範圍
+  required_scopes = ['api:read', 'api:write'] # 請替換為實際所需權限範圍
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Insufficient organization-level API scopes')
+  end
+end
+```
+
+</TabItem>
+</Tabs>

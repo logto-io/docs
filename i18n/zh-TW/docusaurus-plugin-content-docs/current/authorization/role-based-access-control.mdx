@@ -1,0 +1,424 @@
+---
+sidebar_position: 1
+---
+
+import globalApiResources from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import organizationApiResources from '@site/docs/authorization/assets/rbac-organization-level-api-resources.png';
+import organizationPermissions from '@site/docs/authorization/assets/rbac-organization-permissions.png';
+
+# 基於角色的存取控制 (RBAC, Role-based access control)
+
+[基於角色的存取控制 (RBAC, Role-based access control)](https://auth.wiki/rbac) 是一種成熟的授權 (Authorization) 模型，將真實世界的業務操作映射到角色 (Role) 與權限 (Permission)。本指南將介紹 RBAC 在 Logto 中的運作方式、實用設計模式，以及打造安全、可擴展 SaaS 應用程式的最佳實踐。
+
+## 什麼是 RBAC？\{#what-is-rbac}
+
+RBAC 讓你透過將權限 (Permission) 分組到角色 (Role) 來管理應用程式中「誰」可以做「什麼」。使用者與客戶端會被指派一個或多個角色，這些角色賦予存取功能、API 或資料所需的權限。
+
+**核心概念**
+
+- **角色 (Role)：** 一組具名權限（如 `admin`、`viewer`、`billing-manager`）。
+- **權限 (Permission)：** 一個動作或權利（如 `manage:members`、`view:analytics`）。
+- **權限範圍 (Scope)：** 權限的同義詞，在 OAuth 2.0 場景中常用。
+- **API 資源 (API resource)：** 權限適用的 API、端點或服務。
+- **使用者 / 客戶端 (User/Client)：** 被指派角色的實體（終端使用者或機器對機器 (M2M) 應用程式）。
+
+:::note
+在 Logto（以及 OAuth 2.1）中，**「權限 (Permission)」與「權限範圍 (Scope)」指的是同一概念**，本文件中可互換使用。
+:::
+
+### API 資源 (API resources) \{#api-resources}
+
+**API 資源 (API resource)** 是應用程式中任何受保護的端點或服務，例如 REST API、GraphQL 端點，或其他需要授權 (Authorization) 的後端服務。
+
+Logto 依據 [RFC 8707: Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707) 建模 API 資源。  
+每個 API 資源都由唯一的 **資源標示符 (resource indicator)**（一個 URI）識別，用於限定存取權杖 (Access token) 的範圍並強制受眾 (Audience) 限制。
+
+| **屬性名稱** | **說明**                                                                                                 | **必填** |
+| ------------ | -------------------------------------------------------------------------------------------------------- | -------- |
+| API 名稱     | 在 Console 與日誌中識別 API 資源的人性化名稱。                                                           | 是       |
+| API 識別碼   | 代表 API 資源的唯一 [資源標示符 (resource indicator)](https://www.rfc-editor.org/rfc/rfc8707.html) URI。 | 是       |
+| 權杖到期時間 | 此 API 發行的存取權杖 (Access token) 有效期間（秒）。預設為 **3600**（1 小時）。                         | 否       |
+| 預設 API     | 每個 Logto 租戶僅能設一個預設 API 資源。設為預設時，驗證請求可省略 `resource` 參數。                     | 否       |
+
+:::note
+當指定預設 API 資源時，若驗證請求省略 `resource` 參數，Logto 會將其作為權杖的受眾 (Audience)。
+:::
+
+#### 預設 API 資源行為 \{#default-api-resource-behavior}
+
+在 Logto 中，每個使用者自訂的全域權限（權限範圍）都必須關聯到 API 資源。否則，該權限會被視為 OpenID Connect (OIDC) 權限範圍。
+
+這通常不影響大多數整合，但若與不支援 [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html) 的第三方應用程式整合時，初始授權 (Authorization) 請求可能不包含 `resource` 參數。此時，Logto 會發行 [不透明存取權杖 (Opaque access token)](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc) 而非 JWT，這可能使存取控制變得複雜。
+
+為解決此問題，你可以為租戶設定 **預設 API 資源**：
+
+- **當 [驗證請求 (Authentication request)](https://auth.wiki/authentication-request) 缺少 `resource` 參數時：**
+  - Logto 會將預設 API 資源作為存取權杖 (Access token) 的受眾 (Audience)。
+- **若包含 `openid` 權限範圍：**
+  - 權杖請求未帶 `resource` 時，Logto 會為 [Userinfo 端點](https://auth.wiki/userinfo-endpoint) 發行不透明存取權杖 (Opaque access token)。
+- **若未包含 `openid` 權限範圍：**
+  - Logto 會為預設 API 資源發行 JWT 存取權杖 (Access token) 作為受眾 (Audience)。
+
+設定預設 API 資源可確保與不支援 RFC 8707 的應用程式順利整合，同時維持安全且符合標準的存取控制。
+
+## Logto 的 RBAC \{#rbac-in-logto}
+
+Logto 在 **全域** 與 **組織** 層級提供彈性的 RBAC，以支援多租戶 SaaS：
+
+- **全域角色 (Global roles)**：跨 Logto 租戶指派。適合產品層級權限、管理員或超級使用者。
+- **組織角色 (Organization roles)**：在組織內指派。適合組織專屬存取，如工作區管理員、專案成員或自訂群組。
+- **API 資源 (API resources)**：需授權 (Authorization) 的註冊 API 與功能。
+- **權限 (Permissions, scopes)**：依 API 資源或組織範本定義。
+  - API 資源權限可指派給全域或組織角色。
+  - 組織權限僅能指派給組織角色。
+
+可依產品需求單獨或組合使用這些 RBAC 模型。
+
+以下三個範例搭配圖示說明：
+
+### 模型 1：全域 API 資源 \{#model-1-global-api-resources}
+
+**情境**
+
+SaaS 產品的 API 對所有使用者共享，與組織無關。  
+使用全域角色控管產品層級 API 資源的存取。
+
+**圖示**
+
+<img src={globalApiResources} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+**重點**
+
+- **使用者**與 **M2M 應用程式**被指派全域角色（如 Store manager、Service agent）。
+- 角色授予權限（權限範圍），如 `read:store`、`order:book`。
+- 權限直接關聯到 API 資源（如 `https://read.shop/stores`）。
+
+**適用時機**
+
+當存取權限與組織無關，或使用者 / 客戶端橫跨所有組織時。
+
+:::note
+Logto 不支援全域層級的非 API 權限，因該層級保留給 OpenID Connect (OIDC) 權限範圍。
+:::
+
+:::tip
+逐步實作指南請參閱：[保護全域 API 資源](/authorization/global-api-resources)。
+:::
+
+### 模型 2：組織（非 API）權限 \{#model-2-organization-non-api-permissions}
+
+**情境**
+
+控管應用程式內部功能或流程（如 UI 功能、儀表板、內部工具），這些不經由 API 層強制執行，透過組織角色與權限管理。
+
+**圖示**
+
+<img
+  src={organizationPermissions}
+  alt="Organization permissions RBAC"
+  style={{ maxWidth: '800px', width: '100%' }}
+/>
+
+**重點**
+
+- 每個組織（A 與 B）有各自的指派，但所有組織共用 [組織範本](/authorization/organization-template) 定義的角色集合。
+- **使用者**與 **M2M 應用程式**可在不同組織擁有不同角色。
+- **組織角色**（如 Admin、Member）授予組織權限，如 `invite:member`、`manage:billing`。
+- 權限於應用程式 UI 或商業邏輯層強制執行，非由 API gateway 控管。
+
+**適用時機**
+
+當你想控管誰能在組織內看到或使用特定功能，而不需 API 層級強制時。
+
+:::tip
+逐步實作指南請參閱：[保護組織（非 API）權限](/authorization/organization-permissions)。
+:::
+
+### 模型 3：組織層級 API 資源 \{#model-3-organization-level-api-resources}
+
+**情境**
+
+多租戶 SaaS 平台，每個組織有自己的成員、資料與角色。  
+使用 **組織角色**授予各組織內的 API 存取權。
+
+**圖示**
+
+<img
+  src={organizationApiResources}
+  alt="Organization-level API resources RBAC"
+  style={{ maxWidth: '100%' }}
+/>
+
+**重點**
+
+- 每個組織（A 與 B）有各自的指派，但所有組織共用 [組織範本](/authorization/organization-template) 定義的角色集合。
+- **使用者**與 **M2M 應用程式**可在不同組織擁有不同角色。
+- 權限（權限範圍），如 `invite:member`、`manage:billing`，關聯到 API 資源。
+- 權限於 API 層強制執行，當存取權杖 (Access token) 包含組織上下文時生效。
+
+**適用時機**
+
+當你需根據組織上下文控管 API 存取，例如允許使用者管理自己組織的資料。
+
+:::tip
+逐步實作指南請參閱：[保護組織層級 API 資源](/authorization/organization-level-api-resources)。
+:::
+
+## 設計與實作權限模型 \{#design-and-implement-a-permission-model}
+
+根據產品架構與使用者需求，你可從上述範例選擇合適的 RBAC 模型。以下速查表協助你有效設計與實作權限模型：
+
+| 權限模型           | 是否需定義 API 資源與權限？ | 是否需定義組織權限？ | 是否使用全域角色？ | 是否使用組織角色？ |
+| ------------------ | --------------------------- | -------------------- | ------------------ | ------------------ |
+| 全域 API 資源      | ✅                          | n/a                  | ✅                 | n/a                |
+| 組織（非 API）權限 | n/a                         | ✅                   | n/a                | ✅                 |
+| 組織層級 API 資源  | ✅                          | n/a                  | n/a                | ✅                 |
+
+### 定義 API 資源與權限 \{#define-api-resources-with-permissions}
+
+在 Logto Console 或 [透過 Management API](https://openapi.logto.io/group/endpoint-resources) 註冊 API，定義 API 資源及其權限（權限範圍）。
+
+:::note
+在 OAuth 2.0 與 OIDC 中，「API 資源」技術上稱為資源標示符 (resource indicator)，即唯一 URI 識別你的受保護 API 或服務。
+:::
+
+#### 在 Logto Console 註冊 API 資源與權限 \{#register-api-resources-with-permissions-in-logto-console}
+
+1. 前往 <CloudLink to="/api-resources">Console → API 資源</CloudLink>。
+2. 點擊 **建立 API 資源**。
+3. 輸入：
+
+   - **API 名稱：** 你的 API 的人性化名稱。
+   - **API 識別碼：** API 資源標示符（如 `https://api.yourapp.com/org`）。
+
+4. 在 **權限** 分頁，點擊 **建立權限**，為此 API 資源新增權限（權限範圍）。
+5. 在 **一般** 分頁，可選擇性設定：
+
+   - **權杖到期時間：** 設定此 API 資源的存取權杖有效時間。建議設短（如 1 小時）以提升安全性。
+   - **預設 API：** 若 OAuth 請求未指定 `resource`，可將此 API 資源設為預設受眾與權杖發行對象。對於不支援 `resource` 參數的客戶端（如部分第三方工具或外掛）特別有用。
+
+#### 小技巧 \{#tips}
+
+- 將 API 資源標示符對應到實際 API 端點，命名直觀。
+  - 例如：`https://api.example.com/v1/users`
+- 採用明確、動作導向的命名（如 `invite:member`、`manage:billing`、`view:analytics`）。
+  - 或依功能前綴分組（如 `billing:read`、`billing:manage`）。
+- 權限設計以業務需求為主，不僅限於技術端點。
+
+**範例**
+
+| API 資源標示符                    | 權限             | 說明             |
+| --------------------------------- | ---------------- | ---------------- |
+| `https://api.example.com/users`   | `invite:user`    | 邀請新使用者     |
+| `https://api.example.com/users`   | `manage:user`    | 更新或刪除使用者 |
+| `https://api.example.com/billing` | `view:billing`   | 檢視帳單細節     |
+| `https://api.example.com/billing` | `manage:billing` | 編輯帳單設定     |
+
+### 定義組織權限 \{#define-organization-permissions}
+
+在 Logto Console 或 [透過 Management API](https://openapi.logto.io/group/endpoint-organization-scopes) 註冊組織權限，定義適用於每個組織內的權限。組織權限於 [組織範本](/authorization/organization-template) 中定義。
+
+#### 在 Logto Console 註冊組織權限 \{#register-organization-permissions-in-logto-console}
+
+1. 前往 <CloudLink to="/organization-template/organization-permissions">Console → 組織範本 → 組織權限</CloudLink>。
+2. 點擊 **建立組織權限**。
+3. 輸入：
+   - **權限名稱：** 明確、動作導向的名稱（如 `invite:member`、`manage:billing`）。
+   - **說明：** 簡述此權限允許的操作（如「邀請新成員加入組織」）。
+4. 點擊 **建立權限** 儲存。
+
+#### 小技巧 \{#tips}
+
+- 採用明確、動作導向的命名（如 `invite:member`、`manage:billing`）。
+- 組織權限與 API 權限分開設計，避免混淆。
+
+**範例**
+
+| 組織權限         | 說明               |
+| ---------------- | ------------------ |
+| `invite:member`  | 邀請新成員加入組織 |
+| `manage:billing` | 編輯組織帳單設定   |
+
+### 設定全域角色 \{#configure-global-roles}
+
+在 Logto Console 或 [透過 Management API](https://openapi.logto.io/group/endpoint-roles) 建立與設定全域角色，將適用於整個 Logto 租戶的權限分組。
+
+全域角色可為下列其中一種：
+
+- **使用者角色 (User role)：** 指派給終端使用者，授予存取 API 與功能的權限。
+- **機器對機器 (M2M) 角色：** 指派給 M2M 應用程式，授予存取 API 與功能（包含 Logto Management API）的權限。
+
+:::note
+請注意，這兩種角色類型建立後不可混用或變更。請依角色類型指派使用者或 M2M 應用程式。
+:::
+
+#### 在 Logto Console 建立全域角色 \{#create-global-roles-in-logto-console}
+
+1. 前往 <CloudLink to="/roles">Console → 角色</CloudLink>。
+2. 點擊 **建立角色**。
+3. 輸入：
+   - **角色名稱：** 明確、具描述性的名稱（如 `admin`、`viewer`、`billing-manager`）。
+   - **角色類型：** 選擇 **使用者** 或 **機器對機器 (M2M)**。**僅機器對機器 (M2M) 角色可連結 Logto Management API**。
+   - **說明：** 簡述角色用途（如「擁有全部存取權的管理員角色」、「僅讀取的檢視者角色」）。
+   - **指派權限：** 從可用 API 資源選擇此角色應有的權限（權限範圍）。日後可隨時更新權限。
+4. 點擊 **建立角色** 儲存。
+
+#### 指派使用者或 M2M 應用程式至全域角色 \{#assign-users-or-m2m-apps-to-global-roles}
+
+1. 前往 <CloudLink to="/roles">Console → 角色</CloudLink>。
+2. 點擊欲指派的角色。
+3. **使用者角色**請點選 **使用者** 分頁；**M2M 角色**請點選 **機器對機器應用程式** 分頁。
+4. 點擊 **指派使用者** 或 **指派 M2M 應用程式**。
+5. 搜尋欲指派的使用者或 M2M 應用程式。
+6. 勾選後點擊 **指派**。
+
+#### 預設全域角色 \{#default-global-roles}
+
+你可以將一個或多個全域角色設為新使用者的 **預設角色**。預設角色會在使用者建立時自動指派（無論自助註冊或透過 Management API 建立）。可於 <CloudLink to="/roles">Console > 角色</CloudLink> 詳細頁的「一般」分頁啟用此選項。
+
+### 設定組織角色 \{#configure-organization-roles}
+
+在 Logto Console 或 [透過 Management API](https://openapi.logto.io/group/endpoint-organization-roles) 建立組織角色，將適用於每個組織內的權限分組。組織角色於 [組織範本](/authorization/organization-template) 中定義。
+
+組織角色可為下列其中一種：
+
+- **使用者角色 (User role)：** 指派給組織內終端使用者，授予存取 API 與功能的權限。
+- **機器對機器 (M2M) 角色：** 指派給組織內 M2M 應用程式，授予存取 API 與功能的權限。此角色**無法**連結 Logto Management API，因其僅限組織內部。
+
+:::note
+請注意，這兩種角色類型建立後不可混用或變更。請依角色類型指派使用者或 M2M 應用程式。
+:::
+
+#### 在 Logto Console 建立組織角色 \{#create-organization-roles-in-logto-console}
+
+1. 前往 <CloudLink to="/organization-template/organization-roles">Console → 組織範本 → 組織角色</CloudLink>。
+2. 點擊 **建立組織角色**。
+3. 輸入：
+
+   - **角色名稱：** 明確、具描述性的名稱（如 `admin`、`member`、`billing-manager`）。
+   - **角色類型：** 選擇 **使用者** 或 **機器對機器 (M2M)**。**僅機器對機器 (M2M) 角色可連結 Logto Management API**。
+   - **說明：** 簡述角色用途（如「擁有全部存取權的管理員角色」、「基本存取權的成員角色」）。
+
+4. 點擊 **建立角色** 儲存。
+5. 在 **指派權限** 視窗，選擇此角色應有的組織權限與 / 或 API 資源權限。日後可隨時更新權限。
+
+#### 指派使用者或 M2M 應用程式至組織角色 \{#assign-users-or-m2m-apps-to-organization-roles}
+
+組織角色為組織專屬，需於組織上下文中指派使用者或 M2M 應用程式。
+
+1. 前往 <CloudLink to="/organizations">Console → 組織</CloudLink>。
+2. 選擇欲管理的組織。
+3. **使用者角色**請點選 **使用者** 分頁；**M2M 角色**請點選 **機器對機器應用程式** 分頁。
+4. 若使用者或 M2M 應用程式尚未加入組織，請點擊 **新增成員** 或 **新增 M2M 應用程式**，於加入過程中指派一個或多個組織角色。
+5. 若已是成員，點擊其名稱旁的三點選單，選擇 **編輯組織角色**。
+6. 在開啟的視窗中選擇並儲存欲指派的組織角色。
+
+#### 即時佈建 (JIT, Just-in-time provisioning) \{#just-in-time-jit-provisioning}
+
+你也可以在使用者或 M2M 應用程式加入組織時即時指派組織角色。詳情請參閱 [即時佈建 (JIT, Just-in-time provisioning)](/organizations/just-in-time-provisioning)。
+
+### 在後端或 API 強制執行授權 (Authorization) \{#enforcing-authorization-in-your-backend-or-api}
+
+Logto 發行 [JSON Web Token (JWT)](https://auth.wiki/jwt)，其中包含強制授權 (Authorization) 所需的宣告 (Claim)。
+
+後端或 API 強制授權時，應：
+
+1. 要求客戶端於請求標頭帶上有效的存取權杖 (Access token)，格式為 `Authorization: Bearer <token>`。
+2. 驗證存取權杖，確保由 Logto 發行、未過期，且具備執行請求動作所需的權限（權限範圍）。
+3. 若權杖遺失、無效或缺乏必要權限，回應錯誤（如 HTTP 401 Unauthorized 或 HTTP 403 Forbidden）。
+
+逐步與語言專屬指南請參閱：[如何驗證存取權杖](/authorization/validate-access-tokens)。
+
+### 將 Logto RBAC 整合進應用程式 \{#integrate-logto-rbac-with-your-application}
+
+你可用以下兩種方式將 Logto RBAC 整合進應用程式：
+
+- **Logto SDK：** 使用 [Logto SDK](/quick-starts) 內建驗證 (Authentication) 與授權 (Authorization) 流程。
+- **標準 OAuth 2.0 / OIDC 函式庫：** 使用你偏好的 OAuth 2.0 或 OpenID Connect 函式庫實作必要流程。
+
+整合後，依所選 RBAC 模型請求帶有正確參數的存取權杖，並於 API 請求的 `Authorization` 標頭帶上權杖以強制權限。
+
+詳見上方各模型區段的實作指南。
+
+## 進階情境 \{#advanced-scenarios}
+
+探索 Logto 更進階的 RBAC 用例：
+
+- **結合全域與組織角色：** 需要時同時指派給使用者 / 客戶端；Logto 會依請求權杖上下文自動解析。
+- **多應用程式：** 透過共用資源與權限範圍實現跨應用 RBAC。
+- **動態權限：** 如有需要，可結合 RBAC 與執行時檢查（如擁有權、屬性）處理進階情境。
+- **自訂權杖宣告 (Custom claims)：** 使用 [自訂宣告](/developers/custom-token-claims) 擴充權杖內容。
+
+## 最佳實踐與常見陷阱 \{#best-practices-common-pitfalls}
+
+- **最小權限原則：** 僅授予每個角色所需權限。
+- **避免權限蔓延：** 保持權限模型簡潔易維護。
+- **定期審查與更新角色 / 權限：** 隨產品演進定期檢查 RBAC 模型。
+- **職責分離：** 為敏感 / 管理操作建立獨立角色。
+- **在測試環境驗證 RBAC：** 驗證權限邊界與權限升級。
+
+## 常見問題 \{#faqs}
+
+<details>
+<summary>
+
+### 如何跨所有組織更新角色或權限？\{#how-do-i-update-roles-or-permissions-across-all-organizations}
+
+</summary>
+
+更新 [組織範本](/authorization/organization-template) 以進行全域變更；現有組織可繼承更新內容。
+
+</details>
+
+<details>
+<summary>
+
+### 可以動態變更角色 / 權限嗎？\{#can-i-change-roles-permissions-dynamically}
+
+</summary>
+
+可以，角色及其權限可隨時更新。
+
+</details>
+
+<details>
+<summary>
+
+### 若我從角色移除某個權限會發生什麼事？\{#what-happens-if-i-remove-a-permission-from-a-role}
+
+</summary>
+
+擁有該角色的使用者 / 客戶端將立即失去該權限（新權杖生效）。
+
+</details>
+
+<details>
+<summary>
+
+### 如何稽核誰擁有什麼角色？\{#how-can-i-audit-who-has-what-role}
+
+</summary>
+
+可透過 Logto Console 或 API 列出角色指派情況。
+
+</details>
+
+<details>
+<summary>
+
+### 可以透過 API 指派角色與權限嗎？\{#can-roles-and-permissions-be-assigned-via-api}
+
+</summary>
+
+可以，Console 與 Management API 均支援程式化管理角色與指派。
+
+</details>
+
+## 延伸閱讀 \{#further-reading}
+
+<Url href="/authorization/organization-template">組織範本</Url>
+<Url href="/developers/custom-token-claims">自訂權杖宣告</Url>
+<Url href="/authorization/validate-access-tokens">如何驗證存取權杖</Url>
+<Url href="/authorization/global-api-resources">保護全域 API 資源</Url>
+<Url href="/authorization/organization-permissions">保護組織（非 API）權限</Url>
+<Url href="/authorization/organization-level-api-resources">保護組織層級 API 資源</Url>

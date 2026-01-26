@@ -1,0 +1,188 @@
+---
+sidebar_position: 2
+---
+
+# การปรับใช้และการตั้งค่า
+
+ในบทความก่อนหน้านี้ เราได้กล่าวถึงพื้นฐานของ [การเริ่มต้นใช้งาน Logto อย่างรวดเร็ว](/logto-oss/get-started-with-oss) บทความนี้จะเจาะลึกยิ่งขึ้น โดยเน้นแนวปฏิบัติที่ดีที่สุดและขั้นตอนการตั้งค่าโดยละเอียดสำหรับการปรับใช้ Logto ในสภาพแวดล้อมการใช้งานจริง
+
+## ตัวแปรสภาพแวดล้อม (Environment variables) \{#environment-variables}
+
+เราใช้ชุดตัวแปรสภาพแวดล้อมที่สร้างขึ้นอัตโนมัติในเดโม (`docker-compose.yml`) ซึ่งคุณควรเปลี่ยนเป็นของคุณเองและรักษาความสอดคล้องระหว่าง Logto หลายอินสแตนซ์
+
+คุณสามารถตั้งค่าตัวแปร env ได้โดยตรงหรือใส่ไฟล์ `.env` ไว้ใน root ของโปรเจกต์ Logto หากคุณทดสอบด้วย Docker ให้ตรวจสอบไฟล์ `.env` ที่สร้างไว้ในอิมเมจที่ `/etc/logto`
+
+### สิ่งจำเป็น (Essentials) \{#essentials}
+
+- `DB_URL` [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) สำหรับฐานข้อมูล Logto
+- `PORT` พอร์ตที่ Logto รับฟัง ค่าเริ่มต้น `3001`
+- `ENDPOINT` คุณสามารถระบุ URL ที่ใช้โดเมนของคุณเองสำหรับ production (เช่น `ENDPOINT=https://logto.domain.com`) ซึ่งจะมีผลต่อค่าของ [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) ด้วย
+
+**เปิดใช้งาน Admin Console**
+
+- `ADMIN_PORT` พอร์ตที่ Logto Admin Console รับฟัง ค่าเริ่มต้น `3002`
+- `ADMIN_ENDPOINT` คุณสามารถระบุ URL ที่ใช้โดเมนของคุณเองสำหรับ production (เช่น `ADMIN_ENDPOINT=https://admin.domain.com`) ซึ่งจะมีผลต่อค่า Admin Console Redirect URIs ด้วย
+
+**ปิดใช้งาน Admin Console**
+
+- `ADMIN_DISABLE_LOCALHOST` ตั้งค่าเป็น `1` หรือ `true` เพื่อปิดพอร์ตสำหรับ Admin Console หากไม่ได้ตั้งค่า `ADMIN_ENDPOINT` จะปิด Admin Console โดยสมบูรณ์
+
+ดูรายละเอียดเพิ่มเติมเกี่ยวกับตัวแปรสภาพแวดล้อมได้ที่ [การตั้งค่า](/concepts/core-service/configuration/)
+
+**เปิดใช้งาน Secret Vault**
+
+- หากต้องการใช้ [Secret Vault](/secret-vault) คุณต้องตั้งค่า `SECRET_VAULT_KEK` เป็นสตริง base64 ของ Key Encryption Key (KEK) ของคุณ ใช้สำหรับเข้ารหัส Data Encryption Keys (DEK) ใน Secret Vault แนะนำให้ใช้ AES-256 (32 ไบต์) ตัวอย่าง: `crypto.randomBytes(32).toString('base64')`
+
+### HTTPS \{#https}
+
+คุณสามารถใช้ Node.js เพื่อให้บริการ HTTPS โดยตรง หรือจะตั้งค่า proxy / balancer สำหรับ HTTPS ไว้หน้าตัว Node.js ก็ได้ ดูรายละเอียดที่ [การเปิดใช้งาน HTTPS](/concepts/core-service/configuration/#enabling-https)
+
+### Reverse proxy \{#reverse-proxy}
+
+หากคุณต้องการใช้ reverse proxy บนเซิร์ฟเวอร์ของคุณ เช่น Nginx หรือ Apache คุณต้องแมปพอร์ต 3001 และ 3002 แยกกันใน proxy pass สมมติว่าคุณใช้ Nginx โดย Logto auth endpoint ทำงานที่พอร์ต 3001 และ Logto admin console ทำงานที่ 3002 ให้วาง config ต่อไปนี้ใน nginx.conf:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // เช่น auth.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-auth-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-auth-endpoint>
+  ...
+}
+```
+
+จากนั้นเพิ่ม config ที่คล้ายกันสำหรับ admin console ของคุณ:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // เช่น admin.your-domain.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <path-to-your-certificate-for-admin-endpoint>;
+  ssl_certificate_key <path-to-your-certificate-key-for-admin-endpoint>
+  ...
+}
+```
+
+โหลด config Nginx ใหม่เพื่อให้การเปลี่ยนแปลงมีผล:
+
+```
+nginx -s reload
+```
+
+เรียบร้อยแล้ว เปิดเบราว์เซอร์และไปที่ `https://admin.your-domain.com` คุณควรเห็นหน้า welcome ของ Logto
+
+## การทำคอนเทนเนอร์ (Containerization) \{#containerization}
+
+สำหรับ production คุณสามารถใช้ Docker เพื่อทำคอนเทนเนอร์ Logto ได้ คุณจะพบ Dockerfile ใน root ของโปรเจกต์ หากคุณต้องการรัน Logto หลายอินสแตนซ์ เช่น ปรับใช้ Logto ใน Kubernetes cluster จะมีขั้นตอนเพิ่มเติมที่ต้องดำเนินการ
+
+### การตั้งค่าฐานข้อมูล (Database setup) \{#database-setup}
+
+เตรียมฐานข้อมูล Postgres สำหรับ Logto ขอแนะนำอย่างยิ่งให้ใช้ Logto CLI เพื่อ initialize ฐานข้อมูล
+
+```bash
+npm run cli db seed -- --swe
+```
+
+ดูรายละเอียดเพิ่มเติมได้ที่ [Logto CLI](/logto-oss/using-cli)
+
+### โฟลเดอร์ connectors ร่วม (Shared connectors folder) \{#shared-connectors-folder}
+
+โดยปกติ Logto จะสร้างโฟลเดอร์ `connectors` ใน root ของโฟลเดอร์ `core` เราแนะนำให้แชร์โฟลเดอร์นี้ระหว่าง Logto หลายอินสแตนซ์ คุณต้อง mount โฟลเดอร์ `packages/core/connectors` ไปยัง container และรัน `npm run cli connector add -- --official` เพื่อปรับใช้ connectors
+
+ตัวอย่างขั้นต่ำของ `deployment` สำหรับ Kubernetes:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+ในตัวอย่างนี้ เราสร้างไดเรกทอรีว่างเป็น volume และ mount ไปยัง containers จากนั้นรัน `npm run cli connector add -- --official` ใน init container เพื่อดาวน์โหลด connectors สุดท้ายทุก container จะใช้โฟลเดอร์ connectors เดียวกันที่มี connectors อย่างเป็นทางการของเราอยู่แล้ว
+
+:::note
+
+นี่คือตัวอย่าง yaml ในการรัน Logto คุณต้องตั้งค่า envs ให้ถูกต้อง
+
+:::
+
+สำหรับ production คุณสามารถเปลี่ยน volume แบบ "empty dir" เป็น persistent volume และทำ "init" job ด้วยวิธีของคุณเองได้ตามต้องการ
+
+### การเปลี่ยนแปลงฐานข้อมูล (Database alteration) \{#database-alteration}
+
+เช่นเดียวกับ connectors การเปลี่ยนแปลงฐานข้อมูลต้องรันในอินสแตนซ์เดียว คุณสามารถใช้ job เพื่อรันสคริปต์ alteration ได้
+
+ต้องตั้งค่าตัวแปรสภาพแวดล้อม `CI=true` เมื่อรัน alteration แบบ non-interactive
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+ดู [Database alteration](/logto-oss/using-cli/database-alteration/) สำหรับรายละเอียดเกี่ยวกับคำสั่ง alteration

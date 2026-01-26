@@ -1,0 +1,249 @@
+---
+sidebar_position: 5
+---
+
+# Magic Link (Einmal-Token)
+
+Ähnlich wie das Einmalpasswort (OTP) ist ein Einmal-Token eine weitere passwortlose Authentifizierungsmethode, mit der die Identität eines Benutzers verifiziert werden kann.
+Das Token ist für einen begrenzten Zeitraum gültig und mit einer E-Mail-Adresse des Endbenutzers verknüpft.
+
+Manchmal möchtest du neue Benutzer zu deiner Anwendung / Organisation einladen, ohne dass sie zuerst ein Konto erstellen müssen.
+Oder du hast dein Passwort vergessen und möchtest dich anmelden / dein Passwort zurücksetzen, indem du deine Identität schnell per E-Mail verifizierst.
+In solchen Fällen kann die Anwendung einen "Magic Link" an deine E-Mail senden. Und du wirst sofort authentifiziert, wenn du auf den Link klickst.
+
+Anwendungsentwickler können das Einmal-Token verwenden, um einen Magic Link zu erstellen und ihn an die E-Mail-Adresse des Endbenutzers zu senden.
+
+## Anwendungsfälle \{#use-cases}
+
+Logto unterstützt mit Magic Links die folgenden Szenarien:
+
+- **Registrierung nur auf Einladung**: Für interne Tools oder KI-Produkte in der Testphase kannst du die öffentliche Registrierung deaktivieren und gezielt Benutzer per Magic Link einladen.
+- **Einladung von Organisationsmitgliedern**: Für SaaS-Produkte kannst du Magic Links verwenden, um neue Mitglieder zur Organisation einzuladen und so den Onboarding-Prozess zu vereinfachen.
+- **Anmeldung / Registrierung**: Sende einen Magic Link für die passwortlose Anmeldung oder Registrierung per E-Mail.
+
+Wenn du beispielsweise die öffentliche Registrierung deaktiviert hast, kannst du einen Magic Link mit einem Einmal-Token (z. B. `https://yourapp.com/landing-page?token=YHwbXSXxQfL02IoxFqr1hGvkB13uTqcd&email=user@example.com`) an die E-Mail des Benutzers senden, um ihn zur Vervollständigung der Kontoerstellung einzuladen. Du kannst die E-Mail-Vorlage in deinem eigenen E-Mail-Dienst anpassen, zum Beispiel:
+
+<img
+  src="/img/assets/email-templates-invitation-only-registration.png"
+  alt="Eine E-Mail-Vorlage für Registrierung nur auf Einladung"
+/>
+
+Derzeit nicht unterstützt:
+
+- Passwort-Reset mit Magic Link.
+- Verwendung von Telefonnummer oder Benutzername als Identifikator.
+
+## Einmal-Token-Ablauf \{#one-time-token-flow}
+
+Hier ist das Sequenzdiagramm des Authentifizierungsablaufs mit Einmal-Token:
+
+```mermaid
+sequenceDiagram
+  participant U as Endbenutzer
+  participant C as Deine Anwendung
+  participant L as Logto
+
+  U ->> C: (Optional) Benutzer fordert einen Magic Link von deiner Anwendung an
+  C ->> L: Einmal-Token anfordern
+  L -->> C: Einmal-Token zurückgeben
+  C -->> U: Magic Link mit Einmal-Token erstellen und an die E-Mail des Endbenutzers senden
+  U ->> C: Benutzer klickt auf Magic Link und wird auf eine Landingpage deiner Anwendung weitergeleitet
+  C ->> L: Extrahiere das Einmal-Token aus dem Magic Link und starte den Authentifizierungsablauf
+  L -->> C: Logto überprüft das Einmal-Token und gibt das Ergebnis zurück
+  C -->> U: Benutzer ist authentifiziert und erhält Benutzerinformationen zurück
+```
+
+## Implementierungsleitfaden \{#implementation-guide}
+
+Logto bietet eine Reihe von Management APIs und Experience APIs, um die Implementierung deines Magic Links zu erleichtern.
+
+Bevor du beginnst, stelle sicher, dass du eine Logto-Instanz bereit hast und die Maschine-zu-Maschine-Verbindung zwischen deinem Anwendungsserver
+und dem Logto-Endpunkt hergestellt ist (erforderlich für die Management APIs). Erfahre mehr über die [Logto Management API](/integrate-logto/interact-with-management-api).
+
+### Schritt 1: Einmal-Token anfordern \{#step-1-request-one-time-token}
+
+Verwende die Logto Management API, um ein Einmal-Token zu erstellen.
+
+```bash
+POST /api/one-time-tokens
+```
+
+Beispiel für den Anfrage-Body:
+
+```json
+{
+  "email": "user@example.com",
+  // Optional. Standardwert ist 600 (10 Minuten).
+  "expiresIn": 3600,
+  // Optional. Der Benutzer wird nach erfolgreicher Verifizierung den angegebenen Organisationen zugeordnet.
+  "context": {
+    "jitOrganizationIds": ["abcdefgh1234"]
+  }
+}
+```
+
+### Schritt 2: Deinen Magic Link erstellen \{#step-2-compose-your-magic-link}
+
+Nachdem du das Einmal-Token erhalten hast, kannst du einen Magic Link erstellen und ihn an die E-Mail-Adresse des Endbenutzers senden.
+Der Magic Link sollte mindestens das Token und die Benutzer-E-Mail als Parameter enthalten und auf eine Landingpage in deiner eigenen Anwendung führen.
+Z. B. `https://yourapp.com/landing-page`.
+
+Hier ist ein einfaches Beispiel, wie der Magic Link aussehen könnte:
+
+```
+https://yourapp.com/landing-page?token=YHwbXSXxQfL02IoxFqr1hGvkB13uTqcd&email=user@example.com
+```
+
+:::note
+
+Die Parameternamen im Magic Link können vollständig angepasst werden.
+Du kannst dem Magic Link zusätzliche Informationen hinzufügen, je nach den Anforderungen deiner Anwendung,
+sowie alle URL-Parameter kodieren.
+
+:::
+
+### Schritt 3: Authentifizierungsablauf über Logto SDK auslösen \{#step-3-trigger-the-authentication-flow-via-logto-sdk}
+
+Nachdem der Endbenutzer auf den Magic Link geklickt und deine Anwendung aufgerufen hat, kannst du die Parameter `token` und `email` aus der URL extrahieren und dann die Funktion `signIn()` aus dem Logto SDK aufrufen, um den Authentifizierungsablauf zu starten.
+
+```typescript title="TokenLandingPage.tsx"
+// React-Beispiel
+import { useLogto } from '@logto/react';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+
+const TokenLandingPage = () => {
+  const { signIn } = useLogto();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    // Extrahiere das Token und die E-Mail aus dem Magic Link
+    const oneTimeToken = searchParams.get('token');
+    const email = searchParams.get('email');
+
+    // Dies ist deine sign-in redirect URI
+    const redirectUri = 'https://yourapp.com/callback';
+
+    if (oneTimeToken && email) {
+      signIn({
+        redirectUri,
+        clearTokens: false, // Optional. Siehe Warnhinweis unten
+        extraParams: {
+          'one_time_token': oneTimeToken,
+          'login_hint': email,
+        },
+      });
+    }
+  }, [searchParams, signIn]);
+
+  return <>Bitte warten...</>;
+};
+```
+
+:::warning
+
+Wenn ein Benutzer bereits angemeldet ist, löscht der Aufruf der Funktion `signIn()` aus dem SDK automatisch alle zwischengespeicherten Tokens (ID-Token, Zugangstoken und Auffrischungstoken) aus dem Client-Speicher,
+wodurch der Authentifizierungsstatus des aktuellen Benutzers verloren geht.
+
+Daher solltest du einen zusätzlichen Anmeldeparameter `clearTokens: false` angeben, um das Löschen der bestehenden Tokens zu vermeiden.
+Wenn dies angegeben ist, musst du die Tokens auch manuell auf der Callback-Seite der Anmeldung löschen.
+
+Ignoriere dies, wenn deine Magic Links nicht für authentifizierte Benutzer gedacht sind.
+
+:::
+
+### Schritt 4: (Optional) Zwischengespeicherte Tokens auf der Callback-Seite löschen \{#step-4-clear-cached-tokens-in-sign-in-callback-page}
+
+Wenn du `clearTokens: false` in der sign-in Funktion angibst, musst du die Tokens manuell auf der Callback-Seite der Anmeldung löschen.
+
+```typescript title="Callback.tsx"
+// React-Beispiel
+import { useHandleSignInCallback, useLogto } from '@logto/react';
+import { useEffect } from 'react';
+
+const Callback = () => {
+  const { clearAllTokens } = useLogto();
+
+  useEffect(() => {
+    void clearAllTokens();
+  }, [clearAllTokens]);
+
+  useHandleSignInCallback(() => {
+    // Navigiere zu deiner Startseite
+  });
+
+  return <>Bitte warten...</>;
+};
+```
+
+## FAQs \{#faqs}
+
+<details>
+
+<summary>
+
+### Kann ich den Magic Link verwenden, um neue Benutzer zu meinen Organisationen einzuladen? \{#can-i-use-the-magic-link-to-invite-new-users-to-my-organizations}
+
+</summary>
+
+Ja, du kannst den Magic Link verwenden, um neue Benutzer zu deiner Anwendung sowie zu Organisationen einzuladen.
+Wenn du neue Benutzer zu deiner Organisation einladen möchtest, gib einfach die `jitOrganizationIds` im Anfrage-Body an.
+
+Der Benutzer wird nach erfolgreicher Verifizierung automatisch den Organisationen hinzugefügt und Standardrollen der Organisation zugewiesen.
+Sieh dir den Abschnitt "Just-in-time-Bereitstellung" auf der Detailseite deiner Organisation an und konfiguriere die Standardrollen für deine Organisationen.
+
+</details>
+
+<details>
+
+<summary>
+
+### Kann ich Benutzern mit dem Magic Link bestimmte Rollen zuweisen? \{#can-i-assign-users-to-specific-roles-using-the-magic-link}
+
+</summary>
+
+Der Magic Link Authentifizierungsablauf unterstützt das Zuweisen von Rollen an Benutzer nicht. Du kannst jedoch jederzeit die [Webhooks](/developers/webhooks) und die [Management API](/user-management/manage-users#manage-roles-of-users) verwenden, um die Benutzerrollen nach der Registrierung zu aktualisieren.
+
+</details>
+
+<details>
+
+<summary>
+
+### Läuft das Einmal-Token ab? \{#does-the-one-time-token-expire}
+
+</summary>
+
+Ja, das Einmal-Token läuft nach der angegebenen `expiresIn`-Zeit (in Sekunden) ab. Die Standardablaufzeit beträgt 10 Minuten.
+
+</details>
+
+<details>
+
+<summary>
+
+### Kann ich weiterhin Magic Links zum Einladen von Benutzern verwenden, wenn ich die Benutzerregistrierung in der "Anmeldeerfahrung" deaktiviere? \{#if-i-disable-user-registration-in-sign-in-experience-can-i-still-use-magic-link-to-invite-users}
+
+</summary>
+
+Ja, du kannst weiterhin Magic Links zum Einladen von Benutzern verwenden, auch wenn du die Benutzerregistrierung in der "Anmeldeerfahrung" deaktivierst.
+
+</details>
+
+<details>
+
+<summary>
+
+### Was passiert, wenn ein Benutzer bereits angemeldet ist und dann auf einen anderen Magic Link klickt? \{#what-will-happen-if-a-user-already-signed-in-and-then-click-another-magic-link}
+
+</summary>
+
+Es gibt mehrere mögliche Szenarien:
+
+1. Der Benutzer ist bereits angemeldet und klickt dann auf einen Magic Link, der mit dem aktuellen Benutzerkonto verknüpft ist. In diesem Fall überprüft Logto trotzdem das Einmal-Token und ordnet den Benutzer bei Bedarf den angegebenen Organisationen zu.
+2. Der Benutzer ist bereits angemeldet und klickt dann auf einen Magic Link, der mit einem anderen Konto verknüpft ist. In diesem Fall fordert Logto den Benutzer auf, entweder als neues Konto fortzufahren oder mit dem aktuellen Konto zur Anwendung zurückzukehren.
+   1. Wenn der Benutzer sich entscheidet, als neues Konto fortzufahren, wechselt Logto nach erfolgreicher Token-Verifizierung zum neuen Konto.
+   2. Wenn der Benutzer beim aktuellen Konto bleiben möchte, überprüft Logto das Token nicht und kehrt mit dem aktuellen Konto zur Anwendung zurück.
+3. Wenn dein Anmelde-Prompt auf "login" gesetzt ist oder "login" enthält, meldet Logto das mit dem Einmal-Token verknüpfte Konto automatisch an, ohne einen Wechsel abzufragen. Dies liegt daran, dass der "login"-Prompt eine explizite Authentifizierungsabsicht signalisiert, die Vorrang vor der aktuellen Sitzung hat.
+
+</details>

@@ -1,0 +1,170 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DjangoValidation from './fragments/django/_validation.md';
+import DjangoRestValidation from './fragments/django-rest/_validation.md';
+import FastApiValidation from './fragments/fastapi/_validation.md';
+import FlaskValidation from './fragments/flask/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  fastapi: <FastApiValidation />,
+  flask: <FlaskValidation />,
+  django: <DjangoValidation />,
+  'django-rest': <DjangoRestValidation />,
+});
+
+[PyJWT](https://github.com/jpadilla/pyjwt) を使用して JWT の検証を行います。まだインストールしていない場合は、次のコマンドでインストールしてください：
+
+```bash
+pip install pyjwt[crypto]
+```
+
+まず、JWT 検証を処理するための共通ユーティリティを追加します：
+
+```py title="jwt_validator.py"
+import jwt
+from jwt import PyJWKClient
+from typing import Dict, Any
+from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
+
+jwks_client = PyJWKClient(JWKS_URI)
+
+def validate_jwt(token: str) -> Dict[str, Any]:
+    """JWT を検証し、ペイロードを返す"""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+            issuer=ISSUER,
+            options={'verify_aud': False}  # オーディエンスは手動で検証します
+        )
+
+        verify_payload(payload)
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        raise AuthorizationError(f'Invalid token: {str(e)}', 401)
+    except Exception as e:
+        raise AuthorizationError(f'Token validation failed: {str(e)}', 401)
+
+def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
+    """JWT ペイロードから AuthInfo を作成"""
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    audience = payload.get('aud', [])
+    if isinstance(audience, str):
+        audience = [audience]
+
+    return AuthInfo(
+        sub=payload.get('sub'),
+        client_id=payload.get('client_id'),
+        organization_id=payload.get('organization_id'),
+        scopes=scopes,
+        audience=audience
+    )
+
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """権限モデルに基づいてペイロードを検証"""
+    # 権限モデルに基づく検証ロジックをここに実装してください
+    # 下記の権限モデルセクションで説明します
+    pass
+```
+
+次に、アクセストークンを検証するミドルウェアを実装します：
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+権限モデルに応じて、`jwt_validator.py` 内で適切な検証ロジックを実装してください：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="グローバル API リソース">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """グローバル API リソース用のペイロードを検証"""
+    # オーディエンスクレームが API リソースインジケーターと一致するか確認
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Invalid audience')
+
+    # グローバル API リソースに必要なスコープを確認
+    required_scopes = ['api:read', 'api:write']  # 実際に必要なスコープに置き換えてください
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient scope')
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）権限">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """組織権限用のペイロードを検証"""
+    # オーディエンスクレームが組織フォーマットと一致するか確認
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    has_org_audience = any(aud.startswith('urn:logto:organization:') for aud in audiences)
+    if not has_org_audience:
+        raise AuthorizationError('Invalid audience for organization permissions')
+
+    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
+    expected_org_id = 'your-organization-id'  # リクエストコンテキストから取得
+    expected_aud = f'urn:logto:organization:{expected_org_id}'
+    if expected_aud not in audiences:
+        raise AuthorizationError('Organization ID mismatch')
+
+    # 必要な組織スコープを確認
+    required_scopes = ['invite:users', 'manage:settings']  # 実際に必要なスコープに置き換えてください
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient organization scope')
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織レベル API リソース">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """組織レベル API リソース用のペイロードを検証"""
+    # オーディエンスクレームが API リソースインジケーターと一致するか確認
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Invalid audience for organization-level API resources')
+
+    # 組織 ID がコンテキストと一致するか確認（リクエストコンテキストから取得する必要があります）
+    expected_org_id = 'your-organization-id'  # リクエストコンテキストから取得
+    org_id = payload.get('organization_id')
+    if expected_org_id != org_id:
+        raise AuthorizationError('Organization ID mismatch')
+
+    # 組織レベル API リソースに必要なスコープを確認
+    required_scopes = ['api:read', 'api:write']  # 実際に必要なスコープに置き換えてください
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Insufficient organization-level API scopes')
+```
+
+</TabItem>
+</Tabs>

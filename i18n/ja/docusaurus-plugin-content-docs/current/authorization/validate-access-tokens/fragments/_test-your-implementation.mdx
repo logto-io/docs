@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### アクセス トークン (Access tokens) の取得 \{#get-access-tokens}
+
+**クライアントアプリケーションから:**
+クライアント統合を設定している場合、アプリは自動的にトークンを取得できます。アクセス トークン (Access token) を抽出し、API リクエストで使用してください。
+
+**curl / Postman でのテスト用:**
+
+1. **ユーザートークン:** クライアントアプリの開発者ツールを使い、localStorage またはネットワークタブからアクセス トークン (Access token) をコピーします。
+2. **マシン間通信トークン:** クライアントクレデンシャルフローを使用します。以下は curl を使った非公式な例です：
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   `resource` や `scope` パラメーターは API リソースや権限に応じて調整が必要です。API が組織スコープの場合は `organization_id` パラメーターも必要になる場合があります。
+
+:::tip
+トークンの内容を確認したい場合は、 [JWT デコーダー](https://logto.io/jwt-decoder) を使って JWT をデコード・検証できます。
+:::
+
+### 保護されたエンドポイントのテスト \{#test-protected-endpoints}
+
+<details>
+<summary>**有効なトークンリクエスト**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**期待されるレスポンス:**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**トークンなし**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**期待されるレスポンス (401):**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**無効なトークン**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**期待されるレスポンス (401):**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### 権限モデルごとのテスト \{#permission-model-specific-testing}
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="グローバル API リソース">
+
+    グローバルスコープで保護された API のテストシナリオ：
+
+    - **有効なスコープ:** 必要な API スコープ（例: `api:read`, `api:write`）を含むトークンでテスト
+    - **スコープ不足:** 必要なスコープがない場合は **403 Forbidden** を期待
+    - **誤ったオーディエンス:** オーディエンスが API リソースと一致しない場合は **403 Forbidden** を期待
+
+    ```bash
+    # 必要なスコープがないトークン - 403 を期待
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="組織 (非 API) 権限">
+
+    組織固有のアクセス制御のテストシナリオ：
+
+    - **有効な組織トークン:** 正しい組織コンテキスト（組織 ID とスコープ）を含むトークンでテスト
+    - **スコープ不足:** ユーザーが要求された操作の権限を持たない場合は **403 Forbidden** を期待
+    - **誤った組織:** オーディエンスが組織コンテキスト（`urn:logto:organization:<organization_id>`）と一致しない場合は **403 Forbidden** を期待
+
+    ```bash
+    # 別の組織用トークン - 403 を期待
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="組織レベル API リソース">
+
+    API リソース検証と組織コンテキストを組み合わせたテストシナリオ：
+
+    - **有効な組織 + API スコープ:** 組織コンテキストと必要な API スコープの両方を持つトークンでテスト
+    - **API スコープ不足:** 組織トークンに必要な API 権限がない場合は **403 Forbidden** を期待
+    - **誤った組織:** 別の組織のトークンで API にアクセスした場合は **403 Forbidden** を期待
+    - **誤ったオーディエンス:** オーディエンスが組織レベルの API リソースと一致しない場合は **403 Forbidden** を期待
+
+    ```bash
+    # API スコープがない組織トークン - 403 を期待
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

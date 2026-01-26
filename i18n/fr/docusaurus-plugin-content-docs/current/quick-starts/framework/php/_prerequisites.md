@@ -1,0 +1,2 @@
+- Un compte [Logto Cloud](https://cloud.logto.io) ou un Logto auto-hébergé (Consultez le guide [Introduction](/introduction) pour en créer un si vous n'en avez pas).
+- Une application web traditionnelle Logto créée.

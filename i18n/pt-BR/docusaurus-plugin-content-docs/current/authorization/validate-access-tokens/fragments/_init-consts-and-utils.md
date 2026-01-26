@@ -1,0 +1,1 @@
+Defina as constantes e utilitários necessários em seu código para lidar com a extração e validação do token. Uma solicitação válida deve incluir um cabeçalho `Authorization` no formato `Bearer <token de acesso (access token)>`.

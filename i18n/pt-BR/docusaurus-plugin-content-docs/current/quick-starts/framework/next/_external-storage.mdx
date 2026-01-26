@@ -1,0 +1,46 @@
+O SDK utiliza cookies para armazenar dados de sessão criptografados por padrão. Essa abordagem é segura, não requer infraestrutura adicional e funciona especialmente bem em ambientes serverless como o Vercel.
+
+No entanto, há momentos em que pode ser necessário armazenar os dados de sessão externamente. Por exemplo, quando seus dados de sessão ficam grandes demais para os cookies, especialmente quando você precisa manter várias sessões de organização ativas simultaneamente. Nesses casos, você pode implementar um armazenamento externo de sessão usando a opção `sessionWrapper`:
+
+```ts
+import { MemorySessionWrapper } from './storage';
+
+export const config = {
+  // ...
+  sessionWrapper: new MemorySessionWrapper(),
+};
+```
+
+```ts
+import { randomUUID } from 'node:crypto';
+
+import { type SessionWrapper, type SessionData } from '@logto/next';
+
+export class MemorySessionWrapper implements SessionWrapper {
+  private readonly storage = new Map<string, unknown>();
+  private currentSessionId?: string;
+
+  async wrap(data: unknown, _key: string): Promise<string> {
+    // Reutiliza o ID de sessão existente se disponível, gerando um novo apenas para usuários de primeira viagem.
+    // Isso é importante para ambientes onde os cookies não podem ser atualizados (por exemplo, React Server Components),
+    // pois o ID da sessão no cookie deve permanecer estável enquanto os dados no armazenamento externo podem ser atualizados.
+    const sessionId = this.currentSessionId ?? randomUUID();
+    this.currentSessionId = sessionId;
+    this.storage.set(sessionId, data);
+    return sessionId;
+  }
+
+  async unwrap(value: string, _key: string): Promise<SessionData> {
+    if (!value) {
+      return {};
+    }
+
+    // Armazena o ID da sessão para possível reutilização em wrap()
+    this.currentSessionId = value;
+    const data = this.storage.get(value);
+    return data ?? {};
+  }
+}
+```
+
+A implementação acima utiliza um armazenamento simples em memória. Em um ambiente de produção, você pode querer usar uma solução de armazenamento mais persistente, como Redis ou um banco de dados.

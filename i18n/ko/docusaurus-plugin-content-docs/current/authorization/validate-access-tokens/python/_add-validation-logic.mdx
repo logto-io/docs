@@ -1,0 +1,170 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DjangoValidation from './fragments/django/_validation.md';
+import DjangoRestValidation from './fragments/django-rest/_validation.md';
+import FastApiValidation from './fragments/fastapi/_validation.md';
+import FlaskValidation from './fragments/flask/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  fastapi: <FastApiValidation />,
+  flask: <FlaskValidation />,
+  django: <DjangoValidation />,
+  'django-rest': <DjangoRestValidation />,
+});
+
+우리는 [PyJWT](https://github.com/jpadilla/pyjwt)를 사용하여 JWT를 검증합니다. 아직 설치하지 않았다면 설치하세요:
+
+```bash
+pip install pyjwt[crypto]
+```
+
+먼저, JWT 검증을 처리하기 위한 다음과 같은 공통 유틸리티를 추가하세요:
+
+```py title="jwt_validator.py"
+import jwt
+from jwt import PyJWKClient
+from typing import Dict, Any
+from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
+
+jwks_client = PyJWKClient(JWKS_URI)
+
+def validate_jwt(token: str) -> Dict[str, Any]:
+    """JWT를 검증하고 페이로드를 반환합니다"""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+            issuer=ISSUER,
+            options={'verify_aud': False}  # 대상 (Audience)는 수동으로 검증합니다
+        )
+
+        verify_payload(payload)
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        raise AuthorizationError(f'유효하지 않은 토큰: {str(e)}', 401)
+    except Exception as e:
+        raise AuthorizationError(f'토큰 검증 실패: {str(e)}', 401)
+
+def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
+    """JWT 페이로드로부터 AuthInfo를 생성합니다"""
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    audience = payload.get('aud', [])
+    if isinstance(audience, str):
+        audience = [audience]
+
+    return AuthInfo(
+        sub=payload.get('sub'),
+        client_id=payload.get('client_id'),
+        organization_id=payload.get('organization_id'),
+        scopes=scopes,
+        audience=audience
+    )
+
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """권한 모델에 따라 페이로드를 검증합니다"""
+    # 권한 모델에 따라 검증 로직을 여기에 구현하세요
+    # 아래 권한 모델 섹션에서 예시를 확인할 수 있습니다
+    pass
+```
+
+그 다음, 액세스 토큰을 검증하는 미들웨어를 구현하세요:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+권한 모델에 따라, `jwt_validator.py`에서 적절한 검증 로직을 구현하세요:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="글로벌 API 리소스">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """글로벌 API 리소스에 대한 페이로드를 검증합니다"""
+    # 대상 (Audience) 클레임이 API 리소스 지표와 일치하는지 확인
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('유효하지 않은 대상 (Audience)')
+
+    # 글로벌 API 리소스에 필요한 스코프 확인
+    required_scopes = ['api:read', 'api:write']  # 실제 필요한 스코프로 교체하세요
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('스코프가 부족합니다')
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="조직 (비 API) 권한">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """조직 권한에 대한 페이로드를 검증합니다"""
+    # 대상 (Audience) 클레임이 조직 형식과 일치하는지 확인
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    has_org_audience = any(aud.startswith('urn:logto:organization:') for aud in audiences)
+    if not has_org_audience:
+        raise AuthorizationError('조직 권한에 대한 유효하지 않은 대상 (Audience)')
+
+    # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+    expected_org_id = 'your-organization-id'  # 요청 컨텍스트에서 추출
+    expected_aud = f'urn:logto:organization:{expected_org_id}'
+    if expected_aud not in audiences:
+        raise AuthorizationError('조직 ID 불일치')
+
+    # 필요한 조직 스코프 확인
+    required_scopes = ['invite:users', 'manage:settings']  # 실제 필요한 스코프로 교체하세요
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('조직 스코프가 부족합니다')
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="조직 수준 API 리소스">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """조직 수준 API 리소스에 대한 페이로드를 검증합니다"""
+    # 대상 (Audience) 클레임이 API 리소스 지표와 일치하는지 확인
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('조직 수준 API 리소스에 대한 유효하지 않은 대상 (Audience)')
+
+    # 조직 ID가 컨텍스트와 일치하는지 확인 (요청 컨텍스트에서 추출해야 할 수 있음)
+    expected_org_id = 'your-organization-id'  # 요청 컨텍스트에서 추출
+    org_id = payload.get('organization_id')
+    if expected_org_id != org_id:
+        raise AuthorizationError('조직 ID 불일치')
+
+    # 조직 수준 API 리소스에 필요한 스코프 확인
+    required_scopes = ['api:read', 'api:write']  # 실제 필요한 스코프로 교체하세요
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('조직 수준 API 스코프가 부족합니다')
+```
+
+</TabItem>
+</Tabs>

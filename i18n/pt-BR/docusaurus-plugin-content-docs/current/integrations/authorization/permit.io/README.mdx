@@ -1,0 +1,168 @@
+---
+slug: /integrations/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: Integre o Logto com o Permit.io.
+---
+
+# Configurar autorização com Permit.io
+
+[Permit.io](https://permit.io/) é uma plataforma de autorização que fornece controle de acesso granular para aplicações. Você pode usar o Logto em conjunto com o Permit.io para gerenciar a autenticação e a autorização dos usuários.
+
+:::tip
+Para entender as principais diferenças entre autenticação e autorização, veja [Autenticação vs. autorização](/concepts/authn-vs-authz).
+:::
+
+Este guia mostrará como conectar o Logto ao Permit.io para implementar autorização em sua aplicação.
+
+## Pré-requisitos \{#prerequisites}
+
+- Uma conta no [Logto Cloud](https://cloud.logto.io/) ou um [Logto auto-hospedado](https://docs.logto.io/introduction/set-up-logto-oss).
+- Uma aplicação Next.js com autenticação Logto já configurada (siga nosso [guia Next.js](https://docs.logto.io/quick-starts/next) se ainda não tiver feito isso)
+- Uma conta no [Permit.io](https://app.permit.io/). Siga o [guia rápido oficial do Permit.io](https://docs.permit.io/quickstart/) para configurar seu projeto Permit.io antes de prosseguir.
+
+## Integração \{#integration}
+
+### Instalar o SDK do Permit.io \{#install-permitio-sdk}
+
+Adicione o SDK do Permit.io à sua aplicação:
+
+```bash
+npm install permitio
+```
+
+### Criar um projeto no Permit.io \{#create-a-permitio-project}
+
+1. Cadastre-se para uma conta gratuita em [permit.io](https://app.permit.io/)
+2. Crie um novo projeto e obtenha sua chave de API
+3. Adicione a chave de API às variáveis de ambiente:
+
+```bash
+PERMIT_API_KEY=sua-chave-de-api-do-permit
+```
+
+### Configurar o cliente Permit.io \{#set-up-permitio-client}
+
+Crie um arquivo para lidar com a integração do Permit.io:
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// Inicialize o cliente Permit.io
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'sua-chave-de-api-do-permitio',
+});
+
+// Sincronize um usuário com o Permit.io
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // Primeiro, sincronize o usuário
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // Em seguida, atribua um papel ao usuário
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### Criar um webhook Logto para registro de usuário \{#create-a-logto-webhook-for-user-registration}
+
+O Logto fornece [webhooks](/developers/webhooks) que podem notificar sua aplicação quando eventos ocorrem. Usaremos o webhook `PostRegister` para [sincronizar usuários com o Permit.io](https://docs.permit.io/authentication/permit-and-authentication) quando eles se cadastrarem.
+
+Crie um endpoint de webhook em sua aplicação:
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // Registre o payload do webhook para depuração
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // Processa eventos de registro de usuário
+  if (event === 'PostRegister') {
+    try {
+      // Determine o papel do usuário (você pode implementar sua própria lógica aqui)
+      let role = 'viewer'; // Papel padrão
+
+      // Sincronize o usuário com o Permit.io
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Erro ao sincronizar usuário:', error);
+      return res.status(500).json({ error: 'Falha ao sincronizar usuário' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Evento ignorado' });
+}
+```
+
+### Configurar o webhook no Logto Console \{#configure-the-webhook-in-logto-console}
+
+1. Vá para a seção Webhooks no seu Logto Console
+2. Clique em "Criar Webhook"
+3. Dê um nome ao seu webhook
+4. Insira a URL do seu endpoint (por exemplo, `https://seu-app.com/api/webhooks/logto`)
+5. Selecione o evento `PostRegister`
+6. Salve o webhook
+
+:::note
+Para desenvolvimento local, você pode usar ferramentas como [ngrok](https://ngrok.com/) para expor seu servidor local para a internet.
+:::
+
+### Testar a sincronização de usuários \{#test-user-sync}
+
+Para testar se os usuários estão sendo sincronizados corretamente:
+
+1. Crie uma nova conta de usuário em sua aplicação
+2. Verifique o painel do Permit.io em "Directory" → "Users" para confirmar se o usuário foi sincronizado
+3. Verifique se o papel correto foi atribuído ao usuário no cadastro
+
+<img
+  src="/img/assets/permitio.png"
+  alt="Usuários Logto sincronizados com o Permit.io com atribuição de papéis"
+/>
+
+### Usar o Permit.io para autorização \{#use-permitio-for-authorization}
+
+Depois que os usuários estiverem sincronizados, você pode usar o Permit.io para checar permissões:
+
+```jsx
+// Exemplo de verificação de permissão
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // Usuário tem permissão para visualizar recursos
+  // Exiba a interface de recursos
+} else {
+  // Usuário não tem permissão para visualizar recursos
+  // Exiba uma mensagem de acesso negado
+}
+```
+
+## Conclusão \{#conclusion}
+
+Você conectou com sucesso o Logto ao Permit.io para sincronizar usuários automaticamente e implementar autorização em sua aplicação. Com essa integração:
+
+1. Usuários se autenticam pelo Logto
+2. Novos usuários são automaticamente sincronizados com o Permit.io via webhooks
+3. Você pode usar o Permit.io para checar permissões e implementar controle de acesso
+
+Essa configuração fornece uma base sólida para implementar padrões de autorização mais avançados conforme sua aplicação cresce.
+
+Para casos de uso de autorização mais avançados, explore a [documentação do Permit.io](https://docs.permit.io/) sobre criação de políticas, aplicação de permissões e implementação de controle de acesso baseado em papel.

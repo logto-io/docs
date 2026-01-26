@@ -1,0 +1,105 @@
+name: Content generation
+
+env:
+  CONTENT_GENERATION_BRANCH_NAME: bot-generate-doc-contents
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: content-generation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  content-generation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          ref: master
+          fetch-depth: 0
+
+      - name: Setup Node and pnpm
+        uses: silverhand-io/actions-node-pnpm-run-steps@v5
+        with:
+          pnpm-version: 9
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.BOT_GPG_KEY }}
+          passphrase: ${{ secrets.BOT_GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Configure Git user
+        run: |
+          git config --global user.email bot@silverhand.io
+          git config --global user.name silverhand-bot
+
+      - name: Translate documentations
+        env:
+          OPENAI_ORG_ID: ${{ secrets.OPENAI_ORG_ID }}
+          OPENAI_PROJECT_ID: ${{ secrets.OPENAI_PROJECT_ID }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          node translate.mjs --sync --all --silent
+        continue-on-error: true
+
+      - name: Write heading IDs
+        run: |
+          node write-heading-ids.mjs
+        continue-on-error: true
+      
+      - name: Build
+        run: pnpm build
+        continue-on-error: true
+
+      - name: Lint with autofix
+        run: pnpm lint --fix
+        continue-on-error: true
+
+      - name: Check Git status to determine if the PR is needed
+        id: check-changes
+        run: |
+          git add .
+          git status --porcelain
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "HAS_CHANGES=true" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v8
+        if: steps.check-changes.outputs.HAS_CHANGES == 'true'
+        with:
+          token: ${{ secrets.BOT_PAT }}
+          branch: ${{ env.CONTENT_GENERATION_BRANCH_NAME }}
+          committer: silverhand-bot <bot@silverhand.io>
+          title: "chore: update translations and generated content"
+          commit-message: "chore: update translations and generated content"
+          body: |
+            This is an automatic pull request to update the i18n translations and programmatic SEO content to the latest commit hash.
+            If you want to debug the PR manually, please run the following command:
+              
+            ```bash
+            node translate.mjs --sync --all
+            node write-heading-ids.mjs
+            pnpm build
+            pnpm lint
+            ```
+
+            And then commit all generated resources.
+          labels: |
+            i18n
+            tutorial
+            bot
+          draft: false
+          delete-branch: true
+      

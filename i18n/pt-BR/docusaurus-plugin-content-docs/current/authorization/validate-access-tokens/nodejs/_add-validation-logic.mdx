@@ -1,0 +1,159 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+Usamos [jose](https://github.com/panva/jose) neste exemplo para validar o JWT. Instale-o se ainda não tiver feito isso:
+
+```bash
+npm install jose
+```
+
+Ou utilize seu gerenciador de pacotes preferido (por exemplo, `pnpm` ou `yarn`).
+
+Primeiro, adicione estas utilidades compartilhadas para lidar com a validação do JWT:
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // Implemente sua lógica de verificação aqui com base no modelo de permissão
+  // Isso será mostrado na seção de modelos de permissão abaixo
+}
+```
+
+Em seguida, implemente o middleware para verificar o token de acesso (access token):
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+De acordo com seu modelo de permissão, implemente a lógica de verificação apropriada em `jwt-validator.ts`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos globais de API">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifique se a reivindicação de público (audience) corresponde ao seu indicador de recurso de API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Público inválido');
+  }
+
+  // Verifique os escopos necessários para recursos globais de API
+  const requiredScopes = ['api:read', 'api:write']; // Substitua pelos escopos realmente necessários
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Escopo insuficiente');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissões de organização (não-API)">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifique se a reivindicação de público (audience) corresponde ao formato de organização
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Público inválido para permissões de organização');
+  }
+
+  // Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+  const expectedOrgId = 'your-organization-id'; // Extraia do contexto da requisição
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('ID da organização não corresponde');
+  }
+
+  // Verifique os escopos necessários para a organização
+  const requiredScopes = ['invite:users', 'manage:settings']; // Substitua pelos escopos realmente necessários
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Escopo de organização insuficiente');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API em nível de organização">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Verifique se a reivindicação de público (audience) corresponde ao seu indicador de recurso de API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Público inválido para recursos de API em nível de organização');
+  }
+
+  // Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+  const expectedOrgId = 'your-organization-id'; // Extraia do contexto da requisição
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('ID da organização não corresponde');
+  }
+
+  // Verifique os escopos necessários para recursos de API em nível de organização
+  const requiredScopes = ['api:read', 'api:write']; // Substitua pelos escopos realmente necessários
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError(
+      'Escopos insuficientes para recursos de API em nível de organização'
+    );
+  }
+}
+```
+
+</TabItem>
+</Tabs>

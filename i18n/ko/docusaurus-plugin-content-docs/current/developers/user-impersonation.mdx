@@ -1,0 +1,410 @@
+---
+id: user-impersonation
+title: 사용자 가장 (User impersonation)
+sidebar_label: 사용자 가장 (User impersonation)
+sidebar_position: 3
+---
+
+import TokenExchangePrerequisites from './fragments/_token-exchange-prerequisites.mdx';
+
+# 사용자 가장 (User impersonation)
+
+TechCorp의 지원 엔지니어 Sarah가 Alex라는 고객으로부터 중요한 리소스에 접근할 수 없다는 긴급 티켓을 받았다고 상상해 보세요. 문제를 효율적으로 진단하고 해결하기 위해 Sarah는 시스템에서 Alex가 보는 것과 똑같이 볼 필요가 있습니다. 이럴 때 Logto의 사용자 가장 (User impersonation) 기능이 유용하게 사용됩니다.
+
+사용자 가장 (User impersonation)은 Sarah와 같은 인가 (Authorization)된 사용자가 시스템 내에서 Alex와 같은 다른 사용자를 대신하여 임시로 행동할 수 있도록 해줍니다. 이 강력한 기능은 문제 해결, 고객 지원, 관리 작업 수행에 매우 유용합니다.
+
+## 어떻게 동작하나요? \{#how-it-works}
+
+```mermaid
+sequenceDiagram
+    participant Sarah as Sarah의 앱
+    participant TechCorp as TechCorp의 서버
+    participant Logto as Logto Management API
+    participant LogtoToken as Logto 토큰 엔드포인트
+
+    Sarah->>TechCorp: POST /api/request-impersonation
+    Note over Sarah,TechCorp: Alex를 가장 (impersonate) 요청
+
+    TechCorp->>Logto: POST /api/subject-tokens
+    Note over TechCorp,Logto: Alex를 위한 subject 토큰 요청
+
+    Logto-->>TechCorp: subject 토큰 반환
+    TechCorp-->>Sarah: subject 토큰 반환
+
+    Sarah->>LogtoToken: POST /oidc/token
+    Note over Sarah,LogtoToken: subject 토큰을 액세스 토큰으로 교환
+
+    LogtoToken-->>Sarah: 액세스 토큰 반환
+    Note over Sarah: 이제 Sarah는 Alex로서 리소스에 접근 가능
+```
+
+가장 (impersonation) 과정은 세 가지 주요 단계로 이루어집니다:
+
+1. Sarah가 TechCorp의 백엔드 서버를 통해 가장 (impersonation)을 요청합니다.
+2. TechCorp의 서버가 Logto의 Management API에서 subject 토큰을 발급받습니다.
+3. Sarah의 애플리케이션이 이 subject 토큰을 액세스 토큰으로 교환합니다.
+
+Sarah가 이 기능을 사용하여 Alex를 도울 수 있는 방법을 살펴보겠습니다.
+
+### 1단계: 가장 (impersonation) 요청하기 \{#step-1-requesting-impersonation}
+
+먼저, Sarah의 지원 애플리케이션이 TechCorp의 백엔드 서버에 가장 (impersonation)을 요청해야 합니다.
+
+**요청 (Sarah의 애플리케이션 → TechCorp의 서버)**
+
+```bash
+POST /api/request-impersonation HTTP/1.1
+Host: api.techcorp.com
+Authorization: Bearer <Sarah의_access_token>
+Content-Type: application/json
+
+{
+  "userId": "alex123",
+  "reason": "리소스 접근 문제 조사",
+  "ticketId": "TECH-1234"
+}
+```
+
+이 API에서는 백엔드가 Sarah가 Alex를 가장할 수 있는 적절한 권한 (Permission)이 있는지 인가 (Authorization) 검사를 수행해야 합니다.
+
+### 2단계: subject 토큰 발급받기 \{#step-2-obtaining-a-subject-token}
+
+Sarah의 요청을 검증한 후, TechCorp의 서버는 Logto의 [Management API](/integrate-logto/interact-with-management-api)를 호출하여 subject 토큰을 발급받습니다.
+
+**요청 (TechCorp의 서버 → Logto Management API)**
+
+```bash
+POST /api/subject-tokens HTTP/1.1
+Host: techcorp.logto.app
+Authorization: Bearer <TechCorp_m2m_access_token>
+Content-Type: application/json
+
+{
+  "userId": "alex123",
+  "context": {
+    "ticketId": "TECH-1234",
+    "reason": "리소스 접근 문제",
+    "supportEngineerId": "sarah789"
+  }
+}
+```
+
+**응답 (Logto → TechCorp의 서버)**
+
+```json
+{
+  "subjectToken": "sub_7h32jf8sK3j2",
+  "expiresIn": 600
+}
+```
+
+TechCorp의 서버는 이 subject 토큰을 Sarah의 애플리케이션에 반환해야 합니다.
+
+**응답 (TechCorp의 서버 → Sarah의 애플리케이션)**
+
+```json
+{
+  "subjectToken": "sub_7h32jf8sK3j2",
+  "expiresIn": 600
+}
+```
+
+### 3단계: subject 토큰을 액세스 토큰으로 교환하기 \{#step-3-exchanging-the-subject-token-for-an-access-token}
+
+<TokenExchangePrerequisites />
+
+이제 Sarah의 애플리케이션은 이 subject 토큰을 Alex를 대표하는 액세스 토큰으로 교환하며, 토큰이 사용될 리소스를 명시합니다.
+
+**요청 (Sarah의 애플리케이션 → Logto 토큰 엔드포인트)**
+
+전통적인 웹 애플리케이션 또는 app secret이 있는 기계 간 (M2M) 애플리케이션의 경우, `Authorization` 헤더에 자격 증명을 포함하세요:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+app secret이 없는 싱글 페이지 애플리케이션 (SPA) 또는 네이티브 애플리케이션의 경우, `client_id`를 요청 본문에 포함하세요:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
+&client_id=techcorp_support_app
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+**응답 (Logto → Sarah의 애플리케이션)**
+
+```json
+{
+  "access_token": "eyJhbG...<truncated>",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "scope": "resource:read"
+}
+```
+
+반환된 `access_token`은 지정된 리소스에 바인딩되어, TechCorp의 고객 데이터 API에서만 사용할 수 있도록 보장합니다.
+
+## 사용 예시 \{#example-usage}
+
+Sarah가 Node.js 지원 애플리케이션에서 이 기능을 사용하는 방법은 다음과 같습니다:
+
+```tsx
+interface ImpersonationResponse {
+  subjectToken: string;
+  expiresIn: number;
+}
+
+interface TokenExchangeResponse {
+  access_token: string;
+  issued_token_type: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+}
+
+async function impersonateUser(
+  userId: string,
+  clientId: string,
+  ticketId: string,
+  resource: string,
+  // highlight-next-line
+  clientSecret?: string // 전통적인 웹 또는 기계 간 (M2M) 앱에서는 필수
+): Promise<string> {
+  try {
+    // 1, 2단계: 가장 (impersonation) 요청 및 subject 토큰 획득
+    const impersonationResponse = await fetch(
+      'https://api.techcorp.com/api/request-impersonation',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer <Sarah의_access_token>',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId,
+          reason: '리소스 접근 문제 조사',
+          ticketId,
+        }),
+      }
+    );
+
+    if (!impersonationResponse.ok) {
+      throw new Error(`HTTP 오류 발생. 상태: ${impersonationResponse.status}`);
+    }
+
+    const { subjectToken } = (await impersonationResponse.json()) as ImpersonationResponse;
+
+    // 3단계: subject 토큰을 액세스 토큰으로 교환
+    // highlight-start
+    // 전통적인 웹 또는 M2M 앱: client secret과 함께 Basic 인증 사용
+    // SPA 또는 네이티브 앱: 본문에 client_id 포함
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    };
+
+    const tokenExchangeBody = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+      scope: 'openid profile resource.read',
+      subject_token: subjectToken,
+      subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+      resource: resource,
+    });
+
+    if (clientSecret) {
+      // 기밀 클라이언트: Basic 인증 사용
+      headers['Authorization'] =
+        `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`;
+    } else {
+      // 공개 클라이언트: 본문에 client_id 추가
+      tokenExchangeBody.append('client_id', clientId);
+    }
+    // highlight-end
+
+    const tokenExchangeResponse = await fetch('https://techcorp.logto.app/oidc/token', {
+      method: 'POST',
+      headers,
+      body: tokenExchangeBody,
+    });
+
+    if (!tokenExchangeResponse.ok) {
+      throw new Error(`HTTP 오류! 상태: ${tokenExchangeResponse.status}`);
+    }
+
+    const tokenData = (await tokenExchangeResponse.json()) as TokenExchangeResponse;
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('가장 (impersonation) 실패:', error);
+    throw error;
+  }
+}
+
+// Sarah가 이 함수를 사용하여 Alex를 가장합니다
+async function performImpersonation(): Promise<void> {
+  try {
+    // highlight-start
+    // 전통적인 웹 또는 M2M 앱에서는 client secret을 전달
+    const accessToken = await impersonateUser(
+      'alex123',
+      'techcorp_support_app',
+      'TECH-1234',
+      'https://api.techcorp.com/customer-data',
+      'your-client-secret' // SPA 또는 네이티브 앱에서는 생략
+    );
+    // highlight-end
+    console.log('Alex를 위한 가장 (impersonation) 액세스 토큰:', accessToken);
+  } catch (error) {
+    console.error('가장 (impersonation) 수행 실패:', error);
+  }
+}
+
+// 가장 (impersonation) 실행
+void performImpersonation();
+```
+
+:::note
+
+1. subject 토큰은 단기 유효하며 1회성입니다.
+2. 가장 (impersonation) 액세스 토큰에는 [리프레시 토큰 (Refresh token)](https://auth.wiki/refresh-token)이 포함되지 않습니다. 만약 토큰이 만료되기 전에 Alex의 문제가 해결되지 않으면 Sarah는 이 과정을 반복해야 합니다.
+3. TechCorp의 백엔드 서버는 Sarah와 같은 인가 (Authorization)된 지원 인력만 가장 (impersonation)을 요청할 수 있도록 적절한 인가 (Authorization) 검사를 반드시 구현해야 합니다.
+
+:::
+
+## `act` 클레임 \{#act-claim}
+
+가장 (impersonation)을 위한 토큰 교환 플로우를 사용할 때, 발급된 액세스 토큰에는 추가적으로 `act` (actor) 클레임이 포함될 수 있습니다. 이 클레임은 "행동 주체"의 아이덴티티를 나타냅니다. 즉, 예시에서 Sarah가 Alex를 대신하여 행동하고 있음을 의미합니다.
+
+`act` 클레임을 포함하려면, Sarah의 애플리케이션이 토큰 교환 요청에 `actor_token`을 제공해야 합니다. 이 토큰은 `openid` 스코프가 포함된 Sarah의 유효한 액세스 토큰이어야 합니다. 요청 예시는 다음과 같습니다:
+
+전통적인 웹 애플리케이션 또는 기계 간 (M2M) 애플리케이션의 경우:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+# highlight-next-line
+Authorization: Basic <base64(client_id:client_secret)>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+SPA 또는 네이티브 애플리케이션의 경우, 본문에 `client_id`를 포함하세요:
+
+```bash
+POST /oidc/token HTTP/1.1
+Host: techcorp.logto.app
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+# highlight-next-line
+&client_id=techcorp_support_app
+&scope=resource:read
+&subject_token=alx_7h32jf8sK3j2
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&actor_token=sarah_access_token
+&actor_token_type=urn:ietf:params:oauth:token-type:access_token
+&resource=https://api.techcorp.com/customer-data
+```
+
+`actor_token`이 제공되면, 결과 액세스 토큰에는 다음과 같은 `act` 클레임이 포함됩니다:
+
+```json
+{
+  "aud": "https://api.techcorp.com",
+  "iss": "https://techcorp.logto.app",
+  "exp": 1443904177,
+  "sub": "alex123",
+  "act": {
+    "sub": "sarah789"
+  }
+}
+```
+
+이 `act` 클레임은 Sarah(sarah789)가 Alex(alex123)를 대신하여 행동하고 있음을 명확하게 나타냅니다. `act` 클레임은 감사를 위한 추적 및 가장 (impersonation) 활동 기록에 유용합니다.
+
+## 토큰 클레임 커스터마이징 \{#customizing-token-claims}
+
+Logto는 가장 (impersonation) 토큰에 대해 [토큰 클레임 커스터마이징](/developers/custom-token-claims)을 지원합니다. 이는 가장 (impersonation) 과정에 추가적인 컨텍스트나 메타데이터(예: 가장 사유, 관련 지원 티켓 등)를 추가할 때 유용합니다.
+
+TechCorp의 서버가 Logto Management API에 subject 토큰을 요청할 때, `context` 객체를 포함할 수 있습니다:
+
+```json
+{
+  "userId": "alex123",
+  "context": {
+    "ticketId": "TECH-1234",
+    "reason": "리소스 접근 문제",
+    "supportEngineerId": "sarah789"
+  }
+}
+```
+
+이 [context](/developers/custom-token-claims/create-script#context-only-available-for-user-access-token)는 `getCustomJwtClaims()` 함수에서 최종 액세스 토큰에 특정 클레임을 추가하는 데 사용할 수 있습니다. 예시는 다음과 같습니다:
+
+```tsx
+const getCustomJwtClaims = async ({ token, context, environmentVariables }) => {
+  if (context.grant?.type === 'urn:ietf:params:oauth:grant-type:token-exchange') {
+    const { ticketId, reason, supportEngineerId } = context.grant.subjectTokenContext;
+    return {
+      impersonation_context: {
+        ticket_id: ticketId,
+        reason: reason,
+        support_engineer: supportEngineerId,
+      },
+    };
+  }
+  return {};
+};
+```
+
+Sarah가 받게 되는 최종 액세스 토큰은 다음과 같이 보일 수 있습니다:
+
+```json
+{
+  "sub": "alex123",
+  "aud": "https://api.techcorp.com/customer-data",
+  "impersonation_context": {
+    "ticket_id": "TECH-1234",
+    "reason": "리소스 접근 문제",
+    "support_engineer": "sarah789"
+  }
+  // ... 기타 표준 클레임
+}
+```
+
+이처럼 액세스 토큰의 클레임을 커스터마이징하면, TechCorp는 가장 (impersonation) 컨텍스트에 대한 유용한 정보를 포함시켜 시스템 내에서 가장 (impersonation) 활동을 감사하고 이해하기 쉽게 만들 수 있습니다.
+
+:::note
+토큰에 커스텀 클레임을 추가할 때는 주의하세요. 토큰이 탈취되거나 유출될 경우 보안 위험이 될 수 있는 민감한 정보를 포함하지 마세요. JWT는 서명되어 있지만 암호화되어 있지 않으므로, 토큰에 접근할 수 있는 누구나 클레임을 볼 수 있습니다.
+:::
+
+## 관련 리소스 \{#related-resources}
+
+<Url href="https://blog.logto.io/impersonation">
+  사이버보안 및 아이덴티티 관리에서 가장 (impersonation)이란 무엇인가요? AI 에이전트가 어떻게 사용할
+  수 있나요?
+</Url>

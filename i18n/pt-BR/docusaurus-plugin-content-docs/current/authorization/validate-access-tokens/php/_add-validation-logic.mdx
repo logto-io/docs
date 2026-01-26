@@ -1,0 +1,224 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import LaravelValidation from './fragments/laravel/_validation.md';
+import SlimValidation from './fragments/slim/_validation.md';
+import SymfonyValidation from './fragments/symfony/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  laravel: <LaravelValidation />,
+  symfony: <SymfonyValidation />,
+  slim: <SlimValidation />,
+});
+
+Usamos [firebase/php-jwt](https://github.com/firebase/php-jwt) para validar JWTs. Instale-o usando o Composer:
+
+```bash
+composer require firebase/php-jwt
+```
+
+Primeiro, adicione estas utilidades compartilhadas para lidar com a validação de JWT:
+
+```php title="JwtValidator.php"
+<?php
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
+
+class JwtValidator
+{
+    use AuthHelpers;
+
+    private static ?array $jwks = null;
+
+    public static function fetchJwks(): array
+    {
+        if (self::$jwks === null) {
+            $jwksData = file_get_contents(AuthConstants::JWKS_URI);
+            if ($jwksData === false) {
+                throw new AuthorizationException('Falha ao buscar JWKS', 401);
+            }
+
+            self::$jwks = json_decode($jwksData, true);
+        }
+
+        return self::$jwks;
+    }
+
+    public static function validateJwt(string $token): array
+    {
+        try {
+            $jwks = self::fetchJwks();
+            $keys = JWK::parseKeySet($jwks);
+
+            $decoded = JWT::decode($token, $keys);
+            $payload = (array) $decoded;
+
+            // Verificar emissor
+            if (($payload['iss'] ?? '') !== AuthConstants::ISSUER) {
+                throw new AuthorizationException('Emissor inválido', 401);
+            }
+
+            self::verifyPayload($payload);
+            return $payload;
+
+        } catch (AuthorizationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new AuthorizationException('Token inválido: ' . $e->getMessage(), 401);
+        }
+    }
+
+    public static function createAuthInfo(array $payload): AuthInfo
+    {
+        $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+        $audience = $payload['aud'] ?? [];
+
+        if (is_string($audience)) {
+            $audience = [$audience];
+        }
+
+        return new AuthInfo(
+            sub: $payload['sub'],
+            clientId: $payload['client_id'] ?? null,
+            organizationId: $payload['organization_id'] ?? null,
+            scopes: $scopes,
+            audience: $audience
+        );
+    }
+
+    private static function verifyPayload(array $payload): void
+    {
+        // Implemente sua lógica de verificação aqui com base no modelo de permissão
+        // Isso será mostrado na seção de modelos de permissão abaixo
+    }
+}
+```
+
+Em seguida, implemente o middleware para verificar o token de acesso:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+De acordo com seu modelo de permissão, implemente a lógica de verificação apropriada em `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos globais de API">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Verifique se a reivindicação de público corresponde ao seu indicador de recurso de API
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Público inválido');
+    }
+
+    // Verifique os escopos necessários para recursos globais de API
+    $requiredScopes = ['api:read', 'api:write']; // Substitua pelos escopos realmente necessários
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Escopo insuficiente');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissões de organização (não-API)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Verifique se a reivindicação de público corresponde ao formato da organização
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    $hasOrgAudience = false;
+    foreach ($audiences as $aud) {
+        if (str_starts_with($aud, 'urn:logto:organization:')) {
+            $hasOrgAudience = true;
+            break;
+        }
+    }
+
+    if (!$hasOrgAudience) {
+        throw new AuthorizationException('Público inválido para permissões de organização');
+    }
+
+    // Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+    $expectedOrgId = 'your-organization-id'; // Extraia do contexto da requisição
+    $expectedAud = "urn:logto:organization:{$expectedOrgId}";
+    if (!in_array($expectedAud, $audiences)) {
+        throw new AuthorizationException('ID da organização não corresponde');
+    }
+
+    // Verifique os escopos necessários da organização
+    $requiredScopes = ['invite:users', 'manage:settings']; // Substitua pelos escopos realmente necessários
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Escopo de organização insuficiente');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API em nível de organização">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // Verifique se a reivindicação de público corresponde ao seu indicador de recurso de API
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Público inválido para recursos de API em nível de organização');
+    }
+
+    // Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+    $expectedOrgId = 'your-organization-id'; // Extraia do contexto da requisição
+    $orgId = $payload['organization_id'] ?? null;
+    if ($expectedOrgId !== $orgId) {
+        throw new AuthorizationException('ID da organização não corresponde');
+    }
+
+    // Verifique os escopos necessários para recursos de API em nível de organização
+    $requiredScopes = ['api:read', 'api:write']; // Substitua pelos escopos realmente necessários
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Escopos de API em nível de organização insuficientes');
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,207 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+## ตั้งค่าเซิร์ฟเวอร์ MCP \{#set-up-the-mcp-server}
+
+### สร้างโปรเจกต์และติดตั้ง dependencies \{#create-project-and-install-dependencies}
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+uv init # หรือใช้โครงสร้างโปรเจกต์ของคุณเอง
+uv add "mcp[cli]" starlette uvicorn mcpauth # หรือใช้ตัวจัดการแพ็กเกจที่คุณต้องการ
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```bash
+mkdir mcp-server
+cd mcp-server
+npm init -y
+npm install @modelcontextprotocol/sdk express mcp-auth # หรือใช้ตัวจัดการแพ็กเกจที่คุณต้องการ
+```
+
+</TabItem>
+</Tabs>
+
+### ตั้งค่า MCP auth กับ Logto \{#configure-mcp-auth-with-logto}
+
+อย่าลืมแทนที่ `<your-logto-issuer-endpoint>` ด้วย issuer endpoint ที่คุณคัดลอกมาก่อนหน้านี้
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+**ใน `whoami.py`:**
+
+```python
+from mcpauth import MCPAuth
+from mcpauth.config import AuthServerType
+from mcpauth.utils import fetch_server_config
+
+auth_issuer = '<your-logto-issuer-endpoint>'
+auth_server_config = fetch_server_config(auth_issuer, type=AuthServerType.OIDC)
+mcp_auth = MCPAuth(server=auth_server_config)
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+**ใน `whoami.js`:**
+
+```js
+import { MCPAuth, fetchServerConfig } from 'mcp-auth';
+
+const authIssuer = '<your-logto-issuer-endpoint>';
+const mcpAuth = new MCPAuth({
+  server: await fetchServerConfig(authIssuer, { type: 'oidc' }),
+});
+```
+
+</TabItem>
+</Tabs>
+
+### ดำเนินการตรวจสอบโทเค็น \{#implement-token-verification}
+
+เนื่องจากเราจะตรวจสอบโทเค็นการเข้าถึง (Access token) และดึงข้อมูลผู้ใช้ เราจึงต้องดำเนินการตรวจสอบโทเค็นการเข้าถึงดังนี้:
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+import requests
+from mcpauth.types import AuthInfo
+
+def verify_access_token(token: str) -> AuthInfo:
+    endpoint = auth_server_config.metadata.userinfo_endpoint
+    response = requests.get(
+        endpoint,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    response.raise_for_status()
+    data = response.json()
+    return AuthInfo(
+        token=token,
+        subject=data.get("sub"),
+        issuer=auth_server_config.metadata.issuer,
+        claims=data,
+    )
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+const verifyToken = async (token) => {
+  const { userinfoEndpoint, issuer } = mcpAuth.config.server.metadata;
+  const response = await fetch(userinfoEndpoint, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error('Token verification failed');
+  const userInfo = await response.json();
+  return {
+    token,
+    issuer,
+    subject: userInfo.sub,
+    claims: userInfo,
+  };
+};
+```
+
+</TabItem>
+</Tabs>
+
+### สร้างเครื่องมือ "whoami" \{#implement-the-whoami-tool}
+
+ต่อไป มาสร้างเครื่องมือ "whoami" ที่จะคืนค่าการอ้างสิทธิ์ (claims) ของตัวตนผู้ใช้ปัจจุบัน โดยร้องขอไปยัง userinfo endpoint พร้อมโทเค็นการเข้าถึงที่ส่งมาจาก client
+
+:::note
+ตัวอย่างนี้ใช้การส่งข้อมูลแบบ SSE เนื่องจาก SDK เวอร์ชันปัจจุบันยังไม่รองรับ Streamable HTTP transport อย่างเป็นทางการ ในทางทฤษฎี คุณสามารถใช้ transport ที่รองรับ HTTP ใดก็ได้
+:::
+
+<Tabs groupId="sdk">
+<TabItem value="python" label="Python">
+
+```python
+from mcp.server.fastmcp import FastMCP
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.middleware import Middleware
+
+mcp = FastMCP("WhoAmI")
+
+@mcp.tool()
+def whoami() -> dict:
+    """
+    คืนค่าข้อมูลตัวตนของผู้ใช้ปัจจุบัน
+    """
+    return (
+        mcp_auth.auth_info.claims
+        if mcp_auth.auth_info
+        else {"error": "Not authenticated"}
+    )
+
+bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
+app = Starlette(
+    routes=[
+        mcp_auth.metadata_route(),  # ให้บริการ OIDC metadata สำหรับ discovery
+        Mount('/', app=mcp.sse_app(), middleware=[bearer_auth]),
+    ],
+)
+```
+
+รันเซิร์ฟเวอร์ด้วย:
+
+```bash
+uvicorn whoami:app --host 0.0.0.0 --port 3001
+```
+
+</TabItem>
+<TabItem value="node" label="Node.js">
+
+```js
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import express from 'express';
+
+// สร้าง MCP server และลงทะเบียนเครื่องมือ whoami
+const server = new McpServer({ name: 'WhoAmI', version: '0.0.0' });
+server.tool('whoami', ({ authInfo }) => ({
+  content: [
+    { type: 'text', text: JSON.stringify(authInfo?.claims ?? { error: 'Not authenticated' }) },
+  ],
+}));
+
+// Express app & MCP Auth middleware
+const app = express();
+app.use(mcpAuth.delegatedRouter());
+app.use(mcpAuth.bearerAuth(verifyToken));
+
+// SSE transport (ตามเอกสาร SDK)
+const transports = {};
+app.get('/sse', async (_req, res) => {
+  const transport = new SSEServerTransport('/messages', res);
+  transports[transport.sessionId] = transport;
+  res.on('close', () => delete transports[transport.sessionId]);
+  await server.connect(transport);
+});
+app.post('/messages', async (req, res) => {
+  const sessionId = String(req.query.sessionId);
+  const transport = transports[sessionId];
+  if (transport) await transport.handlePostMessage(req, res, req.body);
+  else res.status(400).send('No transport found for sessionId');
+});
+
+app.listen(3001);
+```
+
+รันเซิร์ฟเวอร์ด้วย:
+
+```bash
+node whoami.js
+```
+
+</TabItem>
+</Tabs>

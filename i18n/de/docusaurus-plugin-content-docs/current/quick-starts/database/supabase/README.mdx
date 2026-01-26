@@ -1,0 +1,286 @@
+---
+slug: /quick-starts/supabase
+sidebar_label: Supabase
+sidebar_custom_props:
+  description: Logto in Supabase integrieren.
+  logoFilename: 'supabase.svg'
+---
+
+# Authentifizierung zu deiner Supabase-Anwendung hinzufügen (Add authentication to your Supabase application)
+
+## Supabase-Grundlagen \{#supabase-basics}
+
+Supabase nutzt [Postgres' Row-Level Security](https://www.postgresql.org/docs/current/ddl-rowsecurity.html), um Datenzugriffsberechtigungen zu steuern. Einfach gesagt: Durch das Erstellen von Row-Level-Security-Policies für Tabellen in der Datenbank können wir einschränken und verwalten, wer Daten in einer Tabelle lesen, schreiben und aktualisieren darf.
+
+Angenommen, du hast eine Tabelle namens "posts" in deiner Datenbank mit folgendem Inhalt:
+
+<img src="/img/assets/posts-table.webp" alt="Posts-Tabelle" />
+
+Das Feld `user_id` in der Tabelle repräsentiert den Benutzer, dem die jeweiligen Post-Daten gehören. Du kannst jeden Benutzer darauf beschränken, nur auf seine eigenen Post-Daten basierend auf dem Feld `user_id` zuzugreifen.
+
+Bevor dies jedoch umgesetzt werden kann, muss Supabase in der Lage sein, den aktuellen Benutzer zu identifizieren, der auf die Datenbank zugreift.
+
+### Benutzerdaten zu den Supabase-Anfragen hinzufügen \{#add-user-data-to-the-supabase-requests}
+
+Dank der Unterstützung von JWT durch Supabase können wir beim Interagieren unserer Anwendung mit Supabase ein JWT generieren, das Benutzerdaten enthält, und zwar mit dem von Supabase bereitgestellten JWT-Secret. Dieses JWT verwenden wir dann als Authentication-Header bei Anfragen. Nach Erhalt der Anfrage prüft Supabase automatisch die Gültigkeit des JWT und ermöglicht den Zugriff auf die darin enthaltenen Daten während der weiteren Verarbeitung.
+
+Zunächst können wir das von Supabase bereitgestellte JWT-Secret in den „Project Settings“ im Supabase-Dashboard abrufen:
+
+<img src="/img/assets/supabase-api-settings.webp" alt="Supabase API-Einstellungsseite" />
+
+Wenn wir dann das Supabase SDK verwenden, um Anfragen an Supabase zu stellen, nutzen wir dieses Secret, um unser JWT zu generieren und es als Authentication-Header an die Anfrage anzuhängen. (Beachte, dass dieser Vorgang im Backend-Service deiner Anwendung stattfindet und das JWT-Secret niemals Dritten zugänglich gemacht werden sollte).
+
+```jsx
+import { createClient } from '@supabase/supabase-js';
+import { sign } from 'jsonwebtoken';
+
+/
+ * Hinweis:
+ * Du findest SUPABASE_URL und SUPABASE_ANON_KEY an derselben Stelle wie das JWT-Secret.
+ */
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
+const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+
+export const getSupabaseClient = (userId) => {
+  const jwtPayload = {
+    userId,
+  };
+
+  const jwt = sign(jwtPayload, SUPABASE_JWT_SECRET, {
+    expiresIn: '1h', // Nur zu Demonstrationszwecken
+  });
+
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+    },
+  });
+
+  return client;
+};
+```
+
+Navigiere anschließend zum SQL-Editor im Supabase-Dashboard und erstelle eine Funktion, um die userId aus der Anfrage auszulesen:
+
+<img
+  src="/img/assets/create-get-user-id-function.webp"
+  alt="Funktion zum Abrufen der Benutzer-ID erstellen"
+/>
+
+Der im Bild verwendete Code lautet wie folgt:
+
+```sql
+create or replace function auth.user_id() returns text as $$
+  select nullif(current_setting('request.jwt.claims', true)::json->>'userId', '')::text;
+$$ language sql stable;
+```
+
+Wie der Code zeigt, kannst du in Supabase das Payload des von uns generierten JWT abrufen, indem du `request.jwt.claims` aufrufst. Das Feld `userId` im Payload ist der von uns gesetzte Wert.
+
+Mit dieser Funktion kann Supabase den aktuell auf die Datenbank zugreifenden Benutzer bestimmen.
+
+### Row-Level-Security-Policy erstellen \{#create-row-level-security-policy}
+
+Nun können wir eine Row-Level-Security-Policy erstellen, um jeden Benutzer darauf zu beschränken, nur auf seine eigenen Post-Daten basierend auf dem Feld `user_id` in der Tabelle posts zuzugreifen.
+
+1. Navigiere zur Table Editor-Seite im Supabase-Dashboard und wähle die Tabelle posts aus.
+2. Klicke oben in der Tabelle auf "Add RLS Policy".
+3. Klicke im angezeigten Fenster auf "Create policy".
+4. Gib einen Policy-Namen ein und wähle den SELECT-Policy-Befehl.
+5. Gib im `using`-Block des folgenden Codes ein:
+
+```sql
+auth.user_id() = user_id
+```
+
+<img src="/img/assets/create-rls-policy.webp" alt="RLS-Policy erstellen" />
+
+Durch solche Policies wird die Datenzugriffskontrolle in Supabase realisiert.
+
+In realen Anwendungen würdest du verschiedene Policies erstellen, um Benutzeraktionen wie das Einfügen und Ändern von Daten einzuschränken. Dies geht jedoch über den Rahmen dieses Artikels hinaus. Weitere Informationen zu Row-Level Security (RLS) findest du unter [Secure your data using Postgres Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security).
+
+### Grundlegender Integrationsprozess mit Logto \{#basic-integration-process-with-logto}
+
+Wie bereits erwähnt, nutzt Supabase RLS für die Zugriffskontrolle. Der Schlüssel zur Integration mit Logto (oder jedem anderen Authentifizierungsdienst) liegt darin, die Benutzer-ID des autorisierten Benutzers zu erhalten und an Supabase zu übermitteln. Der gesamte Prozess ist im folgenden Diagramm dargestellt:
+
+```mermaid
+sequenceDiagram
+	Teilnehmer U als Endbenutzer
+	Teilnehmer Logto
+	Teilnehmer B als App-Backend-Service
+	Teilnehmer Supabase
+
+	U->>Logto: Anmeldung mit Logto
+	Logto-->>U: `access_token`
+	U->>B: Datenanfrage mit `access_token`
+	B->>B: `user_id` aus `access_token` extrahieren
+	B->>B: JWT generieren mit `user_id` & `Supabase JWT secret`
+	B->>Supabase: Datenanfrage mit JWT
+	Supabase-->>B: Antwortdaten
+	B-->>U: Antwortdaten
+```
+
+Im Folgenden erklären wir, wie du Logto basierend auf diesem Prozessdiagramm mit Supabase integrierst.
+
+## Logto-Integration \{#logto-integration}
+
+Logto bietet Integrationsanleitungen für verschiedene Frameworks und Programmiersprachen.
+
+Im Allgemeinen fallen mit diesen Frameworks und Sprachen erstellte Apps in Kategorien wie Native Apps, SPA (Single-Page-Apps), traditionelle Web-Apps und M2M (Maschine-zu-Maschine)-Apps. Du kannst die Seite [Logto Schnellstart](/quick-starts) besuchen, um Logto entsprechend deinem Tech-Stack in deine Anwendung zu integrieren. Anschließend folge den untenstehenden Anweisungen, um Logto je nach Anwendungstyp in dein Projekt zu integrieren.
+
+### Native App oder SPA \{#native-app-or-spa}
+
+Sowohl Native Apps als auch SPAs laufen auf deinem Gerät, und die nach der Anmeldung erhaltenen Zugangsdaten (Access Token) werden lokal auf deinem Gerät gespeichert.
+
+Daher musst du bei der Integration deiner App mit Supabase über deinen Backend-Service mit Supabase interagieren, da du sensible Informationen (wie das Supabase JWT-Secret) nicht auf jedem Benutzergerät offenlegen darfst.
+
+Angenommen, du baust deine SPA mit React und Express. Du hast Logto erfolgreich in deine Anwendung integriert, indem du der [Logto React SDK-Anleitung](/quick-starts/react) gefolgt bist (du kannst den Code in unserem [React-Beispiel](https://github.com/logto-io/js/tree/master/packages/react-sample) einsehen). Außerdem hast du die Logto Access Token-Validierung auf deinem Backend-Server gemäß der Anleitung [Zugangstokens validieren](/authorization/validate-access-tokens) hinzugefügt.
+
+Als Nächstes verwendest du das von Logto erhaltene Access Token, um Benutzerdaten von deinem Backend-Server anzufordern:
+
+```jsx
+import { useLogto } from '@logto/react';
+import { useState, useEffect } from 'react';
+import PostList from './PostList';
+
+const endpoint = '<https://www.mysite.com/api/posts>';
+const resource = '<https://www.mysite.com/api>';
+
+function PostPage() {
+  const { isAuthenticated, getAccessToken } = useLogto();
+  const [posts, setPosts] = useState();
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${await getAccessToken(resource)}`,
+        },
+      });
+      setPosts(response.json());
+    };
+
+    if (isAuthenticated) {
+      void fetchPosts();
+    }
+  }, [isAuthenticated, getAccessToken]);
+
+  return <PostList posts={posts} />;
+}
+
+export default PostPage;
+```
+
+Auf deinem Backend-Server hast du bereits die ID des angemeldeten Benutzers aus dem Access Token mit Middleware extrahiert:
+
+```jsx
+// auth-middleware.ts
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+//...
+
+export const verifyAuthFromRequest = async (ctx, next) => {
+  // Token extrahieren
+  const token = extractBearerTokenFromHeaders(ctx.request.headers);
+
+  const { payload } = await jwtVerify(
+    token, // Das rohe Bearer Token aus dem Request-Header
+    createRemoteJWKSet(new URL('https://<your-logto-domain>/oidc/jwks')), // JWKS mit jwks_uri vom Logto-Server generieren
+    {
+      // Erwarteter Aussteller des Tokens, sollte vom Logto-Server stammen
+      issuer: 'https://<your-logto-domain>/oidc',
+      // Erwartete Zielgruppe des Tokens, sollte der Ressourcenindikator der aktuellen API sein
+      audience: '<your request listener resource indicator>',
+    }
+  );
+
+  // falls du RBAC verwendest
+  assert(payload.scope.includes('some_scope'));
+
+  // benutzerdefinierte Payload-Logik
+  ctx.auth = {
+    userId: payload.sub,
+  };
+
+  return next();
+};
+```
+
+Jetzt kannst du die oben beschriebene Funktion `getSupabaseClient` verwenden, um die `userId` an das JWT für nachfolgende Anfragen an Supabase anzuhängen. Alternativ kannst du eine Middleware erstellen, um für Anfragen, die mit Supabase interagieren müssen, einen Supabase-Client zu erzeugen:
+
+```jsx
+export const withSupabaseClient = async (ctx, next) => {
+  ctx.supabase = getSupabaseClient(ctx.auth.userId);
+
+  return next();
+};
+```
+
+Im weiteren Ablauf kannst du dann direkt `ctx.supabase` aufrufen, um mit Supabase zu interagieren:
+
+```jsx
+const fetchPosts = async (ctx) => {
+  const { data } = await ctx.supabase.from('posts').select('*');
+
+  return data;
+};
+```
+
+In diesem Code gibt Supabase basierend auf den zuvor festgelegten Policies nur die Post-Daten des aktuellen Benutzers zurück.
+
+### Traditionelle Web-App \{#traditional-web-app}
+
+Der Hauptunterschied zwischen einer traditionellen Web-App und einer Native App oder SPA besteht darin, dass eine traditionelle Web-App Seiten ausschließlich auf dem Webserver rendert und aktualisiert. Daher werden Benutzeranmeldeinformationen direkt vom Webserver verwaltet, während sie bei Native Apps und SPAs auf dem Gerät des Benutzers liegen.
+
+Bei der Integration von Logto mit einer traditionellen Web-App in Supabase kannst du die ID des angemeldeten Benutzers direkt im Backend abrufen.
+
+Am Beispiel eines Next.js-Projekts: Nachdem du Logto gemäß der [Next.js SDK-Anleitung](/quick-starts/next-app-router) integriert hast, kannst du mit dem Logto SDK Benutzerinformationen abrufen und das entsprechende JWT für die Interaktion mit Supabase erzeugen.
+
+```jsx
+import { getLogtoContext } from '@logto/next-server-actions';
+import { logtoConfig } from '@/logto';
+import { getSupabaseClient } from '@/utils';
+import PostList from './PostList';
+
+export default async function PostPage() {
+  const { cliams } = await getLogtoContext(logtoConfig);
+
+  // Der Wert `sub` in `cliams` ist die Benutzer-ID.
+  const supabase = getSupabaseClient(cliams.sub);
+
+  const { data: posts } = await supabase.from('posts').select('*');
+
+  return <PostList posts={posts} />;
+}
+```
+
+### Maschine-zu-Maschine-App \{#machine-to-machine-app}
+
+Maschine-zu-Maschine (M2M) wird häufig verwendet, wenn deine App direkt mit Ressourcenservern kommunizieren muss, z. B. ein statischer Dienst, der täglich Beiträge abruft usw.
+
+Du kannst die Anleitung [Maschine-zu-Maschine: Authentifizierung mit Logto](/quick-starts/m2m) für die Authentifizierung von Maschine-zu-Maschine-Apps verwenden. Die Integration zwischen Supabase und Maschine-zu-Maschine-Apps ist ähnlich wie bei Native Apps und SPAs (siehe Abschnitt "[Native App oder SPA](#native-app-or-spa)"). Dabei wird ein Zugangstoken von Logto abgerufen und dann über eine geschützte Backend-API validiert.
+
+Beachte jedoch, dass Native Apps und SPAs in der Regel für Endbenutzer konzipiert sind, sodass die erhaltene Benutzer-ID den Benutzer selbst repräsentiert. Das Zugangstoken für Maschine-zu-Maschine-Apps hingegen repräsentiert die Anwendung selbst, und das Feld `sub` im Access Token Payload ist die Client-ID der M2M-App, nicht eines bestimmten Benutzers. Daher ist es während der Entwicklung wichtig zu unterscheiden, für welche Daten M2M-Apps vorgesehen sind.
+
+Wenn du möchtest, dass eine bestimmte M2M-App im Namen des gesamten Dienstes auf Supabase zugreift, um RLS-Beschränkungen zu umgehen, kannst du das `service_role`-Secret von Supabase verwenden, um einen Supabase-Client zu erstellen. Das ist nützlich, wenn du administrative oder automatisierte Aufgaben durchführen möchtest, die Zugriff auf alle Daten erfordern, ohne durch die für einzelne Benutzer eingerichteten Row-Level-Security-Policies eingeschränkt zu sein.
+
+Das `service_role`-Secret findest du auf derselben Seite wie das JWT-Secret:
+
+<img src="/img/assets/service-role-secret.webp" alt="Service-Role-Secret" />
+
+Beim Erstellen eines Supabase-Clients verwendest du das `service_role`-Secret, sodass dieser Client auf alle Daten in der Datenbank zugreifen kann:
+
+```jsx
+import { createClient } from '@supabase/supabase-js';
+
+// ...
+const SUPABASE_SERVICE_ROLE_SCRET = process.env.SUPABASE_SERVICE_ROLE_SCRET;
+
+const client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_SCRET, {
+  // ...Optionen
+});
+```

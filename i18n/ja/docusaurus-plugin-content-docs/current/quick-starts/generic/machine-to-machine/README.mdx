@@ -1,0 +1,203 @@
+---
+slug: /quick-starts/m2m
+sidebar_label: マシン間通信
+sidebar_custom_props:
+  description: マシン間での直接通信を可能にします。
+---
+
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import AppNote from '../../fragments/_app-note.mdx';
+
+import AccessLogtoManagementApiUsingAccessToken from './fragments/_access-logto-management-api-using-access-token.mdx';
+import AccessTokenUsage from './fragments/_access-token-usage.mdx';
+import BasicsAboutAccessTokenRequest from './fragments/_basics-about-access-token-request.mdx';
+import FetchAccessTokenForLogtoManagementApi from './fragments/_fetch-access-token-for-logto-management-api.mdx';
+import M2mAccessTokenSubNote from './fragments/_m2m-access-token-sub-note.mdx';
+import M2mRoleAssignment from './fragments/_m2m-role-assignment.mdx';
+
+# マシン間通信：Logto での認証 (Authentication)
+
+<AppNote type="Machine-to-machine" />
+
+## はじめに \{#intro}
+
+マシン間通信 (M2M) とは、アプリ（ユーザーではなく）がリソースと直接通信する必要がある場合によく使われる認証 (Authentication) の手法です（通常、M2M アプリはユーザー操作を必要としないため、UI を持ちません）。例としては、Logto 内のユーザーのカスタムデータを更新する API サービスや、日次注文データを取得する統計サービスなどがあります。
+
+Logto ではアクセス制御ポリシーとしてロールベースのアクセス制御 (RBAC) を採用しているため、API への直接サービス通信を保護するには、M2M アプリに M2M ロールを割り当てる必要があります。
+
+:::info
+現在の RBAC やユーザーロールと M2M ロールの違いについては、[グローバルロールの設定](/authorization/role-based-access-control#configure-global-roles) をご覧ください。
+:::
+
+Logto でマシン間通信アプリを利用する主なユースケースは 2 つあります：
+
+1. **Logto Management API へのアクセス**：この場合、組み込みの Logto Management API の `all` 権限を含む M2M ロールを M2M アプリに割り当てる必要があります。
+2. **独自の API リソースへのアクセス**：この場合、API リソースの権限を含む M2M ロールを M2M アプリに割り当てる必要があります。
+
+<M2mRoleAssignment />
+
+それでは、エンドツーエンドのプロセスを順に見ていきましょう。分かりやすくするために、Logto Management API へのアクセスとその他の API リソースへのアクセスの手順を分けて説明します。なお、すでに Logto で M2M アプリを作成済みであることを前提とします。
+
+## アクセストークンの取得 \{#fetch-an-access-token}
+
+### アクセストークンリクエストの基本 \{#basics-about-access-token-request}
+
+<BasicsAboutAccessTokenRequest />
+
+アクセストークンリクエストの例：
+
+```http
+POST /oidc/token HTTP/1.1
+Host: your.logto.endpoint
+Authorization: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&resource=https://shopping.api
+&scope=read:products write:products
+```
+
+### アクセストークンのリクエスト \{#request-an-access-token}
+
+:::note
+以下のデモでは、`https://your.logto.endpoint` を対象の Logto エンドポイントに置き換えてください。Logto Cloud の場合は `https://{your-tenant-id}.logto.app` となります。
+:::
+
+<Tabs>
+
+<TabItem value="Logto Management API" label="Logto Management API 用">
+  <FetchAccessTokenForLogtoManagementApi />
+</TabItem>
+
+<TabItem value="API resource" label="独自の API リソース用">
+API リソース一覧から、アプリがアクセスする必要のある API 識別子を探します。Logto で API リソースを追加していない場合や、API リソースが何か分からない場合は [認可 (Authorization)](/authorization) をご覧ください。
+
+<img
+  alt="API identifier"
+  src="/img/assets/api-identifier.png"
+  width="600px"
+  style={{ paddingBottom: '12px' }}
+/>
+
+この「Online Shopping」API リソースの下に `read:products` と `write:products` の権限があると仮定します。
+
+API リソースへアクセスする前に、M2M アプリに API リソースの権限を含む M2M ロールが割り当てられていることを確認してください。
+
+ここまでの情報をまとめてリクエストを送信します：
+
+<Tabs>
+
+<TabItem value="Node.js" label="Node.js">
+
+```js
+const logtoEndpoint = 'https://your.logto.endpoint';
+const tokenEndpoint = `${logtoEndpoint}/oidc/token`;
+const applicationId = 'your-application-id';
+const applicationSecret = 'your-application-secret';
+
+const fetchAccessToken = async () => {
+  return await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${applicationId}:${applicationSecret}`).toString(
+        'base64'
+      )}`,
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      resource: 'https://shopping.api',
+      scope: 'read:products write:products',
+    }).toString(),
+  });
+};
+```
+
+</TabItem>
+
+<TabItem value="cURL" label="cURL">
+
+```bash
+curl --location \
+  --request POST 'https://your.logto.endpoint/oidc/token' \
+  --header 'Authorization: Basic ${your_auth_string}' \
+  --header 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode 'grant_type=client_credentials' \
+  --data-urlencode 'resource=https://shopping.api' \
+  --data-urlencode 'scope=read:products write:products'
+```
+
+</TabItem>
+
+</Tabs>
+
+</TabItem>
+</Tabs>
+
+### アクセストークンレスポンス \{#access-token-response}
+
+正常なアクセスレスポンスの例：
+
+```json
+{
+  "access_token": "eyJhbG...2g", // このトークンを使って Logto Management API へアクセス
+  "expires_in": 3600, // トークンの有効期限（秒単位）
+  "token_type": "Bearer", // アクセストークン利用時の認証タイプ
+  "scope": "all" // Logto Management API 用のスコープ `all`
+}
+```
+
+<M2mAccessTokenSubNote />
+
+## アクセストークンを使ったリソースアクセス \{#access-resource-using-access-token}
+
+<AccessTokenUsage />
+
+<Tabs>
+
+<TabItem value="Logto Management API" label="Logto Management API との連携">
+  <AccessLogtoManagementApiUsingAccessToken />
+</TabItem>
+
+<TabItem value="Your API resource" label="独自の API リソースとの連携">
+取得したアクセストークンと API リソース `https://shopping.api` を使って、ショッピング API の全商品を取得します：
+
+<Tabs>
+<TabItem value="Node.js" label="Node.js">
+
+```js
+const apiEndpoint = 'https://your.api.endpoint';
+const accessToken = 'eyJhb...2g'; // アクセストークン
+
+const fetchProducts = async () => {
+  return await fetch(`${apiEndpoint}/products`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+};
+```
+
+</TabItem>
+
+<TabItem value="cURL" label="cURL">
+
+```bash
+curl --location \
+  --request GET 'https://your.api.endpoint/products' \
+  --header 'Authorization: Bearer eyJhbG...2 # アクセストークン
+```
+
+</TabItem>
+</Tabs>
+</TabItem>
+</Tabs>
+
+## 認可 (Authorization) \{#authorization}
+
+Logto Management API 以外の独自の API リソースを保護する場合は、API サービス側で認可 (Authorization) ロジックを実装し、アクセストークンを検証して M2M アプリがリソースにアクセスするための必要な権限を持っているか確認する必要があります。
+
+詳細は [認可 (Authorization)](/authorization) および [アクセストークンの検証](/authorization/validate-access-tokens) をご覧ください。

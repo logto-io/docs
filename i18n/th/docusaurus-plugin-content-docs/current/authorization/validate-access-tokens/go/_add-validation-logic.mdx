@@ -1,0 +1,239 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ChiValidation from './fragments/chi/_validation.md';
+import EchoValidation from './fragments/echo/_validation.md';
+import FiberValidation from './fragments/fiber/_validation.md';
+import GinValidation from './fragments/gin/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  gin: <GinValidation />,
+  fiber: <FiberValidation />,
+  echo: <EchoValidation />,
+  chi: <ChiValidation />,
+});
+
+เราใช้ [github.com/lestrrat-go/jwx](https://github.com/lestrrat-go/jwx) สำหรับตรวจสอบความถูกต้องของ JWTs หากคุณยังไม่ได้ติดตั้ง ให้ติดตั้งดังนี้:
+
+```bash
+go mod init your-project
+go get github.com/lestrrat-go/jwx/v3
+```
+
+ก่อนอื่น เพิ่มคอมโพเนนต์ที่ใช้ร่วมกันเหล่านี้ลงใน `auth_middleware.go` ของคุณ:
+
+```go title="auth_middleware.go"
+import (
+    "context"
+    "strings"
+    "time"
+
+    "github.com/lestrrat-go/jwx/v3/jwk"
+    "github.com/lestrrat-go/jwx/v3/jwt"
+)
+
+var jwkSet jwk.Set
+
+func init() {
+    // เริ่มต้นแคช JWKS
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+
+    var err error
+    jwkSet, err = jwk.Fetch(ctx, JWKS_URI)
+    if err != nil {
+        panic("ดึง JWKS ไม่สำเร็จ: " + err.Error())
+    }
+}
+
+// validateJWT ตรวจสอบ JWT และคืนค่า token ที่แปลงแล้ว
+func validateJWT(tokenString string) (jwt.Token, error) {
+    token, err := jwt.Parse([]byte(tokenString), jwt.WithKeySet(jwkSet))
+    if err != nil {
+        return nil, NewAuthorizationError("โทเค็นไม่ถูกต้อง: "+err.Error(), http.StatusUnauthorized)
+    }
+
+    // ตรวจสอบผู้ออก (issuer)
+    if token.Issuer() != ISSUER {
+        return nil, NewAuthorizationError("ผู้ออกไม่ถูกต้อง", http.StatusUnauthorized)
+    }
+
+    if err := verifyPayload(token); err != nil {
+        return nil, err
+    }
+
+    return token, nil
+}
+
+// ฟังก์ชันช่วยเหลือสำหรับดึงข้อมูลจากโทเค็น
+func getStringClaim(token jwt.Token, key string) string {
+    if val, ok := token.Get(key); ok {
+        if str, ok := val.(string); ok {
+            return str
+        }
+    }
+    return ""
+}
+
+func getScopesFromToken(token jwt.Token) []string {
+    if val, ok := token.Get("scope"); ok {
+        if scope, ok := val.(string); ok && scope != "" {
+            return strings.Split(scope, " ")
+        }
+    }
+    return []string{}
+}
+
+func getAudienceFromToken(token jwt.Token) []string {
+    return token.Audience()
+}
+```
+
+จากนั้น ให้เขียน middleware เพื่อตรวจสอบ access token:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ของคุณ คุณอาจต้องใช้ตรรกะ `verifyPayload` ที่แตกต่างกัน:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("audience ไม่ถูกต้อง")
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+    requiredScopes := []string{"api:read", "api:write"} // เปลี่ยนเป็น scope ที่คุณต้องการจริง
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("scope ไม่เพียงพอ")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API)">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // ตรวจสอบว่า audience claim อยู่ในรูปแบบขององค์กร
+    if !hasOrganizationAudience(token) {
+        return NewAuthorizationError("audience สำหรับสิทธิ์องค์กรไม่ถูกต้อง")
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    expectedOrgID := "your-organization-id" // ดึงจาก request context
+    if !hasMatchingOrganization(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID ไม่ตรงกัน")
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับองค์กร
+    requiredScopes := []string{"invite:users", "manage:settings"} // เปลี่ยนเป็น scope ที่คุณต้องการจริง
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("scope ขององค์กรไม่เพียงพอ")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร">
+
+```go title="auth_middleware.go"
+func verifyPayload(token jwt.Token) error {
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    if !hasAudience(token, "https://your-api-resource-indicator") {
+        return NewAuthorizationError("audience สำหรับทรัพยากร API ระดับองค์กรไม่ถูกต้อง")
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    expectedOrgID := "your-organization-id" // ดึงจาก request context
+    if !hasMatchingOrganizationID(token, expectedOrgID) {
+        return NewAuthorizationError("Organization ID ไม่ตรงกัน")
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+    requiredScopes := []string{"api:read", "api:write"} // เปลี่ยนเป็น scope ที่คุณต้องการจริง
+    if !hasRequiredScopes(token, requiredScopes) {
+        return NewAuthorizationError("scope สำหรับทรัพยากร API ระดับองค์กรไม่เพียงพอ")
+    }
+
+    return nil
+}
+```
+
+</TabItem>
+</Tabs>
+
+เพิ่มฟังก์ชันช่วยเหลือเหล่านี้สำหรับตรวจสอบ payload:
+
+```go title="auth_middleware.go"
+// hasAudience ตรวจสอบว่าโทเค็นมี audience ที่ระบุหรือไม่
+func hasAudience(token jwt.Token, expectedAud string) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if aud == expectedAud {
+            return true
+        }
+    }
+    return false
+}
+
+// hasOrganizationAudience ตรวจสอบว่าโทเค็นมี audience ในรูปแบบองค์กรหรือไม่
+func hasOrganizationAudience(token jwt.Token) bool {
+    audiences := token.Audience()
+    for _, aud := range audiences {
+        if strings.HasPrefix(aud, "urn:logto:organization:") {
+            return true
+        }
+    }
+    return false
+}
+
+// hasRequiredScopes ตรวจสอบว่าโทเค็นมี scope ที่จำเป็นครบหรือไม่
+func hasRequiredScopes(token jwt.Token, requiredScopes []string) bool {
+    scopes := getScopesFromToken(token)
+    for _, required := range requiredScopes {
+        found := false
+        for _, scope := range scopes {
+            if scope == required {
+                found = true
+                break
+            }
+        }
+        if !found {
+            return false
+        }
+    }
+    return true
+}
+
+// hasMatchingOrganization ตรวจสอบว่า audience ของโทเค็นตรงกับองค์กรที่ต้องการหรือไม่
+func hasMatchingOrganization(token jwt.Token, expectedOrgID string) bool {
+    expectedAud := fmt.Sprintf("urn:logto:organization:%s", expectedOrgID)
+    return hasAudience(token, expectedAud)
+}
+
+// hasMatchingOrganizationID ตรวจสอบว่า organization_id ในโทเค็นตรงกับที่ต้องการหรือไม่
+func hasMatchingOrganizationID(token jwt.Token, expectedOrgID string) bool {
+    orgID := getStringClaim(token, "organization_id")
+    return orgID == expectedOrgID
+}
+```

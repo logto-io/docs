@@ -1,0 +1,83 @@
+Auth.js solo obtendrá el token de acceso una vez sin el parámetro de recurso. Necesitamos implementar la obtención del token de acceso por nosotros mismos.
+
+#### Obtener token de actualización \{#get-refresh-token}
+
+Actualiza la configuración del proveedor de Logto, añade el parámetro "prompt" y configúralo en `consent`, y asegúrate de que el alcance `offline_access` esté incluido:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  authorization: {
+    params: {
+      // highlight-next-line
+      prompt: 'consent',
+      scope: 'openid offline_access shopping:read shopping:write',
+      resource: 'https://shopping.your-app.com/api',
+      // ...
+    },
+  },
+  // ...
+});
+```
+
+Luego añade un callback para guardar el `refresh_token` en la sesión:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        // ...
+        // highlight-next-line
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ...
+      // highlight-next-line
+      session.refreshToken = token.refreshToken;
+      return session;
+    },
+  },
+});
+```
+
+#### Obtener token de acceso \{#fetch-access-token}
+
+Con el `refresh_token`, podemos obtener el token de acceso desde el endpoint de token OIDC de Logto.
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.refreshToken) {
+    // Reemplaza el ID y el secreto de la aplicación con los tuyos propios, puedes verificar la sección "Integration".
+    const basicAuth = Buffer.from('<logto-app-id>:<logto-app-secret>').toString('base64');
+
+    // Reemplaza la URL con tu endpoint de Logto, debe terminar con `/oidc/token`
+    const response = await fetch('https://xxx.logto.app/oidc/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basicAuth}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        resource: 'https://shopping.your-app.com/api',
+      }).toString(),
+    });
+
+    const data = await response.json();
+    console.log(data.access_token);
+  }
+
+  // ...
+}
+```

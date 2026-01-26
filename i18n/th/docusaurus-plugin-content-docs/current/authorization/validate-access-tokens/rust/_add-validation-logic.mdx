@@ -1,0 +1,268 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ActixWebValidation from './fragments/actix-web/_validation.md';
+import AxumValidation from './fragments/axum/_validation.md';
+import RocketValidation from './fragments/rocket/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  axum: <AxumValidation />,
+  'actix-web': <ActixWebValidation />,
+  rocket: <RocketValidation />,
+});
+
+เราใช้ [jsonwebtoken](https://github.com/Keats/jsonwebtoken) สำหรับตรวจสอบความถูกต้องของ JWT เพิ่ม dependencies ที่จำเป็นลงใน `Cargo.toml` ของคุณ:
+
+```toml title="Cargo.toml"
+[dependencies]
+jsonwebtoken = "9.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1.0", features = ["full"] }
+```
+
+ก่อนอื่น เพิ่ม utilities ที่ใช้ร่วมกันเหล่านี้เพื่อจัดการการตรวจสอบ JWT:
+
+```rust title="jwt_validator.rs"
+use crate::{AuthInfo, AuthorizationError, ISSUER, JWKS_URI};
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
+use serde_json::Value;
+use std::collections::HashMap;
+
+// โครงสร้างสำหรับตรวจสอบ JWT
+pub struct JwtValidator {
+    jwks: HashMap<String, DecodingKey>,
+}
+
+impl JwtValidator {
+    pub async fn new() -> Result<Self, AuthorizationError> {
+        let jwks = Self::fetch_jwks().await?;
+        Ok(Self { jwks })
+    }
+
+    async fn fetch_jwks() -> Result<HashMap<String, DecodingKey>, AuthorizationError> {
+        let response = reqwest::get(JWKS_URI).await.map_err(|e| {
+            AuthorizationError::with_status(format!("ไม่สามารถดึง JWKS: {}", e), 401)
+        })?;
+
+        let jwks: Value = response.json().await.map_err(|e| {
+            AuthorizationError::with_status(format!("ไม่สามารถแปลง JWKS: {}", e), 401)
+        })?;
+
+        let mut keys = HashMap::new();
+
+        if let Some(keys_array) = jwks["keys"].as_array() {
+            for key in keys_array {
+                if let (Some(kid), Some(kty), Some(n), Some(e)) = (
+                    key["kid"].as_str(),
+                    key["kty"].as_str(),
+                    key["n"].as_str(),
+                    key["e"].as_str(),
+                ) {
+                    if kty == "RSA" {
+                        if let Ok(decoding_key) = DecodingKey::from_rsa_components(n, e) {
+                            keys.insert(kid.to_string(), decoding_key);
+                        }
+                    }
+                }
+            }
+        }
+
+        if keys.is_empty() {
+            return Err(AuthorizationError::with_status("ไม่พบคีย์ที่ถูกต้องใน JWKS", 401));
+        }
+
+        Ok(keys)
+    }
+
+    pub fn validate_jwt(&self, token: &str) -> Result<AuthInfo, AuthorizationError> {
+        let header = decode_header(token).map_err(|e| {
+            AuthorizationError::with_status(format!("ส่วนหัวของโทเค็นไม่ถูกต้อง: {}", e), 401)
+        })?;
+
+        let kid = header.kid.ok_or_else(|| {
+            AuthorizationError::with_status("โทเค็นไม่มี kid claim", 401)
+        })?;
+
+        let key = self.jwks.get(&kid).ok_or_else(|| {
+            AuthorizationError::with_status("ไม่รู้จัก key ID", 401)
+        })?;
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_issuer(&[ISSUER]);
+        validation.validate_aud = false; // เราจะตรวจสอบ audience ด้วยตนเอง
+
+        let token_data = decode::<Value>(token, key, &validation).map_err(|e| {
+            AuthorizationError::with_status(format!("โทเค็นไม่ถูกต้อง: {}", e), 401)
+        })?;
+
+        let claims = token_data.claims;
+        self.verify_payload(&claims)?;
+
+        Ok(self.create_auth_info(claims))
+    }
+
+    fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+        // เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตามโมเดลสิทธิ์
+        // ตัวอย่างจะอยู่ในส่วน permission models ด้านล่าง
+        Ok(())
+    }
+
+    fn create_auth_info(&self, claims: Value) -> AuthInfo {
+        let scopes = claims["scope"]
+            .as_str()
+            .map(|s| s.split(' ').map(|s| s.to_string()).collect())
+            .unwrap_or_default();
+
+        let audience = match &claims["aud"] {
+            Value::Array(arr) => arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect(),
+            Value::String(s) => vec![s.clone()],
+            _ => vec![],
+        };
+
+        AuthInfo::new(
+            claims["sub"].as_str().unwrap_or_default().to_string(),
+            claims["client_id"].as_str().map(|s| s.to_string()),
+            claims["organization_id"].as_str().map(|s| s.to_string()),
+            scopes,
+            audience,
+        )
+    }
+}
+```
+
+จากนั้น สร้าง middleware เพื่อตรวจสอบโทเค็นการเข้าถึง (access token):
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ของคุณ ให้เพิ่มตรรกะการตรวจสอบที่เหมาะสมใน `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    if !audiences.contains(&"https://your-api-resource-indicator") {
+        return Err(AuthorizationError::new("audience ไม่ถูกต้อง"));
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+    let required_scopes = vec!["api:read", "api:write"]; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("scope ไม่เพียงพอ"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API)">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // ตรวจสอบว่า audience claim อยู่ในรูปแบบขององค์กร
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    let has_org_audience = audiences.iter().any(|aud| aud.starts_with("urn:logto:organization:"));
+    if !has_org_audience {
+        return Err(AuthorizationError::new("audience สำหรับสิทธิ์องค์กรไม่ถูกต้อง"));
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    let expected_org_id = "your-organization-id"; // ดึงจาก request context
+    let expected_aud = format!("urn:logto:organization:{}", expected_org_id);
+    if !audiences.contains(&expected_aud.as_str()) {
+        return Err(AuthorizationError::new("Organization ID ไม่ตรงกัน"));
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับองค์กร
+    let required_scopes = vec!["invite:users", "manage:settings"]; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("scope ขององค์กรไม่เพียงพอ"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร">
+
+```rust title="jwt_validator.rs"
+fn verify_payload(&self, claims: &Value) -> Result<(), AuthorizationError> {
+    // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+    let audiences = match &claims["aud"] {
+        Value::Array(arr) => arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>(),
+        Value::String(s) => vec![s.as_str()],
+        _ => vec![],
+    };
+
+    if !audiences.contains(&"https://your-api-resource-indicator") {
+        return Err(AuthorizationError::new("audience ไม่ถูกต้องสำหรับทรัพยากร API ระดับองค์กร"));
+    }
+
+    // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+    let expected_org_id = "your-organization-id"; // ดึงจาก request context
+    let org_id = claims["organization_id"].as_str().unwrap_or_default();
+    if expected_org_id != org_id {
+        return Err(AuthorizationError::new("Organization ID ไม่ตรงกัน"));
+    }
+
+    // ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+    let required_scopes = vec!["api:read", "api:write"]; // แทนที่ด้วย scope ที่คุณต้องการจริง
+    let scopes = claims["scope"]
+        .as_str()
+        .map(|s| s.split(' ').collect::<Vec<_>>())
+        .unwrap_or_default();
+
+    for required_scope in &required_scopes {
+        if !scopes.contains(required_scope) {
+            return Err(AuthorizationError::new("scope สำหรับทรัพยากร API ระดับองค์กรไม่เพียงพอ"));
+        }
+    }
+
+    Ok(())
+}
+```
+
+</TabItem>
+</Tabs>

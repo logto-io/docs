@@ -1,0 +1,665 @@
+---
+description: Learn how to use the Account API to manage user
+sidebar_position: 1
+---
+
+# Account settings by Account API
+
+## What is Logto Account API \{#what-is-logto-account-api}
+
+The Logto Account API is a comprehensive set of APIs that gives end users direct API access without needing to go through the Management API. Here are the highlights:
+
+- Direct access: The Account API empowers end users to directly access and manage their own account profiles without requiring the relay of Management API.
+- User profile and identities management: Users can fully manage their profiles and security settings, including the ability to update identity information like email, phone, and password, as well as manage social connections. MFA and SSO support are coming soon.
+- Global access control: Admins have full, global control over access settings and can customize each field.
+- Seamless authorization: Authorization is easier than ever! Simply use `client.getAccessToken()` to obtain an opaque access token for OP (Logto), and attach it to the Authorization header as `Bearer <access_token>`.
+
+With the Logto Account API, you can build a custom account management system like a profile page that is fully integrated with Logto.
+
+Some frequent use cases are listed below:
+
+- Retrieve user profile
+- Update user profile
+- Update user password
+- Update user identities including email, phone, and social connections
+- Manage MFA factors (verifications)
+
+To learn more about the available APIs, please visit [Logto Account API Reference](https://openapi.logto.io/group/endpoint-my-account) and [Logto Verification API Reference](https://openapi.logto.io/group/endpoint-verifications).
+
+:::note
+
+SSO account viewing and account deletion features are currently available through the Logto Management APIs. See [Account settings by Management API](/end-user-flows/account-settings/by-management-api) for implementation details.
+
+:::
+
+## How to enable Account API \{#how-to-enable-account-api}
+
+Navigate to <CloudLink to="/sign-in-experience/account-center">Console > Sign-in & account > Account center</CloudLink>.
+
+The Account API is off by default, so its access controls are locked. Toggle **Enable Account API** to switch it on.
+
+Once enabled, configure per-field permissions for identifiers, profile data, and third-party token access. Each field supports `Off`, `ReadOnly`, or `Edit`; the default is `Off`.
+
+1. **Security fields**:
+   - Fields include: primary email, primary phone, social identities, password, and MFA.
+   - Before end users edit these fields, they must verify their identity via password, email, or SMS to obtain a 10-minute verification record ID. See [Get a verification record id](#get-a-verification-record-id).
+   - To use WebAuthn passkeys for MFA, add your front-end app domains to **WebAuthn Related Origins** so the account center and sign-in experience can share passkeys. See [Link a new WebAuthn passkey](#link-a-new-webauthn-passkey).
+2. **Profile fields**:
+   - Fields include: username, name, avatar, [profile](/user-management/user-data#profile) (other standard profile attributes), and [custom data](/user-management/user-data#custom-data).
+   - End users can edit these without additional verification.
+3. **Secret vault**: For OIDC or OAuth social and enterprise connectors, Logto [secret vault](/secret-vault/federated-token-set) securely stores third-party access and refresh tokens after authentication. Apps can then call external APIs, such as syncing Google Calendar events, without prompting users to sign in again. Token retrieval becomes available automatically once the Account API is enabled.
+
+## How to access Account API \{#how-to-access-account-api}
+
+:::note
+To ensure the access token has the appropriate permissions, make sure you have properly configured the corresponding scopes in your Logto config.
+
+For example, for the `POST /api/my-account/primary-email` API, you need to configure the `email` scope; for the `POST /api/my-account/primary-phone` API, you need to configure the `phone` scope.
+
+```ts
+import { type LogtoConfig, UserScope } from '@logto/js';
+
+const config: LogtoConfig = {
+  // ...other options
+  // Add proper scopes that fit your use cases.
+  scopes: [
+    UserScope.Email, // For `{POST,DELETE} /api/my-account/primary-email` APIs
+    UserScope.Phone, // For `{POST,DELETE} /api/my-account/primary-phone` APIs
+    UserScope.CustomData, // To manage custom data
+    UserScope.Address, // To manage address
+    UserScope.Identities, // For identity and MFA related APIs
+    UserScope.Profile, // To manage user profile
+  ],
+};
+```
+
+:::
+
+### Fetch an access token \{#fetch-an-access-token}
+
+After setting up the SDK in your application, you can use the `client.getAccessToken()` method to fetch an access token. This token is an opaque token that can be used to access the Account API.
+
+If you are not using the official SDK, you should set the `resource` to empty for the access token grant request to `/oidc/token`.
+
+### Access Account API using access token \{#access-account-api-using-access-token}
+
+You should include the access token in the `Authorization` field of HTTP headers with the Bearer format (`Bearer YOUR_TOKEN`) when interacting with the Account API.
+
+Here's an example to get the user account information:
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>'
+```
+
+## Manage basic account information \{#manage-basic-account-information}
+
+### Retrieve user account information \{#retrieve-user-account-information}
+
+To get user data, you can use the [`GET /api/my-account`](https://openapi.logto.io/operation/operation-getprofile) endpoint.
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>'
+```
+
+The response body would be like:
+
+```json
+{
+  "id": "...",
+  "username": "...",
+  "name": "...",
+  "avatar": "..."
+}
+```
+
+The response fields may vary depending on the account center settings.
+
+### Update basic account information \{#update-basic-account-information}
+
+Basic account information includes the username, name, avatar, custom data, and other profile information.
+
+To update **username, name, avatar, and customData** you can use the [`PATCH /api/my-account`](https://openapi.logto.io/operation/operation-updateprofile) endpoint.
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"username":"...","name":"...","avatar":"..."}'
+```
+
+To update other profile information, including **familyName, givenName, middleName, nickname, profile (profile page URL), website, gender, birthdate, zoneinfo, locale, and address**, you can use the [`PATCH /api/my-account/profile`](https://openapi.logto.io/operation/operation-updateotherprofile) endpoint.
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account/profile \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"familyName":"...","givenName":"..."}'
+```
+
+## Manage identifiers and other sensitive information \{#manage-identifiers-and-other-sensitive-information}
+
+For security reasons, the Account API requires an additional layer of authorization for operations that involve identifiers and other sensitive information.
+
+### Get a verification record id \{#get-a-verification-record-id}
+
+First, you need to get a **verification record ID** with a 10-minute expiration (TTL). This can be used to verify the user's identity before updating sensitive information. This means once a user successfully verifies their identity via password, email verification code, or SMS verification code, they have 10 minutes to update their authentication-related data, including identifiers, credentials, social account linking, and MFA.
+
+To get a verification record ID, you can [verify the user's password](#verify-the-users-password) or [send a verification code to the user's email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
+
+#### Verify the user's password \{#verify-the-users-password}
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/password \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"password":"..."}'
+```
+
+The response body would be like:
+
+```json
+{
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+#### Verify by sending a verification code to the user's email or phone \{#verify-by-sending-a-verification-code-to-the-users-email-or-phone}
+
+:::note
+To use this method, you need to [configure the email connector](/connectors/email-connectors/) or [SMS connector](/connectors/sms-connectors/), and make sure the `UserPermissionValidation` template is configured.
+:::
+
+Take email as an example, request a new verification code and get the verification record ID:
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."}}'
+```
+
+The response body would be like:
+
+```json
+{
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+Upon receiving the verification code, you can use it to update the verification status of the verification record.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."},"verificationId":"...","code":"123456"}'
+```
+
+After verifying the code, you can now use the verification record ID to update the user's identifier.
+
+To learn more about verifications, please refer to [Security verification by Account API](/end-user-flows/security-verification).
+
+### Send request with verification record id \{#send-request-with-verification-record-id}
+
+When sending a request to update the user's identifier, you need to include the verification record ID in the request header with the `logto-verification-id` field.
+
+### Update user's password \{#update-users-password}
+
+To update the user's password, you can use the [`POST /api/my-account/password`](https://openapi.logto.io/operation/operation-updatepassword) endpoint.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/password \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"password":"..."}'
+```
+
+:::tip
+Just like passwords created during sign-up, passwords set through the Account API must comply with the [password policy](/security/password-policy) you configured in <CloudLink to="/security/password-policy">Console > Security > Password policy</CloudLink>. Logto returns detailed validation results and error messages if the password fails the policy.
+:::
+
+### Update or link new email \{#update-or-link-new-email}
+
+:::note
+To use this method, you need to [configure the email connector](/connectors/email-connectors/), and make sure the `BindNewIdentifier` template is configured.
+:::
+
+To update or link a new email, you should first prove the ownership of the email.
+
+Call the [`POST /api/verifications/verification-code`](https://openapi.logto.io/operation/operation-createverificationbyverificationcode) endpoint to request a verification code.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."}}'
+```
+
+You will find a `verificationId` in the response, and receive a verification code in the email, use it to verify the email.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."},"verificationId":"...","code":"..."}'
+```
+
+After verifying the code, you can now call [`PATCH /api/my-account/primary-email`](https://openapi.logto.io/operation/operation-updateprimaryemail) to update the user's email, set the `verificationId` to the request body as `newIdentifierVerificationRecordId`.
+
+:::info[Two different verification record IDs]
+
+This request requires two separate verification record IDs:
+
+- **`logto-verification-id` (header)**: Proves the user's identity before making sensitive changes. Obtain this by [verifying the user's password](#verify-the-users-password) or [sending a verification code to the user's existing email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
+- **`newIdentifierVerificationRecordId` (body)**: Proves ownership of the new email address. This is the `verificationRecordId` returned from the `POST /api/verifications/verification-code` call above.
+
+:::
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/primary-email \
+  -H 'authorization: Bearer <access_token>' \
+  # Verifies user identity (from password or existing email/phone verification)
+  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
+  -H 'content-type: application/json' \
+  # The "newIdentifierVerificationRecordId" proves ownership of the new email (from the verification code flow above)
+  --data-raw '{"email":"...","newIdentifierVerificationRecordId":"<verification_record_id_from_new_email>"}'
+```
+
+:::tip
+Just like emails collected during sign-up, any email linked through the Account API must pass the [blocklist](/security/blocklist) verification you configured in <CloudLink to="/security/blocklist">Console > Security > Blocklist</CloudLink>. Logto will reject the request and return a detailed error if the email violates the policy.
+:::
+
+### Remove the user's email \{#remove-the-users-email}
+
+To remove the user's email, you can use the [`DELETE /api/my-account/primary-email`](https://openapi.logto.io/operation/operation-deleteprimaryemail) endpoint.
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/primary-email \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### Manage phone \{#manage-phone}
+
+:::note
+To use this method, you need to [configure the SMS connector](/connectors/sms-connectors/), and make sure the `BindNewIdentifier` template is configured.
+:::
+
+Similar to updating email, you can use the [`PATCH /api/my-account/primary-phone`](https://openapi.logto.io/operation/operation-updateprimaryphone) endpoint to update or link a new phone. And use the [`DELETE /api/my-account/primary-phone`](https://openapi.logto.io/operation/operation-deleteprimaryphone) endpoint to remove the user's phone.
+
+### Link a new social connection \{#link-a-new-social-connection}
+
+To link a new social connection, first you should request an authorization URL with [`POST /api/verifications/social`](https://openapi.logto.io/operation/operation-createverificationbysocial).
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/social \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"connectorId":"...","redirectUri":"...","state":"..."}'
+```
+
+- `connectorId`: The ID of the [social connector](/connectors/social-connectors/).
+- `redirectUri`: The redirect URI after the user authorizes the application, you should host a web page at this URL and capture the callback.
+- `state`: The state to be returned after the user authorizes the application, it is a random string that is used to prevent CSRF attacks.
+
+In the response, you will find a `verificationRecordId`, keep it for later use.
+
+After the user authorizes the application, you will receive a callback at the `redirectUri` with the `state` parameter. Then you can use the [`POST /api/verifications/social/verify`](https://openapi.logto.io/operation/operation-verifyverificationbysocial) endpoint to verify the social connection.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/social/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"connectorData":"...","verificationRecordId":"..."}'
+```
+
+The `connectorData` is the data returned by the social connector after the user authorizes the application, you need to parse and get the query parameters from the `redirectUri` in your callback page, and wrap them as a JSON as the value of the `connectorData` field.
+
+Finally, you can use the [`POST /api/my-account/identities`](https://openapi.logto.io/operation/operation-adduseridentities) endpoint to link the social connection.
+
+:::info[Two different verification record IDs]
+
+This request requires two separate verification record IDs:
+
+- **`logto-verification-id` (header)**: Proves the user's identity before making sensitive changes. Obtain this by [verifying the user's password](#verify-the-users-password) or [sending a verification code to the user's existing email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
+- **`newIdentifierVerificationRecordId` (body)**: Identifies the social identity being linked. This is the `verificationRecordId` returned from the `POST /api/verifications/social` call above.
+
+:::
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/identities \
+  -H 'authorization: Bearer <access_token>' \
+  # Verifies user identity (from password or existing email/phone verification)
+  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
+  -H 'content-type: application/json' \
+  # The "newIdentifierVerificationRecordId" identifies the social connection to link (from the social verification flow above)
+  --data-raw '{"newIdentifierVerificationRecordId":"<verification_record_id_from_social>"}'
+```
+
+### Remove a social connection \{#remove-a-social-connection}
+
+To remove a social connection, you can use the [`DELETE /api/my-account/identities`](https://openapi.logto.io/operation/operation-deleteidentity) endpoint.
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/identities/[connector_target_id] \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### Link a new WebAuthn passkey \{#link-a-new-webauthn-passkey}
+
+:::note
+Remember to [enable MFA and WebAuthn](/end-user-flows/mfa) first.
+:::
+
+:::note
+To use this method, you need to enable the `mfa` field in the [account center settings](#how-to-enable-account-api).
+:::
+
+**Step 1: Add your front-end app origin to the related origins**
+
+WebAuthn passkeys are bound to a specific hostname called the **Relying Party ID (RP ID)**. Only applications hosted on the RP ID's origin can register or authenticate with those passkeys.
+
+Since your front-end application calls the Account API from a different domain than Logto's authentication pages, you need to configure **Related Origins** to allow cross-origin passkey operations.
+
+**How Logto determines the RP ID:**
+
+- **Default setup**: If you only use Logto's default domain `https://[tenant-id].logto.app`, the RP ID is `[tenant-id].logto.app`
+- **Custom domain**: If you've configured a [custom domain](/logto-cloud/custom-domain) like `https://auth.example.com`, the RP ID becomes `auth.example.com`
+
+**Configure Related Origins:**
+
+Use the [`PATCH /api/account-center`](https://openapi.logto.io/operation/operation-updateaccountcentersettings) endpoint to add your front-end application's origin. For example, if your app's account center runs on `https://account.example.com`:
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/account-center \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"webauthnRelatedOrigins":["https://account.example.com"]}'
+```
+
+:::note
+
+WebAuthn supports up to 5 unique eTLD+1 labels for Related Origins. The eTLD+1 (effective top-level domain plus one label) is the registrable domain portion. For example:
+
+- `https://example.com`, `https://app.example.com`, and `https://auth.example.com` count as **one** label (`example.com`)
+- `https://shopping.com`, `https://shopping.co.uk`, and `https://shopping.co.jp` also count as **one** label (`shopping`)
+- `https://example.com` and `https://another.com` count as **two** labels
+
+If you need to support more than 5 different domains as the Related Origins, refer to the [Related Origin Requests](https://passkeys.dev/docs/advanced/related-origins/) documentation for details.
+
+:::
+
+**Step 2: Request new registration options**
+
+Use the [`POST /api/verifications/web-authn/registration`](https://openapi.logto.io/operation/operation-generatewebauthnregistrationoptions) endpoint to request registration for a new passkey. Logto allows each user account to register multiple passkeys.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/web-authn/registration \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+You'll get a response like:
+
+```json
+{
+  "registrationOptions": "...",
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+**Step 3: Register the passkey in local browser**
+
+Take [`@simplewebauthn/browser`](https://simplewebauthn.dev/) as an example, you can use the `startRegistration` function to register the passkey in local browser.
+
+```ts
+import { startRegistration } from '@simplewebauthn/browser';
+
+// ...
+const response = await startRegistration({
+  optionsJSON: registrationOptions, // The data returned by the server in step 1
+});
+// Save the response for later use
+```
+
+**Step 4: Verify the passkey registration**
+
+Use the [`POST /api/verifications/web-authn/registration/verify`](https://openapi.logto.io/operation/operation-verifywebauthnregistration) endpoint to verify the passkey registration.
+
+This step verifies the cryptographic signature generated by the authenticator to ensure the passkey was legitimately created and hasn't been tampered with during transmission.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/web-authn/registration/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"payload":"...","verificationRecordId":"..."}'
+```
+
+- `payload`: The response from the local browser in step 2.
+- `verificationRecordId`: The verification record ID returned by the server in step 1.
+
+**Step 5: Link the passkey**
+
+Finally, you can link the passkey to the user's account using the [`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) endpoint.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"WebAuthn","newIdentifierVerificationRecordId":"..."}'
+```
+
+- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor, you can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
+- `type`: the type of the MFA factor, currently only `WebAuthn` is supported.
+- `newIdentifierVerificationRecordId`: the verification record ID returned by the server in step 1.
+
+### Manage existing WebAuthn passkeys \{#manage-existing-webauthn-passkeys}
+
+To manage existing WebAuthn passkeys, you can use the [`GET /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-getmfaverifications) endpoint to get current passkeys and other MFA verification factors.
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>'
+```
+
+The response body would be like:
+
+```json
+[
+  {
+    "id": "...",
+    "type": "WebAuthn",
+    "name": "...",
+    "agent": "...",
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+]
+```
+
+- `id`: the ID of the verification.
+- `type`: the type of the verification, `WebAuthn` for WebAuthn passkey.
+- `name`: the name of the passkey, optional field.
+- `agent`: the user agent of the passkey.
+
+Update the passkey name using [`PATCH /api/my-account/mfa-verifications/{verificationId}/name`](https://openapi.logto.io/operation/operation-updatemfaverificationname) endpoint:
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId}/name \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"name":"..."}'
+```
+
+Delete the passkey using [`DELETE /api/my-account/mfa-verifications/{verificationId}`](https://openapi.logto.io/operation/operation-deletemfaverification) endpoint:
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId} \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### Link a new TOTP \{#link-a-new-totp}
+
+:::note
+Remember to [enable MFA and TOTP](/end-user-flows/mfa) first.
+:::
+
+:::note
+To use this method, you need to enable the `mfa` field in the [account center settings](#how-to-enable-account-api).
+:::
+
+**Step 1: Generate a TOTP secret**
+
+Use the [`POST /api/my-account/mfa-verifications/totp-secret/generate`](https://openapi.logto.io/operation/operation-generatetotpsecret) endpoint to generate a TOTP secret.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/totp-secret/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+The response body would be like:
+
+```json
+{
+  "secret": "..."
+}
+```
+
+**Step 2: Display the TOTP secret to the user**
+
+Use the secret to generate a QR code or display it directly to the user. The user should add it to their authenticator app (such as Google Authenticator, Microsoft Authenticator, or Authy).
+
+The URI format for the QR code should be:
+
+```
+otpauth://totp/[Issuer]:[Account]?secret=[Secret]&issuer=[Issuer]
+```
+
+Example:
+
+```
+otpauth://totp/YourApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=YourApp
+```
+
+**Step 3: Bind the TOTP factor**
+
+After the user has added the secret to their authenticator app, they need to verify it and bind it to their account. Use the [`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) endpoint to bind the TOTP factor.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"Totp","secret":"..."}'
+```
+
+- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
+- `type`: must be `Totp`.
+- `secret`: the TOTP secret generated in step 1.
+
+:::note
+A user can only have one TOTP factor at a time. If the user already has a TOTP factor, attempting to add another one will result in a 422 error.
+:::
+
+### Manage backup codes \{#manage-backup-codes}
+
+:::note
+Remember to [enable MFA and backup codes](/end-user-flows/mfa) first.
+:::
+
+:::note
+To use this method, you need to enable the `mfa` field in the [account center settings](#how-to-enable-account-api).
+:::
+
+**Step 1: Generate new backup codes**
+
+Use the [`POST /api/my-account/mfa-verifications/backup-codes/generate`](https://openapi.logto.io/operation/operation-generatemyaccountbackupcodes) endpoint to generate a new set of 10 backup codes.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+The response body would be like:
+
+```json
+{
+  "codes": ["...", "...", "..."]
+}
+```
+
+**Step 2: Display backup codes to the user**
+
+Before binding the backup codes to the user's account, you must display them to the user and instruct them to:
+
+- Download or write down these codes immediately
+- Store them in a secure location
+- Understand that each code can only be used once
+- Know that these codes are their last resort if they lose access to their primary MFA methods
+
+You should display the codes in a clear, easy-to-copy format and consider providing a download option (e.g., as a text file or PDF).
+
+**Step 3: Bind backup codes to the user account**
+
+Use the [`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) endpoint to bind the backup codes to the user's account.
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"BackupCode","codes":["...","...","..."]}'
+```
+
+- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
+- `type`: must be `BackupCode`.
+- `codes`: the array of backup codes generated in the previous step.
+
+:::note
+
+- A user can only have one set of backup codes at a time. If all codes have been used, the user needs to generate and bind new codes.
+- Backup codes cannot be the only MFA factor. The user must have at least one other MFA factor (such as WebAuthn or TOTP) enabled.
+- Each backup code can only be used once.
+
+:::
+
+**View existing backup codes**
+
+To view existing backup codes and their usage status, use the [`GET /api/my-account/mfa-verifications/backup-codes`](https://openapi.logto.io/operation/operation-getbackupcodes) endpoint:
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes \
+  -H 'authorization: Bearer <access_token>'
+```
+
+The response body would be like:
+
+```json
+{
+  "codes": [
+    {
+      "code": "...",
+      "usedAt": null
+    },
+    {
+      "code": "...",
+      "usedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+- `code`: the backup code.
+- `usedAt`: the timestamp when the code was used, `null` if not used yet.

@@ -1,0 +1,669 @@
+---
+description: Account API を使用してユーザーを管理する方法を学ぶ
+sidebar_position: 1
+---
+
+# Account API によるアカウント設定
+
+## Logto Account API とは \{#what-is-logto-account-api}
+
+Logto Account API は、エンドユーザーが Management API を経由せずに直接 API アクセスできる包括的な API 群です。主な特徴は以下の通りです：
+
+- 直接アクセス：Account API により、エンドユーザーは Management API を介さずに自分のアカウントプロファイルへ直接アクセスし管理できます。
+- ユーザープロファイルとアイデンティティ管理：ユーザーはメール、電話、パスワードなどのアイデンティティ情報の更新やソーシャル連携の管理など、プロファイルやセキュリティ設定を完全に管理できます。MFA や SSO のサポートも近日追加予定です。
+- グローバルアクセス制御：管理者はアクセス設定をグローバルに完全管理でき、各フィールドごとにカスタマイズ可能です。
+- シームレスな認可 (Authorization)：認可 (Authorization) がこれまで以上に簡単に！`client.getAccessToken()` を使って OP (Logto) 用の不透明トークン (Opaque token) を取得し、`Authorization` ヘッダーに `Bearer <access_token>` として付与するだけです。
+
+Logto Account API を使えば、Logto と完全連携したプロフィールページのようなカスタムアカウント管理システムを構築できます。
+
+よくあるユースケース例：
+
+- ユーザープロファイルの取得
+- ユーザープロファイルの更新
+- ユーザーパスワードの更新
+- メール、電話、ソーシャル連携などのユーザーアイデンティティの更新
+- MFA 要素（認証 (Authentication)）の管理
+
+利用可能な API について詳しくは [Logto Account API Reference](https://openapi.logto.io/group/endpoint-my-account) および [Logto Verification API Reference](https://openapi.logto.io/group/endpoint-verifications) をご覧ください。
+
+:::note
+
+SSO アカウントの閲覧やアカウント削除機能は現在 Logto Management API で提供されています。実装の詳細は [Management API によるアカウント設定](/end-user-flows/account-settings/by-management-api) を参照してください。
+
+:::
+
+## Account API を有効化する方法 \{#how-to-enable-account-api}
+
+<CloudLink to="/sign-in-experience/account-center">
+  コンソール > サインイン & アカウント > アカウントセンター
+</CloudLink>
+
+に移動します。
+
+Account API はデフォルトでオフになっており、アクセス制御もロックされています。**Account API を有効化** を切り替えてオンにします。
+
+有効化後は、識別子、プロファイルデータ、サードパーティトークンアクセスごとにフィールド単位で権限を設定できます。各フィールドは `Off`、`ReadOnly`、`Edit` のいずれかを選択でき、デフォルトは `Off` です。
+
+1. **セキュリティフィールド**：
+   - フィールド例：プライマリメール、プライマリ電話、ソーシャルアイデンティティ、パスワード、MFA。
+   - エンドユーザーがこれらのフィールドを編集する前に、パスワード・メール・SMS で本人確認を行い、10分間有効な認証 (Authentication) レコード ID を取得する必要があります。詳細は [認証 (Authentication) レコード ID の取得](#get-a-verification-record-id) を参照してください。
+   - MFA 用に WebAuthn パスキーを利用する場合は、**WebAuthn 関連オリジン** にフロントエンドアプリのドメインを追加し、アカウントセンターとサインイン体験でパスキーを共有できるようにします。詳細は [新しい WebAuthn パスキーの連携](#link-a-new-webauthn-passkey) を参照してください。
+2. **プロファイルフィールド**：
+   - フィールド例：ユーザー名、名前、アバター、[プロファイル](/user-management/user-data#profile)（その他標準プロファイル属性）、[カスタムデータ](/user-management/user-data#custom-data)。
+   - これらは追加認証 (Authentication) なしでエンドユーザーが編集可能です。
+3. **シークレットボールト**：OIDC や OAuth のソーシャル・エンタープライズコネクター用に、Logto [シークレットボールト](/secret-vault/federated-token-set) が認証 (Authentication) 後のサードパーティアクセストークン・リフレッシュトークンを安全に保存します。これにより、アプリはユーザーに再度サインインを求めることなく外部 API（例：Google カレンダーイベントの同期）を呼び出せます。Account API を有効化すると自動的にトークン取得が可能になります。
+
+## Account API へのアクセス方法 \{#how-to-access-account-api}
+
+:::note
+アクセストークンに適切な権限があることを保証するため、Logto 設定で対応するスコープを正しく設定してください。
+
+例えば、`POST /api/my-account/primary-email` API には `email` スコープ、`POST /api/my-account/primary-phone` API には `phone` スコープが必要です。
+
+```ts
+import { type LogtoConfig, UserScope } from '@logto/js';
+
+const config: LogtoConfig = {
+  // ...その他のオプション
+  // ユースケースに合ったスコープを追加
+  scopes: [
+    UserScope.Email, // `{POST,DELETE} /api/my-account/primary-email` 用
+    UserScope.Phone, // `{POST,DELETE} /api/my-account/primary-phone` 用
+    UserScope.CustomData, // カスタムデータ管理用
+    UserScope.Address, // 住所管理用
+    UserScope.Identities, // アイデンティティ・MFA 関連 API 用
+    UserScope.Profile, // ユーザープロファイル管理用
+  ],
+};
+```
+
+:::
+
+### アクセストークンの取得 \{#fetch-an-access-token}
+
+アプリケーションで SDK をセットアップした後、`client.getAccessToken()` メソッドでアクセストークンを取得できます。このトークンは Account API へのアクセスに使える不透明トークン (Opaque token) です。
+
+公式 SDK を使用しない場合は、アクセストークングラントリクエスト `/oidc/token` の `resource` を空に設定してください。
+
+### アクセストークンを使って Account API へアクセス \{#access-account-api-using-access-token}
+
+Account API へリクエストする際は、HTTP ヘッダーの `Authorization` フィールドに Bearer 形式（`Bearer YOUR_TOKEN`）でアクセストークンを含めてください。
+
+ユーザーアカウント情報を取得する例：
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>'
+```
+
+## 基本的なアカウント情報の管理 \{#manage-basic-account-information}
+
+### ユーザーアカウント情報の取得 \{#retrieve-user-account-information}
+
+ユーザーデータを取得するには、[`GET /api/my-account`](https://openapi.logto.io/operation/operation-getprofile) エンドポイントを利用します。
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>'
+```
+
+レスポンス例：
+
+```json
+{
+  "id": "...",
+  "username": "...",
+  "name": "...",
+  "avatar": "..."
+}
+```
+
+レスポンスフィールドはアカウントセンターの設定によって異なる場合があります。
+
+### 基本的なアカウント情報の更新 \{#update-basic-account-information}
+
+基本的なアカウント情報には、ユーザー名、名前、アバター、カスタムデータ、その他プロファイル情報が含まれます。
+
+**ユーザー名、名前、アバター、customData** を更新するには、[`PATCH /api/my-account`](https://openapi.logto.io/operation/operation-updateprofile) エンドポイントを利用します。
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"username":"...","name":"...","avatar":"..."}'
+```
+
+**familyName, givenName, middleName, nickname, profile (プロフィールページ URL), website, gender, birthdate, zoneinfo, locale, address** など他のプロファイル情報を更新するには、[`PATCH /api/my-account/profile`](https://openapi.logto.io/operation/operation-updateotherprofile) エンドポイントを利用します。
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account/profile \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"familyName":"...","givenName":"..."}'
+```
+
+## 識別子やその他の機微情報の管理 \{#manage-identifiers-and-other-sensitive-information}
+
+セキュリティ上の理由から、Account API で識別子やその他の機微情報を操作する際は追加の認可 (Authorization) 層が必要です。
+
+### 認証 (Authentication) レコード ID の取得 \{#get-a-verification-record-id}
+
+まず、10分間有効な **認証 (Authentication) レコード ID** を取得します。これは機微情報の更新前にユーザーの本人確認に使用します。つまり、ユーザーがパスワード・メール認証コード・SMS 認証コードで本人確認に成功すると、10分間は識別子・認証情報・ソーシャル連携・MFA など認証 (Authentication) 関連データを更新できます。
+
+認証 (Authentication) レコード ID を取得するには、[ユーザーパスワードで認証 (Authentication)](#verify-the-users-password) または [メールや電話に認証コードを送信して認証 (Authentication)](#verify-by-sending-a-verification-code-to-the-users-email-or-phone) を行います。
+
+#### ユーザーパスワードで認証 (Authentication) \{#verify-the-users-password}
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/password \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"password":"..."}'
+```
+
+レスポンス例：
+
+```json
+{
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+#### メールや電話に認証コードを送信して認証 (Authentication) \{#verify-by-sending-a-verification-code-to-the-users-email-or-phone}
+
+:::note
+この方法を利用するには [メールコネクター](/connectors/email-connectors/) または [SMS コネクター](/connectors/sms-connectors/) を設定し、`UserPermissionValidation` テンプレートが設定されている必要があります。
+:::
+
+メールを例に、新しい認証コードをリクエストし認証 (Authentication) レコード ID を取得します：
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."}}'
+```
+
+レスポンス例：
+
+```json
+{
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+認証コードを受け取ったら、それを使って認証 (Authentication) レコードの認証ステータスを更新できます。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."},"verificationId":"...","code":"123456"}'
+```
+
+コード認証後、認証 (Authentication) レコード ID を使ってユーザーの識別子を更新できます。
+
+認証 (Authentication) について詳しくは [Account API によるセキュリティ認証 (Authentication)](/end-user-flows/security-verification) を参照してください。
+
+### 認証 (Authentication) レコード ID を付与してリクエスト送信 \{#send-request-with-verification-record-id}
+
+ユーザーの識別子を更新するリクエストを送信する際は、リクエストヘッダーの `logto-verification-id` フィールドに認証 (Authentication) レコード ID を含めてください。
+
+### ユーザーパスワードの更新 \{#update-users-password}
+
+ユーザーパスワードを更新するには、[`POST /api/my-account/password`](https://openapi.logto.io/operation/operation-updatepassword) エンドポイントを利用します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/password \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"password":"..."}'
+```
+
+:::tip
+サインアップ時と同様、Account API で設定するパスワードも <CloudLink to="/security/password-policy">コンソール > セキュリティ > パスワードポリシー</CloudLink> で設定した [パスワードポリシー](/security/password-policy) に準拠する必要があります。ポリシー違反時は詳細なバリデーション結果とエラーメッセージが返されます。
+:::
+
+### 新しいメールの更新・連携 \{#update-or-link-new-email}
+
+:::note
+この方法を利用するには [メールコネクター](/connectors/email-connectors/) を設定し、`BindNewIdentifier` テンプレートが設定されている必要があります。
+:::
+
+新しいメールを更新・連携するには、まずそのメールの所有権を証明する必要があります。
+
+[`POST /api/verifications/verification-code`](https://openapi.logto.io/operation/operation-createverificationbyverificationcode) エンドポイントで認証コードをリクエストします。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."}}'
+```
+
+レスポンスで `verificationId` を取得し、メールで認証コードを受け取ったら、それを使ってメールを認証します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"identifier":{"type":"email","value":"..."},"verificationId":"...","code":"..."}'
+```
+
+コード認証後、[`PATCH /api/my-account/primary-email`](https://openapi.logto.io/operation/operation-updateprimaryemail) を呼び出してユーザーのメールを更新します。`verificationId` をリクエストボディの `newIdentifierVerificationRecordId` として設定します。
+
+:::info[2 種類の認証 (Authentication) レコード ID]
+
+このリクエストには 2 つの異なる認証 (Authentication) レコード ID が必要です：
+
+- **`logto-verification-id`（ヘッダー）**：機微な変更前にユーザー本人であることを証明します。[ユーザーパスワードで認証 (Authentication)](#verify-the-users-password) または [既存メール・電話への認証コード送信で認証 (Authentication)](#verify-by-sending-a-verification-code-to-the-users-email-or-phone) で取得します。
+- **`newIdentifierVerificationRecordId`（ボディ）**：新しいメールアドレスの所有権を証明します。上記 `POST /api/verifications/verification-code` のレスポンスで返される `verificationRecordId` です。
+
+:::
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/primary-email \
+  -H 'authorization: Bearer <access_token>' \
+  # ユーザー本人確認（パスワードまたは既存メール/電話認証）
+  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
+  -H 'content-type: application/json' \
+  # "newIdentifierVerificationRecordId" は新しいメールの所有権証明（上記認証コードフローより）
+  --data-raw '{"email":"...","newIdentifierVerificationRecordId":"<verification_record_id_from_new_email>"}'
+```
+
+:::tip
+サインアップ時と同様、Account API で連携するメールも <CloudLink to="/security/blocklist">コンソール > セキュリティ > ブロックリスト</CloudLink> で設定した [ブロックリスト](/security/blocklist) 検証に合格する必要があります。違反時はリクエストが拒否され、詳細なエラーが返されます。
+:::
+
+### ユーザーのメール削除 \{#remove-the-users-email}
+
+ユーザーのメールを削除するには、[`DELETE /api/my-account/primary-email`](https://openapi.logto.io/operation/operation-deleteprimaryemail) エンドポイントを利用します。
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/primary-email \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### 電話の管理 \{#manage-phone}
+
+:::note
+この方法を利用するには [SMS コネクター](/connectors/sms-connectors/) を設定し、`BindNewIdentifier` テンプレートが設定されている必要があります。
+:::
+
+メール更新と同様に、[`PATCH /api/my-account/primary-phone`](https://openapi.logto.io/operation/operation-updateprimaryphone) エンドポイントで新しい電話番号の更新・連携、[`DELETE /api/my-account/primary-phone`](https://openapi.logto.io/operation/operation-deleteprimaryphone) エンドポイントで電話番号の削除が可能です。
+
+### 新しいソーシャル連携の追加 \{#link-a-new-social-connection}
+
+新しいソーシャル連携を追加するには、まず [`POST /api/verifications/social`](https://openapi.logto.io/operation/operation-createverificationbysocial) で認可 (Authorization) URL をリクエストします。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/social \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"connectorId":"...","redirectUri":"...","state":"..."}'
+```
+
+- `connectorId`：[ソーシャルコネクター](/connectors/social-connectors/) の ID
+- `redirectUri`：ユーザーがアプリを認可 (Authorization) した後のリダイレクト先。ここでコールバックを受け取る必要があります。
+- `state`：認可 (Authorization) 後に返されるランダムな文字列で、CSRF 攻撃防止に使います。
+
+レスポンスで `verificationRecordId` を取得し、後で利用します。
+
+ユーザーがアプリを認可 (Authorization) すると、`redirectUri` に `state` パラメータ付きでコールバックが届きます。その後、[`POST /api/verifications/social/verify`](https://openapi.logto.io/operation/operation-verifyverificationbysocial) でソーシャル連携を認証 (Authentication) します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/social/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"connectorData":"...","verificationRecordId":"..."}'
+```
+
+`connectorData` はソーシャルコネクターから返されたデータで、コールバックページの `redirectUri` からクエリパラメータを取得し、JSON 形式で `connectorData` フィールドに渡します。
+
+最後に、[`POST /api/my-account/identities`](https://openapi.logto.io/operation/operation-adduseridentities) でソーシャル連携を追加します。
+
+:::info[2 種類の認証 (Authentication) レコード ID]
+
+このリクエストには 2 つの異なる認証 (Authentication) レコード ID が必要です：
+
+- **`logto-verification-id`（ヘッダー）**：機微な変更前にユーザー本人であることを証明します。[ユーザーパスワードで認証 (Authentication)](#verify-the-users-password) または [既存メール・電話への認証コード送信で認証 (Authentication)](#verify-by-sending-a-verification-code-to-the-users-email-or-phone) で取得します。
+- **`newIdentifierVerificationRecordId`（ボディ）**：連携するソーシャルアイデンティティを識別します。上記 `POST /api/verifications/social` のレスポンスで返される `verificationRecordId` です。
+
+:::
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/identities \
+  -H 'authorization: Bearer <access_token>' \
+  # ユーザー本人確認（パスワードまたは既存メール/電話認証）
+  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
+  -H 'content-type: application/json' \
+  # "newIdentifierVerificationRecordId" は連携するソーシャル連携の識別子（上記ソーシャル認証フローより）
+  --data-raw '{"newIdentifierVerificationRecordId":"<verification_record_id_from_social>"}'
+```
+
+### ソーシャル連携の削除 \{#remove-a-social-connection}
+
+ソーシャル連携を削除するには、[`DELETE /api/my-account/identities`](https://openapi.logto.io/operation/operation-deleteidentity) エンドポイントを利用します。
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/identities/[connector_target_id] \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### 新しい WebAuthn パスキーの連携 \{#link-a-new-webauthn-passkey}
+
+:::note
+まず [MFA と WebAuthn を有効化](/end-user-flows/mfa) してください。
+:::
+
+:::note
+この方法を利用するには [アカウントセンター設定](#how-to-enable-account-api) で `mfa` フィールドを有効化する必要があります。
+:::
+
+**ステップ 1：フロントエンドアプリのオリジンを関連オリジンに追加**
+
+WebAuthn パスキーは **Relying Party ID (RP ID)** と呼ばれる特定のホスト名に紐づきます。RP ID のオリジンでホストされているアプリのみ、そのパスキーで登録・認証 (Authentication) できます。
+
+フロントエンドアプリが Logto の認証 (Authentication) ページとは異なるドメインから Account API を呼び出す場合、**関連オリジン** を設定してクロスオリジンのパスキー操作を許可する必要があります。
+
+**Logto が RP ID を決定する方法：**
+
+- **デフォルト設定**：Logto のデフォルトドメイン `https://[tenant-id].logto.app` の場合、RP ID は `[tenant-id].logto.app`
+- **カスタムドメイン**：[カスタムドメイン](/logto-cloud/custom-domain) `https://auth.example.com` を設定した場合、RP ID は `auth.example.com`
+
+**関連オリジンの設定方法：**
+
+[`PATCH /api/account-center`](https://openapi.logto.io/operation/operation-updateaccountcentersettings) エンドポイントでフロントエンドアプリのオリジンを追加します。例：アカウントセンターが `https://account.example.com` で動作している場合
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/account-center \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"webauthnRelatedOrigins":["https://account.example.com"]}'
+```
+
+:::note
+
+WebAuthn の関連オリジンは最大 5 つのユニークな eTLD+1 ラベルまでサポートします。eTLD+1（有効なトップレベルドメイン＋1 ラベル）は登録可能なドメイン部分です。例：
+
+- `https://example.com`、`https://app.example.com`、`https://auth.example.com` は **1** ラベル（`example.com`）
+- `https://shopping.com`、`https://shopping.co.uk`、`https://shopping.co.jp` も **1** ラベル（`shopping`）
+- `https://example.com` と `https://another.com` は **2** ラベル
+
+5 ドメインを超える関連オリジンが必要な場合は [Related Origin Requests](https://passkeys.dev/docs/advanced/related-origins/) ドキュメントを参照してください。
+
+:::
+
+**ステップ 2：新規登録オプションのリクエスト**
+
+[`POST /api/verifications/web-authn/registration`](https://openapi.logto.io/operation/operation-generatewebauthnregistrationoptions) エンドポイントで新しいパスキー登録をリクエストします。Logto では 1 アカウントにつき複数のパスキー登録が可能です。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/web-authn/registration \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+レスポンス例：
+
+```json
+{
+  "registrationOptions": "...",
+  "verificationRecordId": "...",
+  "expiresAt": "..."
+}
+```
+
+**ステップ 3：ローカルブラウザでパスキー登録**
+
+[`@simplewebauthn/browser`](https://simplewebauthn.dev/) を例に、`startRegistration` 関数でローカルブラウザにパスキーを登録します。
+
+```ts
+import { startRegistration } from '@simplewebauthn/browser';
+
+// ...
+const response = await startRegistration({
+  optionsJSON: registrationOptions, // ステップ 1 でサーバーから返されたデータ
+});
+// 後で利用するために response を保存
+```
+
+**ステップ 4：パスキー登録の認証 (Authentication)**
+
+[`POST /api/verifications/web-authn/registration/verify`](https://openapi.logto.io/operation/operation-verifywebauthnregistration) エンドポイントでパスキー登録を認証 (Authentication) します。
+
+このステップでは、認証器が生成した暗号署名を検証し、パスキーが正当に作成され送信中に改ざんされていないことを確認します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/verifications/web-authn/registration/verify \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"payload":"...","verificationRecordId":"..."}'
+```
+
+- `payload`：ステップ 2 のローカルブラウザからのレスポンス
+- `verificationRecordId`：ステップ 1 でサーバーから返された認証 (Authentication) レコード ID
+
+**ステップ 5：パスキーの連携**
+
+最後に、[`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) エンドポイントでパスキーをユーザーアカウントに連携します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"WebAuthn","newIdentifierVerificationRecordId":"..."}'
+```
+
+- `verification_record_id`：既存要素の認証 (Authentication) で付与された有効な認証 (Authentication) レコード ID。詳細は [認証 (Authentication) レコード ID の取得](#get-a-verification-record-id) を参照。
+- `type`：MFA 要素のタイプ。現在は `WebAuthn` のみサポート。
+- `newIdentifierVerificationRecordId`：ステップ 1 でサーバーから返された認証 (Authentication) レコード ID。
+
+### 既存 WebAuthn パスキーの管理 \{#manage-existing-webauthn-passkeys}
+
+既存の WebAuthn パスキー管理には、[`GET /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-getmfaverifications) エンドポイントで現在のパスキーや他の MFA 認証 (Authentication) 要素を取得します。
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>'
+```
+
+レスポンス例：
+
+```json
+[
+  {
+    "id": "...",
+    "type": "WebAuthn",
+    "name": "...",
+    "agent": "...",
+    "createdAt": "...",
+    "updatedAt": "..."
+  }
+]
+```
+
+- `id`：認証 (Authentication) の ID
+- `type`：認証 (Authentication) のタイプ。WebAuthn パスキーの場合は `WebAuthn`
+- `name`：パスキー名（任意）
+- `agent`：パスキーのユーザーエージェント
+
+パスキー名の更新は [`PATCH /api/my-account/mfa-verifications/{verificationId}/name`](https://openapi.logto.io/operation/operation-updatemfaverificationname) エンドポイントで行います：
+
+```bash
+curl -X PATCH https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId}/name \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"name":"..."}'
+```
+
+パスキーの削除は [`DELETE /api/my-account/mfa-verifications/{verificationId}`](https://openapi.logto.io/operation/operation-deletemfaverification) エンドポイントで行います：
+
+```bash
+curl -X DELETE https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId} \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>'
+```
+
+### 新しい TOTP の連携 \{#link-a-new-totp}
+
+:::note
+まず [MFA と TOTP を有効化](/end-user-flows/mfa) してください。
+:::
+
+:::note
+この方法を利用するには [アカウントセンター設定](#how-to-enable-account-api) で `mfa` フィールドを有効化する必要があります。
+:::
+
+**ステップ 1：TOTP シークレットの生成**
+
+[`POST /api/my-account/mfa-verifications/totp-secret/generate`](https://openapi.logto.io/operation/operation-generatetotpsecret) エンドポイントで TOTP シークレットを生成します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/totp-secret/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+レスポンス例：
+
+```json
+{
+  "secret": "..."
+}
+```
+
+**ステップ 2：TOTP シークレットをユーザーに表示**
+
+シークレットを使って QR コードを生成するか、直接ユーザーに表示します。ユーザーはこれを Google Authenticator、Microsoft Authenticator、Authy などの認証 (Authentication) アプリに追加します。
+
+QR コード用 URI フォーマット：
+
+```
+otpauth://totp/[Issuer]:[Account]?secret=[Secret]&issuer=[Issuer]
+```
+
+例：
+
+```
+otpauth://totp/YourApp:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=YourApp
+```
+
+**ステップ 3：TOTP 要素の連携**
+
+ユーザーがシークレットを認証 (Authentication) アプリに追加した後、検証してアカウントに連携します。[`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) エンドポイントを利用します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"Totp","secret":"..."}'
+```
+
+- `verification_record_id`：既存要素の認証 (Authentication) で付与された有効な認証 (Authentication) レコード ID。詳細は [認証 (Authentication) レコード ID の取得](#get-a-verification-record-id) を参照。
+- `type`：`Totp` 固定
+- `secret`：ステップ 1 で生成した TOTP シークレット
+
+:::note
+ユーザーは TOTP 要素を 1 つだけ持てます。すでに TOTP 要素がある場合、追加しようとすると 422 エラーになります。
+:::
+
+### バックアップコードの管理 \{#manage-backup-codes}
+
+:::note
+まず [MFA とバックアップコード](/end-user-flows/mfa) を有効化してください。
+:::
+
+:::note
+この方法を利用するには [アカウントセンター設定](#how-to-enable-account-api) で `mfa` フィールドを有効化する必要があります。
+:::
+
+**ステップ 1：新しいバックアップコードの生成**
+
+[`POST /api/my-account/mfa-verifications/backup-codes/generate`](https://openapi.logto.io/operation/operation-generatemyaccountbackupcodes) エンドポイントで新しい 10 個のバックアップコードを生成します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes/generate \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'content-type: application/json'
+```
+
+レスポンス例：
+
+```json
+{
+  "codes": ["...", "...", "..."]
+}
+```
+
+**ステップ 2：バックアップコードをユーザーに表示**
+
+バックアップコードをユーザーアカウントに連携する前に、必ずユーザーに表示し、以下を案内してください：
+
+- すぐにダウンロードまたは書き留めること
+- 安全な場所に保管すること
+- 各コードは 1 回限り利用可能であること
+- これらのコードは主要な MFA 手段を失った場合の最後の手段であること
+
+コピーしやすい形式で表示し、ダウンロード（テキストファイルや PDF など）も推奨します。
+
+**ステップ 3：バックアップコードの連携**
+
+[`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/operation/operation-addmfaverification) エンドポイントでバックアップコードをユーザーアカウントに連携します。
+
+```bash
+curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
+  -H 'authorization: Bearer <access_token>' \
+  -H 'logto-verification-id: <verification_record_id>' \
+  -H 'content-type: application/json' \
+  --data-raw '{"type":"BackupCode","codes":["...","...","..."]}'
+```
+
+- `verification_record_id`：既存要素の認証 (Authentication) で付与された有効な認証 (Authentication) レコード ID。詳細は [認証 (Authentication) レコード ID の取得](#get-a-verification-record-id) を参照。
+- `type`：`BackupCode` 固定
+- `codes`：前ステップで生成したバックアップコード配列
+
+:::note
+
+- ユーザーは 1 セットのバックアップコードのみ持てます。すべてのコードを使い切った場合は新たに生成・連携が必要です。
+- バックアップコードだけを MFA 要素とすることはできません。必ず他の MFA 要素（WebAuthn や TOTP など）も有効化してください。
+- 各バックアップコードは 1 回限り利用可能です。
+
+:::
+
+**既存バックアップコードの閲覧**
+
+既存のバックアップコードと利用状況は [`GET /api/my-account/mfa-verifications/backup-codes`](https://openapi.logto.io/operation/operation-getbackupcodes) エンドポイントで確認できます：
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/mfa-verifications/backup-codes \
+  -H 'authorization: Bearer <access_token>'
+```
+
+レスポンス例：
+
+```json
+{
+  "codes": [
+    {
+      "code": "...",
+      "usedAt": null
+    },
+    {
+      "code": "...",
+      "usedAt": "2024-01-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+- `code`：バックアップコード
+- `usedAt`：コードが利用された日時。未使用の場合は `null`

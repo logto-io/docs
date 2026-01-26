@@ -1,0 +1,156 @@
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ServerActionsTip from './_server-actions-tip.mdx';
+
+### 設定の準備 \{#prepare-configs}
+
+Logto クライアント用の設定を準備します：
+
+```ts title="app/logto.ts"
+import { LogtoNextConfig } from '@logto/next';
+
+export const logtoConfig: LogtoNextConfig = {
+  appId: '<your-application-id>',
+  appSecret: '<your-app-secret-copied-from-console>',
+  endpoint: '<your-logto-endpoint>', // 例: http://localhost:3001
+  baseUrl: '<your-nextjs-app-base-url>', // 例: http://localhost:3000
+  cookieSecret: 'complex_password_at_least_32_characters_long',
+  cookieSecure: process.env.NODE_ENV === 'production',
+};
+```
+
+**注意:**  
+`cookieSecret` に環境変数（例: `process.env.LOGTO_COOKIE_SECRET`）を使用する場合、その値が 32 文字以上であることを確認してください。この要件を満たさない場合、Logto はビルドまたは実行時に次のエラーをスローします：
+
+`TypeError: Either sessionWrapper or encryptionKey must be provided for CookieStorage`
+
+このエラーを防ぐには、環境変数が正しく設定されているか、または 32 文字以上のフォールバック値を指定してください。
+
+### リダイレクト URI の設定 \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### コールバックの処理 \{#handle-callback}
+
+ユーザーがサインインした後、Logto は上記で設定したリダイレクト URI にユーザーをリダイレクトします。ただし、アプリケーションが正しく動作するためには、さらに処理が必要です。
+
+サインインコールバックを処理するためのヘルパー関数 `handleSignIn` を提供しています：
+
+```tsx title="app/callback/route.ts"
+import { handleSignIn } from '@logto/next/server-actions';
+import { redirect } from 'next/navigation';
+import { NextRequest } from 'next/server';
+import { logtoConfig } from '../logto';
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  await handleSignIn(logtoConfig, searchParams);
+
+  redirect('/');
+}
+```
+
+### サインイン・サインアウトの実装 \{#implement-sign-in-and-sign-out}
+
+#### サインイン・サインアウトボタンの実装 \{#implement-sign-in-and-sign-out-button}
+
+Next.js App Router では、イベントはクライアントコンポーネントで処理されるため、まず `SignIn` と `SignOut` の 2 つのコンポーネントを作成する必要があります。
+
+```tsx title="app/sign-in.tsx"
+'use client';
+
+type Props = {
+  onSignIn: () => Promise<void>;
+};
+
+const SignIn = ({ onSignIn }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignIn();
+      }}
+    >
+      サインイン
+    </button>
+  );
+};
+
+export default SignIn;
+```
+
+```tsx title="app/sign-out.tsx"
+'use client';
+
+type Props = {
+  onSignOut: () => Promise<void>;
+};
+
+const SignOut = ({ onSignOut }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignOut();
+      }}
+    >
+      サインアウト
+    </button>
+  );
+};
+
+export default SignOut;
+```
+
+これらのコンポーネントがクライアントコンポーネントであることを示すため、ファイルの先頭に `'use client'` を追加するのを忘れないでください。
+
+#### ホームページにボタンを追加 \{#add-buttons-to-home-page}
+
+<ServerActionsTip />
+
+次に、ホームページにサインイン・サインアウトボタンを追加します。必要に応じて SDK のサーバーアクションを呼び出す必要があります。これを助けるために、`getLogtoContext` を使って認証 (Authentication) 状態を取得します。
+
+```tsx title="app/page.tsx"
+import { getLogtoContext, signIn, signOut } from '@logto/next/server-actions';
+import SignIn from './sign-in';
+import SignOut from './sign-out';
+import { logtoConfig } from './logto';
+
+export default async function Home() {
+  const { isAuthenticated, claims } = await getLogtoContext(logtoConfig);
+
+  return (
+    <nav>
+      {isAuthenticated ? (
+        <p>
+          こんにちは、{claims?.sub} さん、
+          <SignOut
+            onSignOut={async () => {
+              'use server';
+
+              await signOut(logtoConfig);
+            }}
+          />
+        </p>
+      ) : (
+        <p>
+          <SignIn
+            onSignIn={async () => {
+              'use server';
+
+              await signIn(logtoConfig);
+            }}
+          />
+        </p>
+      )}
+    </nav>
+  );
+}
+```
+
+<Checkpoint />

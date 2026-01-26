@@ -1,0 +1,95 @@
+---
+sidebar_position: 6
+---
+
+# เชิญสมาชิกองค์กร
+
+ในแอปพลิเคชันแบบหลายผู้เช่า (multi-tenancy) ความต้องการที่พบบ่อยคือการเชิญสมาชิกเข้าสู่องค์กร คู่มือนี้จะแนะนำขั้นตอนและรายละเอียดทางเทคนิคในการนำฟีเจอร์นี้ไปใช้
+
+## ภาพรวมของโฟลว์ \{#flow-overview}
+
+กระบวนการโดยรวมแสดงในไดอะแกรมด้านล่าง:
+
+```mermaid
+sequenceDiagram
+	Participant U as ผู้ใช้ปลายทาง
+  Participant A as ผู้ดูแลองค์กร
+  Participant C as แอปหลายองค์กรของคุณ
+	Participant L as Logto
+
+  A ->> C: กรอกอีเมลและบทบาทของผู้รับเชิญ
+  C ->> L: สร้างคำเชิญองค์กรด้วย Management API
+  L -->> C: ส่งคืนรหัสคำเชิญ
+  C ->> C: สร้างลิงก์คำเชิญด้วยรหัสคำเชิญ
+  C ->> L: ขอให้ส่งอีเมลเชิญพร้อมลิงก์คำเชิญ
+  L -->> U: ส่งอีเมลเชิญพร้อมลิงก์คำเชิญ
+  U ->> C: คลิกลิงก์คำเชิญและไปยังหน้าแลนดิ้งของคุณ,<br /> ยอมรับหรือปฏิเสธคำเชิญ
+  C ->> L: อัปเดตสถานะคำเชิญด้วย Management API
+```
+
+## สร้างบทบาทองค์กร \{#create-organization-roles}
+
+ก่อนเชิญสมาชิก ให้สร้างบทบาทองค์กร ดู [เทมเพลตองค์กร](/authorization/organization-template) เพื่อเรียนรู้เพิ่มเติมเกี่ยวกับบทบาทและสิทธิ์
+
+ในคู่มือนี้ เราจะสร้างบทบาทองค์กรทั่วไปสองบทบาท: `admin` และ `member`
+
+บทบาท `admin` มีสิทธิ์เข้าถึงทรัพยากรทั้งหมดในองค์กร ขณะที่บทบาท `member` มีสิทธิ์จำกัด ตัวอย่างเช่น:
+
+- บทบาท `admin`:
+  - `read:data` - อ่านข้อมูลทรัพยากรทั้งหมดขององค์กร
+  - `write:data` - เขียนข้อมูลทรัพยากรทั้งหมดขององค์กร
+  - `delete:data` - ลบข้อมูลทรัพยากรทั้งหมดขององค์กร
+  - `invite:member` - เชิญสมาชิกเข้าสู่องค์กร
+  - `manage:member` - จัดการสมาชิกในองค์กร
+  - `delete:member` - ลบสมาชิกออกจากองค์กร
+- บทบาท `member`:
+  - `read:data` - อ่านข้อมูลทรัพยากรทั้งหมดขององค์กร
+  - `write:data` - เขียนข้อมูลทรัพยากรทั้งหมดขององค์กร
+  - `invite:member` - เชิญสมาชิกเข้าสู่องค์กร
+
+สามารถดำเนินการนี้ได้ง่าย ๆ ใน [Logto Console](https://cloud.logto.io/) หรือใช้ [Logto Management API](https://openapi.logto.io/operation/operation-createorganizationrole) เพื่อสร้างบทบาทองค์กรแบบโปรแกรม
+
+## ตั้งค่าตัวเชื่อมต่ออีเมลของคุณ \{#configure-your-email-connector}
+
+เนื่องจากการเชิญส่งผ่านอีเมล โปรดตรวจสอบให้แน่ใจว่าคุณได้ตั้งค่า [ตัวเชื่อมต่ออีเมล](/connectors/email-connectors) อย่างถูกต้องแล้ว ในการส่งคำเชิญ ให้ตั้งค่า [เทมเพลตอีเมล](/connectors/email-connectors/email-templates#email-template-types) โดยใช้ประเภทการใช้งาน `OrganizationInvitation` คุณสามารถใส่ตัวแปรขององค์กร (เช่น ชื่อ, โลโก้) และผู้เชิญ (เช่น อีเมล, ชื่อ) [ตัวแปร](/connectors/email-connectors/email-templates#email-template-variables) ลงในเนื้อหา และปรับแต่ง [เทมเพลตภาษาท้องถิ่น](/connectors/email-connectors/email-templates#email-template-localization) ได้ตามต้องการ
+
+ตัวอย่างเทมเพลตอีเมลสำหรับประเภทการใช้งาน `OrganizationInvitation` แสดงด้านล่าง:
+
+```json
+{
+  "subject": "คุณได้รับเชิญให้เข้าร่วม {{organization.name}}",
+  "content": "<p>สวัสดีค่ะ/ครับ,</p><p>{{inviter.name}} ({{inviter.primaryEmail}}) ได้เชิญคุณเข้าร่วม <strong>{{organization.name}}</strong>.</p><p>คลิก <a href=\"{{link}}\" target=\"_blank\">ลิงก์นี้</a> เพื่อยอมรับคำเชิญและเริ่มต้นใช้งาน</p><p>หากคุณไม่ได้คาดหวังคำเชิญนี้ คุณสามารถละเว้นอีเมลนี้ได้อย่างปลอดภัย</p>",
+  "usageType": "OrganizationInvitation",
+  "type": "text/html"
+}
+```
+
+ตัวแทน `{{link}}` ในเนื้อหาอีเมลจะถูกแทนที่ด้วยลิงก์คำเชิญจริงเมื่อส่งอีเมล
+
+## จัดการคำเชิญด้วย Logto Management API \{#handle-invitations-with-logto-management-api}
+
+:::note
+
+หากคุณยังไม่ได้ตั้งค่า Logto Management API โปรดดู [โต้ตอบกับ Management API](/integrate-logto/interact-with-management-api) สำหรับรายละเอียด
+
+:::
+
+### สร้างคำเชิญองค์กรด้วย Logto Management API \{#create-an-organization-invitation-with-logto-management-api}
+
+มีชุด Management API ที่เกี่ยวข้องกับคำเชิญในฟีเจอร์องค์กร โดย API เหล่านี้ คุณสามารถ:
+
+- `POST /api/organization-invitations`: สร้างคำเชิญองค์กรพร้อมกำหนดบทบาทองค์กร
+- `POST /api/one-time-tokens`: สร้างโทเค็นใช้ครั้งเดียวสำหรับผู้รับเชิญเพื่อยืนยันตัวตนเมื่อยอมรับคำเชิญ [เรียนรู้เพิ่มเติม](/end-user-flows/one-time-token)
+- `POST /api/organization-invitations/{id}/message`: ส่งคำเชิญองค์กรไปยังผู้รับเชิญทางอีเมล
+
+:::note
+
+payload รองรับ property `link` เพื่อให้คุณสามารถสร้างลิงก์คำเชิญเองโดยอิงจากรหัสคำเชิญ ตัวอย่างเช่น:
+
+:::
+
+```json
+{
+  "link": "https://your-app.com/invitation/join?id=your-invitation-id&token=your-one-time-token&email=invitee-email"
+}
+```

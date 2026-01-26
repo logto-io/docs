@@ -1,0 +1,168 @@
+---
+slug: /integrations/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: Intégrez Logto avec Permit.io.
+---
+
+# Mettre en place l’autorisation avec Permit.io
+
+[Permit.io](https://permit.io/) est une plateforme d’autorisation qui fournit un contrôle d’accès granulaire pour les applications. Vous pouvez utiliser Logto conjointement avec Permit.io pour gérer l’authentification et l’autorisation des utilisateurs.
+
+:::tip
+Pour comprendre les différences clés entre authentification et autorisation, consultez [Authentification vs. autorisation](/concepts/authn-vs-authz).
+:::
+
+Ce guide vous montrera comment connecter Logto avec Permit.io pour mettre en œuvre l’autorisation dans votre application.
+
+## Prérequis \{#prerequisites}
+
+- Un compte [Logto Cloud](https://cloud.logto.io/) ou une instance [Logto auto-hébergée](https://docs.logto.io/introduction/set-up-logto-oss).
+- Une application Next.js avec l’authentification Logto déjà configurée (suivez notre [guide Next.js](https://docs.logto.io/quick-starts/next) si ce n’est pas déjà fait)
+- Un compte [Permit.io](https://app.permit.io/). Suivez le [guide de démarrage rapide officiel de Permit.io](https://docs.permit.io/quickstart/) pour configurer votre projet Permit.io avant de continuer.
+
+## Intégration \{#integration}
+
+### Installer le SDK Permit.io \{#install-permitio-sdk}
+
+Ajoutez le SDK Permit.io à votre application :
+
+```bash
+npm install permitio
+```
+
+### Créer un projet Permit.io \{#create-a-permitio-project}
+
+1. Inscrivez-vous pour un compte gratuit sur [permit.io](https://app.permit.io/)
+2. Créez un nouveau projet et obtenez votre clé API
+3. Ajoutez la clé API à vos variables d’environnement :
+
+```bash
+PERMIT_API_KEY=your-permit-api-key
+```
+
+### Configurer le client Permit.io \{#set-up-permitio-client}
+
+Créez un fichier pour gérer l’intégration Permit.io :
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// Initialisez le client Permit.io
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'your-permitio-api-key',
+});
+
+// Synchronisez un utilisateur avec Permit.io
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // D’abord, synchronisez l’utilisateur
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // Puis assignez un rôle à l’utilisateur
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### Créer un webhook Logto pour l’enregistrement des utilisateurs \{#create-a-logto-webhook-for-user-registration}
+
+Logto fournit des [webhooks](/developers/webhooks) qui peuvent notifier votre application lorsqu’un événement se produit. Nous utiliserons le webhook `PostRegister` pour [synchroniser les utilisateurs avec Permit.io](https://docs.permit.io/authentication/permit-and-authentication) lors de leur inscription.
+
+Créez un endpoint webhook dans votre application :
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // Affichez la charge utile du webhook pour le débogage
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // Traitez les événements d’enregistrement utilisateur
+  if (event === 'PostRegister') {
+    try {
+      // Déterminez le rôle de l’utilisateur (vous pouvez implémenter votre propre logique ici)
+      let role = 'viewer'; // Rôle par défaut
+
+      // Synchronisez l’utilisateur avec Permit.io
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Erreur lors de la synchronisation de l’utilisateur :', error);
+      return res.status(500).json({ error: 'Échec de la synchronisation de l’utilisateur' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Événement ignoré' });
+}
+```
+
+### Configurer le webhook dans la Console Logto \{#configure-the-webhook-in-logto-console}
+
+1. Accédez à la section Webhooks dans votre Console Logto
+2. Cliquez sur "Créer un webhook"
+3. Donnez un nom à votre webhook
+4. Saisissez l’URL de votre endpoint (par exemple, `https://your-app.com/api/webhooks/logto`)
+5. Sélectionnez l’événement `PostRegister`
+6. Enregistrez le webhook
+
+:::note
+Pour le développement local, vous pouvez utiliser des outils comme [ngrok](https://ngrok.com/) pour exposer votre serveur local à Internet.
+:::
+
+### Tester la synchronisation des utilisateurs \{#test-user-sync}
+
+Pour tester que les utilisateurs sont correctement synchronisés :
+
+1. Créez un nouveau compte utilisateur dans votre application
+2. Vérifiez dans le tableau de bord Permit.io sous "Directory" → "Users" que l’utilisateur a bien été synchronisé
+3. Vérifiez que le bon rôle a été attribué à l’utilisateur lors de l’inscription
+
+<img
+  src="/img/assets/permitio.png"
+  alt="Utilisateurs Logto synchronisés avec Permit.io avec attribution de rôles"
+/>
+
+### Utiliser Permit.io pour l’autorisation \{#use-permitio-for-authorization}
+
+Une fois les utilisateurs synchronisés, vous pouvez utiliser Permit.io pour vérifier les permissions :
+
+```jsx
+// Exemple de vérification d’une permission
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // L’utilisateur est autorisé à voir les ressources
+  // Affichez l’interface des ressources
+} else {
+  // L’utilisateur n’est pas autorisé à voir les ressources
+  // Affichez un message d’accès refusé
+}
+```
+
+## Conclusion \{#conclusion}
+
+Vous avez connecté Logto avec Permit.io pour synchroniser automatiquement les utilisateurs et mettre en place l’autorisation dans votre application. Avec cette intégration :
+
+1. Les utilisateurs s’authentifient via Logto
+2. Les nouveaux utilisateurs sont automatiquement synchronisés avec Permit.io via les webhooks
+3. Vous pouvez utiliser Permit.io pour vérifier les permissions et mettre en œuvre le contrôle d’accès
+
+Cette configuration offre une base solide pour la mise en place de modèles d’autorisation plus avancés à mesure que votre application évolue.
+
+Pour des cas d’usage d’autorisation plus avancés, explorez la [documentation de Permit.io](https://docs.permit.io/) sur la création de politiques, l’application des permissions et la mise en œuvre du contrôle d’accès basé sur les rôles.

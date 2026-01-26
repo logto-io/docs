@@ -1,0 +1,159 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+Nous utilisons [jose](https://github.com/panva/jose) dans cet exemple pour valider le JWT. Installez-le si ce n'est pas déjà fait :
+
+```bash
+npm install jose
+```
+
+Ou utilisez votre gestionnaire de paquets préféré (par exemple, `pnpm` ou `yarn`).
+
+Commencez par ajouter ces utilitaires partagés pour gérer la validation du JWT :
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // Implémentez ici votre logique de vérification basée sur le modèle de permission
+  // Ceci sera détaillé dans la section sur les modèles de permission ci-dessous
+}
+```
+
+Ensuite, implémentez le middleware pour vérifier le jeton d’accès (Access token) :
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+Selon votre modèle de permission, implémentez la logique de vérification appropriée dans `jwt-validator.ts` :
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Ressources API globales">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Vérifiez que la revendication d’audience correspond à votre indicateur de ressource API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Audience invalide');
+  }
+
+  // Vérifiez les portées requises pour les ressources API globales
+  const requiredScopes = ['api:read', 'api:write']; // Remplacez par vos portées requises
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Portée insuffisante');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissions d’organisation (hors API)">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Vérifiez que la revendication d’audience correspond au format d’organisation
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Audience invalide pour les permissions d’organisation');
+  }
+
+  // Vérifiez que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+  const expectedOrgId = 'your-organization-id'; // À extraire du contexte de la requête
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Incohérence de l’ID d’organisation');
+  }
+
+  // Vérifiez les portées requises pour l’organisation
+  const requiredScopes = ['invite:users', 'manage:settings']; // Remplacez par vos portées requises
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Portée d’organisation insuffisante');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Ressources API au niveau organisation">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Vérifiez que la revendication d’audience correspond à votre indicateur de ressource API
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError(
+      'Audience invalide pour les ressources API au niveau organisation'
+    );
+  }
+
+  // Vérifiez que l’ID d’organisation correspond au contexte (vous devrez peut-être l’extraire du contexte de la requête)
+  const expectedOrgId = 'your-organization-id'; // À extraire du contexte de la requête
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Incohérence de l’ID d’organisation');
+  }
+
+  // Vérifiez les portées requises pour les ressources API au niveau organisation
+  const requiredScopes = ['api:read', 'api:write']; // Remplacez par vos portées requises
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Portées API au niveau organisation insuffisantes');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,198 @@
+---
+description: 使用 Logto 创新的 Protected App，轻松为你的 Web 应用添加无代码认证 (Authentication)，由 Cloudflare 提供支持。支持 HTTP 基本认证 (Authentication) 和 JWT 验证。
+sidebar_label: Protected App
+sidebar_position: 2
+---
+
+# Protected App — 非 SDK 认证 (Authentication) 集成
+
+Protected App 旨在通过将[认证 (Authentication)](https://auth.wiki/authentication)层与应用程序分离，消除 [SDK 集成](/quick-starts) 的复杂性。我们负责认证 (Authentication)，让你专注于核心功能。一旦用户通过认证 (Authentication)，Protected App 将从你的服务器提供内容。
+
+## Protected App 如何工作 \{#how-protected-app-works}
+
+由 Cloudflare 提供支持的 Protected App 在全球边缘网络上运行，确保你的应用程序具有低延迟和高可用性。
+
+Protected App 维护会话状态和用户信息。如果用户未通过认证 (Authentication)，Protected App 会将他们重定向到登录页面。一旦认证 (Authentication) 成功，Protected App 会将用户的请求与认证 (Authentication) 和用户信息一起包装，然后转发到源服务器。
+
+以下流程图展示了这一过程：
+
+```mermaid
+graph LR
+  A("客户端<br/>(浏览器)") -->|请求| B(Logto<br/>Protected App)
+  B --> Condition{{路由<br/>匹配吗？}}
+  Condition -->|是| Matched{{已认证 (Authenticated) 吗？}}
+  Matched -->|是| C(源服务器)
+  Matched -->|否| D(Logto 登录)
+  Condition -->|否| C
+```
+
+## 保护你的源服务器 \{#protect-your-origin-server}
+
+源服务器可以是 Logto 的 Protected App 不拥有的物理或虚拟设备，是你的应用程序内容所在的位置。类似于内容分发网络 (CDN) 服务器，Protected App 管理认证 (Authentication) 过程并从你的源服务器检索内容。因此，如果用户直接访问你的源服务器，他们可以绕过认证 (Authentication)，你的应用程序将不再受保护。
+
+因此，保护源连接非常重要，它可以防止攻击者在未经认证 (Authentication) 的情况下发现和访问你的源服务器。有几种方法可以做到这一点：
+
+1. HTTP 头验证
+2. JSON Web Tokens (JWT) 验证
+
+### HTTP 头验证 \{#http-header-validation}
+
+可以使用 [HTTP 基本认证 (Authentication)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme) 来保护你的源服务器。
+
+每个来自 Protected App 的请求都包含以下头：
+
+```
+Authorization: Basic base64(appId:appSecret)
+```
+
+通过验证此头，你可以确认请求来自 Protected App，并拒绝任何不包含此头的请求。
+
+如果你使用 Nginx 或 Apache，可以参考以下指南在源服务器上实现 HTTP 基本认证 (Authentication)：
+
+1. Nginx: [配置 HTTP 基本认证 (Authentication)](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
+2. Apache: [认证 (Authentication) 和授权 (Authorization)](https://httpd.apache.org/docs/2.4/howto/auth.html)
+
+要在应用程序中检查头，请参考 Cloudflare 提供的 [HTTP 基本认证 (Authentication) 示例](https://developers.cloudflare.com/workers/examples/basic-auth/)以了解如何使用 HTTP 基本模式限制访问。
+
+### JSON Web Tokens (JWT) 验证 \{#json-web-tokens-jwt-validation}
+
+另一种保护源服务器的方法是使用 JSON Web Tokens (JWT)。
+
+每个来自 Protected App 的认证 (Authenticated) 请求都包含以下头：
+
+```
+Logto-ID-Token: <JWT>
+```
+
+JWT 被称为 [ID 令牌 (ID Token)](https://auth.wiki/id-token)，由 Logto 签名并包含用户信息。通过验证此 JWT，你可以确认请求来自 Protected App，并拒绝任何不包含此头的请求。
+
+令牌被加密并签名为 [JWS](https://auth.wiki/jws) 令牌。
+
+验证步骤：
+
+1. [验证 JWT](https://datatracker.ietf.org/doc/html/rfc7519#section-7.2)
+2. [验证 JWS 签名](https://datatracker.ietf.org/doc/html/rfc7515#section-5.2)
+3. 令牌的发行者是 `https://<your-logto-domain>/oidc`（由你的 Logto 认证 (Auth) 服务器发行）
+
+```js
+const express = require('express');
+const jwksClient = require('jwks-rsa');
+const jwt = require('jsonwebtoken');
+
+const ISSUER = 'https://<your-logto-domain>/oidc';
+const CERTS_URL = 'https://<your-logto-domain>/oidc/jwks';
+
+const client = jwksClient({
+  jwksUri: CERTS_URL,
+});
+
+const getKey = (header, callback) => {
+  client.getSigningKey(header.kid, function (err, key) {
+    callback(err, key?.getPublicKey());
+  });
+};
+
+const verifyToken = (req, res, next) => {
+  const token = req.headers['Logto-ID-Token'];
+
+  // 确保传入的请求包含我们的令牌头
+  if (!token) {
+    return res.status(403).send({ status: false, message: '缺少必需的 Logto-ID-Token 头' });
+  }
+
+  jwt.verify(token, getKey, { issuer: ISSUER }, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ status: false, message: '无效的 ID 令牌' });
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
+
+const app = express();
+
+app.use(verifyToken);
+
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
+
+app.listen(3000);
+```
+
+## 获取认证 (Authentication) 状态和用户信息 \{#get-authentication-state-and-user-information}
+
+如果你需要为应用程序获取认证 (Authentication) 和用户信息，也可以使用 `Logto-ID-Token` 头。
+
+如果你只想解码令牌，可以使用以下代码：
+
+```js
+const express = require('express');
+
+const decodeIdToken = (req, res, next) => {
+  const token = req.headers['Logto-ID-Token'];
+
+  if (!token) {
+    return res.status(403).send({
+      status: false,
+      message: '缺少必需的 Logto-ID-Token 头',
+    });
+  }
+
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    throw new Error('无效的 ID 令牌');
+  }
+
+  const payload = parts[1];
+  const decodedPayload = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+  const claims = JSON.parse(decodedPayload);
+
+  req.user = claims;
+  next();
+};
+
+const app = express();
+
+app.use(decodeIdToken);
+
+app.get('/', (req, res) => {
+  res.json(req.user);
+});
+
+app.listen(3000);
+```
+
+## 获取原始主机 \{#get-the-original-host}
+
+如果你需要获取客户端请求的原始主机，可以使用 `Logto-Host` 或 `x-forwarded-host` 头。
+
+## 自定义认证 (Authentication) 规则 \{#customize-authentication-rules}
+
+默认情况下，Protected App 将保护所有路由。如果你需要自定义认证 (Authentication) 规则，可以在控制台中设置“自定义认证 (Authentication) 规则”字段。
+
+它支持正则表达式，以下是两个案例场景：
+
+1. 仅保护 `/admin` 和 `/privacy` 路由：`^/(admin|privacy)/.*`
+2. 排除 JPG 图像的认证 (Authentication)：`^(?!.*\.jpg$).*$`
+
+## 本地开发 \{#local-development}
+
+Protected App 旨在与源服务器一起工作。然而，如果你的源服务器无法公开访问，可以使用 [ngrok](https://ngrok.com/) 或 [Cloudflare Tunnels](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) 等工具将本地服务器暴露到互联网。
+
+## 过渡到 SDK 集成 \{#transition-to-sdk-integration}
+
+Protected App 旨在简化认证 (Authentication) 过程。然而，如果你决定过渡到 SDK 集成以获得更好的控制和定制，可以在 Logto 中[创建一个新应用程序](/integrate-logto/integrate-logto-into-your-application)并配置 [SDK 集成](/quick-starts)。为了顺利过渡，你可以重用 Protected App 的应用程序配置。Protected App 实际上是 Logto 中的“传统 Web 应用”，你可以在应用程序设置中找到“[AppId](/integrate-logto/application-data-structure#application-id)”和“[AppSecret](/integrate-logto/application-data-structure#application-secret)”。过渡完成后，你可以从应用程序中移除 Protected App。
+
+## 相关资源 \{#related-resources}
+
+<Url href="https://www.youtube.com/watch?v=ZBrXW3iZyKY">
+  Protected App: 通过点击构建应用的认证 (Authentication)。无需代码。
+</Url>
+
+<Url href="https://blog.logto.io/protected-app">Protected App 背后的动机</Url>
+
+<Url href="https://blog.logto.io/fastest-way-to-build-auth-system">
+  构建认证 (Authentication) 系统的最快方式
+</Url>

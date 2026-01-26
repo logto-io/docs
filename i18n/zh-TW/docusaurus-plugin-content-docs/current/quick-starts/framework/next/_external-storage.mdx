@@ -1,0 +1,46 @@
+SDK 預設使用 Cookie 儲存加密的工作階段資料。這種方式安全、無需額外基礎設施，且特別適合在如 Vercel 這類無伺服器（serverless）環境中運作。
+
+然而，有時你可能需要將工作階段資料儲存在外部。例如，當你的工作階段資料過大，不適合存放於 Cookie，特別是當你需要同時維護多個活躍的組織 (Organization) 工作階段時。在這些情境下，你可以透過 `sessionWrapper` 選項實作外部工作階段儲存：
+
+```ts
+import { MemorySessionWrapper } from './storage';
+
+export const config = {
+  // ...
+  sessionWrapper: new MemorySessionWrapper(),
+};
+```
+
+```ts
+import { randomUUID } from 'node:crypto';
+
+import { type SessionWrapper, type SessionData } from '@logto/next';
+
+export class MemorySessionWrapper implements SessionWrapper {
+  private readonly storage = new Map<string, unknown>();
+  private currentSessionId?: string;
+
+  async wrap(data: unknown, _key: string): Promise<string> {
+    // 若已有現有的 session ID 則重複使用，僅在首次使用者時產生新 ID。
+    // 這對於無法更新 Cookie 的環境（例如 React Server Components）很重要，
+    // 因為 Cookie 中的 session ID 必須保持穩定，而外部儲存中的資料則可更新。
+    const sessionId = this.currentSessionId ?? randomUUID();
+    this.currentSessionId = sessionId;
+    this.storage.set(sessionId, data);
+    return sessionId;
+  }
+
+  async unwrap(value: string, _key: string): Promise<SessionData> {
+    if (!value) {
+      return {};
+    }
+
+    // 儲存 session ID 以便 wrap() 可能重複使用
+    this.currentSessionId = value;
+    const data = this.storage.get(value);
+    return data ?? {};
+  }
+}
+```
+
+上述實作採用簡單的記憶體內部儲存。在生產環境中，你可能會想使用更持久的儲存方案，例如 Redis 或資料庫。

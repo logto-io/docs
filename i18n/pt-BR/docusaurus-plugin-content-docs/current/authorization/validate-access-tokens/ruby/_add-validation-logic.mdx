@@ -1,0 +1,181 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import GrapeValidation from './fragments/grape/_validation.md';
+import RailsValidation from './fragments/rails/_validation.md';
+import SinatraValidation from './fragments/sinatra/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  rails: <RailsValidation />,
+  sinatra: <SinatraValidation />,
+  grape: <GrapeValidation />,
+});
+
+Usamos a gem [jwt](https://github.com/jwt/ruby-jwt) para validar JWTs. Adicione-a ao seu Gemfile:
+
+```ruby title="Gemfile"
+gem 'jwt'
+# net-http faz parte da biblioteca padrão do Ruby desde o Ruby 2.7, não é necessário adicionar explicitamente
+```
+
+Depois, execute:
+
+```bash
+bundle install
+```
+
+Primeiro, adicione estas utilidades compartilhadas para lidar com JWKS e validação de token:
+
+```ruby title="jwt_validator.rb"
+require 'jwt'
+require 'net/http'
+require 'json'
+
+class JwtValidator
+  include AuthHelpers
+
+  def self.fetch_jwks
+    @jwks ||= begin
+      uri = URI(AuthConstants::JWKS_URI)
+      response = Net::HTTP.get_response(uri)
+      raise AuthorizationError.new('Falha ao buscar JWKS', 401) unless response.is_a?(Net::HTTPSuccess)
+
+      jwks_data = JSON.parse(response.body)
+      JWT::JWK::Set.new(jwks_data)
+    end
+  end
+
+  def self.validate_jwt(token)
+    jwks = fetch_jwks
+
+    # Deixe a biblioteca JWT lidar com a detecção do algoritmo a partir do JWKS
+    decoded_token = JWT.decode(token, nil, true, {
+      iss: AuthConstants::ISSUER,
+      verify_iss: true,
+      verify_aud: false, # Vamos verificar o público manualmente com base no modelo de permissão
+      jwks: jwks
+    })[0]
+
+    verify_payload(decoded_token)
+    decoded_token
+  end
+
+  def self.create_auth_info(payload)
+    scopes = payload['scope']&.split(' ') || []
+    audience = payload['aud'] || []
+
+    AuthInfo.new(
+      payload['sub'],
+      payload['client_id'],
+      payload['organization_id'],
+      scopes,
+      audience
+    )
+  end
+
+  def self.verify_payload(payload)
+    # Implemente sua lógica de verificação aqui com base no modelo de permissão
+    # Isso será mostrado na seção de modelos de permissão abaixo
+  end
+end
+```
+
+Depois, implemente o middleware para verificar o token de acesso:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+De acordo com seu modelo de permissão, implemente a lógica de verificação apropriada em `JwtValidator`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Recursos globais de API">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifique se a reivindicação de público corresponde ao seu indicador de recurso de API
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Público inválido')
+  end
+
+  # Verifique os escopos necessários para recursos globais de API
+  required_scopes = ['api:read', 'api:write'] # Substitua pelos escopos necessários no seu caso
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Escopo insuficiente')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Permissões de organização (não-API)">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifique se a reivindicação de público corresponde ao formato da organização
+  audiences = payload['aud'] || []
+  has_org_audience = audiences.any? { |aud| aud.start_with?('urn:logto:organization:') }
+
+  unless has_org_audience
+    raise AuthorizationError.new('Público inválido para permissões de organização')
+  end
+
+  # Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+  expected_org_id = 'your-organization-id' # Extraia do contexto da requisição
+  expected_aud = "urn:logto:organization:#{expected_org_id}"
+  unless audiences.include?(expected_aud)
+    raise AuthorizationError.new('ID da organização não corresponde')
+  end
+
+  # Verifique os escopos necessários para a organização
+  required_scopes = ['invite:users', 'manage:settings'] # Substitua pelos escopos necessários no seu caso
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Escopo de organização insuficiente')
+  end
+end
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Recursos de API no nível da organização">
+
+```ruby title="jwt_validator.rb"
+def self.verify_payload(payload)
+  # Verifique se a reivindicação de público corresponde ao seu indicador de recurso de API
+  audiences = payload['aud'] || []
+  unless audiences.include?('https://your-api-resource-indicator')
+    raise AuthorizationError.new('Público inválido para recursos de API no nível da organização')
+  end
+
+  # Verifique se o ID da organização corresponde ao contexto (você pode precisar extrair isso do contexto da requisição)
+  expected_org_id = 'your-organization-id' # Extraia do contexto da requisição
+  org_id = payload['organization_id']
+  unless expected_org_id == org_id
+    raise AuthorizationError.new('ID da organização não corresponde')
+  end
+
+  # Verifique os escopos necessários para recursos de API no nível da organização
+  required_scopes = ['api:read', 'api:write'] # Substitua pelos escopos necessários no seu caso
+  token_scopes = payload['scope']&.split(' ') || []
+
+  unless required_scopes.all? { |scope| token_scopes.include?(scope) }
+    raise AuthorizationError.new('Escopos insuficientes para recursos de API no nível da organização')
+  end
+end
+```
+
+</TabItem>
+</Tabs>

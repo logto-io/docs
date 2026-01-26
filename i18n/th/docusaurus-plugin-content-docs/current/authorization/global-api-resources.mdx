@@ -1,0 +1,282 @@
+---
+sidebar_position: 3
+---
+
+import illustration from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import AuthorizationRequestExample from '@site/docs/authorization/fragments/AuthorizationRequestExample';
+import ClientCredentialsRequestExample from '@site/docs/authorization/fragments/ClientCredentialsRequestExample';
+import TokenRequestExample from '@site/docs/authorization/fragments/TokenRequestExample';
+import HandleUserPermissionChange from '@site/docs/authorization/fragments/_handle-user-permission-change.mdx';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+# ปกป้องทรัพยากร API ระดับโกลบอล
+
+export const resource = 'https://api.your-app.com';
+
+ปกป้อง API ที่ใช้ทั่วทั้งผลิตภัณฑ์ของคุณด้วยการควบคุมการเข้าถึงตามบทบาท (RBAC) ใน Logto กำหนดบทบาทและสิทธิ์ระดับโกลบอลเพื่อควบคุมการเข้าถึงของผู้ใช้และไคลเอนต์ทั้งหมดในแอปพลิเคชันของคุณ
+
+## ทรัพยากร API ระดับโกลบอลคืออะไร? \{#what-are-global-api-resources}
+
+ทรัพยากร API ระดับโกลบอล คือ endpoint หรือบริการในแอปพลิเคชันของคุณที่ผู้ใช้ทุกคนสามารถเข้าถึงได้ ไม่ว่าจะอยู่ในองค์กรหรือผู้เช่าใดก็ตาม โดยทั่วไปจะเป็น API ที่เปิดเผยต่อสาธารณะ, บริการหลักของผลิตภัณฑ์ หรือ endpoint ใด ๆ ที่ไม่ได้จำกัดขอบเขตกับองค์กรใดองค์กรหนึ่ง
+
+**กรณีการใช้งาน เช่น**
+
+- API สาธารณะ หรือ endpoint ที่ใช้ร่วมกันในกลุ่มผู้ใช้ของคุณ
+- Microservices ที่ไม่ได้ผูกกับระบบหลายผู้เช่า (multi-tenancy)
+- API หลักของแอปพลิเคชัน (เช่น `/api/users`, `/api/products`) ที่ลูกค้าทุกคนใช้
+
+Logto ช่วยให้คุณรักษาความปลอดภัย API เหล่านี้ด้วย OAuth 2.1 ร่วมกับการควบคุมการเข้าถึงตามบทบาทที่ยืดหยุ่น
+
+## วิธีการทำงานใน Logto \{#how-it-works-in-logto}
+
+- **ทรัพยากร API และสิทธิ์ถูกลงทะเบียนในระดับโกลบอล:** แต่ละ API ที่คุณต้องการปกป้องจะถูกกำหนดด้วย resource indicator (URI) เฉพาะ พร้อมชุดสิทธิ์ (scopes) ที่ควบคุมการเข้าถึง
+- **การเข้าถูกควบคุมด้วยบทบาทระดับโกลบอล:** คุณสามารถกำหนดสิทธิ์ให้กับบทบาท แล้วมอบหมายบทบาทเหล่านั้นให้กับผู้ใช้หรือไคลเอนต์
+- **แยกจากสิทธิ์ระดับองค์กร:** ทรัพยากร API ระดับโกลบอลไม่มีบริบทขององค์กร อย่างไรก็ตาม สามารถใช้ร่วมกับบทบาทขององค์กรเพื่อเพิ่มชั้นบริบทได้หากต้องการ หากต้องการปกป้อง API ระดับองค์กร ดู [ปกป้องทรัพยากร API ระดับองค์กร](/authorization/organization-level-api-resources)
+
+<img src={illustration} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+### ภาพรวมการนำไปใช้ \{#implementation-overview}
+
+1. **ลงทะเบียนทรัพยากร API ของคุณ** และกำหนดสิทธิ์ใน Logto
+2. **กำหนดบทบาท** พร้อมสิทธิ์ที่จำเป็นสำหรับการเข้าถึง API
+3. **มอบหมายบทบาท** ให้กับผู้ใช้หรือไคลเอนต์
+4. **ใช้ OAuth 2.0 authorization flows** เพื่อขอรับโทเค็นการเข้าถึงสำหรับ API (ค่าพารามิเตอร์ resource ต้องตรงกับ API identifier ที่ลงทะเบียนไว้)
+5. **ตรวจสอบโทเค็นการเข้าถึง** ใน API ของคุณเพื่อบังคับใช้สิทธิ์
+
+### ทำความเข้าใจ resource indicator \{#understanding-resource-indicators}
+
+Logto สร้างแบบจำลองทรัพยากร API ตาม [RFC 8707: Resource Indicators for OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707.html) โดย **resource indicator** คือ URI ที่ระบุ API หรือบริการเป้าหมายที่ร้องขออย่างเฉพาะเจาะจง
+
+**ประเด็นสำคัญ**
+
+- Resource indicator ต้องเป็น absolute URI (เช่น `https://api.example.com`)
+- ไม่มี fragment component; หลีกเลี่ยงการใช้ query string หากเป็นไปได้
+- Resource indicator ช่วยให้รองรับโทเค็นที่จำกัดผู้รับ (audience-restricted tokens) และสถาปัตยกรรม multi-API
+
+**ตัวอย่าง**
+
+- Management API: `https://my-tenant.logto.app/api`
+- Custom global API: `https://api.yourapp.com`
+
+### กระบวนการอนุญาต: การยืนยันตัวตนและปกป้อง API ของคุณ \{#authorization-flow-authenticating-and-securing-your-api}
+
+กระบวนการด้านล่างนี้ใช้ได้ทั้งกรณีการยืนยันตัวตนของผู้ใช้แบบโต้ตอบ (browser / app) และกรณี backend เครื่องต่อเครื่อง (M2M)
+
+โปรดทราบว่ากระบวนการนี้ไม่ได้ลงรายละเอียดพารามิเตอร์หรือ header ที่จำเป็นทั้งหมด แต่เน้นขั้นตอนหลัก อ่านต่อเพื่อดูตัวอย่างการทำงานจริง
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Logto
+    participant API as ทรัพยากร API
+
+    alt การยืนยันตัวตนของผู้ใช้
+        Client->>Logto: GET /oidc/auth
+        Logto->>Logto: เปลี่ยนเส้นทางผู้ใช้ไปยังหน้าลงชื่อเข้าใช้
+        Logto->>Client: เปลี่ยนเส้นทางกลับพร้อม `authorization_code`
+        alt ใช้ authorization_code grant
+            Client->>Logto: POST /oidc/token พร้อม `grant_type=authorization_code`<br/>และพารามิเตอร์ `resource`
+        else ใช้ refresh_token grant
+            Client->>Logto: POST /oidc/token พร้อม `grant_type=authorization_code`
+            Logto->>Client: ส่งคืน refresh token
+            Client->>Logto: POST /oidc/token พร้อม `grant_type=refresh_token`<br/>และพารามิเตอร์ `resource`
+        end
+    else การยืนยันตัวตนของไคลเอนต์เครื่องต่อเครื่อง (M2M)
+        Client->>Logto: POST /oidc/token พร้อม `grant_type=client_credentials`<br/>และพารามิเตอร์ `resource`
+    end
+
+    Logto->>Client: ส่งคืนโทเค็นการเข้าถึง (JSON Web Token)
+    Client->>API: ร้องขอพร้อม Bearer token
+    API->>API: ตรวจสอบโทเค็นการเข้าถึง
+
+    alt โทเค็นถูกต้อง
+      API->>Client: ส่งคืนข้อมูลทรัพยากรที่ปกป้องไว้
+    else โทเค็นไม่ถูกต้อง
+      API->>Client: 401 ไม่ได้รับอนุญาต
+    end
+```
+
+_การยืนยันตัวตนของผู้ใช้ = browser / app. M2M = บริการ backend หรือสคริปต์ที่ใช้ client credentials._
+
+:::note
+ค่าพารามิเตอร์ `resource` ต้องตรงกับ API identifier (resource indicator) ที่คุณลงทะเบียนใน Logto
+:::
+
+## ขั้นตอนการนำไปใช้ \{#implementation-steps}
+
+### ลงทะเบียนทรัพยากร API ของคุณ \{#register-your-api-resources}
+
+1. ไปที่ <CloudLink to="/api-resources">Console → API resources</CloudLink>
+2. สร้าง API resource ใหม่ (เช่น `https://api.yourapp.com/org`) และกำหนดสิทธิ์ (scopes) ของมัน
+
+สำหรับขั้นตอนการตั้งค่าแบบละเอียด ดู [กำหนด API resources พร้อมสิทธิ์](/authorization/role-based-access-control#define-api-resources-with-permissions)
+
+### ตั้งค่าบทบาทระดับโกลบอล \{#set-up-global-roles}
+
+1. ไปที่ <CloudLink to="/roles">Console → Roles</CloudLink>
+2. สร้างบทบาทที่สอดคล้องกับสิทธิ์ของ API ของคุณ (เช่น `read:products`, `write:products`)
+3. มอบหมายบทบาทเหล่านี้ให้กับผู้ใช้หรือไคลเอนต์ที่ต้องการเข้าถึง API
+
+สำหรับขั้นตอนการตั้งค่าแบบละเอียด ดู [ใช้บทบาทระดับโกลบอล](/authorization/role-based-access-control#configure-global-roles)
+
+### ขอรับโทเค็นการเข้าถึงสำหรับทรัพยากร API ระดับโกลบอล \{#obtain-access-tokens-for-global-api-resources}
+
+ก่อนเข้าถึงทรัพยากร API ระดับโกลบอล ไคลเอนต์ของคุณต้องขอโทเค็นการเข้าถึง Logto จะออก [JSON Web Token (JWT)](https://auth.wiki/jwt) เป็นโทเค็นการเข้าถึงสำหรับทรัพยากร API ระดับโกลบอล โดยปกติจะใช้ [OAuth 2.0 authorization code flow](https://auth.wiki/authorization-code-flow), [refresh token flow](https://auth.wiki/refresh-token) หรือ [client credentials flow](https://auth.wiki/client-credentials-flow)
+
+#### Authorization code หรือ refresh token flow \{#authorization-code-or-refresh-token-flow}
+
+SDK อย่างเป็นทางการของ Logto ทั้งหมดรองรับการขอโทเค็นการเข้าถึงสำหรับทรัพยากร API ระดับโกลบอลด้วย refresh token flow ได้ทันที คุณยังสามารถใช้ไลบรารี OAuth 2.0 / OIDC client มาตรฐานเพื่อใช้งาน flow นี้ได้
+
+<Tabs groupId="user-client">
+<TabItem value="logto-sdk" label="Logto SDK">
+
+เมื่อเริ่มต้น Logto client ให้เพิ่ม resource indicator ลงในพารามิเตอร์ `resources` (array) แล้วเพิ่มสิทธิ์ (scopes) ที่ต้องการลงในพารามิเตอร์ `scopes`
+
+เมื่อผู้ใช้ได้รับการยืนยันตัวตนแล้ว ให้ส่ง resource indicator ในพารามิเตอร์ `resource` หรือพารามิเตอร์ที่มีชื่อคล้ายกันเมื่อขอโทเค็นการเข้าถึง (เช่น เรียก `getAccessToken()`)
+
+ดูรายละเอียดของแต่ละ SDK ได้ที่ [Quick starts](/quick-starts)
+
+</TabItem>
+<TabItem value="oauth-client" label="OAuth 2.0 / OIDC client library">
+
+เมื่อกำหนดค่า OAuth 2.0 client หรือเริ่มต้น authorization code flow ให้แน่ใจว่าคุณใส่พารามิเตอร์ `resource` และ scopes ที่ต้องการใน authorization request
+
+ไลบรารีบางตัวอาจไม่รองรับพารามิเตอร์ `resource` โดยตรง แต่โดยทั่วไปจะอนุญาตให้ส่งพารามิเตอร์เพิ่มเติมใน authorization request ได้ ตรวจสอบเอกสารของไลบรารีของคุณสำหรับรายละเอียด
+
+นี่คือตัวอย่าง authorization request ที่ไม่เป็นทางการโดยใช้พารามิเตอร์ `resource` และ `scope`:
+
+<AuthorizationRequestExample resource={resource} scope="read:products write:products" />
+
+เมื่อผู้ใช้ได้รับการยืนยันตัวตนแล้ว คุณจะได้รับ authorization code นำ code นี้ไปแลกเป็น access token โดยส่ง POST request ไปที่ endpoint `/oidc/token` ของ Logto พร้อมพารามิเตอร์ `resource` ใน request body
+
+นี่คือตัวอย่าง token request ที่ไม่เป็นทางการโดยใช้ grant type แบบ authorization code:
+
+<TokenRequestExample grantType="authorization_code" resource={resource} />
+
+คุณยังสามารถใช้ grant type แบบ `refresh_token` เพื่อขอโทเค็นการเข้าถึงใหม่โดยไม่ต้องมีการโต้ตอบของผู้ใช้ ตราบใดที่มีพารามิเตอร์ `resource` ใน request
+
+นี่คือตัวอย่าง token request ที่ไม่เป็นทางการโดยใช้ grant type แบบ refresh token:
+
+<TokenRequestExample grantType="refresh_token" resource={resource} />
+
+</TabItem>
+</Tabs>
+
+#### Client credentials flow \{#client-credentials-flow}
+
+สำหรับกรณีเครื่องต่อเครื่อง (M2M) คุณสามารถใช้ client credentials flow เพื่อขอโทเค็นการเข้าถึงสำหรับทรัพยากร API ระดับโกลบอลของคุณ โดยส่ง POST request ไปที่ endpoint `/oidc/token` ของ Logto คุณสามารถขอโทเค็นการเข้าถึงโดยใช้ client ID และ secret ของคุณ
+
+มีสองพารามิเตอร์สำคัญที่ต้องใส่ใน request:
+
+- `resource`: URI ของ resource indicator ของ API ที่คุณต้องการเข้าถึง (เช่น `https://api.yourapp.com`)
+- `scope`: สิทธิ์ที่คุณต้องการร้องขอสำหรับ API (เช่น `read:products write:products`)
+
+นี่คือตัวอย่าง token request ที่ไม่เป็นทางการโดยใช้ grant type แบบ client credentials:
+
+<ClientCredentialsRequestExample
+  resource="https://api.yourapp.com"
+  scope="read:products write:products"
+/>
+
+### ตรวจสอบ JWT access token ใน API ของคุณ \{#validating-jwt-access-tokens-in-your-api}
+
+JWT ที่ออกโดย Logto จะมีการอ้างสิทธิ์ (claims) ที่ API ของคุณสามารถใช้เพื่อบังคับใช้การอนุญาต
+
+เมื่อ API ของคุณได้รับ request ที่มี access token จาก Logto คุณควร:
+
+- ตรวจสอบลายเซ็นของโทเค็น (โดยใช้ JWKs ของ Logto)
+- ยืนยันว่าโทเค็นยังไม่หมดอายุ (`exp` claim)
+- ตรวจสอบว่า `iss` (ผู้ออก) ตรงกับ endpoint Logto ของคุณ
+- ตรวจสอบว่า `aud` (ผู้รับ) ตรงกับ resource identifier ของ API ที่คุณลงทะเบียน (เช่น `https://api.yourapp.com`)
+- แยก claim `scope` (คั่นด้วยช่องว่าง) และตรวจสอบสิทธิ์ที่ต้องการ
+
+สำหรับคู่มือแบบทีละขั้นตอนและเฉพาะภาษา ดู [วิธีตรวจสอบ access token](/authorization/validate-access-tokens)
+
+<HandleUserPermissionChange type="global" />
+
+## แนวปฏิบัติที่ดีและเคล็ดลับด้านความปลอดภัย \{#best-practices-and-security-tips}
+
+- **กำหนดสิทธิ์ตามธุรกิจ:** ใช้ชื่อที่ชัดเจนและสอดคล้องกับการกระทำจริง
+- **ตั้งอายุโทเค็นให้สั้น:** ลดความเสี่ยงหากโทเค็นรั่วไหล
+- **จำกัด scope ที่ให้:** ให้โทเค็นเฉพาะสิทธิ์ที่จำเป็นจริง ๆ
+- **ใช้การจำกัดผู้รับ (audience restriction):** ตรวจสอบ claim `aud` เสมอเพื่อป้องกันการนำไปใช้ผิดวัตถุประสงค์
+
+## คำถามที่พบบ่อย \{#faqs}
+
+<details>
+<summary>
+
+### ถ้าไคลเอนต์ของฉันไม่รองรับพารามิเตอร์ resource ล่ะ? \{#what-if-my-client-doesn-t-support-the-resource-parameter}
+
+</summary>
+
+ตั้งค่า API resource เริ่มต้นใน Logto Console โทเค็นจะใช้ audience นี้โดยอัตโนมัติเมื่อไม่มีการระบุ resource parameter ใน token request
+
+</details>
+
+<details>
+<summary>
+
+### ทำไมฉันถึงได้รับ 401 Unauthorized จาก API ของฉัน? \{#why-do-i-get-401-unauthorized-from-my-api}
+
+</summary>
+
+ตรวจสอบปัญหาทั่วไปดังต่อไปนี้:
+
+- **ลายเซ็นโทเค็น:** ตรวจสอบว่า backend ของคุณดึง JWKs ที่ถูกต้องจาก Logto
+- **อายุโทเค็น:** ตรวจสอบว่าโทเค็นยังไม่หมดอายุ (`exp` claim)
+- **ผู้รับ (Audience):** ตรวจสอบว่า claim `aud` ตรงกับ resource indicator ของ API ที่คุณลงทะเบียน
+- **scope ที่ต้องการ:** ตรวจสอบว่าโทเค็นมีสิทธิ์ที่จำเป็นใน claim `scope`
+
+</details>
+
+<details>
+<summary>
+
+### จะทดสอบโดยไม่ต้องมีไคลเอนต์เต็มรูปแบบได้อย่างไร? \{#how-do-i-test-without-a-full-client}
+
+</summary>
+
+ใช้ [personal access token](/user-management/personal-access-token) เพื่อจำลองการเรียกแบบยืนยันตัวตน วิธีนี้ช่วยให้คุณทดสอบ endpoint ของ API ได้โดยไม่ต้องพัฒนา OAuth flow ครบถ้วนในแอปไคลเอนต์ของคุณ
+
+</details>
+
+<details>
+<summary>
+
+### ขอสิทธิ์โดยใช้ prefix หรือชื่อย่อของ scope ได้หรือไม่? \{#can-i-use-scope-prefixes-or-shortened-versions}
+
+</summary>
+
+ไม่ได้ ชื่อ scope ต้อง **ตรงกับ** ชื่อสิทธิ์ที่กำหนดไว้ใน API resource ของคุณเท่านั้น ไม่สามารถใช้ prefix หรือชื่อย่อเป็น wildcard ได้
+
+**ตัวอย่าง:**
+
+ถ้า API resource ของคุณกำหนดไว้ว่า:
+
+- `read:elections`
+- `write:elections`
+
+คุณต้องร้องขอ:
+
+```swift
+scopes: ["read:elections", "write:elections"]
+```
+
+แบบนี้จะ **ไม่ทำงาน**:
+
+```swift
+scopes: ["read", "write"]  // ❌ ไม่ตรงกับชื่อสิทธิ์
+```
+
+</details>
+
+## อ่านเพิ่มเติม \{#further-reading}
+
+<Url href="/authorization/validate-access-tokens">วิธีตรวจสอบ access token</Url>
+<Url href="/use-cases/authorization/rbac-in-practice">
+  RBAC ในทางปฏิบัติ: การนำการอนุญาตที่ปลอดภัยไปใช้กับแอปของคุณ
+</Url>
+<Url href="/developers/custom-token-claims">ปรับแต่ง token claims</Url>
+<Url href="https://www.rfc-editor.org/rfc/rfc8707.html">RFC 8707: Resource Indicators</Url>

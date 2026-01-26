@@ -1,0 +1,157 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+Wir verwenden [jose](https://github.com/panva/jose) in diesem Beispiel, um das JWT zu validieren. Installiere es, falls du es noch nicht getan hast:
+
+```bash
+npm install jose
+```
+
+Oder verwende deinen bevorzugten Paketmanager (z. B. `pnpm` oder `yarn`).
+
+Füge zunächst diese gemeinsamen Hilfsfunktionen hinzu, um die JWT-Validierung zu handhaben:
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // Implementiere hier deine Verifizierungslogik basierend auf dem Berechtigungsmodell
+  // Dies wird im Abschnitt zu den Berechtigungsmodellen unten gezeigt
+}
+```
+
+Implementiere dann das Middleware, um das Zugangstoken zu überprüfen:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+Entsprechend deinem Berechtigungsmodell implementiere die passende Verifizierungslogik in `jwt-validator.ts`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="Globale API-Ressourcen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Ungültige Zielgruppe (audience)');
+  }
+
+  // Überprüfe erforderliche Berechtigungen für globale API-Ressourcen
+  const requiredScopes = ['api:read', 'api:write']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende Berechtigung (scope)');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="Organisation (nicht-API) Berechtigungen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch dem Organisationsformat entspricht
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Ungültige Zielgruppe für Organisationsberechtigungen');
+  }
+
+  // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
+  const expectedOrgId = 'your-organization-id'; // Aus dem Request-Kontext extrahieren
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Organisations-ID stimmt nicht überein');
+  }
+
+  // Überprüfe erforderliche Organisationsberechtigungen
+  const requiredScopes = ['invite:users', 'manage:settings']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende Organisationsberechtigung (scope)');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="Organisationsbezogene API-Ressourcen">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // Überprüfe, ob der Audience-Anspruch mit deinem API-Ressourcenindikator übereinstimmt
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Ungültige Zielgruppe für organisationsbezogene API-Ressourcen');
+  }
+
+  // Überprüfe, ob die Organisations-ID mit dem Kontext übereinstimmt (du musst dies ggf. aus dem Request-Kontext extrahieren)
+  const expectedOrgId = 'your-organization-id'; // Aus dem Request-Kontext extrahieren
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Organisations-ID stimmt nicht überein');
+  }
+
+  // Überprüfe erforderliche Berechtigungen für organisationsbezogene API-Ressourcen
+  const requiredScopes = ['api:read', 'api:write']; // Ersetze durch deine tatsächlich erforderlichen Berechtigungen
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Unzureichende organisationsbezogene API-Berechtigungen (scope)');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

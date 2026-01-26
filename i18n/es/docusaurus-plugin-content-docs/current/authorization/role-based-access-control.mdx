@@ -1,0 +1,426 @@
+---
+sidebar_position: 1
+---
+
+import globalApiResources from '@site/docs/authorization/assets/rbac-global-api-resources.png';
+import organizationApiResources from '@site/docs/authorization/assets/rbac-organization-level-api-resources.png';
+import organizationPermissions from '@site/docs/authorization/assets/rbac-organization-permissions.png';
+
+# Control de acceso basado en roles (RBAC) (Role-based access control (RBAC))
+
+El [control de acceso basado en roles (RBAC)](https://auth.wiki/rbac) es un modelo de autorización probado que mapea acciones empresariales del mundo real a roles y permisos. Esta guía cubre cómo funciona RBAC en Logto, patrones de diseño prácticos y mejores prácticas para construir aplicaciones SaaS seguras y escalables.
+
+## ¿Qué es RBAC? \{#what-is-rbac}
+
+RBAC te permite gestionar **quién** puede hacer **qué** en tu aplicación agrupando permisos en roles. Los usuarios y clientes reciben uno o más roles, que otorgan los permisos necesarios para acceder a funciones, APIs o datos.
+
+**Conceptos clave**
+
+- **Rol (Role):** Un conjunto nombrado de permisos (por ejemplo, `admin`, `viewer`, `billing-manager`).
+- **Permiso (Permission):** Una acción o derecho (por ejemplo, `manage:members`, `view:analytics`).
+- **Alcance (Scope):** Sinónimo de permiso, comúnmente usado en contextos de OAuth 2.0.
+- **Recurso de API (API resource):** Una API, endpoint o servicio al que se aplican permisos.
+- **Usuario/Cliente (User/Client):** La entidad a la que se asignan roles (usuarios finales o aplicaciones máquina a máquina (M2M)).
+
+:::note
+En Logto (y OAuth 2.1), **“permisos” y “alcances” se refieren al mismo concepto** y se usan indistintamente a lo largo de esta documentación.
+:::
+
+### Recursos de API \{#api-resources}
+
+Un **recurso de API** es cualquier endpoint o servicio protegido en tu aplicación—como una API REST, endpoint GraphQL u otro servicio backend que requiera autorización.
+
+Logto modela los recursos de API siguiendo [RFC 8707: Indicadores de recurso para OAuth 2.0](https://www.rfc-editor.org/rfc/rfc8707).  
+Cada recurso de API se identifica de manera única mediante un **indicador de recurso** (un URI), que se utiliza para delimitar los tokens de acceso y hacer cumplir las restricciones de audiencia.
+
+| **Nombre de propiedad**        | **Descripción**                                                                                                                                                                     | **Obligatorio** |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Nombre de API                  | Un nombre fácil de entender para identificar el recurso de API en la Consola y los registros.                                                                                       | Sí              |
+| Identificador de API           | El URI único [indicador de recurso](https://www.rfc-editor.org/rfc/rfc8707.html) que representa el recurso de API.                                                                  | Sí              |
+| Tiempo de expiración del token | El tiempo de vida de los tokens de acceso emitidos para esta API (en segundos). El valor predeterminado es **3600** (1 hora).                                                       | No              |
+| API predeterminada             | Solo un recurso de API puede establecerse como predeterminado por inquilino Logto. Cuando se establece, el parámetro `resource` puede omitirse en las solicitudes de autenticación. | No              |
+
+:::note
+Cuando se designa un recurso de API predeterminado, Logto lo usará como la audiencia para los tokens cuando el parámetro `resource` se omita en las solicitudes de autenticación.
+:::
+
+#### Comportamiento del recurso de API predeterminado \{#default-api-resource-behavior}
+
+En Logto, cada permiso global definido por el usuario (alcance) debe estar vinculado a un recurso de API. De lo contrario, el permiso se trata como un alcance de OpenID Connect (OIDC).
+
+Esto generalmente no afecta a la mayoría de las integraciones, pero al trabajar con aplicaciones de terceros que **no** admiten [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html), la solicitud de autorización inicial puede no incluir un parámetro `resource`. En estos casos, Logto emite [tokens de acceso opacos (opaque access tokens)](https://blog.logto.io/opaque-token-vs-jwt#use-cases-in-oidc) en lugar de JWTs, lo que puede complicar el control de acceso.
+
+Para resolver esto, puedes establecer un **recurso de API predeterminado** para tu inquilino:
+
+- **Cuando falta el parámetro `resource` en la [Solicitud de autenticación (Authentication request)](https://auth.wiki/authentication-request):**
+  - Logto usa el recurso de API predeterminado como la audiencia para los tokens de acceso.
+- **Si se incluye el alcance `openid`:**
+  - Logto emite un token de acceso opaco para el [endpoint Userinfo](https://auth.wiki/userinfo-endpoint) cuando no hay un `resource` presente en la solicitud de token.
+- **Si no se incluye el alcance `openid`:**
+  - Logto emite un token de acceso JWT para el recurso de API predeterminado como audiencia.
+
+Establecer un recurso de API predeterminado garantiza una integración más fluida con aplicaciones que no admiten RFC 8707, manteniendo controles de acceso seguros y basados en estándares.
+
+## RBAC en Logto \{#rbac-in-logto}
+
+Logto proporciona un RBAC flexible tanto a nivel **global** como de **organización** para soportar SaaS multi-inquilino:
+
+- **Roles globales (Global roles)** Asignados en todo el inquilino Logto. Ideal para permisos a nivel de producto, administradores o superusuarios.
+- **Roles de organización (Organization roles)** Asignados dentro de una organización. Perfectos para acceso específico de la organización, como administradores de espacios de trabajo, miembros de proyectos o grupos personalizados.
+- **Recursos de API (API resources)** APIs y funciones registradas que requieren autorización.
+- **Permisos (alcances) (Permissions (scopes))** Definidos por recurso de API o en la plantilla de organización.
+  - Los permisos de recursos de API pueden asignarse a roles globales o de organización.
+  - Los permisos de organización solo pueden asignarse a roles de organización.
+
+Dependiendo de las necesidades de tu producto, puedes usar estos modelos RBAC por separado o en combinación.
+
+A continuación, tres ejemplos ilustrativos con diagramas:
+
+### Modelo 1: Recursos de API globales \{#model-1-global-api-resources}
+
+**Escenario**
+
+Un producto SaaS con APIs compartidas entre todos los usuarios, independientemente de la organización.
+Usa roles globales para controlar el acceso a los recursos de API a nivel de producto.
+
+**Diagrama**
+
+<img src={globalApiResources} alt="Global API resources RBAC" style={{ maxWidth: '100%' }} />
+
+**Puntos clave**
+
+- **Usuarios** y **aplicaciones M2M** reciben roles globales (por ejemplo, Gerente de tienda, Agente de servicio).
+- Los roles otorgan permisos (alcances), como `read:store`, `order:book`.
+- Los permisos están vinculados directamente a recursos de API (por ejemplo, `https://read.shop/stores`).
+
+**Cuándo usar**
+
+Cuando el acceso no es específico de la organización o los usuarios/clientes operan en todas las organizaciones.
+
+:::note
+Logto no admite permisos que no sean de API a nivel global, ya que está reservado para alcances de OpenID Connect (OIDC).
+:::
+
+:::tip
+Para una guía paso a paso de implementación, consulta [Proteger recursos de API globales](/authorization/global-api-resources).
+:::
+
+### Modelo 2: Permisos de organización (no API) \{#model-2-organization-non-api-permissions}
+
+**Escenario**
+
+Controlar funciones o flujos internos de la aplicación que no se aplican a nivel de API (como restringir funciones de la interfaz, paneles o herramientas internas) usando roles y permisos de organización.
+
+**Diagrama**
+
+<img
+  src={organizationPermissions}
+  alt="Organization permissions RBAC"
+  style={{ maxWidth: '800px', width: '100%' }}
+/>
+
+**Puntos clave**
+
+- Cada organización (A y B) tiene sus propias asignaciones, pero todas las organizaciones comparten un conjunto común de roles definidos en la [plantilla de organización](/authorization/organization-template).
+- **Usuarios** y **aplicaciones M2M** pueden tener diferentes roles en cada organización.
+- **Roles de organización** (por ejemplo, Admin, Miembro) otorgan permisos de organización como `invite:member`, `manage:billing`.
+- Los permisos se aplican en la interfaz de la aplicación o la lógica de negocio, no por el gateway de API.
+
+**Cuándo usar**
+
+Cuando quieres gestionar quién puede ver o usar funciones dentro de una organización y no necesitas aplicar controles a nivel de API.
+
+:::tip
+Para una guía paso a paso de implementación, consulta [Proteger permisos de organización (no API)](/authorization/organization-permissions).
+:::
+
+### Modelo 3: Recursos de API a nivel de organización \{#model-3-organization-level-api-resources}
+
+**Escenario**
+
+Una plataforma SaaS multi-inquilino donde cada organización tiene sus propios miembros, datos y roles.
+Usa **roles de organización** para otorgar acceso a la API dentro de cada organización.
+
+**Diagrama**
+
+<img
+  src={organizationApiResources}
+  alt="Organization-level API resources RBAC"
+  style={{ maxWidth: '100%' }}
+/>
+
+**Puntos clave**
+
+- Cada organización (A y B) tiene sus propias asignaciones, pero todas las organizaciones comparten un conjunto común de roles definidos en la [plantilla de organización](/authorization/organization-template).
+- **Usuarios** y **aplicaciones M2M** pueden tener diferentes roles en cada organización.
+- Los permisos (alcances), como `invite:member`, `manage:billing` están vinculados a recursos de API.
+- Los permisos se aplican a nivel de API cuando el token de acceso incluye un contexto de organización.
+
+**Cuándo usar**
+
+Cuando necesitas controlar el acceso a la API según el contexto de la organización, como permitir que los usuarios gestionen los datos de su propia organización.
+
+:::tip
+Para una guía paso a paso de implementación, consulta [Proteger recursos de API a nivel de organización](/authorization/organization-level-api-resources).
+:::
+
+## Diseña e implementa un modelo de permisos \{#design-and-implement-a-permission-model}
+
+Según la arquitectura de tu producto y las necesidades de los usuarios, puedes elegir un modelo RBAC adecuado de los ejemplos anteriores. Aquí tienes una tabla resumen para ayudarte a diseñar e implementar tu modelo de permisos de manera efectiva:
+
+| Modelo de permisos                      | ¿Definir recursos de API con permisos? | ¿Definir permisos de organización? | ¿Usar roles globales? | ¿Usar roles de organización? |
+| --------------------------------------- | -------------------------------------- | ---------------------------------- | --------------------- | ---------------------------- |
+| Recursos de API globales                | ✅                                     | n/a                                | ✅                    | n/a                          |
+| Permisos de organización (no API)       | n/a                                    | ✅                                 | n/a                   | ✅                           |
+| Recursos de API a nivel de organización | ✅                                     | n/a                                | n/a                   | ✅                           |
+
+### Definir recursos de API con permisos \{#define-api-resources-with-permissions}
+
+Registra tus APIs en la Consola Logto o [vía Management API](https://openapi.logto.io/group/endpoint-resources) para definir los recursos de API y sus permisos (alcances).
+
+:::note
+En OAuth 2.0 y OIDC, un “recurso de API” se denomina técnicamente indicador de recurso, un URI único que identifica tu API o servicio protegido.
+:::
+
+#### Registrar recursos de API con permisos en la Consola Logto \{#register-api-resources-with-permissions-in-logto-console}
+
+1. Ve a <CloudLink to="/api-resources">Consola → Recursos de API</CloudLink>.
+2. Haz clic en **Crear recurso de API**.
+3. Proporciona:
+
+   - **Nombre de API:** Nombre legible para tu API.
+   - **Identificador de API:** Indicador de recurso de API (por ejemplo, `https://api.yourapp.com/org`).
+
+4. En la pestaña **Permisos**, haz clic en **Crear permiso** para crear permisos (alcances) para este recurso de API.
+5. En la pestaña **General**, puedes configurar opcionalmente lo siguiente:
+
+   - **Tiempo de expiración del token**: Establece cuánto tiempo serán válidos los tokens de acceso para este recurso de API. Recomendamos mantenerlo corto (por ejemplo, 1 hora) por seguridad.
+   - **API predeterminada**: Designa este recurso de API como predeterminado para la restricción de audiencia y emisión de tokens si no se especifica `resource` en la solicitud OAuth. Esto es opcional y puede ser útil para clientes que no admiten el parámetro `resource` (por ejemplo, algunas herramientas o plugins de terceros).
+
+#### Consejos \{#tips}
+
+- Mapea los indicadores de recursos de API a los endpoints reales de la API para proporcionar nombres intuitivos.
+  - Por ejemplo, `https://api.example.com/v1/users`.
+- Usa nombres claros y basados en acciones (por ejemplo, `invite:member`, `manage:billing`, `view:analytics`).
+  - Alternativamente, algunos prefieren un prefijo o agrupar por función para mayor claridad (por ejemplo, `billing:read`, `billing:manage`).
+- Mantén los permisos orientados al negocio, no solo a endpoints técnicos.
+
+**Ejemplo**
+
+| Indicador de recurso de API       | Permiso          | Descripción                         |
+| --------------------------------- | ---------------- | ----------------------------------- |
+| `https://api.example.com/users`   | `invite:user`    | Invitar nuevos usuarios             |
+| `https://api.example.com/users`   | `manage:user`    | Actualizar o eliminar usuarios      |
+| `https://api.example.com/billing` | `view:billing`   | Ver detalles de facturación         |
+| `https://api.example.com/billing` | `manage:billing` | Editar configuración de facturación |
+
+### Definir permisos de organización \{#define-organization-permissions}
+
+Registra permisos de organización en la Consola Logto o [vía Management API](https://openapi.logto.io/group/endpoint-organization-scopes) para definir permisos que se aplican dentro de cada organización. Los permisos de organización se definen en la [plantilla de organización](/authorization/organization-template).
+
+#### Registrar permisos de organización en la Consola Logto \{#register-organization-permissions-in-logto-console}
+
+1. Ve a <CloudLink to="/organization-template/organization-permissions">Consola → Plantilla de organización → Permisos de organización</CloudLink>.
+2. Haz clic en **Crear permiso de organización**.
+3. Proporciona:
+   - **Nombre del permiso:** Un nombre claro y basado en acción para el permiso (por ejemplo, `invite:member`, `manage:billing`).
+   - **Descripción:** Una breve descripción de lo que permite el permiso (por ejemplo, "Invitar nuevos miembros a la organización").
+4. Haz clic en **Crear permiso** para guardar.
+
+#### Consejos \{#tips}
+
+- Usa nombres claros y basados en acciones (por ejemplo, `invite:member`, `manage:billing`).
+- Mantén los permisos de organización distintos de los permisos de API para evitar confusiones.
+
+**Ejemplo**
+
+| Permiso de organización | Descripción                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `invite:member`         | Invitar nuevos miembros a la organización                |
+| `manage:billing`        | Editar configuración de facturación para la organización |
+
+### Configurar roles globales \{#configure-global-roles}
+
+Crea y configura roles globales en la Consola Logto o [vía Management API](https://openapi.logto.io/group/endpoint-roles) para agrupar permisos que se aplican en todo el inquilino Logto.
+
+Un rol global puede ser uno de los siguientes:
+
+- **Rol de usuario:** Asignado a usuarios finales, otorgando permisos para acceder a APIs y funciones.
+- **Rol máquina a máquina (M2M):** Asignado a aplicaciones M2M, otorgando permisos para acceder a APIs y funciones, incluyendo Logto Management API.
+
+:::note
+Ten en cuenta que estos dos tipos de roles no pueden mezclarse ni actualizarse después de su creación. Asigna usuarios o aplicaciones M2M al rol, según su tipo.
+:::
+
+#### Crear roles globales en la Consola Logto \{#create-global-roles-in-logto-console}
+
+1. Ve a <CloudLink to="/roles">Consola → Roles</CloudLink>.
+2. Haz clic en **Crear rol**.
+3. Proporciona:
+   - **Nombre del rol**: Un nombre claro y descriptivo para el rol (por ejemplo, `admin`, `viewer`, `billing-manager`).
+   - **Tipo de rol**: Elige entre **Usuario** o **Máquina a máquina (M2M)**. **Solo los roles máquina a máquina (M2M) pueden vincularse a Logto Management API**.
+   - **Descripción**: Una breve descripción del propósito del rol (por ejemplo, "Rol de administrador con acceso total", "Rol de visualizador solo lectura").
+   - **Asignar permisos**: Selecciona los permisos (alcances) que este rol debe tener de los recursos de API disponibles. Puedes actualizar los permisos más adelante según sea necesario.
+4. Haz clic en **Crear rol** para guardar.
+
+#### Asignar usuarios o aplicaciones M2M a roles globales \{#assign-users-or-m2m-apps-to-global-roles}
+
+1. Ve a <CloudLink to="/roles">Consola → Roles</CloudLink>.
+2. Haz clic en el rol al que deseas asignar usuarios o aplicaciones M2M.
+3. Para **roles de usuario**, haz clic en la pestaña **Usuarios**; para **roles M2M**, haz clic en la pestaña **aplicaciones máquina a máquina**.
+4. Haz clic en **Asignar usuarios** o **Asignar aplicaciones M2M**.
+5. Busca los usuarios o aplicaciones M2M que deseas asignar a este rol.
+6. Selecciona los usuarios o aplicaciones M2M y haz clic en **Asignar**.
+
+#### Roles globales predeterminados \{#default-global-roles}
+
+Puedes establecer uno o más roles globales como **roles predeterminados** para nuevos usuarios. Los roles predeterminados son los roles asignados automáticamente cuando se crean los usuarios, ya sea por auto-registro o creados a través de Management API. Puedes habilitar esta opción yendo a la pestaña “General” en la página de detalles bajo <CloudLink to="/roles">Consola > Roles</CloudLink>.
+
+### Configurar roles de organización \{#configure-organization-roles}
+
+Crea roles de organización en la Consola Logto o [vía Management API](https://openapi.logto.io/group/endpoint-organization-roles) para agrupar permisos que se aplican dentro de cada organización. Los roles de organización se definen en la [plantilla de organización](/authorization/organization-template).
+
+Un rol de organización puede ser uno de los siguientes:
+
+- **Rol de usuario:** Asignado a usuarios finales dentro de una organización, otorgando permisos para acceder a APIs y funciones.
+- **Rol máquina a máquina (M2M):** Asignado a aplicaciones M2M dentro de una organización, otorgando permisos para acceder a APIs y funciones. Este rol **no puede** vincularse a Logto Management API ya que es específico de la organización.
+
+:::note
+Ten en cuenta que estos dos tipos de roles no pueden mezclarse ni actualizarse después de su creación. Asigna usuarios o aplicaciones M2M al rol, según su tipo.
+:::
+
+#### Crear roles de organización en la Consola Logto \{#create-organization-roles-in-logto-console}
+
+1. Ve a <CloudLink to="/organization-template/organization-roles">Consola → Plantilla de organización → Roles de organización</CloudLink>.
+2. Haz clic en **Crear rol de organización**.
+3. Proporciona:
+
+   - **Nombre del rol**: Un nombre claro y descriptivo para el rol (por ejemplo, `admin`, `member`, `billing-manager`).
+   - **Tipo de rol**: Elige entre **Usuario** o **Máquina a máquina (M2M)**. **Solo los roles máquina a máquina (M2M) pueden vincularse a Logto Management API**.
+   - **Descripción**: Una breve descripción del propósito del rol (por ejemplo, "Rol de administrador con acceso total", "Rol de miembro con acceso básico").
+
+4. Haz clic en **Crear rol** para guardar.
+5. En el modal **Asignar permisos**, selecciona los permisos de organización y/o permisos de recursos de API que este rol debe tener. Puedes actualizar los permisos más adelante según sea necesario.
+
+#### Asignar usuarios o aplicaciones M2M a roles de organización \{#assign-users-or-m2m-apps-to-organization-roles}
+
+Dado que los roles de organización son específicos de la organización, debes asignar usuarios o aplicaciones M2M a roles de organización dentro del contexto de una organización.
+
+1. Ve a <CloudLink to="/organizations">Consola → Organizaciones</CloudLink>.
+2. Selecciona la organización que deseas gestionar.
+3. Para **roles de usuario**, haz clic en la pestaña **Usuarios**; para **roles M2M**, haz clic en la pestaña **aplicaciones máquina a máquina**.
+4. Si el usuario o la aplicación M2M aún no es miembro de la organización, haz clic en **Agregar miembro** o **Agregar aplicación M2M** para añadirlos a la organización. Durante este proceso, puedes asignarles uno o más roles de organización.
+5. Si el usuario o la aplicación M2M ya es miembro, haz clic en el menú de tres puntos junto a su nombre y selecciona **Editar roles de organización**.
+6. En el modal que se abre, selecciona y guarda los roles de organización que deseas asignar al usuario o aplicación M2M.
+
+#### Aprovisionamiento Just-in-time (JIT) \{#just-in-time-jit-provisioning}
+
+También puedes asignar roles de organización a usuarios o aplicaciones M2M en el momento en que se unen a una organización. Para ello, consulta [aprovisionamiento Just-in-time (JIT)](/organizations/just-in-time-provisioning).
+
+### Aplicar autorización en tu backend o API \{#enforcing-authorization-in-your-backend-or-api}
+
+Logto emite [JSON Web Tokens (JWTs)](https://auth.wiki/jwt) que contienen los reclamos necesarios para aplicar la autorización en tu aplicación o API.
+
+Para aplicar la autorización, tu backend o API debe:
+
+1. Requerir que el cliente presente un token de acceso válido en el encabezado de la solicitud con el formato `Authorization: Bearer <token>`.
+2. Validar el token de acceso para asegurarse de que fue emitido por Logto, no ha expirado y tiene los permisos (alcances) requeridos para la acción solicitada.
+3. Responder con un error (por ejemplo, HTTP 401 No autorizado o HTTP 403 Prohibido) si el token falta, es inválido o no tiene los permisos requeridos.
+
+Para guías paso a paso y específicas por lenguaje, consulta [Cómo validar tokens de acceso](/authorization/validate-access-tokens).
+
+### Integra el RBAC de Logto con tu aplicación \{#integrate-logto-rbac-with-your-application}
+
+Puedes integrar el RBAC de Logto en tu aplicación usando uno de dos enfoques:
+
+- **SDKs de Logto:** Usa un [SDK de Logto](/quick-starts) para el manejo integrado de los flujos de autenticación y autorización.
+- **Librerías estándar OAuth 2.0/OIDC:** Usa tu librería preferida de OAuth 2.0 u OpenID Connect para implementar los flujos necesarios.
+
+Una vez integrado, solicita tokens de acceso con los parámetros adecuados para tu modelo RBAC elegido. Añade el token de acceso al encabezado `Authorization` en tus solicitudes de API para aplicar los permisos.
+
+Consulta las guías de implementación en las secciones de modelos anteriores para ejemplos paso a paso.
+
+## Escenarios avanzados \{#advanced-scenarios}
+
+Explora casos de uso RBAC más sofisticados en Logto:
+
+- **Combinando roles globales y de organización**: Asigna ambos a usuarios/clientes cuando sea necesario; Logto resolverá según el contexto del token solicitado.
+- **Múltiples aplicaciones**: Usa recursos y alcances compartidos para RBAC entre aplicaciones.
+- **Permisos dinámicos**: Si es necesario, combina RBAC con verificaciones en tiempo de ejecución (por ejemplo, propiedad, atributos) para escenarios avanzados.
+- **Reclamos personalizados en tokens**: Usa [reclamos personalizados](/developers/custom-token-claims) para enriquecer los tokens según sea necesario.
+
+## Mejores prácticas y errores comunes \{#best-practices-common-pitfalls}
+
+- **Principio de menor privilegio**: Otorga solo los permisos que cada rol necesita.
+- **Evita la proliferación de permisos**: Mantén tu modelo de permisos simple y mantenible.
+- **Revisa y actualiza roles/permisos**: Audita regularmente tu modelo RBAC a medida que tu producto evoluciona.
+- **Separación de funciones**: Crea roles distintos para acciones sensibles/de administración.
+- **Prueba RBAC en staging**: Valida los límites y escalaciones de permisos.
+
+## Preguntas frecuentes \{#faqs}
+
+<details>
+<summary>
+
+### ¿Cómo actualizo roles o permisos en todas las organizaciones? \{#how-do-i-update-roles-or-permissions-across-all-organizations}
+
+</summary>
+
+Actualiza la [plantilla de organización](/authorization/organization-template) para cambios globales; las organizaciones existentes pueden heredar las actualizaciones.
+
+</details>
+
+<details>
+<summary>
+
+### ¿Puedo cambiar roles/permisos dinámicamente? \{#can-i-change-roles-permissions-dynamically}
+
+</summary>
+
+Sí, los roles y sus permisos pueden actualizarse en cualquier momento.
+
+</details>
+
+<details>
+<summary>
+
+### ¿Qué sucede si elimino un permiso de un rol? \{#what-happens-if-i-remove-a-permission-from-a-role}
+
+</summary>
+
+Los usuarios/clientes con ese rol perderán el permiso inmediatamente para nuevos tokens.
+
+</details>
+
+<details>
+<summary>
+
+### ¿Cómo puedo auditar quién tiene qué rol? \{#how-can-i-audit-who-has-what-role}
+
+</summary>
+
+Usa la Consola Logto o la API para listar las asignaciones de roles.
+
+</details>
+
+<details>
+<summary>
+
+### ¿Se pueden asignar roles y permisos vía API? \{#can-roles-and-permissions-be-assigned-via-api}
+
+</summary>
+
+Sí, tanto la Consola como Management API permiten gestionar roles y asignaciones programáticamente.
+
+</details>
+
+## Lecturas adicionales \{#further-reading}
+
+<Url href="/authorization/organization-template">Plantilla de organización</Url>
+<Url href="/developers/custom-token-claims">Personalización de reclamos en tokens</Url>
+<Url href="/authorization/validate-access-tokens">Cómo validar tokens de acceso</Url>
+<Url href="/authorization/global-api-resources">Proteger recursos de API globales</Url>
+<Url href="/authorization/organization-permissions">Proteger permisos de organización (no API)</Url>
+<Url href="/authorization/organization-level-api-resources">
+  Proteger recursos de API a nivel de organización
+</Url>

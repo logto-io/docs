@@ -1,0 +1,128 @@
+import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
+import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
+import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
+
+### แสดงข้อมูลผู้ใช้ \{#display-user-information}
+
+เมื่อผู้ใช้ลงชื่อเข้าใช้แล้ว ค่าที่ได้จาก `auth()` จะเป็นอ็อบเจกต์ที่มีข้อมูลของผู้ใช้ คุณสามารถแสดงข้อมูลนี้ในแอปของคุณได้ดังนี้:
+
+```tsx title="app/page.tsx"
+import { auth } from '@/auth';
+
+export default async function Home() {
+  const session = await auth();
+
+  return (
+    <main>
+      {session?.user && (
+        <div>
+          <h2>การอ้างสิทธิ์ (Claims):</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>ชื่อ</th>
+                <th>ค่า</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(session.user).map(([key, value]) => (
+                <tr key={key}>
+                  <td>{key}</td>
+                  <td>{String(value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </main>
+  );
+}
+```
+
+### ขอการอ้างสิทธิ์เพิ่มเติม \{#request-additional-claims}
+
+<FindUserInfoMissing method="auth()" />
+
+<ScopesAndClaimsIntroduction hideDefaultScopes />
+
+หากต้องการขอขอบเขต (scopes) เพิ่มเติม คุณสามารถกำหนดค่า params ของ Logto provider ได้ดังนี้:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+import Logto from 'next-auth/providers/logto';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    Logto({
+      // ...
+      authorization: {
+        params: {
+          // highlight-next-line
+          scope: 'openid offline_access profile email',
+        },
+      },
+      // ...
+    }),
+  ],
+});
+```
+
+### การอ้างสิทธิ์ที่ต้องใช้การร้องขอผ่านเครือข่าย \{#claims-that-need-network-requests}
+
+เพื่อป้องกันไม่ให้โทเค็น ID มีขนาดใหญ่เกินไป การอ้างสิทธิ์บางอย่างจำเป็นต้องร้องขอผ่านเครือข่าย เช่น การอ้างสิทธิ์ `custom_data` จะไม่ถูกรวมอยู่ในอ็อบเจกต์ผู้ใช้ แม้ว่าจะร้องขอไว้ใน scopes ก็ตาม หากต้องการเข้าถึงการอ้างสิทธิ์เหล่านี้ คุณต้องร้องขอข้อมูลผู้ใช้ผ่านเครือข่าย
+
+#### รับโทเค็นการเข้าถึง (Access token) \{#get-access-token}
+
+อัปเดต config ของ `NextAuth` เพื่อให้สามารถรับโทเค็นการเข้าถึงได้:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ใส่โทเค็นการเข้าถึงลงในอ็อบเจกต์ session
+      session.accessToken = token.accessToken;
+      return session;
+    },
+  },
+});
+```
+
+#### ดึงข้อมูลผู้ใช้ \{#fetch-user-info}
+
+ตอนนี้เข้าถึง OIDC user info endpoint ด้วยโทเค็นการเข้าถึง:
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+  // เปลี่ยน URL เป็น Logto endpoint ของคุณ ควรลงท้ายด้วย `/oidc/me`
+  const response = await fetch('https://xxx.logto.app/oidc/me', {
+    headers: {
+      Authorization: `Bearer ${session?.accessToken}`,
+    },
+  });
+  const user = await response.json();
+  console.log(user);
+
+  // ...
+}
+```
+
+ตัวอย่างข้างต้นเป็นตัวอย่างง่าย ๆ อย่าลืมจัดการกรณีเกิดข้อผิดพลาดด้วย
+
+#### การรีเฟรชโทเค็นการเข้าถึง (Access token refresh) \{#access-token-refresh}
+
+โทเค็นการเข้าถึงจะมีอายุสั้น โดยปกติ Next.js จะดึงโทเค็นใหม่เมื่อสร้าง session เท่านั้น หากต้องการทำให้รีเฟรชโทเค็นการเข้าถึงอัตโนมัติ ดูที่ [Refresh token rotation](https://next-auth.js.org/v3/tutorials/refresh-token-rotation)
+
+### ขอบเขต (Scopes) และการอ้างสิทธิ์ (Claims) \{#scopes-and-claims}
+
+<ScopesAndClaims />

@@ -1,0 +1,170 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import DjangoValidation from './fragments/django/_validation.md';
+import DjangoRestValidation from './fragments/django-rest/_validation.md';
+import FastApiValidation from './fragments/fastapi/_validation.md';
+import FlaskValidation from './fragments/flask/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  fastapi: <FastApiValidation />,
+  flask: <FlaskValidation />,
+  django: <DjangoValidation />,
+  'django-rest': <DjangoRestValidation />,
+});
+
+เราใช้ [PyJWT](https://github.com/jpadilla/pyjwt) สำหรับตรวจสอบ JWT หากคุณยังไม่ได้ติดตั้ง ให้ติดตั้งดังนี้:
+
+```bash
+pip install pyjwt[crypto]
+```
+
+ก่อนอื่น เพิ่มยูทิลิตี้ที่ใช้ร่วมกันเหล่านี้เพื่อจัดการการตรวจสอบ JWT:
+
+```py title="jwt_validator.py"
+import jwt
+from jwt import PyJWKClient
+from typing import Dict, Any
+from auth_middleware import AuthInfo, AuthorizationError, JWKS_URI, ISSUER
+
+jwks_client = PyJWKClient(JWKS_URI)
+
+def validate_jwt(token: str) -> Dict[str, Any]:
+    """ตรวจสอบ JWT และคืนค่า payload"""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=['RS256'],
+            issuer=ISSUER,
+            options={'verify_aud': False}  # เราจะตรวจสอบ audience ด้วยตนเอง
+        )
+
+        verify_payload(payload)
+        return payload
+
+    except jwt.InvalidTokenError as e:
+        raise AuthorizationError(f'โทเค็นไม่ถูกต้อง: {str(e)}', 401)
+    except Exception as e:
+        raise AuthorizationError(f'การตรวจสอบโทเค็นล้มเหลว: {str(e)}', 401)
+
+def create_auth_info(payload: Dict[str, Any]) -> AuthInfo:
+    """สร้าง AuthInfo จาก JWT payload"""
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    audience = payload.get('aud', [])
+    if isinstance(audience, str):
+        audience = [audience]
+
+    return AuthInfo(
+        sub=payload.get('sub'),
+        client_id=payload.get('client_id'),
+        organization_id=payload.get('organization_id'),
+        scopes=scopes,
+        audience=audience
+    )
+
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """ตรวจสอบ payload ตามโมเดลสิทธิ์ (permission model)"""
+    # เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตามโมเดลสิทธิ์
+    # จะอธิบายในส่วนโมเดลสิทธิ์ด้านล่าง
+    pass
+```
+
+จากนั้น ให้สร้าง middleware เพื่อตรวจสอบ access token:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ของคุณ ให้เพิ่มตรรกะการตรวจสอบที่เหมาะสมใน `jwt_validator.py`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """ตรวจสอบ payload สำหรับทรัพยากร API ระดับโกลบอล"""
+    # ตรวจสอบ claim audience ว่าตรงกับตัวบ่งชี้ทรัพยากร API ของคุณหรือไม่
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Audience ไม่ถูกต้อง')
+
+    # ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+    required_scopes = ['api:read', 'api:write']  # แทนที่ด้วย scope ที่คุณต้องการจริง
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Scope ไม่เพียงพอ')
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API)">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """ตรวจสอบ payload สำหรับสิทธิ์ขององค์กร"""
+    # ตรวจสอบ claim audience ว่าตรงกับรูปแบบขององค์กรหรือไม่
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    has_org_audience = any(aud.startswith('urn:logto:organization:') for aud in audiences)
+    if not has_org_audience:
+        raise AuthorizationError('Audience สำหรับสิทธิ์ขององค์กรไม่ถูกต้อง')
+
+    # ตรวจสอบว่า organization ID ตรงกับ context หรือไม่ (คุณอาจต้องดึงจาก request context)
+    expected_org_id = 'your-organization-id'  # ดึงจาก request context
+    expected_aud = f'urn:logto:organization:{expected_org_id}'
+    if expected_aud not in audiences:
+        raise AuthorizationError('Organization ID ไม่ตรงกัน')
+
+    # ตรวจสอบ scope ที่จำเป็นสำหรับองค์กร
+    required_scopes = ['invite:users', 'manage:settings']  # แทนที่ด้วย scope ที่คุณต้องการจริง
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Scope ขององค์กรไม่เพียงพอ')
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร">
+
+```py title="jwt_validator.py"
+def verify_payload(payload: Dict[str, Any]) -> None:
+    """ตรวจสอบ payload สำหรับทรัพยากร API ระดับองค์กร"""
+    # ตรวจสอบ claim audience ว่าตรงกับตัวบ่งชี้ทรัพยากร API ของคุณหรือไม่
+    audiences = payload.get('aud', [])
+    if isinstance(audiences, str):
+        audiences = [audiences]
+
+    if 'https://your-api-resource-indicator' not in audiences:
+        raise AuthorizationError('Audience สำหรับทรัพยากร API ระดับองค์กรไม่ถูกต้อง')
+
+    # ตรวจสอบว่า organization ID ตรงกับ context หรือไม่ (คุณอาจต้องดึงจาก request context)
+    expected_org_id = 'your-organization-id'  # ดึงจาก request context
+    org_id = payload.get('organization_id')
+    if expected_org_id != org_id:
+        raise AuthorizationError('Organization ID ไม่ตรงกัน')
+
+    # ตรวจสอบ scope ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+    required_scopes = ['api:read', 'api:write']  # แทนที่ด้วย scope ที่คุณต้องการจริง
+    scopes = payload.get('scope', '').split(' ') if payload.get('scope') else []
+    if not all(scope in scopes for scope in required_scopes):
+        raise AuthorizationError('Scope สำหรับทรัพยากร API ระดับองค์กรไม่เพียงพอ')
+```
+
+</TabItem>
+</Tabs>

@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# การค้นหาผู้ใช้ขั้นสูง
+
+ใช้ Management API โดยตรงเพื่อใช้เงื่อนไขการค้นหาผู้ใช้ขั้นสูง
+
+## ส่งคำขอค้นหา \{#perform-a-search-request}
+
+ใช้ [`GET /api/users`](https://openapi.logto.io/operation/operation-getuser) สำหรับการค้นหาผู้ใช้ โปรดทราบว่านี่คือ Management API ที่ต้องการการยืนยันตัวตนเช่นเดียวกับ API อื่น ๆ ดู [การโต้ตอบกับ Management API](/integrate-logto/interact-with-management-api) สำหรับวิธีการใช้งาน
+
+### ตัวอย่าง \{#sample}
+
+**Request**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**Response**
+
+อาร์เรย์ของเอนทิตี `User`
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### พารามิเตอร์ \{#parameters}
+
+คำขอค้นหาประกอบด้วยคีย์พารามิเตอร์ดังต่อไปนี้:
+
+- คำค้นหา: `search`, `search.*`
+- โหมดการค้นหาสำหรับแต่ละฟิลด์: `mode`, `mode.*` (ค่าเริ่มต้น `'like'`, ตัวเลือกที่ใช้ได้ `['exact', 'like', 'similar_to', 'posix']`)
+- โหมดการเชื่อมโยง: `joint` หรือ `jointMode` (ค่าเริ่มต้น `'or'`, ตัวเลือกที่ใช้ได้ `['or', 'and']`)
+- การแยกแยะตัวพิมพ์เล็ก / ใหญ่: `isCaseSensitive` (ค่าเริ่มต้น `false`)
+
+API นี้รองรับ [การแบ่งหน้า (pagination)](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses)
+
+เราจะอธิบายแต่ละส่วนผ่านตัวอย่าง โดยพารามิเตอร์การค้นหาทั้งหมดจะถูกจัดรูปแบบเป็น constructor ของ `URLSearchParams`
+
+:::warning
+
+โหมดการค้นหาถูกตั้งค่าเป็น `like` โดยค่าเริ่มต้น ซึ่งใช้ [Approximate string matching](https://en.wikipedia.org/wiki/Approximate_string_matching) (“การค้นหาแบบคลุมเครือ” หรือ fuzzy search)
+
+:::
+
+:::note
+
+โหมดการค้นหาแบบ fuzzy ทั้งหมดรองรับการจับคู่ค่าเดียวต่อฟิลด์เท่านั้น หากคุณต้องการจับคู่หลายค่าต่อฟิลด์เดียว ควรใช้โหมด "exact" ดูรายละเอียดที่ [การจับคู่แบบ exact และการแยกแยะตัวพิมพ์](/user-management/advanced-user-search#exact-match-and-case-sensitivity)
+
+:::
+
+### การค้นหาแบบ fuzzy พื้นฐาน \{#basic-fuzzy-search}
+
+หากต้องการค้นหาแบบ fuzzy ในทุกฟิลด์ที่มี เพียงระบุค่าให้กับคีย์ `search` จะใช้ [ตัวดำเนินการ `like`](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE) เบื้องหลัง:
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+การค้นหานี้จะวนในทุกฟิลด์ที่ใช้ได้ในการค้นหาผู้ใช้ ได้แก่ `id`, `primaryEmail`, `primaryPhone`, `username`, `name`
+
+### ระบุฟิลด์ \{#specify-fields}
+
+หากต้องการจำกัดการค้นหาเฉพาะใน `name` เท่านั้น เช่น ต้องการค้นหาผู้ใช้ที่มี `foo` อยู่ในชื่อ ให้ใช้สัญลักษณ์ `.` เพื่อระบุฟิลด์:
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+โปรดจำไว้ว่าฟิลด์ซ้อนกัน (nested fields) ไม่รองรับ เช่น `search.name.first` จะเกิดข้อผิดพลาด
+
+คุณสามารถระบุหลายฟิลด์พร้อมกันได้เช่นกัน:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+หมายถึงค้นหาผู้ใช้ที่มี `foo` ในชื่อ **หรือ** อีเมลลงท้ายด้วย `@gmail.com`
+
+### เปลี่ยนโหมดการเชื่อมโยง (joint mode) \{#changing-the-joint-mode}
+
+หากต้องการให้ API คืนค่าผลลัพธ์ที่ตรงตามเงื่อนไข **ทุกข้อ** ให้ตั้งค่า joint mode เป็น `and`:
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+หมายถึงค้นหาผู้ใช้ที่มี `foo` ในชื่อ **และ** อีเมลลงท้ายด้วย `@gmail.com`
+
+### การจับคู่แบบ exact และการแยกแยะตัวพิมพ์ \{#exact-match-and-case-sensitivity}
+
+สมมติว่าคุณต้องการค้นหาผู้ใช้ที่ชื่อ "Alice" แบบตรงตัว ให้ตั้งค่า `mode.name` เป็น exact
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+คุณอาจพบว่าผลลัพธ์เหมือนกับการใช้โหมด `like` (ค่าเริ่มต้น) เทียบกับการระบุ `exact` ความแตกต่างคือโหมด `exact` ใช้ `=` ในการเปรียบเทียบ ขณะที่ `like` ใช้ `like` หรือ `ilike` โดยทฤษฎีแล้ว `=` จะมีประสิทธิภาพดีกว่า
+
+นอกจากนี้ ในโหมด `exact` คุณสามารถส่งหลายค่าต่อฟิลด์เพื่อจับคู่ และจะเชื่อมด้วย `or`:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+จะจับคู่ผู้ใช้ที่ชื่อ "Alice" **หรือ** "Bob"
+
+โดยค่าเริ่มต้น การค้นหาจะไม่แยกแยะตัวพิมพ์ หากต้องการให้แยกแยะตัวพิมพ์ ให้ตั้งค่า:
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+โปรดทราบว่า `isCaseSensitive` เป็นการตั้งค่าระดับ global ดังนั้น **ทุกฟิลด์** จะถูกบังคับใช้
+
+### การใช้ Regular expression (RegEx) \{#regular-expression-regex}
+
+PostgreSQL รองรับ regular expression สองแบบ คือ [similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) และ [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP) ตั้งค่า `mode` เป็น `similar_to` หรือ `posix` เพื่อค้นหาด้วย regular expression:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> หมายเหตุ โหมด similar_to ใช้ได้เฉพาะกับการค้นหาที่แยกแยะตัวพิมพ์
+
+### การ override โหมดการจับคู่ \{#match-mode-override}
+
+โดยค่าเริ่มต้น คำค้นหาทั้งหมดจะรับโหมดการจับคู่จากการค้นหาหลัก:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // โหมด Posix
+  ['joint', 'and'],
+]);
+```
+
+หากต้องการ override เฉพาะฟิลด์:
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // โหมด Like
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // โหมด Posix
+  ['joint', 'and'],
+]);
+```

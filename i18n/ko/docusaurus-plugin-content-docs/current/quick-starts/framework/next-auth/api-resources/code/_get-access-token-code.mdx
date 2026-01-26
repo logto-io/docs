@@ -1,0 +1,83 @@
+Auth.js는 리소스 매개변수 없이 액세스 토큰을 한 번만 가져옵니다. 우리는 액세스 토큰 가져오기를 직접 구현해야 합니다.
+
+#### 리프레시 토큰 얻기 \{#get-refresh-token}
+
+Logto 제공자 설정을 업데이트하고 "prompt" 매개변수를 추가하여 `consent`로 설정하고 `offline_access` 스코프가 포함되어 있는지 확인하세요:
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  authorization: {
+    params: {
+      // highlight-next-line
+      prompt: 'consent',
+      scope: 'openid offline_access shopping:read shopping:write',
+      resource: 'https://shopping.your-app.com/api',
+      // ...
+    },
+  },
+  // ...
+});
+```
+
+그런 다음 `refresh_token`을 세션에 저장하는 콜백을 추가하세요:
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        // ...
+        // highlight-next-line
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ...
+      // highlight-next-line
+      session.refreshToken = token.refreshToken;
+      return session;
+    },
+  },
+});
+```
+
+#### 액세스 토큰 가져오기 \{#fetch-access-token}
+
+`refresh_token`을 사용하여 Logto의 OIDC 토큰 엔드포인트에서 액세스 토큰을 가져올 수 있습니다.
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.refreshToken) {
+    // 앱 ID와 비밀을 자신의 것으로 교체하세요. "Integration" 섹션을 확인할 수 있습니다.
+    const basicAuth = Buffer.from('<logto-app-id>:<logto-app-secret>').toString('base64');
+
+    // URL을 자신의 Logto 엔드포인트로 교체하세요. `/oidc/token`으로 끝나야 합니다.
+    const response = await fetch('https://xxx.logto.app/oidc/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basicAuth}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        resource: 'https://shopping.your-app.com/api',
+      }).toString(),
+    });
+
+    const data = await response.json();
+    console.log(data.access_token);
+  }
+
+  // ...
+}
+```

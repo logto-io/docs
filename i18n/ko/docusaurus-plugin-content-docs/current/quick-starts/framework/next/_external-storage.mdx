@@ -1,0 +1,46 @@
+SDK는 기본적으로 암호화된 세션 데이터를 쿠키에 저장합니다. 이 방식은 안전하며, 추가 인프라가 필요 없고, Vercel과 같은 서버리스 환경에서 특히 잘 작동합니다.
+
+하지만 세션 데이터를 외부에 저장해야 하는 경우도 있습니다. 예를 들어, 세션 데이터가 쿠키에 저장하기에는 너무 커지거나, 동시에 여러 활성 조직 세션을 유지해야 할 때가 그렇습니다. 이러한 경우, `sessionWrapper` 옵션을 사용하여 외부 세션 저장소를 구현할 수 있습니다:
+
+```ts
+import { MemorySessionWrapper } from './storage';
+
+export const config = {
+  // ...
+  sessionWrapper: new MemorySessionWrapper(),
+};
+```
+
+```ts
+import { randomUUID } from 'node:crypto';
+
+import { type SessionWrapper, type SessionData } from '@logto/next';
+
+export class MemorySessionWrapper implements SessionWrapper {
+  private readonly storage = new Map<string, unknown>();
+  private currentSessionId?: string;
+
+  async wrap(data: unknown, _key: string): Promise<string> {
+    // 기존 세션 ID가 있으면 재사용하고, 최초 사용자에게만 새로 생성합니다.
+    // 이는 쿠키를 업데이트할 수 없는 환경(예: React Server Components)에서 중요합니다.
+    // 쿠키의 세션 ID는 안정적으로 유지되어야 하며, 외부 저장소의 데이터만 업데이트될 수 있습니다.
+    const sessionId = this.currentSessionId ?? randomUUID();
+    this.currentSessionId = sessionId;
+    this.storage.set(sessionId, data);
+    return sessionId;
+  }
+
+  async unwrap(value: string, _key: string): Promise<SessionData> {
+    if (!value) {
+      return {};
+    }
+
+    // wrap()에서 재사용할 수 있도록 세션 ID를 저장합니다.
+    this.currentSessionId = value;
+    const data = this.storage.get(value);
+    return data ?? {};
+  }
+}
+```
+
+위 구현은 간단한 인메모리 저장소를 사용합니다. 프로덕션 환경에서는 Redis나 데이터베이스와 같은 더 영속적인 저장소 솔루션을 사용하는 것이 좋습니다.

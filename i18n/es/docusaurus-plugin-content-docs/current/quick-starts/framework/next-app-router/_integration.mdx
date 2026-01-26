@@ -1,0 +1,156 @@
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ServerActionsTip from './_server-actions-tip.mdx';
+
+### Preparar configuraciones \{#prepare-configs}
+
+Prepara la configuración para el cliente de Logto:
+
+```ts title="app/logto.ts"
+import { LogtoNextConfig } from '@logto/next';
+
+export const logtoConfig: LogtoNextConfig = {
+  appId: '<your-application-id>',
+  appSecret: '<your-app-secret-copied-from-console>',
+  endpoint: '<your-logto-endpoint>', // Ejemplo: http://localhost:3001
+  baseUrl: '<your-nextjs-app-base-url>', // Ejemplo: http://localhost:3000
+  cookieSecret: 'complex_password_at_least_32_characters_long',
+  cookieSecure: process.env.NODE_ENV === 'production',
+};
+```
+
+**Nota:**  
+Si usas una variable de entorno para `cookieSecret` (por ejemplo, `process.env.LOGTO_COOKIE_SECRET`), asegúrate de que el valor tenga al menos 32 caracteres. Si no se cumple este requisito, Logto lanzará el siguiente error durante la compilación o en tiempo de ejecución:
+
+`TypeError: Either sessionWrapper or encryptionKey must be provided for CookieStorage`
+
+Para evitar este error, asegúrate de que la variable de entorno esté correctamente configurada o proporciona un valor alternativo con una longitud mínima de 32 caracteres.
+
+### Configurar URIs de redirección \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### Manejar el callback \{#handle-callback}
+
+Después de que el usuario inicie sesión, Logto redirigirá al usuario de vuelta al URI de redirección configurado anteriormente. Sin embargo, aún hay cosas por hacer para que tu aplicación funcione correctamente.
+
+Proporcionamos una función auxiliar `handleSignIn` para manejar el callback de inicio de sesión:
+
+```tsx title="app/callback/route.ts"
+import { handleSignIn } from '@logto/next/server-actions';
+import { redirect } from 'next/navigation';
+import { NextRequest } from 'next/server';
+import { logtoConfig } from '../logto';
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  await handleSignIn(logtoConfig, searchParams);
+
+  redirect('/');
+}
+```
+
+### Implementar inicio y cierre de sesión \{#implement-sign-in-and-sign-out}
+
+#### Implementar botón de inicio y cierre de sesión \{#implement-sign-in-and-sign-out-button}
+
+En Next.js App Router, los eventos se manejan en componentes cliente, así que primero necesitamos crear dos componentes: `SignIn` y `SignOut`.
+
+```tsx title="app/sign-in.tsx"
+'use client';
+
+type Props = {
+  onSignIn: () => Promise<void>;
+};
+
+const SignIn = ({ onSignIn }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignIn();
+      }}
+    >
+      Iniciar sesión
+    </button>
+  );
+};
+
+export default SignIn;
+```
+
+```tsx title="app/sign-out.tsx"
+'use client';
+
+type Props = {
+  onSignOut: () => Promise<void>;
+};
+
+const SignOut = ({ onSignOut }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignOut();
+      }}
+    >
+      Cerrar sesión
+    </button>
+  );
+};
+
+export default SignOut;
+```
+
+Recuerda agregar `'use client'` en la parte superior del archivo para indicar que estos componentes son componentes cliente.
+
+#### Agregar botones a la página de inicio \{#add-buttons-to-home-page}
+
+<ServerActionsTip />
+
+Ahora vamos a agregar los botones de inicio y cierre de sesión en tu página de inicio. Necesitamos llamar a las acciones del servidor en el SDK cuando sea necesario. Para ayudarte con esto, usa `getLogtoContext` para obtener el estado de autenticación.
+
+```tsx title="app/page.tsx"
+import { getLogtoContext, signIn, signOut } from '@logto/next/server-actions';
+import SignIn from './sign-in';
+import SignOut from './sign-out';
+import { logtoConfig } from './logto';
+
+export default async function Home() {
+  const { isAuthenticated, claims } = await getLogtoContext(logtoConfig);
+
+  return (
+    <nav>
+      {isAuthenticated ? (
+        <p>
+          Hola, {claims?.sub},
+          <SignOut
+            onSignOut={async () => {
+              'use server';
+
+              await signOut(logtoConfig);
+            }}
+          />
+        </p>
+      ) : (
+        <p>
+          <SignIn
+            onSignIn={async () => {
+              'use server';
+
+              await signIn(logtoConfig);
+            }}
+          />
+        </p>
+      )}
+    </nav>
+  );
+}
+```
+
+<Checkpoint />

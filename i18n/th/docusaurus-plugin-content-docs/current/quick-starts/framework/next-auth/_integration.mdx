@@ -1,0 +1,163 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
+import GetAppSecret from '../../fragments/_get-app-secret.mdx';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+### ตั้งค่าผู้ให้บริการ Auth.js \{#set-up-authjs-provider}
+
+<GetAppSecret />
+
+ปรับแต่งการตั้งค่า API route ของ Auth.js โดยเพิ่ม Logto เป็นผู้ให้บริการ OIDC:
+
+<Tabs>
+
+<TabItem value="v5" label="Auth.js v5">
+
+ตั้งค่าตัวแปรสภาพแวดล้อม:
+
+```env
+AUTH_LOGTO_ISSUER=https://xxxx.logto.app/oidc
+AUTH_LOGTO_ID=your-logto-app-id
+AUTH_LOGTO_SECRET=your-logto-app-secret
+```
+
+```ts title="./app/api/auth/[...nextauth]/route.ts"
+import { handlers } from '@/auth';
+export const { GET, POST } = handlers;
+```
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+import Logto from 'next-auth/providers/logto';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [Logto],
+});
+```
+
+จากนั้นคุณสามารถเพิ่ม Middleware เสริมเพื่อให้ session คงอยู่ได้:
+
+```ts title="./middleware.ts"
+export { auth as middleware } from '@/auth';
+```
+
+</TabItem>
+
+<TabItem value="v4" label="Next Auth v4">
+
+```ts title="app/api/auth/[...nextauth]/route.ts"
+import NextAuth from 'next-auth';
+
+const handler = NextAuth({
+  providers: [
+    {
+      id: 'logto',
+      name: 'Logto',
+      type: 'oauth',
+      // คุณสามารถรับ well-known URL ได้จากหน้า Application Details ของ Logto
+      // ในช่อง "OpenID Provider configuration endpoint"
+      wellKnown: 'https://xxxx.logto.app/oidc/.well-known/openid-configuration',
+      authorization: { params: { scope: 'openid offline_access profile email' } },
+      clientId: '<logto-app-id>',
+      clientSecret: '<logto-app-secret>',
+      client: {
+        id_token_signed_response_alg: 'ES384',
+      },
+      profile(profile) {
+        // คุณสามารถปรับแต่งการแมปโปรไฟล์ผู้ใช้ที่นี่
+        return {
+          id: profile.sub,
+          name: profile.name ?? profile.username,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
+    },
+  ],
+});
+
+export { handler as GET, handler as POST };
+```
+
+1. แทนที่ URL ใน `wellKnown` ด้วย "OpenID Provider configuration endpoint" ของแอป Logto ของคุณ
+2. แทนที่ `clientId` และ `clientSecret` ด้วย ID และ secret ของแอป Logto ของคุณ
+3. ปรับแต่งฟังก์ชัน `profile` เพื่อแมปโปรไฟล์ผู้ใช้ไปยังอ็อบเจกต์ผู้ใช้ของ Next Auth โดยตัวอย่างจะแสดงการแมปเริ่มต้น
+4. อย่าลืมตั้งค่า `id_token_signed_response_alg` เป็น `ES384`
+
+</TabItem>
+
+</Tabs>
+
+คุณสามารถดูรายละเอียดเพิ่มเติมได้ที่ [เอกสาร Auth.js](https://authjs.dev/getting-started/installation)
+
+### กำหนดค่า sign-in redirect URI \{#configure-sign-in-redirect-uri}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<ConfigureRedirectUri
+  figureSrc="/img/assets/next-auth-redirect-uri.png"
+  redirectUri="http://localhost:3000/api/auth/callback/logto"
+/>
+
+### สร้างปุ่มลงชื่อเข้าใช้และออกจากระบบ \{#implement-sign-in-and-sign-out}
+
+#### สร้างปุ่มลงชื่อเข้าใช้และออกจากระบบ \{#implement-sign-in-and-sign-out-button}
+
+```tsx title="app/components/sign-in.tsx"
+import { signIn } from '@/auth';
+
+export default function SignIn() {
+  return (
+    <form
+      action={async () => {
+        'use server';
+        await signIn('logto');
+      }}
+    >
+      <button type="submit">Sign In</button>
+    </form>
+  );
+}
+```
+
+```tsx title="app/components/sign-out.tsx"
+import { signOut } from '@/auth';
+
+export function SignOut() {
+  return (
+    <form
+      action={async () => {
+        'use server';
+        await signOut();
+      }}
+    >
+      <button type="submit">Sign Out</button>
+    </form>
+  );
+}
+```
+
+#### แสดงปุ่มลงชื่อเข้าใช้และออกจากระบบในหน้าเพจ \{#show-sign-in-and-sign-out-button-in-the-page}
+
+```tsx title="app/page.tsx"
+import SignIn from './components/sign-in';
+import SignOut from './components/sign-out';
+import { auth } from '@/auth';
+
+export default function Home() {
+  const session = await auth();
+
+  return <div>{session?.user ? <SignOut /> : <SignIn />}</div>;
+}
+```
+
+ข้างต้นเป็นตัวอย่างง่าย ๆ คุณสามารถดูรายละเอียดเพิ่มเติมได้ที่ [เอกสาร Auth.js](https://authjs.dev/getting-started/session-management/login)
+
+### เช็กพอยต์ \{#checkpoint}
+
+ขณะนี้คุณสามารถทดสอบแอปพลิเคชันของคุณเพื่อดูว่าการยืนยันตัวตนทำงานถูกต้องหรือไม่

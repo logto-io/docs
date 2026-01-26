@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### Zugangstokens erhalten \{#get-access-tokens}
+
+**Von deiner Client-Anwendung:**
+Wenn du eine Client-Integration eingerichtet hast, kann deine App Tokens automatisch erhalten. Extrahiere das Zugangstoken und verwende es in API-Anfragen.
+
+**Zum Testen mit curl / Postman:**
+
+1. **Benutzertokens:** Verwende die Entwicklertools deiner Client-App, um das Zugangstoken aus dem localStorage oder dem Netzwerk-Tab zu kopieren.
+2. **Maschine-zu-Maschine-Tokens:** Verwende den Client-Credentials-Flow. Hier ein nicht-normatives Beispiel mit curl:
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   Möglicherweise musst du die Parameter `resource` und `scope` entsprechend deiner API-Ressource und Berechtigungen anpassen; ein `organization_id`-Parameter kann ebenfalls erforderlich sein, wenn deine API organisationsgebunden ist.
+
+:::tip
+Möchtest du den Inhalt des Tokens inspizieren? Verwende unseren [JWT Decoder](https://logto.io/jwt-decoder), um deine JWTs zu dekodieren und zu überprüfen.
+:::
+
+### Geschützte Endpunkte testen \{#test-protected-endpoints}
+
+<details>
+<summary>**Gültige Token-Anfrage**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**Erwartete Antwort:**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**Fehlendes Token**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**Erwartete Antwort (401):**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**Ungültiges Token**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**Erwartete Antwort (401):**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### Berechtigungsmodell-spezifisches Testen \{#permission-model-specific-testing}
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="Globale API-Ressourcen">
+
+    Testszenarien für APIs, die mit globalen Berechtigungen geschützt sind:
+
+    - **Gültige Berechtigungen:** Teste mit Tokens, die deine erforderlichen API-Berechtigungen enthalten (z. B. `api:read`, `api:write`)
+    - **Fehlende Berechtigungen:** Erwarte **403 Verboten**, wenn das Token die erforderlichen Berechtigungen nicht enthält
+    - **Falsche Zielgruppe:** Erwarte **403 Verboten**, wenn die Zielgruppe nicht mit der API-Ressource übereinstimmt
+
+    ```bash
+    # Token mit fehlenden Berechtigungen - erwarte 403
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="Organisations-(Nicht-API)-Berechtigungen">
+
+    Testszenarien für organisationsspezifische Zugangskontrolle:
+
+    - **Gültiges Organisationstoken:** Teste mit Tokens, die den korrekten Organisationskontext enthalten (Organisations-ID und Berechtigungen)
+    - **Fehlende Berechtigungen:** Erwarte **403 Verboten**, wenn der Benutzer keine Berechtigungen für die angeforderte Aktion hat
+    - **Falsche Organisation:** Erwarte **403 Verboten**, wenn die Zielgruppe nicht mit dem Organisationskontext übereinstimmt (`urn:logto:organization:<organization_id>`)
+
+    ```bash
+    # Token für falsche Organisation - erwarte 403
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="Organisationsgebundene API-Ressourcen">
+
+    Testszenarien, die API-Ressourcen-Validierung mit Organisationskontext kombinieren:
+
+    - **Gültige Organisation + API-Berechtigungen:** Teste mit Tokens, die sowohl den Organisationskontext als auch die erforderlichen API-Berechtigungen enthalten
+    - **Fehlende API-Berechtigungen:** Erwarte **403 Verboten**, wenn das Organisationstoken die erforderlichen API-Berechtigungen nicht enthält
+    - **Falsche Organisation:** Erwarte **403 Verboten**, wenn auf die API mit einem Token aus einer anderen Organisation zugegriffen wird
+    - **Falsche Zielgruppe:** Erwarte **403 Verboten**, wenn die Zielgruppe nicht mit der organisationsgebundenen API-Ressource übereinstimmt
+
+    ```bash
+    # Organisationstoken ohne API-Berechtigungen - erwarte 403
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

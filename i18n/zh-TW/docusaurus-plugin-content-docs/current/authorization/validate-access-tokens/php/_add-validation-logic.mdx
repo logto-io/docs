@@ -1,0 +1,224 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import LaravelValidation from './fragments/laravel/_validation.md';
+import SlimValidation from './fragments/slim/_validation.md';
+import SymfonyValidation from './fragments/symfony/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  laravel: <LaravelValidation />,
+  symfony: <SymfonyValidation />,
+  slim: <SlimValidation />,
+});
+
+我們使用 [firebase/php-jwt](https://github.com/firebase/php-jwt) 來驗證 JWT。請使用 Composer 安裝：
+
+```bash
+composer require firebase/php-jwt
+```
+
+首先，新增這些共用工具來處理 JWT 驗證：
+
+```php title="JwtValidator.php"
+<?php
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\JWK;
+use Firebase\JWT\Key;
+
+class JwtValidator
+{
+    use AuthHelpers;
+
+    private static ?array $jwks = null;
+
+    public static function fetchJwks(): array
+    {
+        if (self::$jwks === null) {
+            $jwksData = file_get_contents(AuthConstants::JWKS_URI);
+            if ($jwksData === false) {
+                throw new AuthorizationException('Failed to fetch JWKS', 401);
+            }
+
+            self::$jwks = json_decode($jwksData, true);
+        }
+
+        return self::$jwks;
+    }
+
+    public static function validateJwt(string $token): array
+    {
+        try {
+            $jwks = self::fetchJwks();
+            $keys = JWK::parseKeySet($jwks);
+
+            $decoded = JWT::decode($token, $keys);
+            $payload = (array) $decoded;
+
+            // 驗證簽發者 (issuer)
+            if (($payload['iss'] ?? '') !== AuthConstants::ISSUER) {
+                throw new AuthorizationException('Invalid issuer', 401);
+            }
+
+            self::verifyPayload($payload);
+            return $payload;
+
+        } catch (AuthorizationException $e) {
+            throw $e;
+        } catch (Exception $e) {
+            throw new AuthorizationException('Invalid token: ' . $e->getMessage(), 401);
+        }
+    }
+
+    public static function createAuthInfo(array $payload): AuthInfo
+    {
+        $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+        $audience = $payload['aud'] ?? [];
+
+        if (is_string($audience)) {
+            $audience = [$audience];
+        }
+
+        return new AuthInfo(
+            sub: $payload['sub'],
+            clientId: $payload['client_id'] ?? null,
+            organizationId: $payload['organization_id'] ?? null,
+            scopes: $scopes,
+            audience: $audience
+        );
+    }
+
+    private static function verifyPayload(array $payload): void
+    {
+        // 根據權限模型實作你的驗證邏輯
+        // 相關內容會在下方權限模型區段展示
+    }
+}
+```
+
+接著，實作 middleware 來驗證存取權杖 (access token)：
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+根據你的權限模型，在 `JwtValidator` 中實作對應的驗證邏輯：
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // 檢查 audience 宣告是否符合你的 API 資源標示符 (resource indicator)
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Invalid audience');
+    }
+
+    // 檢查全域 API 資源所需權限範圍 (scopes)
+    $requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需權限範圍
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient scope');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // 檢查 audience 宣告是否符合組織格式
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    $hasOrgAudience = false;
+    foreach ($audiences as $aud) {
+        if (str_starts_with($aud, 'urn:logto:organization:')) {
+            $hasOrgAudience = true;
+            break;
+        }
+    }
+
+    if (!$hasOrgAudience) {
+        throw new AuthorizationException('Invalid audience for organization permissions');
+    }
+
+    // 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+    $expectedOrgId = 'your-organization-id'; // 從請求內容取得
+    $expectedAud = "urn:logto:organization:{$expectedOrgId}";
+    if (!in_array($expectedAud, $audiences)) {
+        throw new AuthorizationException('Organization ID mismatch');
+    }
+
+    // 檢查所需組織權限範圍 (scopes)
+    $requiredScopes = ['invite:users', 'manage:settings']; // 請替換為實際所需權限範圍
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient organization scope');
+        }
+    }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+```php title="JwtValidator.php"
+private static function verifyPayload(array $payload): void
+{
+    // 檢查 audience 宣告是否符合你的 API 資源標示符 (resource indicator)
+    $audiences = $payload['aud'] ?? [];
+    if (is_string($audiences)) {
+        $audiences = [$audiences];
+    }
+
+    if (!in_array('https://your-api-resource-indicator', $audiences)) {
+        throw new AuthorizationException('Invalid audience for organization-level API resources');
+    }
+
+    // 檢查組織 ID 是否與情境相符（你可能需要從請求內容取得）
+    $expectedOrgId = 'your-organization-id'; // 從請求內容取得
+    $orgId = $payload['organization_id'] ?? null;
+    if ($expectedOrgId !== $orgId) {
+        throw new AuthorizationException('Organization ID mismatch');
+    }
+
+    // 檢查組織層級 API 資源所需權限範圍 (scopes)
+    $requiredScopes = ['api:read', 'api:write']; // 請替換為實際所需權限範圍
+    $scopes = !empty($payload['scope']) ? explode(' ', $payload['scope']) : [];
+
+    foreach ($requiredScopes as $scope) {
+        if (!in_array($scope, $scopes)) {
+            throw new AuthorizationException('Insufficient organization-level API scopes');
+        }
+    }
+}
+```
+
+</TabItem>
+</Tabs>

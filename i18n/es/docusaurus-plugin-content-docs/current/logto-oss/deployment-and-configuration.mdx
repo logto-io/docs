@@ -1,0 +1,188 @@
+---
+sidebar_position: 2
+---
+
+# Despliegue y configuración
+
+En el artículo anterior, cubrimos lo básico sobre [cómo empezar rápidamente con Logto](/logto-oss/get-started-with-oss). Este artículo profundiza más, enfocándose en las mejores prácticas y pasos detallados de configuración para desplegar Logto en un entorno de producción.
+
+## Variables de entorno \{#environment-variables}
+
+Utilizamos un conjunto generado de variables de entorno en nuestra demo (`docker-compose.yml`), que deberías reemplazar por las tuyas propias y mantener la coherencia entre múltiples instancias de Logto.
+
+Puedes establecer las variables de entorno directamente o colocar un archivo `.env` dentro de la raíz del proyecto Logto. Si estás probando con Docker, revisa el archivo `.env` generado de la imagen en `/etc/logto`.
+
+### Esenciales \{#essentials}
+
+- `DB_URL` El [DSN de Postgres](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) para la base de datos de Logto.
+- `PORT` El puerto en el que Logto escucha. Por defecto `3001`.
+- `ENDPOINT` Puedes especificar una URL con tu dominio personalizado para producción (Ej. `ENDPOINT=https://logto.domain.com`). Esto también afectará el valor del [identificador de emisor OIDC](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier).
+
+**Habilitar la Consola de Administración**
+
+- `ADMIN_PORT` El puerto en el que la Consola de Administración de Logto escucha. Por defecto `3002`.
+- `ADMIN_ENDPOINT` Puedes especificar una URL con tu dominio personalizado para producción (Ej. `ADMIN_ENDPOINT=https://admin.domain.com`). Esto también afectará el valor de los URIs de redirección de la Consola de Administración.
+
+**Deshabilitar la Consola de Administración**
+
+- `ADMIN_DISABLE_LOCALHOST` Establécelo en `1` o `true` para cerrar el puerto de la Consola de Administración. Si `ADMIN_ENDPOINT` no está definido, deshabilitará completamente la Consola de Administración.
+
+Para más detalles sobre las variables de entorno, consulta [Configuración](/concepts/core-service/configuration/).
+
+**Habilitar Secret Vault**
+
+- Para usar el [Secret Vault](/secret-vault), necesitas establecer `SECRET_VAULT_KEK` con una cadena codificada en base64 de tu Key Encryption Key (KEK). Esto se utiliza para cifrar las Data Encryption Keys (DEK) en el Secret Vault. Se recomienda AES-256 (32 bytes). Ejemplo: `crypto.randomBytes(32).toString('base64')`.
+
+### HTTPS \{#https}
+
+Puedes usar Node.js para servir HTTPS directamente o configurar un proxy / balanceador HTTPS delante de Node.js. Consulta [Habilitar HTTPS](/concepts/core-service/configuration/#enabling-https) para más detalles.
+
+### Proxy inverso \{#reverse-proxy}
+
+Si deseas usar un proxy inverso en tu servidor, por ejemplo Nginx o Apache, necesitas mapear los puertos 3001 y 3002 por separado en la configuración de tu proxy pass. Suponiendo que usas Nginx, tu endpoint de autenticación de Logto se ejecuta en el puerto 3001 y tu consola de administración de Logto en el 3002, coloca la siguiente configuración en nginx.conf:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_endpoint_url>; // ej. auth.tu-dominio.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3001;
+  }
+
+  ssl_certificate <ruta-a-tu-certificado-para-auth-endpoint>;
+  ssl_certificate_key <ruta-a-tu-clave-para-auth-endpoint>
+  ...
+}
+```
+
+Luego añade una configuración similar para tu consola de administración:
+
+```
+server {
+  listen 443 ssl;
+  server_name <your_admin_endpoint_url>; // ej. admin.tu-dominio.com
+  ...
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+
+    proxy_pass http://127.0.0.1:3002;
+  }
+
+  ssl_certificate <ruta-a-tu-certificado-para-admin-endpoint>;
+  ssl_certificate_key <ruta-a-tu-clave-para-admin-endpoint>
+  ...
+}
+```
+
+Recarga la configuración de Nginx para aplicar los últimos cambios:
+
+```
+nginx -s reload
+```
+
+¡Todo listo! Abre el navegador y visita `https://admin.tu-dominio.com`, deberías poder ver la página de bienvenida de Logto.
+
+## Contenerización \{#containerization}
+
+Para producción, puedes usar Docker para contenerizar Logto. Puedes encontrar el Dockerfile en el directorio raíz del proyecto. Si deseas ejecutar múltiples instancias de Logto, por ejemplo, desplegar Logto en un clúster de Kubernetes, hay algunos pasos adicionales que debes seguir.
+
+### Configuración de la base de datos \{#database-setup}
+
+Prepara una base de datos Postgres para Logto. Se recomienda encarecidamente usar Logto CLI para inicializar la base de datos.
+
+```bash
+npm run cli db seed -- --swe
+```
+
+Consulta la [Logto CLI](/logto-oss/using-cli) para más detalles.
+
+### Carpeta compartida de conectores \{#shared-connectors-folder}
+
+Por defecto, Logto creará una carpeta `connectors` en el directorio raíz de la carpeta `core`. Recomendamos compartir la carpeta entre múltiples instancias de Logto; necesitas montar la carpeta `packages/core/connectors` al contenedor y ejecutar `npm run cli connector add -- --official` para desplegar los conectores.
+
+Aquí tienes un ejemplo mínimo de `deployment` para Kubernetes:
+
+```yaml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: logto
+  namespace: default
+spec:
+  template:
+    spec:
+      volumes:
+        - name: connectors
+          emptyDir: {}
+      initContainers:
+        - image: ghcr.io/logto-io/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run cli connector add -- --official'
+          name: init
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+      containers:
+        - image: ghcr.io/logto-io/logto
+          name: logto
+          volumeMounts:
+            - name: connectors
+              mountPath: /etc/logto/packages/core/connectors
+```
+
+En este ejemplo, creamos un directorio vacío como volumen y lo montamos en los contenedores. Luego ejecutamos `npm run cli connector add -- --official` en el contenedor de inicialización para descargar los conectores. Finalmente, cada contenedor compartirá la misma carpeta de conectores con nuestros conectores oficiales ya dentro.
+
+:::note
+
+Este es un ejemplo de yaml, para ejecutar Logto, necesitas establecer correctamente las variables de entorno.
+
+:::
+
+Para producción, puedes reemplazar el volumen "empty dir" por un volumen persistente y realizar el trabajo de "init" a tu manera, ¡sabes lo que haces!
+
+### Alteración de la base de datos \{#database-alteration}
+
+Al igual que los conectores, la alteración de la base de datos debe ejecutarse en una sola instancia. Puedes usar un job para ejecutar el script de alteración.
+
+La variable de entorno `CI=true` es necesaria cuando la alteración se ejecuta de forma no interactiva.
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alteration
+spec:
+  template:
+    spec:
+      containers:
+        - name: alteration
+          image: ghcr.io/logto-io/logto
+          imagePullPolicy: Always
+          env:
+            - name: CI
+              value: 'true'
+            - name: DB_URL
+              value: postgresql://user:password@localhost:5432/logto
+          command:
+            - /bin/sh
+          args:
+            - '-c'
+            - 'npm run alteration deploy latest'
+      restartPolicy: Never
+```
+
+Consulta [Alteración de la base de datos](/logto-oss/using-cli/database-alteration/) para detalles sobre el comando de alteración.

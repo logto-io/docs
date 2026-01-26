@@ -1,0 +1,188 @@
+---
+sidebar_position: 3
+---
+
+# 進階使用者搜尋
+
+直接使用 Management API 來利用進階使用者搜尋條件。
+
+## 執行搜尋請求 \{#perform-a-search-request}
+
+使用 [`GET /api/users`](https://openapi.logto.io/operation/operation-getuser) 來搜尋使用者。請注意，這是需要驗證的 Management API。請參閱 [與 Management API 互動](/integrate-logto/interact-with-management-api) 以獲取互動指南。
+
+### 範例 \{#sample}
+
+**請求**
+
+```bash
+curl \
+  --location \
+  --request GET \
+  'http://<your-logto-endpoint>/api/users?search=%25alice%25'
+
+```
+
+**回應**
+
+一個 `User` 實體的陣列。
+
+```json
+[
+  {
+    "id": "MgUzzDsyX0iB",
+    "username": "alice_123",
+    "primaryEmail": "alice@some.email.domain",
+    "primaryPhone": null,
+    "name": null,
+    "avatar": null
+    // ...
+  }
+]
+```
+
+### 參數 \{#parameters}
+
+搜尋請求由以下參數鍵組成：
+
+- 搜尋關鍵字：`search`，`search.*`
+- 欄位的搜尋模式：`mode`，`mode.*`（預設值 `'like'`，可用值 `['exact', 'like', 'similar_to', 'posix']`）
+- 聯合模式：`joint` 或 `jointMode`（預設值 `'or'`，可用值 `['or', 'and']`）
+- 是否區分大小寫：`isCaseSensitive`（預設值 `false`）
+
+此 API 啟用了[分頁功能](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses)。
+
+讓我們通過一些範例來了解這些參數。所有搜尋參數將被格式化為 `URLSearchParams` 的構造函數。
+
+:::warning
+
+搜尋模式預設設為 `like`，使用[近似字串匹配](https://en.wikipedia.org/wiki/Approximate_string_matching)（「模糊搜尋」）。
+
+:::
+
+:::note
+
+所有模糊搜尋模式僅支援每個欄位匹配一個值。如果需要為單個欄位匹配多個值，應使用「exact」模式。詳情請參閱[精確匹配與大小寫敏感性](/user-management/advanced-user-search#exact-match-and-case-sensitivity)。
+
+:::
+
+### 基本模糊搜尋 \{#basic-fuzzy-search}
+
+如果你想在所有可用欄位上進行模糊搜尋，只需為鍵 `search` 提供一個值。它將在底層使用 [`like` 運算符](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-LIKE)：
+
+```javascript
+new URLSearchParams([['search', '%foo%']]);
+```
+
+此搜尋將遍歷使用者搜尋中的所有可用欄位，即 `id`、`primaryEmail`、`primaryPhone`、`username`、`name`。
+
+### 指定欄位 \{#specify-fields}
+
+如果你只想限制搜尋在 `name` 中，想搜尋名字中包含 `foo` 的人，只需使用 `.` 符號來指定欄位：
+
+```javascript
+new URLSearchParams([['search.name', '%foo%']]);
+```
+
+請記住不支援嵌套欄位，例如 `search.name.first` 會導致錯誤。
+
+你也可以同時指定多個欄位：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+]);
+```
+
+這表示搜尋名字中有 `foo` **或** 電子郵件以 `@gmail.com` 結尾的使用者。
+
+### 更改聯合模式 \{#changing-the-joint-mode}
+
+如果你希望 API 僅返回滿足所有條件的結果，將聯合模式設為 `and`：
+
+```javascript
+new URLSearchParams([
+  ['search.name', '%foo%'],
+  ['search.primaryEmail', '%@gmail.com'],
+  ['joint', 'and'],
+]);
+```
+
+這表示搜尋名字中有 `foo` **且** 電子郵件以 `@gmail.com` 結尾的使用者。
+
+### 精確匹配與大小寫敏感性 \{#exact-match-and-case-sensitivity}
+
+假設你想搜尋名字精確為 "Alice" 的人。你可以設置 `mode.name` 來使用精確匹配。
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['mode.name', 'exact'],
+]);
+```
+
+你可能會發現使用 `like` 模式（預設）與指定 `exact` 時效果相同。一個區別是 `exact` 模式使用 `=` 進行比較，而 `like` 使用 `like` 或 `ilike`。理論上 `=` 應該有更好的效能。
+
+此外，在 `exact` 模式中，你可以傳遞多個值進行匹配，這些值將以 `or` 連接：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+]);
+```
+
+這將匹配名字為 "Alice" **或** "Bob" 的使用者。
+
+預設情況下搜尋不區分大小寫。若要更精確，將搜尋設為區分大小寫：
+
+```javascript
+new URLSearchParams([
+  ['search.name', 'Alice'],
+  ['search.name', 'Bob'],
+  ['mode.name', 'exact'],
+  ['isCaseSensitive', 'true'],
+]);
+```
+
+注意 `isCaseSensitive` 是一個全域配置。因此每個欄位都將遵循它。
+
+### 正則表達式 (RegEx) \{#regular-expression-regex}
+
+PostgreSQL 支援兩種類型的正則表達式，[similar to](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-SIMILARTO-REGEXP) 和 [posix](https://www.postgresql.org/docs/current/functions-matching.html#FUNCTIONS-POSIX-REGEXP)。將 `mode` 設為 `similar_to` 或 `posix` 以通過正則表達式進行搜尋：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+]);
+```
+
+> 注意模式 similar_to 僅在區分大小寫的搜尋中有效。
+
+### 匹配模式覆蓋 \{#match-mode-override}
+
+預設情況下，所有關鍵字將繼承一般搜尋的匹配模式：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Posix 模式
+  ['joint', 'and'],
+]);
+```
+
+要覆蓋特定欄位：
+
+```javascript
+new URLSearchParams([
+  ['search', '^T.?m Scot+$'],
+  ['mode', 'posix'],
+  ['search.primaryEmail', 'tom%'], // Like 模式
+  ['mode.primaryEmail', 'like'],
+  ['search.phone', '0{3,}'], // Posix 模式
+  ['joint', 'and'],
+]);
+```

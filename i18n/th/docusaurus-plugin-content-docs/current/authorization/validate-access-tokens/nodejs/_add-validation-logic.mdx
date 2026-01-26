@@ -1,0 +1,157 @@
+import { getFrameworkName } from '@site/src/data/frameworks';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+import ExpressValidation from './fragments/express/_validation.md';
+import FastifyValidation from './fragments/fastify/_validation.md';
+import HapiValidation from './fragments/hapi/_validation.md';
+import KoaValidation from './fragments/koa/_validation.md';
+import NestJsValidation from './fragments/nestjs/_validation.md';
+
+export const frameworkContent = Object.freeze({
+  express: <ExpressValidation />,
+  fastify: <FastifyValidation />,
+  hapi: <HapiValidation />,
+  koa: <KoaValidation />,
+  nestjs: <NestJsValidation />,
+});
+
+เราใช้ [jose](https://github.com/panva/jose) ในตัวอย่างนี้เพื่อใช้ตรวจสอบความถูกต้องของ JWT หากคุณยังไม่ได้ติดตั้ง ให้ติดตั้งดังนี้:
+
+```bash
+npm install jose
+```
+
+หรือใช้ตัวจัดการแพ็กเกจที่คุณชื่นชอบ (เช่น `pnpm` หรือ `yarn`)
+
+ก่อนอื่น เพิ่มยูทิลิตี้ที่ใช้ร่วมกันเหล่านี้เพื่อจัดการการตรวจสอบ JWT:
+
+```ts title="jwt-validator.ts"
+import { createRemoteJWKSet, jwtVerify, JWTPayload } from 'jose';
+import { AuthInfo, AuthorizationError } from './auth-middleware.js';
+
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+export async function validateJwt(token: string): Promise<JWTPayload> {
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer: ISSUER,
+  });
+
+  verifyPayload(payload);
+  return payload;
+}
+
+export function createAuthInfo(payload: JWTPayload): AuthInfo {
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  const audience = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+
+  return new AuthInfo(
+    payload.sub!,
+    payload.client_id as string,
+    payload.organization_id as string,
+    scopes,
+    audience
+  );
+}
+
+function verifyPayload(payload: JWTPayload): void {
+  // เพิ่มตรรกะการตรวจสอบของคุณที่นี่ตามโมเดลสิทธิ์ (permission model)
+  // ตัวอย่างจะอธิบายในส่วนโมเดลสิทธิ์ด้านล่าง
+}
+```
+
+จากนั้น ให้สร้าง middleware เพื่อตรวจสอบ access token:
+
+{props.framework
+? frameworkContent[props.framework]
+:
+
+<Tabs groupId="api-framework">
+  {Object.entries(frameworkContent).map(([key, content]) => (
+    <TabItem key={key} value={key} label={getFrameworkName(key)}>
+      {content}
+    </TabItem>
+  ))}
+</Tabs>
+}
+
+ตามโมเดลสิทธิ์ของคุณ ให้เพิ่มตรรกะการตรวจสอบที่เหมาะสมใน `jwt-validator.ts`:
+
+<Tabs groupId="permission-models">
+<TabItem value="global-api-resources" label="ทรัพยากร API ระดับโกลบอล">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience');
+  }
+
+  // ตรวจสอบขอบเขต (scopes) ที่จำเป็นสำหรับทรัพยากร API ระดับโกลบอล
+  const requiredScopes = ['api:read', 'api:write']; // แทนที่ด้วยขอบเขตที่คุณต้องการจริง
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-permissions" label="สิทธิ์ขององค์กร (ไม่ใช่ API)">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // ตรวจสอบว่า audience claim ตรงกับรูปแบบขององค์กร
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  const hasOrgAudience = audiences.some((aud) => aud.startsWith('urn:logto:organization:'));
+
+  if (!hasOrgAudience) {
+    throw new AuthorizationError('Invalid audience for organization permissions');
+  }
+
+  // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+  const expectedOrgId = 'your-organization-id'; // ดึงจาก request context
+  const expectedAud = `urn:logto:organization:${expectedOrgId}`;
+  if (!audiences.includes(expectedAud)) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // ตรวจสอบขอบเขต (scopes) ที่จำเป็นสำหรับองค์กร
+  const requiredScopes = ['invite:users', 'manage:settings']; // แทนที่ด้วยขอบเขตที่คุณต้องการจริง
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization scope');
+  }
+}
+```
+
+</TabItem>
+<TabItem value="organization-level-api-resources" label="ทรัพยากร API ระดับองค์กร">
+
+```ts title="jwt-validator.ts"
+function verifyPayload(payload: JWTPayload): void {
+  // ตรวจสอบว่า audience claim ตรงกับตัวบ่งชี้ทรัพยากร API ของคุณ
+  const audiences = Array.isArray(payload.aud) ? payload.aud : payload.aud ? [payload.aud] : [];
+  if (!audiences.includes('https://your-api-resource-indicator')) {
+    throw new AuthorizationError('Invalid audience for organization-level API resources');
+  }
+
+  // ตรวจสอบว่า organization ID ตรงกับ context (คุณอาจต้องดึงจาก request context)
+  const expectedOrgId = 'your-organization-id'; // ดึงจาก request context
+  const orgId = payload.organization_id as string;
+  if (expectedOrgId !== orgId) {
+    throw new AuthorizationError('Organization ID mismatch');
+  }
+
+  // ตรวจสอบขอบเขต (scopes) ที่จำเป็นสำหรับทรัพยากร API ระดับองค์กร
+  const requiredScopes = ['api:read', 'api:write']; // แทนที่ด้วยขอบเขตที่คุณต้องการจริง
+  const scopes = (payload.scope as string)?.split(' ') ?? [];
+  if (!requiredScopes.every((scope) => scopes.includes(scope))) {
+    throw new AuthorizationError('Insufficient organization-level API scopes');
+  }
+}
+```
+
+</TabItem>
+</Tabs>

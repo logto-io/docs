@@ -1,0 +1,166 @@
+---
+slug: /integrations/permit.io
+sidebar_label: Permit.io
+sidebar_custom_props:
+  description: ผสาน Logto เข้ากับ Permit.io (Integrate Logto with Permit.io)
+  logoFilename: 'permitio.svg'
+---
+
+# ตั้งค่าการอนุญาต (Authorization) ด้วย Permit.io
+
+[Permit.io](https://permit.io/) คือแพลตฟอร์มการอนุญาต (Authorization) ที่ให้การควบคุมการเข้าถึงแบบละเอียดสำหรับแอปพลิเคชัน คุณสามารถใช้ Logto ร่วมกับ Permit.io เพื่อจัดการการยืนยันตัวตน (Authentication) และการอนุญาต (Authorization) ของผู้ใช้
+
+:::tip
+เพื่อเข้าใจความแตกต่างที่สำคัญระหว่างการยืนยันตัวตน (Authentication) และการอนุญาต (Authorization) โปรดดู [การยืนยันตัวตนกับการอนุญาต](/concepts/authn-vs-authz)
+:::
+
+คู่มือนี้จะแสดงวิธีเชื่อมต่อ Logto กับ Permit.io เพื่อใช้งานการอนุญาตในแอปพลิเคชันของคุณ
+
+## ข้อกำหนดเบื้องต้น \{#prerequisites}
+
+- บัญชี [Logto Cloud](https://cloud.logto.io/) หรือ [Logto แบบ self-hosted](https://docs.logto.io/introduction/set-up-logto-oss)
+- แอปพลิเคชัน Next.js ที่ตั้งค่าการยืนยันตัวตน Logto เรียบร้อยแล้ว (หากยังไม่ได้ตั้งค่า โปรดดู [คู่มือ Next.js ของเรา](https://docs.logto.io/quick-starts/next))
+- บัญชี [Permit.io](https://app.permit.io/) โปรดทำตาม [คู่มือเริ่มต้นอย่างรวดเร็วของ Permit.io](https://docs.permit.io/quickstart/) เพื่อสร้างโปรเจกต์ Permit.io ก่อนดำเนินการต่อ
+
+## การผสานระบบ \{#integration}
+
+### ติดตั้ง Permit.io SDK \{#install-permitio-sdk}
+
+เพิ่ม Permit.io SDK ลงในแอปพลิเคชันของคุณ:
+
+```bash
+npm install permitio
+```
+
+### สร้างโปรเจกต์ Permit.io \{#create-a-permitio-project}
+
+1. สมัครบัญชีฟรีที่ [permit.io](https://app.permit.io/)
+2. สร้างโปรเจกต์ใหม่และรับ API key ของคุณ
+3. เพิ่ม API key ลงใน environment variables ของคุณ:
+
+```bash
+PERMIT_API_KEY=your-permit-api-key
+```
+
+### ตั้งค่า Permit.io client \{#set-up-permitio-client}
+
+สร้างไฟล์เพื่อจัดการการผสานกับ Permit.io:
+
+```jsx
+// libraries/permit.js
+const { Permit } = require('permitio');
+
+// เริ่มต้น Permit.io client
+const permit = new Permit({
+  pdp: 'https://cloudpdp.api.permit.io',
+  token: 'your-permitio-api-key',
+});
+
+// ซิงค์ผู้ใช้กับ Permit.io
+export const syncUserToPermit = async (userId, email, firstName, lastName, role = 'viewer') => {
+  // ขั้นแรก ซิงค์ผู้ใช้
+  await permit.api.syncUser({
+    key: userId,
+    email: email || undefined,
+    first_name: firstName || undefined,
+    last_name: lastName || undefined,
+  });
+
+  // จากนั้นกำหนดบทบาท (role) ให้ผู้ใช้
+  await permit.api.assignRole({
+    user: userId,
+    role: role,
+    tenant: 'default',
+  });
+
+  return true;
+};
+```
+
+### สร้าง Webhook ของ Logto สำหรับการลงทะเบียนผู้ใช้ \{#create-a-logto-webhook-for-user-registration}
+
+Logto มี [webhooks](/developers/webhooks) ที่สามารถแจ้งเตือนแอปของคุณเมื่อเกิดเหตุการณ์ต่าง ๆ เราจะใช้ webhook `PostRegister` เพื่อ [ซิงค์ผู้ใช้ไปยัง Permit.io](https://docs.permit.io/authentication/permit-and-authentication) เมื่อมีการสมัครสมาชิก
+
+สร้าง endpoint webhook ในแอปของคุณ:
+
+```jsx
+// pages/api/webhooks/logto.js
+import { syncUserToPermit } from '../../../libraries/permit';
+
+export default async function handler(req, res) {
+  // แสดง payload ของ webhook เพื่อดีบัก
+  console.log('Webhook payload:', req.body);
+
+  const { event, user } = req.body;
+
+  // ประมวลผลเหตุการณ์ลงทะเบียนผู้ใช้
+  if (event === 'PostRegister') {
+    try {
+      // กำหนดบทบาทของผู้ใช้ (คุณสามารถปรับ logic ได้เอง)
+      let role = 'viewer'; // บทบาทเริ่มต้น
+
+      // ซิงค์ผู้ใช้ไปยัง Permit.io
+      await syncUserToPermit(user.id, user.primaryEmail, user.name, undefined, role);
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error syncing user:', error);
+      return res.status(500).json({ error: 'Failed to sync user' });
+    }
+  }
+
+  return res.status(200).json({ message: 'Event ignored' });
+}
+```
+
+### ตั้งค่า webhook ใน Logto Console \{#configure-the-webhook-in-logto-console}
+
+1. ไปที่ส่วน Webhooks ใน Logto Console ของคุณ
+2. คลิก "Create Webhook"
+3. ตั้งชื่อ webhook ของคุณ
+4. กรอก URL endpoint ของคุณ (เช่น `https://your-app.com/api/webhooks/logto`)
+5. เลือกเหตุการณ์ `PostRegister`
+6. บันทึก webhook
+
+:::note
+สำหรับการพัฒนาในเครื่อง คุณสามารถใช้เครื่องมืออย่าง [ngrok](https://ngrok.com/) เพื่อเปิดเผยเซิร์ฟเวอร์ local ของคุณสู่อินเทอร์เน็ต
+:::
+
+### ทดสอบการซิงค์ผู้ใช้ \{#test-user-sync}
+
+เพื่อทดสอบว่าผู้ใช้ถูกซิงค์อย่างถูกต้อง:
+
+1. สร้างบัญชีผู้ใช้ใหม่ในแอปของคุณ
+2. ตรวจสอบที่แดชบอร์ด Permit.io ใน "Directory" → "Users" เพื่อยืนยันว่าผู้ใช้ถูกซิงค์แล้ว
+3. ตรวจสอบว่าบทบาทที่ถูกต้องถูกกำหนดให้กับผู้ใช้เมื่อสมัครสมาชิก
+
+<img src="/img/assets/permitio.png" alt="ผู้ใช้ Logto ถูกซิงค์ไปยัง Permit.io พร้อมการกำหนดบทบาท" />
+
+### ใช้ Permit.io สำหรับการอนุญาต (Authorization) \{#use-permitio-for-authorization}
+
+เมื่อผู้ใช้ถูกซิงค์แล้ว คุณสามารถใช้ Permit.io เพื่อตรวจสอบสิทธิ์ (permissions):
+
+```jsx
+// ตัวอย่างการตรวจสอบสิทธิ์
+const isPermitted = await permit.check(userId, 'view', 'reports');
+
+if (isPermitted) {
+  // ผู้ใช้ได้รับอนุญาตให้ดูทรัพยากร
+  // แสดง UI ทรัพยากร
+} else {
+  // ผู้ใช้ไม่ได้รับอนุญาตให้ดูทรัพยากร
+  // แสดงข้อความปฏิเสธการเข้าถึง
+}
+```
+
+## สรุป \{#conclusion}
+
+คุณได้เชื่อมต่อ Logto กับ Permit.io เพื่อซิงค์ผู้ใช้อัตโนมัติและใช้งานการอนุญาต (Authorization) ในแอปของคุณเรียบร้อยแล้ว ด้วยการผสานนี้:
+
+1. ผู้ใช้ยืนยันตัวตนผ่าน Logto
+2. ผู้ใช้ใหม่จะถูกซิงค์ไปยัง Permit.io อัตโนมัติผ่าน webhook
+3. คุณสามารถใช้ Permit.io เพื่อตรวจสอบสิทธิ์และควบคุมการเข้าถึง
+
+การตั้งค่านี้เป็นรากฐานที่แข็งแกร่งสำหรับการนำรูปแบบการอนุญาตขั้นสูงไปใช้เมื่อแอปของคุณเติบโตขึ้น
+
+สำหรับกรณีการใช้งานการอนุญาตขั้นสูงเพิ่มเติม โปรดดู [เอกสารของ Permit.io](https://docs.permit.io/) เกี่ยวกับการสร้าง policy, การบังคับใช้สิทธิ์ และการควบคุมการเข้าถึงตามบทบาท (RBAC)

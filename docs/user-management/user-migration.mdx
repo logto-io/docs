@@ -1,0 +1,139 @@
+---
+sidebar_position: 5
+---
+
+# User migration
+
+Logto supports manual migration of existing users from another platform, this guide will show you how to import existing users via Management API and talk about things that you should consider before migrating.
+
+## User schema \{#user-schema}
+
+Before we start, let's take a look at the [user schema](/user-management/user-data/#user-profile) in Logto. There are 3 parts of the user schema that you should be aware of:
+
+1. **Basic data**: is the basic info from the user profile, you can match the data from your existing user profile.
+2. **Custom data**: stores additional user info, you can use this to store files that are unable to match the basic data.
+3. **Social identities**: stores the user info retrieved from social sign-in.
+
+You can create a map to match the user info from your existing user profile to **basic data** and **custom data**. For social sign in, you'll need additional steps to import the social identities, please refer to the API of [Link social identity to user](https://openapi.logto.io/operation/operation-createuseridentity).
+
+## Password hashing \{#password-hashing}
+
+Logto uses [Argon2](https://en.wikipedia.org/wiki/Argon2) to hash the user's password, and also supports other algorithms like `MD5`, `SHA1`, `SHA256` and `Bcrypt` for the convenience of migration. Those algorithms are considered insecure, the corrosponding password hashes will be migrated to Argon2 upon the user's first successful sign in.
+
+If you are using other hashing algorithms or salt, you can set the `passwordAlgorithm` to `Legacy`, this allows you to use any hash algorithm supported by Node.js. You can find the list of supported algorithms in the [Node.js crypto documentation](https://nodejs.org/api/crypto.html#cryptogethashes). In this case, the `passwordDigest` will be a JSON string that contains the hash algorithm and other algorithm-specific parameters.
+
+### General Legacy format \{#general-legacy-format}
+
+The format of the JSON string is as follows:
+
+```json
+["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
+```
+
+And you can use `@` as a placeholder for the actual password value in the arguments.
+
+For example, if you are using SHA256 with a salt, you can store the password in the following format:
+
+```json
+["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
+```
+
+This equals to the following code:
+
+```ts
+const hash = crypto.createHash('sha256');
+hash.update('salt123' + 'password123');
+const expectedHashedValue = hash.digest('hex');
+```
+
+### PBKDF2 support \{#pbkdf2-support}
+
+Logto specifically supports [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2).
+
+To migrate passwords hashed with PBKDF2, set the `passwordAlgorithm` to `Legacy` and format the `passwordDigest` as follows:
+
+```json
+["pbkdf2", ["salt", "1000", "20", "sha512", "@"], "expected_hashed_value"]
+```
+
+The parameters are:
+
+- **`salt`**: The salt value used in the original hashing
+- **`iterations`**: Number of iterations (e.g., `"1000"`)
+- **`keylen`**: Length of the derived key in bytes (e.g., `"20"`)
+- **`digest`**: The hash function used (e.g., `"sha512"`, `"sha256"`, `"sha1"`)
+- **`@`**: Placeholder for the actual password value
+- **`expected_hashed_value`**: The expected hash result as a hexadecimal string
+
+**Example migration payload:**
+
+```json
+{
+  "username": "john_doe",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Legacy",
+  "passwordDigest": "[\"pbkdf2\", [\"mySalt123\", \"1000\", \"20\", \"sha512\", \"@\"], \"c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e\"]"
+}
+```
+
+## Steps to migrate \{#steps-to-migrate}
+
+1.  **Prepare the user data**
+    You should first export the user data from your existing platform, and then map the user info to the Logto user schema. We recommend you to prepare the mapped data in a JSON format. Here is an example of the user data:
+
+    ```json
+    [
+      {
+        "username": "user1",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      },
+      {
+        "username": "user2",
+        "passwordDigest": "password-encrypted",
+        "passwordAlgorithm": "SHA256"
+      }
+    ]
+    ```
+
+2.  **Create a Logto tenant**
+    You'll need to setup a tenant in Logto. You can use either Logto Cloud or Logto OSS. If you haven't done this yet, please refer to the [Set up Logto cloud](/introduction/set-up-logto-cloud/#create-logto-tenant) guide.
+3.  **Setup the connection of Management API**
+    We'll use the Management API to import the user data, you can refer to the [Management API](/integrate-logto/interact-with-management-api) to learn how to setup the connection in your development environment.
+4.  **Import the user data**
+    It is recommended to prepare a script to import the user data one by one, we'll call [create user](https://openapi.logto.io/operation/operation-createuser) API to import the user data. Here is an example of the script:
+
+    ```jsx
+    const users = require('./users.json');
+
+    const importUsers = async () => {
+      for (const user of users) {
+        try {
+          await fetch('https://[tenant_id].logto.app/api/users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: 'Bearer [your-access-token]',
+            },
+            body: JSON.stringify(user),
+          });
+          // Sleep for a while to avoid rate limit
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        } catch (error) {
+          console.error(`Failed to import user ${user.username}: ${error.message}`);
+        }
+      }
+    };
+
+    importUsers();
+    ```
+
+Please noted that the API point is rate limited, you should add a sleep between each request to avoid the rate limit. Please review our [rate limits](/integrate-logto/interact-with-management-api/#rate-limit) page for details.
+
+If you have a large amount of user data (100k+ users), you can [reach out to us](https://logto.io/contact) to increase the rate limit.
+
+## Related resources \{#related-resources}
+
+<Url href="https://blog.logto.io/general-migration-guide">
+  A general guideline to migrate your existing user database to Logto
+</Url>

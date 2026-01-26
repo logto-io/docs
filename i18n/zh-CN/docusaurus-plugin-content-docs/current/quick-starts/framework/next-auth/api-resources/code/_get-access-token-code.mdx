@@ -1,0 +1,83 @@
+Auth.js 只会在没有资源参数的情况下获取一次访问令牌。我们需要自己实现访问令牌的获取。
+
+#### 获取刷新令牌 \{#get-refresh-token}
+
+更新 Logto 提供者配置，添加 "prompt" 参数并将其设置为 `consent`，并确保包含 `offline_access` 权限：
+
+```ts title="./auth.ts"
+import NextAuth from 'next-auth';
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  authorization: {
+    params: {
+      // highlight-next-line
+      prompt: 'consent',
+      scope: 'openid offline_access shopping:read shopping:write',
+      resource: 'https://shopping.your-app.com/api',
+      // ...
+    },
+  },
+  // ...
+});
+```
+
+然后添加一个回调，将 `refresh_token` 保存到会话中：
+
+```ts title="./auth.ts"
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  // ...
+  callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        // ...
+        // highlight-next-line
+        token.refreshToken = account.refresh_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      // ...
+      // highlight-next-line
+      session.refreshToken = token.refreshToken;
+      return session;
+    },
+  },
+});
+```
+
+#### 获取访问令牌 \{#fetch-access-token}
+
+使用 `refresh_token`，我们可以从 Logto 的 OIDC 令牌端点获取访问令牌。
+
+```ts title="./app/page.tsx"
+// ...
+
+export default async function Home() {
+  const session = await auth();
+
+  if (session?.refreshToken) {
+    // 用你自己的应用 ID 和密钥替换，可以查看“集成”部分。
+    const basicAuth = Buffer.from('<logto-app-id>:<logto-app-secret>').toString('base64');
+
+    // 用你的 Logto 端点替换 URL，应该以 `/oidc/token` 结尾
+    const response = await fetch('https://xxx.logto.app/oidc/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${basicAuth}`,
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: session.refreshToken,
+        resource: 'https://shopping.your-app.com/api',
+      }).toString(),
+    });
+
+    const data = await response.json();
+    console.log(data.access_token);
+  }
+
+  // ...
+}
+```

@@ -1,0 +1,156 @@
+import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
+import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
+import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
+
+import ServerActionsTip from './_server-actions-tip.mdx';
+
+### 准备配置 \{#prepare-configs}
+
+为 Logto 客户端准备配置：
+
+```ts title="app/logto.ts"
+import { LogtoNextConfig } from '@logto/next';
+
+export const logtoConfig: LogtoNextConfig = {
+  appId: '<your-application-id>',
+  appSecret: '<your-app-secret-copied-from-console>',
+  endpoint: '<your-logto-endpoint>', // 例如 http://localhost:3001
+  baseUrl: '<your-nextjs-app-base-url>', // 例如 http://localhost:3000
+  cookieSecret: 'complex_password_at_least_32_characters_long',
+  cookieSecure: process.env.NODE_ENV === 'production',
+};
+```
+
+**注意：**  
+如果你为 `cookieSecret` 使用了环境变量（例如 `process.env.LOGTO_COOKIE_SECRET`），请确保该值至少为 32 个字符。如果不满足此要求，Logto 会在构建或运行时抛出如下错误：
+
+`TypeError: Either sessionWrapper or encryptionKey must be provided for CookieStorage`
+
+为避免此错误，请确保环境变量已正确设置，或提供一个长度不少于 32 个字符的备用值。
+
+### 配置重定向 URI \{#configure-redirect-uris}
+
+<SignInFlowSummary />
+
+<AssumingUrl />
+
+<WebConfigureRedirectUris />
+
+### 处理回调 \{#handle-callback}
+
+用户登录后，Logto 会将用户重定向回上面配置的重定向 URI。但要让你的应用正常工作，还需要做一些处理。
+
+我们提供了辅助函数 `handleSignIn` 用于处理登录回调：
+
+```tsx title="app/callback/route.ts"
+import { handleSignIn } from '@logto/next/server-actions';
+import { redirect } from 'next/navigation';
+import { NextRequest } from 'next/server';
+import { logtoConfig } from '../logto';
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  await handleSignIn(logtoConfig, searchParams);
+
+  redirect('/');
+}
+```
+
+### 实现登录与登出 \{#implement-sign-in-and-sign-out}
+
+#### 实现登录与登出按钮 \{#implement-sign-in-and-sign-out-button}
+
+在 Next.js App Router 中，事件在客户端组件中处理，因此我们需要先创建两个组件：`SignIn` 和 `SignOut`。
+
+```tsx title="app/sign-in.tsx"
+'use client';
+
+type Props = {
+  onSignIn: () => Promise<void>;
+};
+
+const SignIn = ({ onSignIn }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignIn();
+      }}
+    >
+      登录
+    </button>
+  );
+};
+
+export default SignIn;
+```
+
+```tsx title="app/sign-out.tsx"
+'use client';
+
+type Props = {
+  onSignOut: () => Promise<void>;
+};
+
+const SignOut = ({ onSignOut }: Props) => {
+  return (
+    <button
+      onClick={() => {
+        onSignOut();
+      }}
+    >
+      登出
+    </button>
+  );
+};
+
+export default SignOut;
+```
+
+记得在文件顶部添加 `'use client'`，以表明这些组件是客户端组件。
+
+#### 将按钮添加到首页 \{#add-buttons-to-home-page}
+
+<ServerActionsTip />
+
+现在让我们在首页添加登录和登出按钮。需要在需要时调用 SDK 中的服务端操作。为此，可以使用 `getLogtoContext` 获取认证 (Authentication) 状态。
+
+```tsx title="app/page.tsx"
+import { getLogtoContext, signIn, signOut } from '@logto/next/server-actions';
+import SignIn from './sign-in';
+import SignOut from './sign-out';
+import { logtoConfig } from './logto';
+
+export default async function Home() {
+  const { isAuthenticated, claims } = await getLogtoContext(logtoConfig);
+
+  return (
+    <nav>
+      {isAuthenticated ? (
+        <p>
+          你好, {claims?.sub},
+          <SignOut
+            onSignOut={async () => {
+              'use server';
+
+              await signOut(logtoConfig);
+            }}
+          />
+        </p>
+      ) : (
+        <p>
+          <SignIn
+            onSignIn={async () => {
+              'use server';
+
+              await signIn(logtoConfig);
+            }}
+          />
+        </p>
+      )}
+    </nav>
+  );
+}
+```
+
+<Checkpoint />

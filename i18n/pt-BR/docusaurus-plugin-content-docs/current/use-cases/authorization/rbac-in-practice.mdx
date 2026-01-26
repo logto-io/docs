@@ -1,0 +1,479 @@
+---
+sidebar_position: 1
+sidebar_label: RBAC na prática
+description: 'Um guia prático para controle de acesso baseado em papel (RBAC): Aprenda como desenhar permissões, gerenciar papéis e configurar autorização segura em seu CMS.'
+---
+
+<head>
+  <link rel="canonical" href="https://blog.logto.io/rbac-in-practice" />
+</head>
+
+# RBAC na prática: Implementando autorização segura para seu aplicativo
+
+Você está tendo dificuldades para implementar um sistema de autorização seguro e escalável para seu aplicativo? O Controle de Acesso Baseado em Papel (RBAC) é o padrão da indústria para gerenciar permissões de usuários, mas implementá-lo corretamente pode ser desafiador. Este tutorial mostrará como construir um sistema RBAC robusto usando um exemplo real de Sistema de Gerenciamento de Conteúdo (CMS).
+
+Ao seguir este guia, você aprenderá:
+
+- ✨ Como desenhar e implementar permissões granulares que oferecem controle preciso
+- 🔒 Melhores práticas para organizar permissões em papéis significativos
+- 👤 Técnicas para lidar com propriedade de recursos de forma eficaz
+- 🚀 Maneiras de tornar seu sistema de autorização escalável e fácil de manter
+- 💡 Implementação prática usando um exemplo real de CMS
+
+O código-fonte completo deste tutorial está disponível no [GitHub](https://github.com/logto-io/rbac-sample).
+
+## Entendendo os fundamentos do RBAC \{#understanding-rbac-fundamentals}
+
+O Controle de Acesso Baseado em Papel vai além de apenas atribuir permissões aos usuários. Trata-se de criar uma abordagem estruturada para autorização que equilibra segurança com facilidade de manutenção.
+
+Você pode saber mais sobre [O que é RBAC](https://auth-wiki.logto.io/rbac) na Auth Wiki.
+
+Aqui estão os princípios-chave que seguiremos em nossa implementação:
+
+### Design de permissões granulares \{#fine-grained-permission-design}
+
+Permissões granulares oferecem controle preciso sobre o que os usuários podem fazer em seu sistema. Em vez de níveis amplos de acesso como "admin" ou "usuário", definimos ações específicas que os usuários podem executar em recursos. Por exemplo:
+
+- `read:articles` - Visualizar qualquer artigo no sistema
+- `create:articles` - Criar novos artigos
+- `update:articles` - Modificar artigos existentes
+- `publish:articles` - Alterar o status de publicação dos artigos
+
+### Propriedade de recursos e controle de acesso \{#resource-ownership-and-access-control}
+
+A propriedade de recursos é um conceito fundamental no design de autorização do nosso CMS. Enquanto o RBAC define quais ações diferentes papéis podem executar, a propriedade adiciona uma dimensão pessoal ao controle de acesso:
+
+- Autores têm acesso automaticamente aos artigos que criaram
+- Esse modelo natural de propriedade significa que autores sempre podem visualizar e editar seu próprio conteúdo
+- O sistema verifica tanto as permissões do papel OU a propriedade ao lidar com operações em artigos
+- Por exemplo, mesmo sem a permissão `update:articles`, um autor ainda pode editar seus próprios artigos
+- Esse design reduz a necessidade de permissões extras de papel, mantendo a segurança
+
+Essa abordagem de duas camadas (papéis + propriedade) cria um sistema mais intuitivo e seguro. Editores e administradores ainda podem gerenciar todo o conteúdo por meio das permissões de seus papéis, enquanto autores mantêm o controle sobre seu próprio trabalho.
+
+## Desenhando APIs seguras \{#designing-a-secure-apis}
+
+Vamos começar desenhando a funcionalidade principal do nosso CMS através de seus endpoints de API:
+
+```
+GET    /api/articles         # Listar todos os artigos
+GET    /api/articles/:id     # Obter um artigo específico
+POST   /api/articles         # Criar um novo artigo
+PATCH  /api/articles/:id     # Atualizar um artigo
+DELETE /api/articles/:id     # Excluir um artigo
+PATCH  /api/articles/:id/published  # Alterar status de publicação
+```
+
+### Implemente controle de acesso para sua API \{#implement-access-control-for-your-api}
+
+Para cada endpoint, precisamos considerar dois aspectos do controle de acesso:
+
+1. Propriedade do recurso - O usuário é dono deste recurso?
+2. Permissões baseadas em papel - O papel do usuário permite esta operação?
+
+Veja como lidaremos com o acesso para cada endpoint:
+
+| Endpoint                          | Lógica de controle de acesso                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| GET /api/articles                 | - Qualquer um com permissão `list:articles`, OU autores podem ver seus próprios artigos |
+| GET /api/articles/:id             | - Qualquer um com permissão `read:articles`, OU autor do artigo                         |
+| POST /api/articles                | - Qualquer um com permissão `create:articles`                                           |
+| PATCH /api/articles/:id           | - Qualquer um com permissão `update:articles`, OU autor do artigo                       |
+| DELETE /api/articles/:id          | - Qualquer um com permissão `delete:articles`, OU autor do artigo                       |
+| PATCH /api/articles/:id/published | - Apenas usuários com permissão `publish:articles`                                      |
+
+### Criando um sistema de permissões escalável \{#creating-a-permission-system-that-scales}
+
+Com base nos requisitos de acesso à API, podemos definir estas permissões:
+
+| Permissão        | Descrição                                         |
+| ---------------- | ------------------------------------------------- |
+| list:articles    | Visualizar a lista de todos os artigos no sistema |
+| read:articles    | Ler o conteúdo completo de qualquer artigo        |
+| create:articles  | Criar novos artigos                               |
+| update:articles  | Modificar qualquer artigo                         |
+| delete:articles  | Excluir qualquer artigo                           |
+| publish:articles | Alterar status de publicação                      |
+
+Observe que essas permissões só são necessárias ao acessar recursos que você não possui. Os proprietários dos artigos podem automaticamente:
+
+- Visualizar seus próprios artigos (não precisa de `read:articles`)
+- Editar seus próprios artigos (não precisa de `update:articles`)
+- Excluir seus próprios artigos (não precisa de `delete:articles`)
+
+## Construindo papéis eficazes \{#building-effective-roles}
+
+Agora que temos nossa API e permissões definidas, podemos criar papéis que agrupam essas permissões logicamente:
+
+| Permissão/Papel  | 👑 Admin                                            | 📝 Editor                                        | ✍️ Autor                            |
+| ---------------- | --------------------------------------------------- | ------------------------------------------------ | ----------------------------------- |
+| **Descrição**    | Acesso total ao sistema para gerenciamento completo | Pode ver todos os artigos e controlar publicação | Pode criar novos artigos no sistema |
+| list:articles    | ✅                                                  | ✅                                               | ❌                                  |
+| read:articles    | ✅                                                  | ✅                                               | ❌                                  |
+| create:articles  | ✅                                                  | ❌                                               | ✅                                  |
+| update:articles  | ✅                                                  | ❌                                               | ❌                                  |
+| delete:articles  | ✅                                                  | ❌                                               | ❌                                  |
+| publish:articles | ✅                                                  | ✅                                               | ❌                                  |
+
+**Nota**: Autores têm automaticamente permissões de leitura/atualização/exclusão para seus próprios artigos, independentemente das permissões do papel.
+
+Cada papel é desenhado com responsabilidades específicas em mente:
+
+- **Admin**: Tem controle total sobre o CMS, incluindo todas as operações em artigos
+- **Editor**: Foca na revisão de conteúdo e gerenciamento de publicação
+- **Autor**: Especialista em criação de conteúdo
+
+Essa estrutura de papéis cria uma separação clara de responsabilidades:
+
+- Autores focam na criação de conteúdo
+- Editores gerenciam a qualidade e visibilidade do conteúdo
+- Admins mantêm o controle geral do sistema
+
+## Configurando RBAC no Logto \{#config-rbac-in-logto}
+
+Antes de começar, você precisa criar uma conta no [Logto Cloud](https://cloud.logto.io), ou também pode usar uma instância Logto auto-hospedada utilizando a [versão Logto OSS](/logto-oss).
+
+Mas para este tutorial, usaremos o Logto Cloud pela simplicidade.
+
+### Configurando seu aplicativo \{#setting-up-your-application}
+
+1. Vá em "Applications" no Logto Console para criar um novo aplicativo react
+   - Nome do aplicativo: Sistema de Gerenciamento de Conteúdo
+   - Tipo de aplicativo: Aplicativo Web Tradicional
+   - Redirect URIs: http://localhost:5173/callback
+
+![Aplicativo React CMS](https://uploads.strapi.logto.io/cms_application_3ed42f2256.png)
+
+### Configurando recursos de API e permissões \{#configuring-api-resources-and-permissions}
+
+1. Vá em "API Resources" no Logto Console para criar um novo recurso de API
+   - Nome da API: CMS API
+   - Identificador da API: https://api.cms.com
+   - Adicione permissões ao recurso de API
+     - `list:articles`
+     - `read:articles`
+     - `create:articles`
+     - `update:articles`
+     - `publish:articles`
+     - `delete:articles`
+
+![Detalhes do recurso de API CMS](https://uploads.strapi.logto.io/cms_api_resource_b15ae2b91a.png)
+
+### Criando papéis \{#creating-roles}
+
+Vá em Roles no Logto Console para criar os seguintes papéis para o CMS
+
+- Admin
+  - com todas as permissões
+- Editor
+  - com `read:articles`, `list:articles`, `publish:articles`
+- Autor
+  - com `create:articles`
+
+![Papel Admin](https://uploads.strapi.logto.io/admin_role_53edb35ecf.png)
+
+![Papel Editor](https://uploads.strapi.logto.io/publisher_role_2ac205cc32.png)
+
+![Papel Autor](https://uploads.strapi.logto.io/author_role_f89cd99543.png)
+
+### Atribuindo papéis aos usuários \{#assigning-roles-to-users}
+
+Vá até a seção "User management" no Logto Console para criar usuários.
+
+Na aba "Roles" dos detalhes do usuário, você pode atribuir papéis ao usuário.
+
+No nosso exemplo, criamos 3 usuários com os seguintes papéis:
+
+- Alex: Admin
+- Bob: Editor
+- Charlie: Autor
+
+![Gerenciamento de usuários](https://uploads.strapi.logto.io/user_management_c0bc17119f.png)
+
+![Detalhes do usuário - Alex](https://uploads.strapi.logto.io/user_details_alex_702f96ef9a.png)
+
+:::note
+Para fins de demonstração, criamos esses recursos e configurações pelo Logto Console. Em projetos reais, você pode criar esses recursos e configurações programaticamente usando a [Management API](/integrate-logto/interact-with-management-api) fornecida pelo Logto.
+:::
+
+## Integre seu frontend com o RBAC do Logto \{#integrate-your-frontend-with-logto-rbac}
+
+Agora que configuramos o RBAC no Logto, podemos começar a integrá-lo ao nosso frontend.
+
+Primeiro, siga os [Logto Quick Starts](/quick-starts) para integrar o Logto ao seu aplicativo.
+
+No nosso exemplo, usamos [React](/quick-starts/react) para demonstração.
+
+Depois de configurar o Logto em seu aplicativo, precisamos adicionar as configurações de RBAC para o Logto funcionar.
+
+```tsx
+// frontend/src/App.tsx
+
+const logtoConfig: LogtoConfig = {
+  appId: LOGTO_APP_ID, // O app ID que você criou no Logto Console
+  endpoint: LOGTO_ENDPOINT, // O endpoint que você criou no Logto Console
+  resources: [API_RESOURCE], // O identificador do recurso de API criado no Logto Console, ex: https://api.cms.com
+  // Todos os escopos que você pode querer requisitar do recurso de API no frontend
+  scopes: [
+    'list:articles',
+    'create:articles',
+    'read:articles',
+    'update:articles',
+    'delete:articles',
+    'publish:articles',
+  ],
+};
+```
+
+Lembre-se de sair e entrar novamente para que essa alteração tenha efeito se você já estiver autenticado.
+
+Quando o usuário faz login com o Logto e solicita um token de acesso para os recursos de API especificados acima, o Logto adicionará os escopos (permissões) relacionados ao papel do usuário ao token de acesso.
+
+Você pode usar `getAccessTokenClaims` do hook `useLogto` para obter os escopos do token de acesso.
+
+```tsx
+// frontend/src/hooks/use-user-data.ts
+
+import { useLogto } from '@logto/react';
+import { API_RESOURCE } from '../config';
+import { useState, useEffect } from 'react';
+
+export const useUserData = () => {
+  const { getAccessTokenClaims } = useLogto();
+  const [userScopes, setUserScopes] = useState<string[]>([]);
+  const [userId, setUserId] = useState<string>();
+
+  useEffect(() => {
+    const fetchScopes = async () => {
+      const token = await getAccessTokenClaims(API_RESOURCE);
+      setUserScopes(token?.scope?.split(' ') ?? []);
+      setUserId(token?.sub);
+    };
+
+    fetchScopes();
+  }, [getAccessTokenClaims]);
+
+  return { userId, userScopes };
+};
+```
+
+E você pode usar o `userScopes` para verificar se o usuário tem permissão para acessar o recurso.
+
+```tsx
+// frontend/src/pages/Dashboard.tsx
+
+const Dashboard = () => {
+  const { userId, userScopes } = useUserData();
+  // ...
+
+  return (
+    <div>
+      {/* ... */}
+      {(userScopes.includes('delete:articles') || article.ownerId === userId) && (
+        <button
+          onClick={() => handleDelete(article.id)}
+          className="text-red-600 hover:text-red-900"
+        >
+          Excluir
+        </button>
+      )}
+    </div>
+  );
+};
+```
+
+## Integre seu backend com o RBAC do Logto \{#integrate-your-backend-with-logto-rbac}
+
+Agora, é hora de integrar o RBAC do Logto ao seu backend.
+
+### Middleware de autorização no backend \{#backend-authorization-middleware}
+
+Primeiro, precisamos adicionar um middleware no backend para verificar as permissões do usuário, conferir se o usuário está autenticado e determinar se ele tem as permissões necessárias para acessar certas APIs.
+
+```javascript
+// backend/src/middleware/auth.js
+
+const { createRemoteJWKSet, jwtVerify } = require('jose');
+
+const getTokenFromHeader = (headers) => {
+  const { authorization } = headers;
+  const bearerTokenIdentifier = 'Bearer';
+
+  if (!authorization) {
+    throw new Error('Authorization header missing');
+  }
+
+  if (!authorization.startsWith(bearerTokenIdentifier)) {
+    throw new Error('Authorization token type not supported');
+  }
+
+  return authorization.slice(bearerTokenIdentifier.length + 1);
+};
+
+const hasScopes = (tokenScopes, requiredScopes) => {
+  if (!requiredScopes || requiredScopes.length === 0) {
+    return true;
+  }
+  const scopeSet = new Set(tokenScopes);
+  return requiredScopes.every((scope) => scopeSet.has(scope));
+};
+
+const verifyJwt = async (token) => {
+  const JWKS = createRemoteJWKSet(new URL(process.env.LOGTO_JWKS_URL));
+
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: process.env.LOGTO_ISSUER,
+    audience: process.env.LOGTO_API_RESOURCE,
+  });
+
+  return payload;
+};
+
+const requireAuth = (requiredScopes = []) => {
+  return async (req, res, next) => {
+    try {
+      // Extrai o token
+      const token = getTokenFromHeader(req.headers);
+
+      // Verifica o token
+      const payload = await verifyJwt(token);
+
+      // Adiciona informações do usuário à requisição
+      req.user = {
+        id: payload.sub,
+        scopes: payload.scope?.split(' ') || [],
+      };
+
+      // Verifica os escopos necessários
+      if (!hasScopes(req.user.scopes, requiredScopes)) {
+        throw new Error('Insufficient permissions');
+      }
+
+      next();
+    } catch (error) {
+      res.status(401).json({ error: 'Unauthorized' });
+    }
+  };
+};
+
+module.exports = {
+  requireAuth,
+  hasScopes,
+};
+```
+
+Como você pode ver, neste middleware, verificamos se a requisição do frontend contém um token de acesso válido e conferimos se o público do token de acesso corresponde ao recurso de API que criamos no Logto Console.
+
+O motivo de verificar o recurso de API é que nosso recurso de API representa, de fato, os recursos do backend do nosso CMS, e todas as permissões do CMS estão associadas a esse recurso de API.
+
+Como esse recurso de API representa os recursos do CMS no Logto, em nosso código frontend, incluímos o respectivo token de acesso ao fazer requisições de API para o backend:
+
+```typescript
+// frontend/src/hooks/use-api.ts
+export const useApi = () => {
+  const { getAccessToken } = useLogto();
+
+  return useMemo(
+    () =>
+      async (endpoint: string, options: RequestInit = {}) => {
+        try {
+          // Obtém o token de acesso para o recurso de API
+          const token = await getAccessToken(API_RESOURCE);
+
+          if (!token) {
+            throw new ApiRequestError('Failed to get access token');
+          }
+
+          const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers: {
+              'Content-Type': 'application/json',
+              // Adiciona o token de acesso ao cabeçalho da requisição
+              Authorization: `Bearer ${token}`,
+              ...options.headers,
+            },
+          });
+
+          // ... trata resposta
+
+          return await response.json();
+        } catch (error) {
+          // ... tratamento de erro
+        }
+      },
+    [getAccessToken]
+  );
+};
+```
+
+Agora podemos usar o middleware `requireAuth` para proteger nossos endpoints de API.
+
+### Protegendo endpoints de API \{#protecting-api-endpoints}
+
+Para APIs que devem ser acessíveis apenas a usuários com permissões específicas, podemos adicionar restrições diretamente no middleware. Por exemplo, a API de criação de artigos deve ser acessível apenas a usuários com a permissão `create:articles`:
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth } = require('../middleware/auth');
+
+router.post('/articles', requireAuth(['create:articles']), async (req, res) => {
+  // ...
+});
+```
+
+Para APIs que precisam verificar tanto permissões quanto propriedade do recurso, podemos usar a função `hasScopes`. Por exemplo, na API de listagem de artigos, usuários com o escopo `list:articles` podem acessar todos os artigos, enquanto autores podem acessar apenas os artigos que criaram:
+
+```javascript
+// backend/src/routes/articles.js
+
+const { requireAuth, hasScopes } = require('../middleware/auth');
+
+router.get('/articles', requireAuth(), async (req, res) => {
+  try {
+    // Se o usuário tem o escopo list:articles, retorna todos os artigos
+    if (hasScopes(req.user.scopes, ['list:articles'])) {
+      const articles = await articleDB.list();
+      return res.json(articles);
+    }
+
+    // Caso contrário, retorna apenas os artigos do usuário
+    const articles = await articleDB.listByOwner(req.user.id);
+    res.json(articles);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch articles' });
+  }
+});
+```
+
+Neste ponto, concluímos a implementação do RBAC. Você pode conferir [o código-fonte completo](https://github.com/logto-io/rbac-sample) para ver a implementação completa.
+
+## Testando a implementação do RBAC no CMS \{#test-the-cms-rbac-implementation}
+
+Agora, vamos testar nossa implementação do RBAC no CMS usando os três usuários que acabamos de criar.
+
+:::note
+Se você perceber que não consegue fazer login com as credenciais dos usuários criados em "User Management", será necessário habilitar o método de login apropriado primeiro. Vá em "Sign-in Experience" no Logto Console e habilite seu método de autenticação preferido (como Email + Senha ou Nome de usuário + Senha).
+:::
+
+Primeiro, vamos fazer login como Alex e Charles, respectivamente, e criar alguns artigos.
+
+Como Alex tem o papel de Admin, ele pode criar, excluir, atualizar, publicar e visualizar todos os artigos.
+
+![Painel CMS - Alex](https://uploads.strapi.logto.io/cms_dashboard_alex_a11863a94b.png)
+
+Charles, com o papel de Autor, só pode criar seus próprios artigos e pode apenas visualizar, atualizar e excluir artigos que ele mesmo criou.
+
+![Painel CMS - Charles - Lista de artigos](https://uploads.strapi.logto.io/cms_dashboard_charles_05f610066a.png)
+
+Bob, com o papel de Editor, pode visualizar e publicar todos os artigos, mas não pode criar, atualizar ou excluir.
+
+![Painel CMS - Bob](https://uploads.strapi.logto.io/cms_dashboard_bob_421a429b69.png)
+
+## Conclusão \{#conclusion}
+
+Parabéns! Você aprendeu como implementar um sistema RBAC robusto em seu aplicativo.
+
+Para cenários mais complexos, como construir aplicativos multi-inquilino, o Logto oferece suporte abrangente a organizações. Confira nosso guia [Construa um aplicativo SaaS multi-inquilino: Um guia completo do design à implementação](/use-cases/multi-tenancy/build-multi-tenant-saas-application) para saber mais sobre como implementar controle de acesso em toda a organização.
+
+Boas codificações! 🚀

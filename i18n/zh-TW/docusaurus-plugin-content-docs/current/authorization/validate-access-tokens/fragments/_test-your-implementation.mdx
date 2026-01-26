@@ -1,0 +1,140 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
+### 取得存取權杖 (Access tokens) \{#get-access-tokens}
+
+**從你的用戶端應用程式取得：**
+如果你已完成用戶端整合，你的應用程式可以自動取得權杖。擷取存取權杖 (Access token) 並在 API 請求中使用。
+
+**使用 curl / Postman 測試：**
+
+1. **使用者權杖 (User tokens)：** 使用你的用戶端應用程式的開發者工具，從 localStorage 或網路分頁複製存取權杖 (Access token)
+2. **機器對機器權杖 (Machine-to-machine tokens)：** 使用 client credentials flow。以下是使用 curl 的非標準範例：
+
+   ```bash
+   curl -X POST https://your-tenant.logto.app/oidc/token \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "grant_type=client_credentials" \
+     -d "client_id=your-m2m-client-id" \
+     -d "client_secret=your-m2m-client-secret" \
+     -d "resource=https://your-api-resource-indicator" \
+     -d "scope=api:read api:write"
+   ```
+
+   你可能需要根據你的 API 資源 (API resource) 和權限 (Permissions) 調整 `resource` 和 `scope` 參數；如果你的 API 以組織 (Organization) 為範圍，也可能需要 `organization_id` 參數。
+
+:::tip
+需要檢查權杖內容嗎？請使用我們的 [JWT 解碼工具](https://logto.io/jwt-decoder) 來解碼並驗證你的 JWT。
+:::
+
+### 測試受保護端點 \{#test-protected-endpoints}
+
+<details>
+<summary>**有效權杖請求**</summary>
+
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  http://localhost:3000/api/protected
+```
+
+**預期回應：**
+
+```json
+{
+  "auth": {
+    "sub": "user123",
+    "clientId": "app456",
+    "organizationId": "org789",
+    "scopes": ["api:read", "api:write"],
+    "audience": ["https://your-api-resource-indicator"]
+  }
+}
+```
+
+</details>
+
+<details>
+<summary>**缺少權杖**</summary>
+
+```bash
+curl http://localhost:3000/api/protected
+```
+
+**預期回應 (401)：**
+
+```json
+{
+  "error": "Authorization header is missing"
+}
+```
+
+</details>
+
+<details>
+<summary>**無效權杖**</summary>
+
+```bash
+curl -H "Authorization: Bearer invalid-token" \
+  http://localhost:3000/api/protected
+```
+
+**預期回應 (401)：**
+
+```json
+{
+  "error": "Invalid token"
+}
+```
+
+</details>
+
+### 權限模型專屬測試 \{#permission-model-specific-testing}
+
+<Tabs groupId="permission-models">
+  <TabItem value="global-api-resources" label="全域 API 資源 (Global API resources)">
+
+    針對以全域權限範圍 (Scopes) 保護的 API 測試情境：
+
+    - **有效權限範圍 (Valid scopes)：** 使用包含所需 API 權限範圍（如 `api:read`、`api:write`）的權杖測試
+    - **缺少權限範圍 (Missing scopes)：** 權杖缺少必要權限範圍時，預期回傳 **403 Forbidden**
+    - **錯誤受眾 (Wrong audience)：** 權杖受眾 (Audience) 不符合 API 資源時，預期回傳 **403 Forbidden**
+
+    ```bash
+    # 權杖缺少必要權限範圍 - 預期 403
+    curl -H "Authorization: Bearer token-without-required-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-permissions" label="組織（非 API）權限 (Organization (non-API) permissions)">
+
+    針對組織專屬存取控制的測試情境：
+
+    - **有效組織權杖 (Valid organization token)：** 使用包含正確組織 (Organization) 資訊（組織 ID 與權限範圍）的權杖測試
+    - **缺少權限範圍 (Missing scopes)：** 使用者沒有執行請求操作的權限時，預期回傳 **403 Forbidden**
+    - **錯誤組織 (Wrong organization)：** 權杖受眾 (Audience) 不符合組織上下文（`urn:logto:organization:<organization_id>`）時，預期回傳 **403 Forbidden**
+
+    ```bash
+    # 錯誤組織的權杖 - 預期 403
+    curl -H "Authorization: Bearer token-for-different-organization" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+  <TabItem value="organization-level-api-resources" label="組織層級 API 資源 (Organization-level API resources)">
+
+    結合 API 資源驗證與組織上下文的測試情境：
+
+    - **有效組織 + API 權限範圍 (Valid organization + API scopes)：** 權杖同時具備組織上下文與所需 API 權限範圍時測試
+    - **缺少 API 權限範圍 (Missing API scopes)：** 組織權杖缺少必要 API 權限時，預期回傳 **403 Forbidden**
+    - **錯誤組織 (Wrong organization)：** 使用不同組織的權杖存取 API 時，預期回傳 **403 Forbidden**
+    - **錯誤受眾 (Wrong audience)：** 權杖受眾 (Audience) 不符合組織層級 API 資源時，預期回傳 **403 Forbidden**
+
+    ```bash
+    # 組織權杖缺少 API 權限範圍 - 預期 403
+    curl -H "Authorization: Bearer organization-token-without-api-scopes" \
+      http://localhost:3000/api/protected
+    ```
+
+  </TabItem>
+</Tabs>

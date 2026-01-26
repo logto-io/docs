@@ -1,0 +1,67 @@
+---
+sidebar_position: 6
+---
+
+# 不透明トークン (Opaque token)
+
+認証 (Authentication) プロセス中にリソースが指定されていない場合、Logto は JWT ではなく不透明トークン (Opaque token) のアクセス トークンを発行します。不透明トークンはランダムな文字列であり、JWT よりもはるかに短いです：
+
+```json
+{
+  "access_token": "some-random-string", // 不透明トークン (opaque token)
+  "expires_in": 3600,
+  "id_token": "eyJhbGc...aBc", // JWT
+  "scope": "openid profile email",
+  "token_type": "Bearer"
+}
+```
+
+不透明トークンは、 [userinfo エンドポイント](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) の呼び出しや、認証 (Authentication) が必要な保護されたリソースへのアクセスに使用できます。JWT ではないため、リソースサーバーはどのようにしてこれを検証できるのでしょうか？
+
+Logto は、不透明トークンの検証に使用できる [イントロスペクションエンドポイント](https://www.rfc-editor.org/rfc/rfc7662.html) を提供しています。デフォルトでは、イントロスペクションエンドポイントは `/oidc/token/introspection` であり、`POST` リクエストを受け付けます。必要なパラメーターは次のとおりです：
+
+- `token`: 検証する不透明トークン
+
+このエンドポイントはクライアント認証も必要です。次のいずれかの方法を使用できます：
+
+- HTTP Basic 認証：`Authorization` ヘッダーに `Basic <base64-encoded-credentials>` を指定します。認証情報はクライアント ID とクライアントシークレットをコロン（`:`）で区切り、base64 エンコードしたものです。
+- HTTP POST 認証：`client_id` および `client_secret` パラメーターを使用します：
+  - `client_id`: トークンをリクエストしたアプリケーションのクライアント ID
+  - `client_secret`: トークンをリクエストしたアプリケーションのクライアントシークレット
+
+クライアント ID（アプリ ID）およびクライアントシークレット（アプリシークレット）は、Logto の「従来の Web」または「マシン間通信」アプリケーションのアプリ認証情報を使用できます。認証情報が無効な場合、イントロスペクションエンドポイントはエラーを返します。
+
+イントロスペクションエンドポイントは、トークンのクレーム (Claims) を含む JSON オブジェクトを返します：
+
+```json
+{
+  "active": true, // トークンが有効かどうか
+  "sub": "1234567890" // トークンのサブジェクト (ユーザー ID)
+}
+```
+
+トークンが無効な場合、`active` フィールドは `false` となり、`sub` フィールドは省略されます。
+
+イントロスペクションリクエストの非公式な例を示します：
+
+```bash
+curl --location \
+  --request POST 'https://[tenant-id].logto.app/oidc/token/introspection' \
+  --header 'Content-Type: application/x-www-form-urlencoded' \
+  --data-urlencode 'token=some-random-string' \
+  --data-urlencode 'client_id=1234567890' \
+  --data-urlencode 'client_secret=1234567890'
+```
+
+`[tenant-id]` をテナント ID に置き換えてください。
+
+## 不透明トークンと組織 (Organizations) \{#opaque-token-and-organizations}
+
+不透明トークンは、 [userinfo エンドポイント](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) を通じて組織 (Organization) メンバーシップ情報の取得に使用できます。`urn:logto:scope:organizations` スコープをリクエストすると、userinfo エンドポイントは `organizations`（組織 ID）や `organization_data` など、ユーザーの組織 (Organization) 関連のクレーム (Claims) を返します。
+
+ただし、**不透明トークンは組織トークン (Organization token) として使用できません**。組織トークン (Organization token) は常に JWT 形式で発行されます。その理由は：
+
+1. 組織トークン (Organization token) には、`organization_id` やスコープされた権限など、リソースサーバーが検証する必要がある組織 (Organization) 固有のクレーム (Claims) が含まれています。
+2. JWT 形式であれば、リソースサーバーは追加の API コールなしでトークンを検証し、組織 (Organization) コンテキストを抽出できます。
+
+組織トークン (Organization token) を取得するには、 [リフレッシュトークンフロー](/authorization/organization-permissions#refresh-token-flow) または [クライアントクレデンシャルフロー](/authorization/organization-permissions#client-credentials-flow) を組織 (Organization) パラメーターとともに使用してください。
