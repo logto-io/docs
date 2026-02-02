@@ -6,7 +6,9 @@ sidebar_label: Logto quick starts
 
 Welcome to Logto quick starts. This documentation contains useful guides for integrating Logto into your application.
 
-Most of guides uses Logto official SDKs. Please don't hesitate to contact us if you have any questions.
+Most of guides uses Logto official SDKs. If you're using AI-powered development tools, try our [Logto MCP Server](/logto-cloud/logto-mcp-server) for AI-assisted integration.
+
+Please don't hesitate to contact us if you have any questions.
 
 :::info
 This page focuses on Logto client integration, including backend-for-frontend patterns. For server-side API protection, see [API protection](/api-protection).
