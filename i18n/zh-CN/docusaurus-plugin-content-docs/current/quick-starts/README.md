@@ -6,10 +6,12 @@ sidebar_label: Logto 快速入门
 
 欢迎来到 Logto 快速入门。本指南包含将 Logto 集成到你的应用程序中的实用指南。
 
-大多数指南都使用 Logto 官方 SDK。如果你有任何问题，请随时联系我们。
+大多数指南都使用 Logto 官方 SDK。如果你正在使用 AI 驱动的开发工具，可以尝试我们的 [Logto MCP Server](/logto-cloud/logto-mcp-server) 进行 AI 辅助集成。
+
+如有任何疑问，请随时联系我们。
 
 :::info
-本页面侧重于 Logto 客户端集成，包括前端对后端（backend-for-frontend）模式。关于服务端 API 保护，请参阅 [API 保护](/api-protection)。
+本页面侧重于 Logto 客户端集成，包括后端为前端模式。关于服务端 API 保护，请参阅 [API 保护](/api-protection)。
 :::
 
 ---
