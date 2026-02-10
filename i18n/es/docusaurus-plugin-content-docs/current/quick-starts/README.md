@@ -1,15 +1,17 @@
 ---
-sidebar_label: Guías rápidas de Logto
+sidebar_label: Inicios rápidos de Logto
 ---
 
-# Guías rápidas
+# Inicios rápidos
 
-Bienvenido a las guías rápidas de Logto. Esta documentación contiene guías útiles para integrar Logto en tu aplicación.
+Bienvenido a los inicios rápidos de Logto. Esta documentación contiene guías útiles para integrar Logto en tu aplicación.
 
-La mayoría de las guías utilizan los SDK oficiales de Logto. No dudes en contactarnos si tienes alguna pregunta.
+La mayoría de las guías utilizan los SDK oficiales de Logto. Si estás usando herramientas de desarrollo impulsadas por IA, prueba nuestro [Logto MCP Server](/logto-cloud/logto-mcp-server) para una integración asistida por IA.
+
+No dudes en contactarnos si tienes alguna pregunta.
 
 :::info
-Esta página se centra en la integración del cliente de Logto, incluyendo patrones backend-for-frontend. Para la protección de API del lado del servidor, consulta [Protección de API](/api-protection).
+Esta página se centra en la integración del cliente de Logto, incluyendo patrones backend-for-frontend. Para la protección de API del lado del servidor, consulta [protección de API](/api-protection).
 :::
 
 ---
