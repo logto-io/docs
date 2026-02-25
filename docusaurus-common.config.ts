@@ -349,13 +349,16 @@ export const classicPresetConfig = {
 };
 
 // Google One Tap related configurations
-export const googleOneTapScripts = [
-  {
-    src: 'https://accounts.google.com/gsi/client',
-    async: true,
-    defer: true,
-  },
-];
+const isGoogleOneTapScriptEnabled = yes(process.env.GOOGLE_ONE_TAP_SCRIPT_ENABLED);
+export const googleOneTapScripts = isGoogleOneTapScriptEnabled
+  ? [
+      {
+        src: 'https://accounts.google.com/gsi/client',
+        async: true,
+        defer: true,
+      },
+    ]
+  : [];
 
 export const createGoogleOneTapCustomFields = () => ({
   isProduction: yes(process.env.IS_PRODUCTION),
