@@ -1,6 +1,6 @@
 Here's the list of supported scopes and the corresponding claims:
 
-### Standard OIDC scopes
+### Standard OIDC scopes {#standard-oidc-scopes}
 
 **`openid`** (default)
 
@@ -46,7 +46,7 @@ Please refer to the [OpenID Connect Core 1.0](https://openid.net/specs/openid-co
 Scopes marked with **(default)** are always requested by the Logto SDK. Claims under standard OIDC scopes are always included in the ID token when the corresponding scope is requested — they cannot be turned off.
 :::
 
-### Extended scopes
+### Extended scopes {#extended-scopes}
 
 The following scopes are extended by Logto and will return claims through the [userinfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo). These claims can also be configured to be included directly in the ID token through <CloudLink to="/customize-jwt">Console > Custom JWT</CloudLink>. See [Custom ID token](/developers/custom-id-token) for more details.
 
