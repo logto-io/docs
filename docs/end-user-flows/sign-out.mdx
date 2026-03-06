@@ -4,213 +4,252 @@ sidebar_position: 8
 
 # Sign-out
 
-The sign-out process in Logto (as an OIDC-based identity provider) is a multi-faced concept due to the involvement of both centralized sign-in session managed by Logto and the distributed authentication status managed by the client applications.
+Sign-out in Logto (as an OIDC identity provider) involves both:
 
-## Sign-in session \{#sign-in-session}
+- A **centralized Logto session** (browser cookie under Logto domain), and
+- **Distributed client-side auth state** (tokens and local app session in each app).
 
-To better understand the sign-out process, it's important to first understand how user sign-in sessions and their authentication status are managed in Logto.
+To understand sign-out behavior, it helps to separate these two layers and then see how **grants** connect them.
+
+## Core concepts
+
+### What is a Logto session?
+
+A Logto session is the centralized sign-in state managed by Logto. It is created after successful authentication and represented by cookies under the Logto domain.
+
+If the session cookie is valid, the user can be silently authenticated (SSO) across multiple apps that trust the same Logto tenant.
+
+If no valid session exists, Logto shows the sign-in page.
+
+### What are grants?
+
+A **grant** represents the authorization status for a specific user + client application combination.
+
+- One Logto session can have grants for multiple client apps.
+- A grant is what issued tokens are associated with.
+- In this doc set, use **grant** as the cross-app authorization unit.
+
+### How session, grants, and client auth status relate
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor User
+flowchart LR
+  subgraph Logto [Logto domain]
+    S[Logto session]
+    G1[Grant for App A]
+    G2[Grant for App B]
+  end
 
-    box Relying Party (RP)
-      participant Client as Client application
-    end
+  subgraph AppA [Client domain A]
+    A[Local session / tokens]
+  end
 
-    box Logto (IdP)
-      participant OIDC as OIDC provider
-      participant SignIn as Sign-in page
-    end
+  subgraph AppB [Client domain B]
+    B[Local session / tokens]
+  end
 
-    User ->> Client: Access web application
-    Client ->> OIDC: Redirect user to OIDC for authentication
-    OIDC -->> OIDC: Check user's sign-in session
-    OIDC ->> SignIn: Prompt user to sign in
-    SignIn ->> OIDC: Identify user and submit the interaction result
-    OIDC -->> OIDC: Establish user's sign-in session and authentication grant
-    OIDC ->> Client: Redirect user back to the web application with authentication code (Authorization Code flow)
-    Client ->> OIDC: Exchange the code for tokens
-    OIDC -->> Client: Return tokens
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. The user accesses the web application (RP).
-2. The client application redirects the user to Logto (IdP) for [authentication](https://auth.wiki/authentication).
-3. The OIDC provider checks the user's sign-in session status. If no session exists or the session has expired, the user is prompted to sign in.
-4. The user interacts with the sign-in page to get authenticated.
-5. After successful sign-in, Logto creates a new session for the user and redirects back to the client application with an authorization code.
-6. The OIDC provider creates a new sign-in session and authentication grant for the user.
-7. The OIDC provider redirects the user back to the client with an authentication code ([Authorization Code flow](https://auth.wiki/authorization-code-flow)).
-8. The client receives the authentication code and exchanges it for tokens to access user information.
-9. Grant tokens to the client application.
+- **Logto session** controls centralized SSO experience.
+- **Client local session/tokens** control whether each app currently treats user as signed in.
+- **Grants** connect these two worlds by representing app-specific authorization state.
 
-## Components \{#components}
+## Sign-in recap (why sign-out is multi-layered)
 
-### Centralized sign-in session managed by Logto \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-In the above flow, the centralized sign-in session is managed by Logto. The session is created when the user successfully signs in and is destroyed when the user signs out. The session is also destroyed when the user's session expires.
+  box Relying Party (RP)
+    participant Client as Client application
+  end
 
-Logto sign-in session is managed using session cookies. The session cookie is set when the user signs in. All the authentication requests are validated against the session cookie. If the session cookie is present and valid the user with be automatically authenticated and directly redirected to the client application with the authorization code. Otherwise, the user will be prompted to sign in.
+  box Logto (IdP)
+    participant OIDC as OIDC provider
+    participant SignIn as Sign-in page
+  end
 
-1. Shared Logto session cookie
-   For a user who signs in to multiple client applications from the same user agent (e.g., browser), the user will have a shared session cookie under the Logto domain. This means that the user only needs to sign in once and get automatically authenticated for other client applications.
+  User ->> Client: Access application
+  Client ->> OIDC: Redirect for authentication
+  OIDC -->> OIDC: Check Logto session
+  OIDC ->> SignIn: Prompt sign-in if needed
+  SignIn ->> OIDC: User authenticates
+  OIDC -->> OIDC: Create session and grant
+  OIDC ->> Client: Return authorization code
+  Client ->> OIDC: Exchange code for tokens
+  OIDC -->> Client: Return tokens
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph User [User agent A]
-      U[User]
+## Session topology across apps/devices
 
-      subgraph Layer1 [Client domain A]
-        A[Client Application A]
-      end
+### Shared session cookie (same browser/user agent)
 
-      subgraph Layer1 [Client domain B]
-        B[Client Application B]
-      end
+If a user signs in to multiple apps from the same browser, those apps can reuse the same Logto session cookie and SSO behavior applies.
 
-      subgraph Layer2 [Logto domain]
-          C{{Logto sign-in session?}}
-          D[sign-in page]
-      end
-    end
+```mermaid
+flowchart TD
+  U[User]
+  A["Client Application A (Client domain A)"]
+  B["Client Application B (Client domain B)"]
+  C{"Logto session exists? (Logto domain)"}
+  D["Sign-in page (Logto domain)"]
 
-    U --> |Sign-in| A
-    A --> |Redirect to Logto| C
-    U --> |Sign-in| B
-    B --> |Redirect to Logto| C
-    C --> |No| D
-    D --> |Create session| C
-   ```
+  subgraph UA["User agent A (same browser)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. Isolated Logto session cookie
-   For a user who signs in to different client applications from different devices or browsers, the user will have isolated session cookies under the Logto domain. This means that the user needs to sign in for each client application separately.
+  U -->|Sign in| A
+  A -->|Redirect to Logto| C
+  U -->|Open app| B
+  B -->|Redirect to Logto| C
+  C -->|No| D
+  D -->|Create session| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[User]
+### Isolated session cookies (different devices/browsers)
 
-    subgraph DeviceA [User agent A]
-      subgraph Layer1 [Client domain A]
-        A[Client Application A]
-      end
+Different browsers/devices hold different Logto cookies, so sign-in session state is isolated.
 
-      subgraph Layer2 [Logto domain]
-          C{{Logto sign-in session?}}
-          D[sign-in page]
-      end
-    end
+```mermaid
+flowchart TD
+  U[User]
+  A["Client Application A (Client domain A)"]
+  C{"Logto session exists? (Device A, Logto domain)"}
+  D["Sign-in page (Device A, Logto domain)"]
 
-    subgraph DeviceB [User agent B]
-      subgraph Layer3 [Client domain B]
-        B[Client Application B]
-      end
+  subgraph DeviceA["User agent A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Logto domain]
-          E{{Logto sign-in session?}}
-          F[sign-in page]
-      end
-    end
+  B["Client Application B (Client domain B)"]
+  E{"Logto session exists? (Device B, Logto domain)"}
+  F["Sign-in page (Device B, Logto domain)"]
 
-    U --> |Sign-in| A
-    A --> |Redirect to Logto| C
-    U --> |Sign-in| B
-    B --> |Redirect to Logto| E
-    C --> |No| D
-    E --> |No| F
-    D --> |Create session| C
-    F --> |Create session| E
-   ```
+  subgraph DeviceB["User agent B"]
+    B
+    E
+    F
+  end
 
-## Distributed authentication status managed by the client applications \{#distributed-authentication-status-managed-by-the-client-applications}
+  U -->|Sign in| A
+  A -->|Redirect to Logto| C
+  U -->|Sign in| B
+  B -->|Redirect to Logto| E
+  C -->|No| D
+  E -->|No| F
+  D -->|Create session| C
+  F -->|Create session| E
+```
 
-Each client application maintains its own authentication status. Whether a Native, SPA, or Web application, all have their own way of managing the user's authentication status.
+## Sign-out mechanisms
 
-Upon successful sign-in, the client application may receive an [ID token](https://auth.wiki/id-token) and [access token](https://auth.wiki/access-token). The client application can use the ID token to determine the user's identity and the access token to access the user's resources. The user's authentication status is represented by the access token's expiration time.
+### 1) Client-side-only sign-out
 
-- Native and SPA applications:
-  Client application need to securely store and manage these tokens in order to maintain the user's authentication status. E.g., store the tokens in local storage or session storage, and clear the tokens when the user signs out.
-- Web applications:
-  Web apps like those built with frameworks like Next.js often manage their own session for logged-in users alongside the tokens issued by Logto. Once the user signs in, and the web app receives the tokens from Logto, it can store the tokens at the client-side just like SPA applications, or it can store the tokens at the server-side and manage the session using cookies or other mechanisms.
+Client app clears its own local session and tokens (ID/access/refresh tokens). This signs user out from that app's local state only.
 
-## Sign-out mechanisms \{#sign-out-mechanisms}
+- Logto session may still be active.
+- Other apps under same Logto session may still SSO.
 
-### Clear tokens and local session at the client side \{#clear-tokens-and-local-session-at-the-client-side}
+### 2) End-session at Logto (global sign-out in current Logto implementation)
 
-On the client side, a simple sign-out involves clearing the local session and removing tokens (ID token, access token, refresh token) from local storage or session storage. This results in a client-side-only sign-out where the centralized session remains intact. Users sign out in this manner may still be able to access other applications under the same authorization server session until the centralized session expires or is actively destroyed.
+To clear centralized Logto session, app redirects user to the end session endpoint, for example:
 
-### Clear sign-in session at Logto \{#clear-sign-in-session-at-logto}
+`https://{your-logto-domain}/oidc/session/end`
 
-To explicitly sign out the user and clear the session at Logto, the client application need to redirect the user to the Logto's **end session endpoint**.
+In current Logto SDK behavior:
 
-E.g. `https://{your-logto-domain}/oidc/session/end`
+1. `signOut()` redirects to `/session/end`.
+2. Then it goes to `/session/end/confirm`.
+3. Default confirm form auto-posts `logout=true`.
 
-The **end session endpoint** is a standard OIDC endpoint that allows the client application to notify the authorization server that the user has signed out. The endpoint will clear the centralized sign-in session at Logto.
+As a result, current SDK sign-out is treated as **global sign-out**.
 
-Once the session is cleared, any subsequent authorization requests will require the user to sign in again.
+### What happens during global sign-out
 
-If a **post-logout redirect URI** is provided, the user will be redirected to the specified URI after the session is cleared. Otherwise, the user will be redirected to the default post-logout page hosted by Logto.
+```mermaid
+flowchart TD
+  A["Client starts sign-out"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["Revoke centralized Logto session"]
+  D --> E{"Check per-app grant"}
+  E -->|"offline_access not granted"| F["Revoke grant"]
+  E -->|"offline_access granted"| G["Keep grant until grant TTL expires"]
+```
 
-## Federated sign-out: Back-channel logout \{#federated-sign-out-back-channel-logout}
+During global sign-out:
 
-For more consistent sign-out management, Logto supports [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html). Back-channel logout is a mechanism that allows Logto to notify all the client applications under the same sign-in session when the user signs out.
+- The centralized Logto session is revoked.
+- Related app grants are handled per app authorization state:
+  - If `offline_access` is **not** granted, related grants are revoked.
+  - If `offline_access` **is** granted, grants are not revoked by end-session.
+- For `offline_access` cases, refresh tokens and grants remain valid until grant expiration.
 
-This is particularly useful in scenarios where the user signs out from one client application and expects to be signed out from all other client applications under the same Logto sign-in session.
+## Grant lifetime and `offline_access` impact
 
-To enable back-channel logout for your client applications, go to the application details page in the Logto dashboard, and register a back-channel logout URI. Logto will send a logout token to all the registered URI when the user initiates a sign-out request from any client application.
+- Default Logto grant TTL is **180 days**.
+- If `offline_access` is granted, end-session does not revoke that app grant by default.
+- Refresh token chain associated with that grant can continue until the grant expires (or is explicitly revoked).
 
-If your client application requires the sign-in session to be included in the logout token, turn on the `Is session required` settings in the back-channel logout configuration. A `sid` claim will be included in the logout token to identify the user's sign-in session at Logto.
+## Federated sign-out: back-channel logout
 
-1. User initiates a sign-out request from one client application.
-2. Logto receives the end session request, generates a logout token, and sends the logout token to all registered back-channel logout URIs.
-3. Each client application receives the logout token and perform sign-out actions.
+For cross-app consistency, Logto supports [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html).
 
-Sign-out actions for each client application when receiving the logout token:
+When a user signs out from one app, Logto can notify all apps participating in the same session by sending a logout token to each app's registered back-channel logout URI.
 
-- Validate the logout token.
-- Clear the local session and remove tokens from local storage or session storage.
+If `Is session required` is enabled in app back-channel settings, the logout token includes `sid` to identify the Logto session.
 
-## Sign-out methods in Logto SDKs \{#sign-out-methods-in-logto-sdks}
+Typical flow:
 
-If you are integrating Logto with your client application using Logto's SDKs:
+1. User initiates sign-out from one app.
+2. Logto processes end-session and sends logout token(s) to registered back-channel logout URI(s).
+3. Each app validates logout token and clears its own local session/tokens.
 
-- For SPA and web applications, the `client.signOut()` method will clear the local token storage and redirect the user to the Logto's end session endpoint. You may specify a **post-logout redirect URI** to redirect the user after the session is cleared.
-- For native applications (including hybrid apps like **React Native** and **Flutter**), only the local token storage is cleared. This is because in native application, we use the sessionless webview to handle the sign-in process. No session cookies are stored in the native browser, so there is no need to clear the sign-in session at Logto. Each authentication request is a standalone request that does not carry any session cookies.
+## Sign-out methods in Logto SDKs
+
+- **SPA and web**: `client.signOut()` clears local token storage and redirects to Logto end-session endpoint. You may provide a post-logout redirect URI.
+- **Native (including React Native / Flutter)**: usually clears local token storage only. Sessionless webview means no persistent Logto browser cookie to clear.
 
 :::note
 For native applications that does not support sessionless webview or does not recognize the `emphasized` settings(Android app using **React Native** or **Flutter** SDK), you may force the user prompt to sign in again by passing the `prompt=login` parameter in the authorization request.
 :::
 
-## Enforce re-authentication on every access \{#enforce-re-authentication-on-every-access}
+## Enforce re-authentication on every access
 
-In high-security scenarios—such as verifying a user's identity before sensitive actions—you may want to require the user to re-authenticate on every access. To enforce this behavior, include `prompt=login` in your authentication request.
+For high-security actions, include `prompt=login` in auth requests to bypass SSO and force credential entry each time.
 
-Setting `prompt=login` forces Logto to always display the sign-in page, regardless of whether the user has an active session or recently signed in. This bypasses single sign-on (SSO) behavior and ensures the user is prompted to enter their credentials each time.
+If requesting `offline_access` (to receive refresh tokens), also include `consent`, `prompt=login consent`.
 
-If your app requests the offline_access scope (to receive a refresh token), the OpenID Connect specification requires you to also include `prompt=consent`.
-In most cases, to both enforce re-authentication and ensure refresh token issuance, set:
+Typical combined setting:
 
-```
+```txt
 prompt=login consent
 ```
 
-This guarantees the user is re-authenticated and explicitly consents to offline access.
-
-## FAQs \{#faqs}
+## FAQs
 
 <details>
   <summary>
 
-### I'm not receiving the back-channel logout notifications. \{#im-not-receiving-the-back-channel-logout-notifications}
+### I'm not receiving the back-channel logout notifications.
 
 </summary>
 
-- Ensure that the back-channel logout URI is correctly registered in the Logto dashboard.
-- Ensure that your client application has an valid active sign-in session and is the same session as the one that initiated the sign-out request.
+- Ensure back-channel logout URI is correctly registered in Logto dashboard.
+- Ensure your app has an active sign-in state for the same user/session context.
 
 </details>
 
-## Related resources \{#related-resources}
+## Related resources
 
 <Url href="https://blog.logto.io/oidc-back-channel-logout/">
   Understanding OIDC back-channel logout.
