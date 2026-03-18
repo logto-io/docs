@@ -2,199 +2,238 @@
 sidebar_position: 8
 ---
 
-# 로그아웃 (Sign-out)
+# 로그아웃
 
-Logto (OIDC 기반 아이덴티티 제공자)에서의 로그아웃 프로세스는 Logto가 관리하는 중앙화된 로그인 세션과 클라이언트 애플리케이션이 관리하는 분산된 인증 상태가 모두 관여하기 때문에 다면적인 개념입니다.
+Logto( OIDC 아이덴티티 제공자 (IdP)로서 )에서의 로그아웃은 다음 두 가지를 모두 포함합니다:
 
-## 로그인 세션 \{#sign-in-session}
+- **중앙 집중식 Logto 세션** (Logto 도메인 아래의 브라우저 쿠키)
+- **분산된 클라이언트 측 인증 상태** (각 앱의 토큰 및 로컬 앱 세션)
 
-로그아웃 프로세스를 더 잘 이해하려면, 먼저 Logto에서 사용자 로그인 세션과 인증 상태가 어떻게 관리되는지 이해하는 것이 중요합니다.
+로그아웃 동작을 이해하려면 이 두 계층을 분리해서 보고, **grant**가 이 둘을 어떻게 연결하는지 살펴보는 것이 도움이 됩니다.
+
+## 핵심 개념 \{#core-concepts}
+
+### Logto 세션이란? \{#what-is-a-logto-session}
+
+Logto 세션은 Logto가 관리하는 중앙 집중식 로그인 상태입니다. 인증 (Authentication)에 성공한 후 생성되며, Logto 도메인 아래의 쿠키로 표현됩니다.
+
+세션 쿠키가 유효하다면, 사용자는 동일한 Logto 테넌트를 신뢰하는 여러 앱에서 조용히 인증 (SSO)될 수 있습니다.
+
+유효한 세션이 없다면, Logto는 로그인 페이지를 표시합니다.
+
+### grant란 무엇인가요? \{#what-are-grants}
+
+**grant**는 특정 사용자 + 클라이언트 애플리케이션 조합에 대한 인가 (Authorization) 상태를 나타냅니다.
+
+- 하나의 Logto 세션은 여러 클라이언트 앱에 대한 grant를 가질 수 있습니다.
+- grant는 발급된 토큰이 연결되는 단위입니다.
+- 이 문서 세트에서는 **grant**를 앱 간 인가 단위로 사용합니다.
+
+### 세션, grant, 클라이언트 인증 상태의 관계 \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor User
+flowchart LR
+  subgraph Logto [Logto 도메인]
+    S[Logto 세션]
+    G1[App A에 대한 grant]
+    G2[App B에 대한 grant]
+  end
 
-    box Relying Party (RP)
-      participant Client as 클라이언트 애플리케이션
-    end
+  subgraph AppA [클라이언트 도메인 A]
+    A[로컬 세션 / 토큰]
+  end
 
-    box Logto (IdP)
-      participant OIDC as OIDC 제공자
-      participant SignIn as 로그인 페이지
-    end
+  subgraph AppB [클라이언트 도메인 B]
+    B[로컬 세션 / 토큰]
+  end
 
-    User ->> Client: 웹 애플리케이션 접근
-    Client ->> OIDC: 인증 (Authentication)을 위해 사용자를 OIDC로 리디렉션
-    OIDC -->> OIDC: 사용자의 로그인 세션 확인
-    OIDC ->> SignIn: 사용자에게 로그인 요청
-    SignIn ->> OIDC: 사용자 식별 및 상호작용 결과 제출
-    OIDC -->> OIDC: 사용자의 로그인 세션 및 인증 (Authentication) 부여 생성
-    OIDC ->> Client: 인증 코드와 함께 사용자를 웹 애플리케이션으로 리디렉션 (Authorization Code flow)
-    Client ->> OIDC: 코드를 토큰으로 교환
-    OIDC -->> Client: 토큰 반환
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. 사용자가 웹 애플리케이션 (RP)에 접근합니다.
-2. 클라이언트 애플리케이션이 사용자를 Logto (IdP)로 [인증 (Authentication)](https://auth.wiki/authentication)을 위해 리디렉션합니다.
-3. OIDC 제공자가 사용자의 로그인 세션 상태를 확인합니다. 세션이 없거나 만료된 경우, 사용자에게 로그인을 요청합니다.
-4. 사용자가 로그인 페이지에서 상호작용하여 인증을 완료합니다.
-5. 로그인에 성공하면, Logto가 사용자를 위한 새로운 세션을 생성하고, 인가 코드를 가지고 클라이언트 애플리케이션으로 리디렉션합니다.
-6. OIDC 제공자가 사용자를 위한 새로운 로그인 세션과 인증 (Authentication) 부여를 생성합니다.
-7. OIDC 제공자가 인증 코드와 함께 사용자를 클라이언트로 리디렉션합니다 ([Authorization Code flow](https://auth.wiki/authorization-code-flow)).
-8. 클라이언트가 인증 코드를 받아 사용자 정보를 얻기 위해 토큰으로 교환합니다.
-9. 클라이언트 애플리케이션에 토큰을 부여합니다.
+- **Logto 세션**은 중앙 집중식 SSO 경험을 제어합니다.
+- **클라이언트 로컬 세션/토큰**은 각 앱이 현재 사용자를 로그인 상태로 간주하는지 제어합니다.
+- **grant**는 앱별 인가 상태를 나타내며 이 두 세계를 연결합니다.
 
-## 구성 요소 \{#components}
+## 로그인 요약 (로그아웃이 다계층인 이유) \{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### Logto가 관리하는 중앙화된 로그인 세션 \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-위의 흐름에서 중앙화된 로그인 세션은 Logto가 관리합니다. 사용자가 성공적으로 로그인하면 세션이 생성되고, 로그아웃 시 세션이 파기됩니다. 사용자의 세션이 만료되면 세션도 파기됩니다.
+  box Relying Party (RP)
+    participant Client as 클라이언트 애플리케이션
+  end
 
-Logto 로그인 세션은 세션 쿠키를 사용하여 관리됩니다. 사용자가 로그인할 때 세션 쿠키가 설정됩니다. 모든 인증 (Authentication) 요청은 세션 쿠키를 기준으로 검증됩니다. 세션 쿠키가 존재하고 유효하다면 사용자는 자동으로 인증되어 인가 코드와 함께 클라이언트 애플리케이션으로 바로 리디렉션됩니다. 그렇지 않으면 사용자는 로그인하라는 요청을 받게 됩니다.
+  box Logto (IdP)
+    participant OIDC as OIDC 제공자
+    participant SignIn as 로그인 페이지
+  end
 
-1. 공유 Logto 세션 쿠키  
-   동일한 사용자 에이전트(예: 브라우저)에서 여러 클라이언트 애플리케이션에 로그인하는 사용자는 Logto 도메인 하에 공유 세션 쿠키를 갖게 됩니다. 즉, 한 번만 로그인하면 다른 클라이언트 애플리케이션에서도 자동으로 인증됩니다.
+  User ->> Client: 애플리케이션 접근
+  Client ->> OIDC: 인증 (Authentication) 위해 리디렉션
+  OIDC -->> OIDC: Logto 세션 확인
+  OIDC ->> SignIn: 필요 시 로그인 요청
+  SignIn ->> OIDC: 사용자 인증 (Authentication)
+  OIDC -->> OIDC: 세션 및 grant 생성
+  OIDC ->> Client: 인가 코드 반환
+  Client ->> OIDC: 코드로 토큰 교환
+  OIDC -->> Client: 토큰 반환
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph User [사용자 에이전트 A]
-      U[사용자]
+## 앱/디바이스 간 세션 토폴로지 \{#session-topology-across-apps-devices}
 
-      subgraph Layer1 [클라이언트 도메인 A]
-        A[클라이언트 애플리케이션 A]
-      end
+### 공유 세션 쿠키 (동일 브라우저/유저 에이전트) \{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Layer1 [클라이언트 도메인 B]
-        B[클라이언트 애플리케이션 B]
-      end
+사용자가 동일 브라우저에서 여러 앱에 로그인하면, 해당 앱들은 동일한 Logto 세션 쿠키를 재사용할 수 있으며 SSO 동작이 적용됩니다.
 
-      subgraph Layer2 [Logto 도메인]
-          C{{Logto 로그인 세션?}}
-          D[로그인 페이지]
-      end
-    end
+```mermaid
+flowchart TD
+  U[사용자]
+  A["클라이언트 애플리케이션 A (클라이언트 도메인 A)"]
+  B["클라이언트 애플리케이션 B (클라이언트 도메인 B)"]
+  C{"Logto 세션 존재? (Logto 도메인)"}
+  D["로그인 페이지 (Logto 도메인)"]
 
-    U --> |로그인| A
-    A --> |Logto로 리디렉션| C
-    U --> |로그인| B
-    B --> |Logto로 리디렉션| C
-    C --> |없음| D
-    D --> |세션 생성| C
-   ```
+  subgraph UA["유저 에이전트 A (동일 브라우저)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. 분리된 Logto 세션 쿠키  
-   서로 다른 기기나 브라우저에서 각각 다른 클라이언트 애플리케이션에 로그인하는 사용자는 Logto 도메인 하에 분리된 세션 쿠키를 갖게 됩니다. 즉, 각 클라이언트 애플리케이션마다 별도로 로그인해야 합니다.
+  U -->|로그인| A
+  A -->|Logto로 리디렉션| C
+  U -->|앱 열기| B
+  B -->|Logto로 리디렉션| C
+  C -->|아니오| D
+  D -->|세션 생성| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[사용자]
+### 분리된 세션 쿠키 (다른 디바이스/브라우저) \{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DeviceA [사용자 에이전트 A]
-      subgraph Layer1 [클라이언트 도메인 A]
-        A[클라이언트 애플리케이션 A]
-      end
+다른 브라우저/디바이스는 서로 다른 Logto 쿠키를 가지므로, 로그인 세션 상태가 분리됩니다.
 
-      subgraph Layer2 [Logto 도메인]
-          C{{Logto 로그인 세션?}}
-          D[로그인 페이지]
-      end
-    end
+```mermaid
+flowchart TD
+  U[사용자]
+  A["클라이언트 애플리케이션 A (클라이언트 도메인 A)"]
+  C{"Logto 세션 존재? (디바이스 A, Logto 도메인)"}
+  D["로그인 페이지 (디바이스 A, Logto 도메인)"]
 
-    subgraph DeviceB [사용자 에이전트 B]
-      subgraph Layer3 [클라이언트 도메인 B]
-        B[클라이언트 애플리케이션 B]
-      end
+  subgraph DeviceA["유저 에이전트 A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Logto 도메인]
-          E{{Logto 로그인 세션?}}
-          F[로그인 페이지]
-      end
-    end
+  B["클라이언트 애플리케이션 B (클라이언트 도메인 B)"]
+  E{"Logto 세션 존재? (디바이스 B, Logto 도메인)"}
+  F["로그인 페이지 (디바이스 B, Logto 도메인)"]
 
-    U --> |로그인| A
-    A --> |Logto로 리디렉션| C
-    U --> |로그인| B
-    B --> |Logto로 리디렉션| E
-    C --> |없음| D
-    E --> |없음| F
-    D --> |세션 생성| C
-    F --> |세션 생성| E
-   ```
+  subgraph DeviceB["유저 에이전트 B"]
+    B
+    E
+    F
+  end
 
-## 클라이언트 애플리케이션이 관리하는 분산 인증 상태 \{#distributed-authentication-status-managed-by-the-client-applications}
-
-각 클라이언트 애플리케이션은 자체적으로 인증 상태를 관리합니다. Native, SPA, Web 애플리케이션 모두 사용자 인증 상태를 관리하는 고유한 방법이 있습니다.
-
-로그인에 성공하면, 클라이언트 애플리케이션은 [ID 토큰](https://auth.wiki/id-token) 및 [액세스 토큰](https://auth.wiki/access-token)을 받을 수 있습니다. 클라이언트 애플리케이션은 ID 토큰을 사용하여 사용자의 아이덴티티를 확인하고, 액세스 토큰을 사용하여 사용자의 리소스에 접근할 수 있습니다. 사용자의 인증 상태는 액세스 토큰의 만료 시간으로 표현됩니다.
-
-- Native 및 SPA 애플리케이션:  
-  클라이언트 애플리케이션은 사용자의 인증 상태를 유지하기 위해 이러한 토큰을 안전하게 저장하고 관리해야 합니다. 예를 들어, 토큰을 local storage 또는 session storage에 저장하고, 사용자가 로그아웃할 때 토큰을 삭제합니다.
-- Web 애플리케이션:  
-  Next.js와 같은 프레임워크로 구축된 웹 앱은 Logto에서 발급한 토큰과 별도로 로그인 사용자를 위한 자체 세션을 관리하는 경우가 많습니다. 사용자가 로그인하고 Logto에서 토큰을 받으면, SPA 애플리케이션처럼 클라이언트 측에 토큰을 저장하거나, 서버 측에 토큰을 저장하고 쿠키 또는 기타 메커니즘으로 세션을 관리할 수 있습니다.
+  U -->|로그인| A
+  A -->|Logto로 리디렉션| C
+  U -->|로그인| B
+  B -->|Logto로 리디렉션| E
+  C -->|아니오| D
+  E -->|아니오| F
+  D -->|세션 생성| C
+  F -->|세션 생성| E
+```
 
 ## 로그아웃 메커니즘 \{#sign-out-mechanisms}
 
-### 클라이언트 측에서 토큰 및 로컬 세션 삭제 \{#clear-tokens-and-local-session-at-the-client-side}
+### 1) 클라이언트 측 로그아웃만 수행 \{#1-client-side-only-sign-out}
 
-클라이언트 측에서 간단한 로그아웃은 로컬 세션을 삭제하고 local storage 또는 session storage에서 토큰 (ID 토큰, 액세스 토큰, 리프레시 토큰)을 제거하는 것입니다. 이 방식은 클라이언트 측에서만 로그아웃이 이루어지며, 중앙화된 세션은 그대로 남아 있습니다. 이 방식으로 로그아웃한 사용자는 중앙화된 인가 서버 세션이 만료되거나 적극적으로 파기되기 전까지는 다른 애플리케이션에 계속 접근할 수 있습니다.
+클라이언트 앱이 자체 로컬 세션과 토큰 (ID / 액세스 / 리프레시 토큰)을 삭제합니다. 이는 해당 앱의 로컬 상태에서만 사용자를 로그아웃시킵니다.
 
-### Logto에서 로그인 세션 삭제 \{#clear-sign-in-session-at-logto}
+- Logto 세션은 여전히 활성일 수 있습니다.
+- 동일 Logto 세션 하의 다른 앱들은 여전히 SSO가 가능합니다.
 
-사용자를 명시적으로 로그아웃시키고 Logto에서 세션을 삭제하려면, 클라이언트 애플리케이션이 사용자를 Logto의 **end session endpoint**로 리디렉션해야 합니다.
+### 2) Logto에서 세션 종료 (현재 Logto 구현에서의 글로벌 로그아웃) \{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-예시: `https://{your-logto-domain}/oidc/session/end`
+중앙 집중식 Logto 세션을 삭제하려면, 앱이 사용자를 end session 엔드포인트로 리디렉션합니다. 예시:
 
-**end session endpoint**는 클라이언트 애플리케이션이 인가 서버에 사용자가 로그아웃했음을 알릴 수 있도록 하는 표준 OIDC 엔드포인트입니다. 이 엔드포인트는 Logto에서 중앙화된 로그인 세션을 삭제합니다.
+`https://{your-logto-domain}/oidc/session/end`
 
-세션이 삭제되면, 이후의 모든 인가 요청은 사용자가 다시 로그인해야 합니다.
+현재 Logto SDK 동작:
 
-**post-logout redirect URI**가 제공된 경우, 세션이 삭제된 후 사용자는 지정된 URI로 리디렉션됩니다. 그렇지 않으면, 사용자는 Logto가 호스팅하는 기본 로그아웃 후 페이지로 리디렉션됩니다.
+1. `signOut()`이 `/session/end`로 리디렉션합니다.
+2. 이후 `/session/end/confirm`으로 이동합니다.
+3. 기본 confirm 폼이 `logout=true`로 자동 전송됩니다.
+
+결과적으로, 현재 SDK 로그아웃은 **글로벌 로그아웃**으로 처리됩니다.
+
+### 글로벌 로그아웃 시 일어나는 일 \{#what-happens-during-global-sign-out}
+
+```mermaid
+flowchart TD
+  A["클라이언트가 로그아웃 시작"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["중앙 집중식 Logto 세션 삭제"]
+  D --> E{"앱별 grant 확인"}
+  E -->|"offline_access 미부여"| F["grant 삭제"]
+  E -->|"offline_access 부여됨"| G["grant는 grant TTL 만료 시까지 유지"]
+```
+
+글로벌 로그아웃 중:
+
+- 중앙 집중식 Logto 세션이 삭제됩니다.
+- 관련 앱 grant는 앱별 인가 상태에 따라 처리됩니다:
+  - `offline_access`가 **부여되지 않은 경우**, 관련 grant가 삭제됩니다.
+  - `offline_access`가 **부여된 경우**, end-session으로 grant가 삭제되지 않습니다.
+- `offline_access`의 경우, 리프레시 토큰과 grant는 만료 시점까지 유효합니다.
+
+## grant 수명 및 `offline_access` 영향 \{#grant-lifetime-and-offline-access-impact}
+
+- 기본 Logto grant TTL은 **180일**입니다.
+- `offline_access`가 부여된 경우, end-session은 해당 앱 grant를 기본적으로 삭제하지 않습니다.
+- 해당 grant와 연결된 리프레시 토큰 체인은 grant가 만료(또는 명시적으로 삭제)될 때까지 계속 유효합니다.
 
 ## 연합 로그아웃: 백채널 로그아웃 \{#federated-sign-out-back-channel-logout}
 
-더 일관된 로그아웃 관리를 위해, Logto는 [백채널 로그아웃](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)을 지원합니다. 백채널 로그아웃은 사용자가 로그아웃할 때 동일한 로그인 세션 하의 모든 클라이언트 애플리케이션에 Logto가 알림을 보낼 수 있도록 하는 메커니즘입니다.
+앱 간 일관성을 위해, Logto는 [백채널 로그아웃](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)을 지원합니다.
 
-이는 사용자가 한 클라이언트 애플리케이션에서 로그아웃하고, 동일한 Logto 로그인 세션 하의 다른 모든 클라이언트 애플리케이션에서도 로그아웃되기를 기대하는 시나리오에서 특히 유용합니다.
+한 앱에서 사용자가 로그아웃하면, Logto는 동일 세션에 참여하는 모든 앱에 로그아웃 토큰을 각 앱의 등록된 백채널 로그아웃 URI로 전송할 수 있습니다.
 
-클라이언트 애플리케이션에서 백채널 로그아웃을 활성화하려면, Logto 대시보드의 애플리케이션 상세 페이지에서 백채널 로그아웃 URI를 등록하세요. 사용자가 어떤 클라이언트 애플리케이션에서 로그아웃 요청을 시작하면, Logto는 등록된 모든 URI로 로그아웃 토큰을 전송합니다.
+앱 백채널 설정에서 `Is session required`가 활성화된 경우, 로그아웃 토큰에 Logto 세션을 식별하는 `sid`가 포함됩니다.
 
-클라이언트 애플리케이션에서 로그아웃 토큰에 로그인 세션이 포함되어야 하는 경우, 백채널 로그아웃 설정에서 `Is session required` 옵션을 켜세요. 그러면 로그아웃 토큰에 사용자의 Logto 로그인 세션을 식별하는 `sid` 클레임이 포함됩니다.
+일반적인 흐름:
 
-1. 사용자가 한 클라이언트 애플리케이션에서 로그아웃 요청을 시작합니다.
-2. Logto가 end session 요청을 받고, 로그아웃 토큰을 생성하여 등록된 모든 백채널 로그아웃 URI로 전송합니다.
-3. 각 클라이언트 애플리케이션이 로그아웃 토큰을 받아 로그아웃 작업을 수행합니다.
+1. 사용자가 한 앱에서 로그아웃을 시작합니다.
+2. Logto가 end-session을 처리하고, 등록된 백채널 로그아웃 URI(들)로 로그아웃 토큰을 전송합니다.
+3. 각 앱은 로그아웃 토큰을 검증하고 자체 로컬 세션/토큰을 삭제합니다.
 
-클라이언트 애플리케이션이 로그아웃 토큰을 받을 때 수행하는 로그아웃 작업:
+## Logto SDK에서의 로그아웃 방식 \{#sign-out-methods-in-logto-sdks}
 
-- 로그아웃 토큰 검증
-- 로컬 세션 삭제 및 local storage 또는 session storage에서 토큰 제거
-
-## Logto SDK에서의 로그아웃 방법 \{#sign-out-methods-in-logto-sdks}
-
-Logto의 SDK를 사용하여 클라이언트 애플리케이션에 통합하는 경우:
-
-- SPA 및 웹 애플리케이션에서는 `client.signOut()` 메서드가 로컬 토큰 저장소를 삭제하고 사용자를 Logto의 end session endpoint로 리디렉션합니다. 세션 삭제 후 사용자를 리디렉션할 **post-logout redirect URI**를 지정할 수 있습니다.
-- 네이티브 애플리케이션(React Native, Flutter 등 하이브리드 앱 포함)에서는 로컬 토큰 저장소만 삭제됩니다. 네이티브 애플리케이션에서는 세션리스 웹뷰를 사용하여 로그인 과정을 처리하므로, 네이티브 브라우저에 세션 쿠키가 저장되지 않습니다. 따라서 Logto에서 로그인 세션을 삭제할 필요가 없습니다. 각 인증 (Authentication) 요청은 세션 쿠키 없이 독립적으로 처리됩니다.
+- **SPA 및 웹**: `client.signOut()`은 로컬 토큰 저장소를 삭제하고 Logto end-session 엔드포인트로 리디렉션합니다. 로그아웃 후 리디렉션 URI를 지정할 수 있습니다.
+- **네이티브 (React Native / Flutter 포함)**: 일반적으로 로컬 토큰 저장소만 삭제합니다. 세션 없는 웹뷰이므로 삭제할 Logto 브라우저 쿠키가 없습니다.
 
 :::note
-세션리스 웹뷰를 지원하지 않거나 `emphasized` 설정을 인식하지 않는 네이티브 애플리케이션(Android 앱에서 **React Native** 또는 **Flutter** SDK 사용 등)의 경우, 인가 요청에 `prompt=login` 파라미터를 전달하여 사용자가 다시 로그인하도록 강제할 수 있습니다.
+세션 없는 웹뷰를 지원하지 않거나 `emphasized` 설정을 인식하지 않는 네이티브 애플리케이션 (예: **React Native** 또는 **Flutter** SDK를 사용하는 Android 앱)의 경우, 인증 요청에 `prompt=login` 파라미터를 추가하여 사용자가 다시 로그인하도록 강제할 수 있습니다.
 :::
 
 ## 매번 재인증 강제하기 \{#enforce-re-authentication-on-every-access}
 
-고보안 시나리오(예: 민감한 작업 전 사용자 아이덴티티 재확인)에서는 매번 사용자가 재인증하도록 요구할 수 있습니다. 이 동작을 강제하려면 인증 (Authentication) 요청에 `prompt=login`을 포함하세요.
+보안이 중요한 작업의 경우, 인증 (Authentication) 요청에 `prompt=login`을 포함하여 SSO를 우회하고 매번 자격 증명 입력을 강제할 수 있습니다.
 
-`prompt=login`을 설정하면 사용자가 활성 세션이 있거나 최근에 로그인했더라도 Logto가 항상 로그인 페이지를 표시하도록 강제합니다. 이는 싱글 사인온 (SSO) 동작을 우회하고, 매번 사용자에게 자격 증명을 입력하도록 보장합니다.
+리프레시 토큰을 받기 위해 `offline_access`를 요청하는 경우, `consent`, `prompt=login consent`도 함께 포함하세요.
 
-앱이 offline_access 스코프(리프레시 토큰 발급)를 요청하는 경우, OpenID Connect 명세에 따라 `prompt=consent`도 함께 포함해야 합니다.  
-대부분의 경우, 재인증을 강제하고 리프레시 토큰 발급을 보장하려면 다음과 같이 설정하세요:
+일반적인 조합 예시:
 
-```
+```txt
 prompt=login consent
 ```
-
-이렇게 하면 사용자가 재인증되고, 오프라인 접근에 명시적으로 동의하게 됩니다.
 
 ## 자주 묻는 질문 \{#faqs}
 
@@ -206,7 +245,7 @@ prompt=login consent
 </summary>
 
 - Logto 대시보드에서 백채널 로그아웃 URI가 올바르게 등록되어 있는지 확인하세요.
-- 클라이언트 애플리케이션에 유효한 활성 로그인 세션이 있고, 로그아웃 요청을 시작한 세션과 동일한 세션인지 확인하세요.
+- 앱이 동일 사용자/세션 컨텍스트에 대해 활성 로그인 상태인지 확인하세요.
 
 </details>
 

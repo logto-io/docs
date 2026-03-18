@@ -4,214 +4,253 @@ sidebar_position: 8
 
 # Cierre de sesión
 
-El proceso de cierre de sesión en Logto (como proveedor de identidad basado en OIDC) es un concepto multifacético debido a la participación tanto de la sesión centralizada de inicio de sesión gestionada por Logto como del estado de autenticación distribuido gestionado por las aplicaciones cliente.
+El cierre de sesión en Logto (como proveedor de identidad OIDC) implica tanto:
 
-## Sesión de inicio de sesión \{#sign-in-session}
+- Una **sesión centralizada de Logto** (cookie del navegador bajo el dominio de Logto), y
+- **Estado de autenticación distribuido en el lado del cliente** (tokens y sesión local de la app en cada aplicación).
 
-Para comprender mejor el proceso de cierre de sesión, es importante entender primero cómo se gestionan las sesiones de inicio de sesión de usuario y su estado de autenticación en Logto.
+Para entender el comportamiento del cierre de sesión, ayuda separar estas dos capas y luego ver cómo los **grants** las conectan.
+
+## Conceptos clave \{#core-concepts}
+
+### ¿Qué es una sesión de Logto? \{#what-is-a-logto-session}
+
+Una sesión de Logto es el estado centralizado de inicio de sesión gestionado por Logto. Se crea tras una autenticación exitosa y está representada por cookies bajo el dominio de Logto.
+
+Si la cookie de sesión es válida, el usuario puede ser autenticado silenciosamente (SSO) en varias aplicaciones que confían en el mismo tenant de Logto.
+
+Si no existe una sesión válida, Logto muestra la página de inicio de sesión.
+
+### ¿Qué son los grants? \{#what-are-grants}
+
+Un **grant** representa el estado de autorización para una combinación específica de usuario + aplicación cliente.
+
+- Una sesión de Logto puede tener grants para varias aplicaciones cliente.
+- Un grant es con lo que se asocian los tokens emitidos.
+- En este conjunto de documentación, se usa **grant** como la unidad de autorización entre aplicaciones.
+
+### Cómo se relacionan la sesión, los grants y el estado de autenticación del cliente \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor Usuario
+flowchart LR
+  subgraph Logto [Dominio Logto]
+    S[Sesión de Logto]
+    G1[Grant para App A]
+    G2[Grant para App B]
+  end
 
-    box Parte confiable (RP)
-      participant Cliente as Aplicación cliente
-    end
+  subgraph AppA [Dominio cliente A]
+    A[Sessión local / tokens]
+  end
 
-    box Logto (IdP)
-      participant OIDC as Proveedor OIDC
-      participant SignIn as Página de inicio de sesión
-    end
+  subgraph AppB [Dominio cliente B]
+    B[Sessión local / tokens]
+  end
 
-    Usuario ->> Cliente: Accede a la aplicación web
-    Cliente ->> OIDC: Redirige al usuario a OIDC para autenticación
-    OIDC -->> OIDC: Verifica la sesión de inicio de sesión del usuario
-    OIDC ->> SignIn: Solicita al usuario iniciar sesión
-    SignIn ->> OIDC: Identifica al usuario y envía el resultado de la interacción
-    OIDC -->> OIDC: Establece la sesión de inicio de sesión y concesión de autenticación del usuario
-    OIDC ->> Cliente: Redirige al usuario de vuelta a la aplicación web con el código de autenticación (Flujo de código de autorización)
-    Cliente ->> OIDC: Intercambia el código por tokens
-    OIDC -->> Cliente: Devuelve los tokens
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. El usuario accede a la aplicación web (RP).
-2. La aplicación cliente redirige al usuario a Logto (IdP) para [autenticación](https://auth.wiki/authentication).
-3. El proveedor OIDC verifica el estado de la sesión de inicio de sesión del usuario. Si no existe sesión o la sesión ha expirado, se solicita al usuario iniciar sesión.
-4. El usuario interactúa con la página de inicio de sesión para autenticarse.
-5. Tras un inicio de sesión exitoso, Logto crea una nueva sesión para el usuario y lo redirige de vuelta a la aplicación cliente con un código de autorización.
-6. El proveedor OIDC crea una nueva sesión de inicio de sesión y concesión de autenticación para el usuario.
-7. El proveedor OIDC redirige al usuario de vuelta al cliente con un código de autenticación ([Flujo de código de autorización](https://auth.wiki/authorization-code-flow)).
-8. El cliente recibe el código de autenticación y lo intercambia por tokens para acceder a la información del usuario.
-9. Concede tokens a la aplicación cliente.
+- **Sesión de Logto** controla la experiencia centralizada de SSO.
+- **Sesión local / tokens del cliente** controlan si cada app considera actualmente al usuario como autenticado.
+- **Grants** conectan estos dos mundos representando el estado de autorización específico de la app.
 
-## Componentes \{#components}
+## Resumen del inicio de sesión (por qué el cierre de sesión es multinivel) \{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### Sesión centralizada de inicio de sesión gestionada por Logto \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-En el flujo anterior, la sesión centralizada de inicio de sesión es gestionada por Logto. La sesión se crea cuando el usuario inicia sesión con éxito y se destruye cuando el usuario cierra sesión. La sesión también se destruye cuando la sesión del usuario expira.
+  box Relying Party (RP)
+    participant Client as Aplicación cliente
+  end
 
-La sesión de inicio de sesión de Logto se gestiona mediante cookies de sesión. La cookie de sesión se establece cuando el usuario inicia sesión. Todas las solicitudes de autenticación se validan contra la cookie de sesión. Si la cookie de sesión está presente y es válida, el usuario será autenticado automáticamente y redirigido directamente a la aplicación cliente con el código de autorización. De lo contrario, se solicitará al usuario iniciar sesión.
+  box Logto (IdP)
+    participant OIDC as Proveedor OIDC
+    participant SignIn as Página de inicio de sesión
+  end
 
-1. Cookie de sesión compartida de Logto  
-   Para un usuario que inicia sesión en múltiples aplicaciones cliente desde el mismo agente de usuario (por ejemplo, navegador), el usuario tendrá una cookie de sesión compartida bajo el dominio de Logto. Esto significa que el usuario solo necesita iniciar sesión una vez y será autenticado automáticamente para otras aplicaciones cliente.
+  User ->> Client: Accede a la aplicación
+  Client ->> OIDC: Redirige para autenticación
+  OIDC -->> OIDC: Verifica sesión de Logto
+  OIDC ->> SignIn: Solicita inicio de sesión si es necesario
+  SignIn ->> OIDC: El usuario se autentica
+  OIDC -->> OIDC: Crea sesión y grant
+  OIDC ->> Client: Devuelve código de autorización
+  Client ->> OIDC: Intercambia código por tokens
+  OIDC -->> Client: Devuelve tokens
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph Usuario [Agente de usuario A]
-      U[Usuario]
+## Topología de sesión entre apps / dispositivos \{#session-topology-across-apps-devices}
 
-      subgraph Capa1 [Dominio cliente A]
-        A[Aplicación cliente A]
-      end
+### Cookie de sesión compartida (mismo navegador / agente de usuario) \{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Capa1 [Dominio cliente B]
-        B[Aplicación cliente B]
-      end
+Si un usuario inicia sesión en varias apps desde el mismo navegador, esas apps pueden reutilizar la misma cookie de sesión de Logto y se aplica el comportamiento SSO.
 
-      subgraph Capa2 [Dominio Logto]
-          C{{¿Sesión de inicio de sesión de Logto?}}
-          D[Página de inicio de sesión]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Usuario]
+  A["Aplicación cliente A (Dominio cliente A)"]
+  B["Aplicación cliente B (Dominio cliente B)"]
+  C{"¿Existe sesión de Logto? (Dominio Logto)"}
+  D["Página de inicio de sesión (Dominio Logto)"]
 
-    U --> |Iniciar sesión| A
-    A --> |Redirigir a Logto| C
-    U --> |Iniciar sesión| B
-    B --> |Redirigir a Logto| C
-    C --> |No| D
-    D --> |Crear sesión| C
-   ```
+  subgraph UA["Agente de usuario A (mismo navegador)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. Cookie de sesión aislada de Logto  
-   Para un usuario que inicia sesión en diferentes aplicaciones cliente desde diferentes dispositivos o navegadores, el usuario tendrá cookies de sesión aisladas bajo el dominio de Logto. Esto significa que el usuario necesita iniciar sesión por separado en cada aplicación cliente.
+  U -->|Iniciar sesión| A
+  A -->|Redirige a Logto| C
+  U -->|Abrir app| B
+  B -->|Redirige a Logto| C
+  C -->|No| D
+  D -->|Crear sesión| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[Usuario]
+### Cookies de sesión aisladas (diferentes dispositivos / navegadores) \{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DispositivoA [Agente de usuario A]
-      subgraph Capa1 [Dominio cliente A]
-        A[Aplicación cliente A]
-      end
+Diferentes navegadores / dispositivos mantienen diferentes cookies de Logto, por lo que el estado de la sesión de inicio de sesión está aislado.
 
-      subgraph Capa2 [Dominio Logto]
-          C{{¿Sesión de inicio de sesión de Logto?}}
-          D[Página de inicio de sesión]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Usuario]
+  A["Aplicación cliente A (Dominio cliente A)"]
+  C{"¿Existe sesión de Logto? (Dispositivo A, Dominio Logto)"}
+  D["Página de inicio de sesión (Dispositivo A, Dominio Logto)"]
 
-    subgraph DispositivoB [Agente de usuario B]
-      subgraph Capa3 [Dominio cliente B]
-        B[Aplicación cliente B]
-      end
+  subgraph DeviceA["Agente de usuario A"]
+    A
+    C
+    D
+  end
 
-      subgraph Capa4 [Dominio Logto]
-          E{{¿Sesión de inicio de sesión de Logto?}}
-          F[Página de inicio de sesión]
-      end
-    end
+  B["Aplicación cliente B (Dominio cliente B)"]
+  E{"¿Existe sesión de Logto? (Dispositivo B, Dominio Logto)"}
+  F["Página de inicio de sesión (Dispositivo B, Dominio Logto)"]
 
-    U --> |Iniciar sesión| A
-    A --> |Redirigir a Logto| C
-    U --> |Iniciar sesión| B
-    B --> |Redirigir a Logto| E
-    C --> |No| D
-    E --> |No| F
-    D --> |Crear sesión| C
-    F --> |Crear sesión| E
-   ```
+  subgraph DeviceB["Agente de usuario B"]
+    B
+    E
+    F
+  end
 
-## Estado de autenticación distribuido gestionado por las aplicaciones cliente \{#distributed-authentication-status-managed-by-the-client-applications}
-
-Cada aplicación cliente mantiene su propio estado de autenticación. Ya sea una aplicación Nativa, SPA o Web, todas tienen su propia forma de gestionar el estado de autenticación del usuario.
-
-Tras un inicio de sesión exitoso, la aplicación cliente puede recibir un [Token de ID (ID token)](https://auth.wiki/id-token) y un [Token de acceso (Access token)](https://auth.wiki/access-token). La aplicación cliente puede usar el Token de ID para determinar la identidad del usuario y el Token de acceso para acceder a los recursos del usuario. El estado de autenticación del usuario está representado por el tiempo de expiración del Token de acceso.
-
-- Aplicaciones Nativas y SPA:  
-  La aplicación cliente necesita almacenar y gestionar estos tokens de forma segura para mantener el estado de autenticación del usuario. Por ejemplo, almacenar los tokens en el almacenamiento local o de sesión, y limpiar los tokens cuando el usuario cierra sesión.
-- Aplicaciones Web:  
-  Las aplicaciones web, como las construidas con frameworks como Next.js, suelen gestionar su propia sesión para los usuarios autenticados junto con los tokens emitidos por Logto. Una vez que el usuario inicia sesión y la aplicación web recibe los tokens de Logto, puede almacenarlos en el lado del cliente como las aplicaciones SPA, o almacenarlos en el lado del servidor y gestionar la sesión usando cookies u otros mecanismos.
+  U -->|Iniciar sesión| A
+  A -->|Redirige a Logto| C
+  U -->|Iniciar sesión| B
+  B -->|Redirige a Logto| E
+  C -->|No| D
+  E -->|No| F
+  D -->|Crear sesión| C
+  F -->|Crear sesión| E
+```
 
 ## Mecanismos de cierre de sesión \{#sign-out-mechanisms}
 
-### Limpiar tokens y sesión local en el lado del cliente \{#clear-tokens-and-local-session-at-the-client-side}
+### 1) Cierre de sesión solo en el lado del cliente \{#1-client-side-only-sign-out}
 
-En el lado del cliente, un cierre de sesión simple implica limpiar la sesión local y eliminar los tokens (Token de ID, Token de acceso, Token de actualización) del almacenamiento local o de sesión. Esto resulta en un cierre de sesión solo del lado del cliente, donde la sesión centralizada permanece intacta. Los usuarios que cierran sesión de esta manera aún pueden acceder a otras aplicaciones bajo la misma sesión del servidor de autorización hasta que la sesión centralizada expire o sea destruida activamente.
+La aplicación cliente borra su propia sesión local y tokens (tokens de ID / acceso / actualización). Esto cierra la sesión del usuario solo en el estado local de esa app.
 
-### Limpiar la sesión de inicio de sesión en Logto \{#clear-sign-in-session-at-logto}
+- La sesión de Logto puede seguir activa.
+- Otras apps bajo la misma sesión de Logto pueden seguir usando SSO.
 
-Para cerrar sesión explícitamente y limpiar la sesión en Logto, la aplicación cliente debe redirigir al usuario al **endpoint de fin de sesión** de Logto.
+### 2) Fin de sesión en Logto (cierre de sesión global en la implementación actual de Logto) \{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-Ejemplo: `https://{your-logto-domain}/oidc/session/end`
+Para borrar la sesión centralizada de Logto, la app redirige al usuario al endpoint de fin de sesión, por ejemplo:
 
-El **endpoint de fin de sesión** es un endpoint estándar de OIDC que permite a la aplicación cliente notificar al servidor de autorización que el usuario ha cerrado sesión. El endpoint limpiará la sesión centralizada de inicio de sesión en Logto.
+`https://{your-logto-domain}/oidc/session/end`
 
-Una vez que la sesión se limpia, cualquier solicitud de autorización posterior requerirá que el usuario inicie sesión nuevamente.
+En el comportamiento actual del SDK de Logto:
 
-Si se proporciona un **post-logout redirect URI**, el usuario será redirigido a la URI especificada después de limpiar la sesión. De lo contrario, el usuario será redirigido a la página de cierre de sesión predeterminada alojada por Logto.
+1. `signOut()` redirige a `/session/end`.
+2. Luego va a `/session/end/confirm`.
+3. El formulario de confirmación por defecto envía automáticamente `logout=true`.
 
-## Cierre de sesión federado: Back-channel logout \{#federated-sign-out-back-channel-logout}
+Como resultado, el cierre de sesión del SDK actual se trata como **cierre de sesión global**.
 
-Para una gestión de cierre de sesión más consistente, Logto admite el [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html). El back-channel logout es un mecanismo que permite a Logto notificar a todas las aplicaciones cliente bajo la misma sesión de inicio de sesión cuando el usuario cierra sesión.
+### Qué sucede durante el cierre de sesión global \{#what-happens-during-global-sign-out}
 
-Esto es especialmente útil en escenarios donde el usuario cierra sesión desde una aplicación cliente y espera cerrar sesión en todas las demás aplicaciones cliente bajo la misma sesión de inicio de sesión de Logto.
+```mermaid
+flowchart TD
+  A["La app inicia cierre de sesión"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["Revoca sesión centralizada de Logto"]
+  D --> E{"Verifica grant por app"}
+  E -->|"offline_access no concedido"| F["Revoca grant"]
+  E -->|"offline_access concedido"| G["Mantiene grant hasta que expire TTL"]
+```
 
-Para habilitar el back-channel logout para tus aplicaciones cliente, ve a la página de detalles de la aplicación en el panel de Logto y registra una URI de back-channel logout. Logto enviará un token de cierre de sesión a todas las URI registradas cuando el usuario inicie una solicitud de cierre de sesión desde cualquier aplicación cliente.
+Durante el cierre de sesión global:
 
-Si tu aplicación cliente requiere que la sesión de inicio de sesión se incluya en el token de cierre de sesión, activa la configuración `Is session required` en la configuración de back-channel logout. Se incluirá un reclamo `sid` en el token de cierre de sesión para identificar la sesión de inicio de sesión del usuario en Logto.
+- Se revoca la sesión centralizada de Logto.
+- Los grants relacionados se gestionan según el estado de autorización de cada app:
+  - Si `offline_access` **no** está concedido, los grants relacionados se revocan.
+  - Si `offline_access` **está** concedido, los grants no se revocan por el fin de sesión.
+- Para los casos de `offline_access`, los tokens de actualización y grants siguen siendo válidos hasta que expire el grant.
 
-1. El usuario inicia una solicitud de cierre de sesión desde una aplicación cliente.
-2. Logto recibe la solicitud de fin de sesión, genera un token de cierre de sesión y lo envía a todas las URI de back-channel logout registradas.
-3. Cada aplicación cliente recibe el token de cierre de sesión y realiza las acciones de cierre de sesión.
+## Duración del grant e impacto de `offline_access` \{#grant-lifetime-and-offline-access-impact}
 
-Acciones de cierre de sesión para cada aplicación cliente al recibir el token de cierre de sesión:
+- El TTL por defecto de un grant de Logto es **180 días**.
+- Si se concede `offline_access`, el fin de sesión no revoca ese grant de la app por defecto.
+- La cadena de tokens de actualización asociada a ese grant puede continuar hasta que el grant expire (o se revoque explícitamente).
 
-- Validar el token de cierre de sesión.
-- Limpiar la sesión local y eliminar los tokens del almacenamiento local o de sesión.
+## Cierre de sesión federado: cierre de sesión back-channel \{#federated-sign-out-back-channel-logout}
+
+Para la coherencia entre apps, Logto admite el [cierre de sesión back-channel](https://openid.net/specs/openid-connect-backchannel-1_0-final.html).
+
+Cuando un usuario cierra sesión en una app, Logto puede notificar a todas las apps que participan en la misma sesión enviando un token de cierre de sesión al URI de cierre de sesión back-channel registrado de cada app.
+
+Si `Is session required` está habilitado en la configuración back-channel de la app, el token de cierre de sesión incluye `sid` para identificar la sesión de Logto.
+
+Flujo típico:
+
+1. El usuario inicia el cierre de sesión desde una app.
+2. Logto procesa el fin de sesión y envía el/los token(s) de cierre de sesión a los URI(s) de cierre de sesión back-channel registrados.
+3. Cada app valida el token de cierre de sesión y borra su propia sesión local / tokens.
 
 ## Métodos de cierre de sesión en los SDKs de Logto \{#sign-out-methods-in-logto-sdks}
 
-Si estás integrando Logto con tu aplicación cliente usando los SDKs de Logto:
-
-- Para aplicaciones SPA y web, el método `client.signOut()` limpiará el almacenamiento local de tokens y redirigirá al usuario al endpoint de fin de sesión de Logto. Puedes especificar una **post-logout redirect URI** para redirigir al usuario después de limpiar la sesión.
-- Para aplicaciones nativas (incluyendo apps híbridas como **React Native** y **Flutter**), solo se limpia el almacenamiento local de tokens. Esto se debe a que en aplicaciones nativas, usamos el webview sin sesión para manejar el proceso de inicio de sesión. No se almacenan cookies de sesión en el navegador nativo, por lo que no es necesario limpiar la sesión de inicio de sesión en Logto. Cada solicitud de autenticación es una solicitud independiente que no lleva cookies de sesión.
+- **SPA y web**: `client.signOut()` borra el almacenamiento local de tokens y redirige al endpoint de fin de sesión de Logto. Puedes proporcionar un URI de redirección post-logout.
+- **Nativo (incluyendo React Native / Flutter)**: normalmente solo borra el almacenamiento local de tokens. El webview sin sesión significa que no hay cookie persistente de Logto en el navegador que borrar.
 
 :::note
-Para aplicaciones nativas que no admiten webview sin sesión o no reconocen la configuración `emphasized` (aplicación Android usando el SDK de **React Native** o **Flutter**), puedes forzar que se solicite al usuario iniciar sesión nuevamente pasando el parámetro `prompt=login` en la solicitud de autorización.
+Para aplicaciones nativas que no admiten webview sin sesión o no reconocen la configuración `emphasized` (app de Android usando el SDK de **React Native** o **Flutter**), puedes forzar que se solicite al usuario iniciar sesión de nuevo pasando el parámetro `prompt=login` en la solicitud de autorización.
 :::
 
 ## Forzar la re-autenticación en cada acceso \{#enforce-re-authentication-on-every-access}
 
-En escenarios de alta seguridad—como verificar la identidad de un usuario antes de acciones sensibles—puedes requerir que el usuario se re-autentique en cada acceso. Para forzar este comportamiento, incluye `prompt=login` en tu solicitud de autenticación.
+Para acciones de alta seguridad, incluye `prompt=login` en las solicitudes de autenticación para omitir el SSO y forzar la introducción de credenciales cada vez.
 
-Configurar `prompt=login` obliga a Logto a mostrar siempre la página de inicio de sesión, independientemente de si el usuario tiene una sesión activa o ha iniciado sesión recientemente. Esto omite el comportamiento de inicio de sesión único (SSO) y asegura que se solicite al usuario ingresar sus credenciales cada vez.
+Si solicitas `offline_access` (para recibir tokens de actualización), incluye también `consent`, `prompt=login consent`.
 
-Si tu aplicación solicita el alcance offline_access (para recibir un Token de actualización), la especificación de OpenID Connect requiere que también incluyas `prompt=consent`.
-En la mayoría de los casos, para forzar la re-autenticación y asegurar la emisión del Token de actualización, configura:
+Configuración combinada típica:
 
-```
+```txt
 prompt=login consent
 ```
-
-Esto garantiza que el usuario se re-autentique y consienta explícitamente el acceso offline.
 
 ## Preguntas frecuentes \{#faqs}
 
 <details>
   <summary>
 
-### No estoy recibiendo las notificaciones de back-channel logout. \{#im-not-receiving-the-back-channel-logout-notifications}
+### No recibo las notificaciones de cierre de sesión back-channel. \{#im-not-receiving-the-back-channel-logout-notifications}
 
 </summary>
 
-- Asegúrate de que la URI de back-channel logout esté correctamente registrada en el panel de Logto.
-- Asegúrate de que tu aplicación cliente tenga una sesión de inicio de sesión activa válida y que sea la misma sesión que inició la solicitud de cierre de sesión.
+- Asegúrate de que el URI de cierre de sesión back-channel esté correctamente registrado en el panel de Logto.
+- Asegúrate de que tu app tenga un estado de inicio de sesión activo para el mismo usuario / contexto de sesión.
 
 </details>
 
 ## Recursos relacionados \{#related-resources}
 
 <Url href="https://blog.logto.io/oidc-back-channel-logout/">
-  Entendiendo el back-channel logout de OIDC.
+  Entendiendo el cierre de sesión back-channel de OIDC.
 </Url>
