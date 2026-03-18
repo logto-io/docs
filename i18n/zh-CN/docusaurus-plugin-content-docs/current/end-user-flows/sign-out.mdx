@@ -4,209 +4,248 @@ sidebar_position: 8
 
 # 登出
 
-在 Logto（作为基于 OIDC 的身份提供商）中，登出流程是一个多层面的概念，因为它涉及到由 Logto 管理的集中式登录会话以及由客户端应用程序管理的分布式认证 (Authentication) 状态。
+在 Logto（作为 OIDC 身份提供商 (IdP)）中，登出涉及以下两个部分：
 
-## 登录会话 \{#sign-in-session}
+- **中心化的 Logto 会话**（Logto 域下的浏览器 Cookie），以及
+- **分布式客户端认证 (Authentication) 状态**（每个应用中的令牌和本地应用会话）。
 
-为了更好地理解登出流程，首先需要了解 Logto 中用户登录会话及其认证 (Authentication) 状态的管理方式。
+为了理解登出行为，建议将这两个层次分开，然后了解**授权令牌 (grant)** 如何连接它们。
+
+## 核心概念 \{#core-concepts}
+
+### 什么是 Logto 会话？\{#what-is-a-logto-session}
+
+Logto 会话是由 Logto 管理的中心化登录状态。它在认证 (Authentication) 成功后创建，并通过 Logto 域下的 Cookie 表示。
+
+如果会话 Cookie 有效，用户可以在信任同一 Logto 租户的多个应用间实现静默认证 (Authentication)（单点登录 (SSO)）。
+
+如果没有有效会话，Logto 会显示登录页面。
+
+### 什么是授权令牌 (grant)？\{#what-are-grants}
+
+**授权令牌 (grant)** 表示特定用户 + 客户端应用的授权 (Authorization) 状态。
+
+- 一个 Logto 会话可以拥有多个客户端应用的授权令牌 (grant)。
+- 授权令牌 (grant) 是已颁发令牌所关联的对象。
+- 在本文档中，**授权令牌 (grant)** 用作跨应用授权 (Authorization) 单元。
+
+### 会话、授权令牌 (grant) 和客户端认证 (Authentication) 状态的关系 \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor User
+flowchart LR
+  subgraph Logto [Logto 域]
+    S[Logto 会话]
+    G1[App A 的授权令牌 (grant)]
+    G2[App B 的授权令牌 (grant)]
+  end
 
-    box Relying Party (RP)
-      participant Client as 客户端应用程序
-    end
+  subgraph AppA [客户端域 A]
+    A[本地会话 / 令牌]
+  end
 
-    box Logto (IdP)
-      participant OIDC as OIDC 提供者
-      participant SignIn as 登录页面
-    end
+  subgraph AppB [客户端域 B]
+    B[本地会话 / 令牌]
+  end
 
-    User ->> Client: 访问 Web 应用程序
-    Client ->> OIDC: 重定向用户到 OIDC 进行认证 (Authentication)
-    OIDC -->> OIDC: 检查用户的登录会话
-    OIDC ->> SignIn: 提示用户登录
-    SignIn ->> OIDC: 识别用户并提交交互结果
-    OIDC -->> OIDC: 建立用户的登录会话和认证 (Authentication) 授权
-    OIDC ->> Client: 使用认证 (Authentication) 码重定向用户回 Web 应用程序（授权码流程）
-    Client ->> OIDC: 用认证 (Authentication) 码换取令牌
-    OIDC -->> Client: 返回令牌
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. 用户访问 Web 应用程序（RP）。
-2. 客户端应用程序将用户重定向到 Logto（IdP）进行[认证 (Authentication)](https://auth.wiki/authentication)。
-3. OIDC 提供者检查用户的登录会话状态。如果没有会话或会话已过期，则提示用户登录。
-4. 用户与登录页面交互以完成认证 (Authentication)。
-5. 登录成功后，Logto 为用户创建新的会话，并带着授权码重定向回客户端应用程序。
-6. OIDC 提供者为用户创建新的登录会话和认证 (Authentication) 授权。
-7. OIDC 提供者带着认证 (Authentication) 码将用户重定向回客户端（[授权码流程](https://auth.wiki/authorization-code-flow)）。
-8. 客户端收到认证 (Authentication) 码并用其换取令牌以访问用户信息。
-9. 向客户端应用程序授予令牌。
+- **Logto 会话** 控制中心化的单点登录 (SSO) 体验。
+- **客户端本地会话 / 令牌** 控制每个应用当前是否将用户视为已登录。
+- **授权令牌 (grant)** 通过表示应用特定的授权 (Authorization) 状态连接这两个世界。
 
-## 组件 \{#components}
+## 登录回顾（为什么登出是多层次的）\{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### 由 Logto 管理的集中式登录会话 \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-在上述流程中，集中式登录会话由 Logto 管理。用户成功登录时会创建会话，用户登出时会销毁会话。用户会话过期时也会销毁会话。
+  box Relying Party (RP)
+    participant Client as 客户端应用
+  end
 
-Logto 登录会话通过会话 Cookie 管理。用户登录时会设置会话 Cookie。所有认证 (Authentication) 请求都会根据会话 Cookie 进行校验。如果会话 Cookie 存在且有效，用户将被自动认证 (Authentication) 并直接重定向到客户端应用程序并带上授权码。否则，用户会被提示登录。
+  box Logto (IdP)
+    participant OIDC as OIDC 提供方
+    participant SignIn as 登录页面
+  end
 
-1. 共享 Logto 会话 Cookie  
-   对于从同一用户代理（如浏览器）登录多个客户端应用程序的用户，用户会在 Logto 域下拥有一个共享的会话 Cookie。这意味着用户只需登录一次，便可自动认证 (Authentication) 其他客户端应用程序。
+  User ->> Client: 访问应用
+  Client ->> OIDC: 跳转进行认证 (Authentication)
+  OIDC -->> OIDC: 检查 Logto 会话
+  OIDC ->> SignIn: 如有需要，提示登录
+  SignIn ->> OIDC: 用户完成认证 (Authentication)
+  OIDC -->> OIDC: 创建会话和授权令牌 (grant)
+  OIDC ->> Client: 返回授权码
+  Client ->> OIDC: 用授权码换取令牌
+  OIDC -->> Client: 返回令牌
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph User [用户代理 A]
-      U[用户]
+## 跨应用 / 设备的会话拓扑结构 \{#session-topology-across-apps-devices}
 
-      subgraph Layer1 [客户端域名 A]
-        A[客户端应用程序 A]
-      end
+### 共享会话 Cookie（同一浏览器 / 用户代理）\{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Layer1 [客户端域名 B]
-        B[客户端应用程序 B]
-      end
+如果用户在同一浏览器中登录多个应用，这些应用可以复用同一个 Logto 会话 Cookie，并应用单点登录 (SSO) 行为。
 
-      subgraph Layer2 [Logto 域名]
-          C{{Logto 登录会话？}}
-          D[登录页面]
-      end
-    end
+```mermaid
+flowchart TD
+  U[用户]
+  A["客户端应用 A（客户端域 A）"]
+  B["客户端应用 B（客户端域 B）"]
+  C{"Logto 会话存在？（Logto 域）"}
+  D["登录页面（Logto 域）"]
 
-    U --> |登录| A
-    A --> |重定向到 Logto| C
-    U --> |登录| B
-    B --> |重定向到 Logto| C
-    C --> |否| D
-    D --> |创建会话| C
-   ```
+  subgraph UA["用户代理 A（同一浏览器）"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. 隔离的 Logto 会话 Cookie  
-   对于从不同设备或浏览器登录不同客户端应用程序的用户，用户会在 Logto 域下拥有隔离的会话 Cookie。这意味着用户需要分别为每个客户端应用程序登录。
+  U -->|登录| A
+  A -->|跳转到 Logto| C
+  U -->|打开应用| B
+  B -->|跳转到 Logto| C
+  C -->|否| D
+  D -->|创建会话| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[用户]
+### 隔离的会话 Cookie（不同设备 / 浏览器）\{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DeviceA [用户代理 A]
-      subgraph Layer1 [客户端域名 A]
-        A[客户端应用程序 A]
-      end
+不同浏览器 / 设备持有不同的 Logto Cookie，因此登录会话状态是隔离的。
 
-      subgraph Layer2 [Logto 域名]
-          C{{Logto 登录会话？}}
-          D[登录页面]
-      end
-    end
+```mermaid
+flowchart TD
+  U[用户]
+  A["客户端应用 A（客户端域 A）"]
+  C{"Logto 会话存在？（设备 A，Logto 域）"}
+  D["登录页面（设备 A，Logto 域）"]
 
-    subgraph DeviceB [用户代理 B]
-      subgraph Layer3 [客户端域名 B]
-        B[客户端应用程序 B]
-      end
+  subgraph DeviceA["用户代理 A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Logto 域名]
-          E{{Logto 登录会话？}}
-          F[登录页面]
-      end
-    end
+  B["客户端应用 B（客户端域 B）"]
+  E{"Logto 会话存在？（设备 B，Logto 域）"}
+  F["登录页面（设备 B，Logto 域）"]
 
-    U --> |登录| A
-    A --> |重定向到 Logto| C
-    U --> |登录| B
-    B --> |重定向到 Logto| E
-    C --> |否| D
-    E --> |否| F
-    D --> |创建会话| C
-    F --> |创建会话| E
-   ```
+  subgraph DeviceB["用户代理 B"]
+    B
+    E
+    F
+  end
 
-## 由客户端应用程序管理的分布式认证 (Authentication) 状态 \{#distributed-authentication-status-managed-by-the-client-applications}
-
-每个客户端应用程序都维护自己的认证 (Authentication) 状态。无论是 Native、SPA 还是 Web 应用程序，都有各自管理用户认证 (Authentication) 状态的方式。
-
-登录成功后，客户端应用程序可能会收到 [ID 令牌](https://auth.wiki/id-token) 和 [访问令牌](https://auth.wiki/access-token)。客户端应用程序可以使用 ID 令牌来确定用户身份，使用访问令牌访问用户资源。用户的认证 (Authentication) 状态由访问令牌的过期时间表示。
-
-- Native 和 SPA 应用程序：  
-  客户端应用程序需要安全地存储和管理这些令牌，以维持用户的认证 (Authentication) 状态。例如，将令牌存储在本地存储或会话存储中，用户登出时清除令牌。
-- Web 应用程序：  
-  例如使用 Next.js 等框架构建的 Web 应用通常会在本地会话中管理已登录用户，同时结合 Logto 下发的令牌。用户登录后，Web 应用收到 Logto 的令牌，可以像 SPA 应用一样在客户端存储令牌，或在服务端存储令牌并通过 Cookie 或其他机制管理会话。
+  U -->|登录| A
+  A -->|跳转到 Logto| C
+  U -->|登录| B
+  B -->|跳转到 Logto| E
+  C -->|否| D
+  E -->|否| F
+  D -->|创建会话| C
+  F -->|创建会话| E
+```
 
 ## 登出机制 \{#sign-out-mechanisms}
 
-### 清除客户端本地令牌和会话 \{#clear-tokens-and-local-session-at-the-client-side}
+### 1）仅客户端登出 \{#1-client-side-only-sign-out}
 
-在客户端，简单的登出操作包括清除本地会话并从本地存储或会话存储中移除令牌（ID 令牌、访问令牌、刷新令牌）。这种方式只会在客户端登出，集中式会话仍然存在。以这种方式登出的用户，仍然可以在同一授权服务器会话下访问其他应用，直到集中式会话过期或被主动销毁。
+客户端应用清除自身的本地会话和令牌（ID / 访问令牌 / 刷新令牌）。这只会让用户在该应用的本地状态下登出。
 
-### 清除 Logto 登录会话 \{#clear-sign-in-session-at-logto}
+- Logto 会话可能仍然有效。
+- 其他在同一 Logto 会话下的应用仍可单点登录 (SSO)。
 
-如需显式登出用户并清除 Logto 端的会话，客户端应用程序需要将用户重定向到 Logto 的 **end session endpoint**。
+### 2）在 Logto 端结束会话（当前 Logto 实现下的全局登出）\{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-例如：`https://{your-logto-domain}/oidc/session/end`
+要清除中心化的 Logto 会话，应用需将用户重定向到结束会话端点，例如：
 
-**end session endpoint** 是标准的 OIDC 端点，允许客户端应用程序通知授权服务器用户已登出。该端点会清除 Logto 的集中式登录会话。
+`https://{your-logto-domain}/oidc/session/end`
 
-会话清除后，任何后续的授权请求都需要用户重新登录。
+在当前 Logto SDK 行为中：
 
-如果提供了 **post-logout redirect URI**，会话清除后用户会被重定向到指定的 URI。否则，用户会被重定向到 Logto 托管的默认登出后页面。
+1. `signOut()` 会重定向到 `/session/end`。
+2. 然后跳转到 `/session/end/confirm`。
+3. 默认确认表单会自动提交 `logout=true`。
 
-## 联邦登出：后端通道登出（Back-channel logout）\{#federated-sign-out-back-channel-logout}
+因此，当前 SDK 的登出被视为**全局登出**。
 
-为实现更一致的登出管理，Logto 支持 [后端通道登出（back-channel logout）](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)。后端通道登出是一种机制，允许 Logto 在用户登出时通知同一登录会话下的所有客户端应用程序。
+### 全局登出时发生了什么 \{#what-happens-during-global-sign-out}
 
-这在用户从某个客户端应用程序登出并希望同时退出同一 Logto 登录会话下所有其他客户端应用程序时尤为有用。
+```mermaid
+flowchart TD
+  A["客户端发起登出"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["撤销中心化 Logto 会话"]
+  D --> E{"检查每个应用的授权令牌 (grant)"}
+  E -->|"未授予 offline_access"| F["撤销授权令牌 (grant)"]
+  E -->|"已授予 offline_access"| G["保留授权令牌 (grant) 直到 TTL 到期"]
+```
 
-要为你的客户端应用程序启用后端通道登出，请前往 Logto 控制台的应用详情页，注册后端通道登出 URI。当用户从任一客户端应用程序发起登出请求时，Logto 会向所有已注册的 URI 发送登出令牌。
+在全局登出过程中：
 
-如果你的客户端应用程序需要在登出令牌中包含登录会话，可在后端通道登出配置中开启 `Is session required` 设置。此时，登出令牌中会包含 `sid` 声明，用于标识 Logto 上用户的登录会话。
+- 中心化的 Logto 会话被撤销。
+- 相关应用的授权令牌 (grant) 根据应用授权 (Authorization) 状态处理：
+  - 如果**未**授予 `offline_access`，相关授权令牌 (grant) 会被撤销。
+  - 如果**已**授予 `offline_access`，结束会话不会撤销该授权令牌 (grant)。
+- 对于 `offline_access` 情况，刷新令牌和授权令牌 (grant) 会一直有效，直到授权令牌 (grant) 过期。
 
-1. 用户从某个客户端应用程序发起登出请求。
-2. Logto 收到 end session 请求，生成登出令牌，并将其发送到所有已注册的后端通道登出 URI。
-3. 每个客户端应用程序收到登出令牌并执行登出操作。
+## 授权令牌 (grant) 生命周期与 `offline_access` 影响 \{#grant-lifetime-and-offline-access-impact}
 
-客户端应用程序收到登出令牌后的登出操作：
+- Logto 授权令牌 (grant) 默认 TTL 为 **180 天**。
+- 如果授予了 `offline_access`，结束会话默认不会撤销该应用的授权令牌 (grant)。
+- 与该授权令牌 (grant) 关联的刷新令牌链可持续有效，直到授权令牌 (grant) 过期（或被显式撤销）。
 
-- 校验登出令牌。
-- 清除本地会话并从本地存储或会话存储中移除令牌。
+## 联邦登出：后端通道登出 \{#federated-sign-out-back-channel-logout}
 
-## Logto SDK 中的登出方法 \{#sign-out-methods-in-logto-sdks}
+为实现跨应用一致性，Logto 支持 [后端通道登出](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)。
 
-如果你通过 Logto 的 SDK 集成客户端应用程序：
+当用户从某个应用登出时，Logto 会向所有参与同一会话的应用发送登出令牌，通知它们的已注册后端通道登出 URI。
 
-- 对于 SPA 和 Web 应用，`client.signOut()` 方法会清除本地令牌存储，并将用户重定向到 Logto 的 end session endpoint。你可以指定 **post-logout redirect URI**，以便会话清除后重定向用户。
-- 对于原生应用（包括 **React Native** 和 **Flutter** 等混合应用），只会清除本地令牌存储。这是因为在原生应用中，我们使用无会话 webview 处理登录流程。原生浏览器中不会存储会话 Cookie，因此无需清除 Logto 的登录会话。每次认证 (Authentication) 请求都是独立的，不携带任何会话 Cookie。
+如果在应用后端通道设置中启用了 `Is session required`，则登出令牌会包含 `sid` 以标识 Logto 会话。
+
+典型流程：
+
+1. 用户从某个应用发起登出。
+2. Logto 处理结束会话，并向已注册的后端通道登出 URI 发送登出令牌。
+3. 每个应用验证登出令牌并清除自身的本地会话 / 令牌。
+
+## Logto SDK 中的登出方式 \{#sign-out-methods-in-logto-sdks}
+
+- **SPA 和 Web**：`client.signOut()` 会清除本地令牌存储，并重定向到 Logto 结束会话端点。你可以提供登出后的重定向 URI。
+- **原生（包括 React Native / Flutter）**：通常只清除本地令牌存储。无会话的 webview 意味着没有持久化的 Logto 浏览器 Cookie 需要清除。
 
 :::note
-对于不支持无会话 webview 或无法识别 `emphasized` 设置的原生应用（如使用 **React Native** 或 **Flutter** SDK 的 Android 应用），你可以在授权请求中传递 `prompt=login` 参数，强制用户重新登录。
+对于不支持无会话 webview 或无法识别 `emphasized` 设置的原生应用（如使用 **React Native** 或 **Flutter** SDK 的 Android 应用），你可以在认证 (Authentication) 请求中传递 `prompt=login` 参数，强制用户再次登录。
 :::
 
 ## 强制每次访问都重新认证 (Authentication) \{#enforce-re-authentication-on-every-access}
 
-在高安全场景下——如在敏感操作前验证用户身份——你可能希望每次访问都要求用户重新认证 (Authentication)。要强制此行为，请在认证 (Authentication) 请求中包含 `prompt=login`。
+对于高安全性操作，在认证 (Authentication) 请求中包含 `prompt=login`，以绕过单点登录 (SSO)，每次都强制输入凭证。
 
-设置 `prompt=login` 会强制 Logto 始终显示登录页面，无论用户是否有活动会话或最近登录过。这会绕过单点登录 (SSO) 行为，确保用户每次都需输入凭据。
+如果请求 `offline_access`（以获取刷新令牌），还需包含 `consent`，即 `prompt=login consent`。
 
-如果你的应用请求了 offline_access scope（以获取刷新令牌），OpenID Connect 规范要求你同时包含 `prompt=consent`。
-大多数情况下，为了同时强制重新认证 (Authentication) 并确保刷新令牌下发，应设置：
+典型组合设置：
 
-```
+```txt
 prompt=login consent
 ```
-
-这样可确保用户被重新认证 (Authentication) 并明确同意离线访问。
 
 ## 常见问题 \{#faqs}
 
 <details>
   <summary>
 
-### 我没有收到后端通道登出通知 \{#im-not-receiving-the-back-channel-logout-notifications}
+### 我没有收到后端通道登出通知。 \{#im-not-receiving-the-back-channel-logout-notifications}
 
 </summary>
 
 - 请确保后端通道登出 URI 已在 Logto 控制台正确注册。
-- 请确保你的客户端应用程序有一个有效的活动登录会话，并且与发起登出请求的是同一个会话。
+- 请确保你的应用在相同用户 / 会话上下文下有活跃的登录状态。
 
 </details>
 

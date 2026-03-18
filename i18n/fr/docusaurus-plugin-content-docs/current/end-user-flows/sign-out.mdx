@@ -4,197 +4,236 @@ sidebar_position: 8
 
 # Déconnexion
 
-Le processus de déconnexion dans Logto (en tant que fournisseur d'identité basé sur OIDC) est un concept à multiples facettes en raison de l'implication à la fois de la session de connexion centralisée gérée par Logto et du statut d'authentification distribué géré par les applications clientes.
+La déconnexion dans Logto (en tant que fournisseur d'identité OIDC) implique à la fois :
 
-## Session de connexion \{#sign-in-session}
+- Une **session Logto centralisée** (cookie de navigateur sous le domaine Logto), et
+- **Un état d'authentification côté client distribué** (jetons et session locale de l'application dans chaque application).
 
-Pour mieux comprendre le processus de déconnexion, il est important de comprendre d'abord comment les sessions de connexion utilisateur et leur statut d'authentification sont gérés dans Logto.
+Pour comprendre le comportement de la déconnexion, il est utile de séparer ces deux couches puis de voir comment les **grants** les relient.
+
+## Concepts de base \{#core-concepts}
+
+### Qu'est-ce qu'une session Logto ? \{#what-is-a-logto-session}
+
+Une session Logto est l'état de connexion centralisé géré par Logto. Elle est créée après une authentification réussie et représentée par des cookies sous le domaine Logto.
+
+Si le cookie de session est valide, l'utilisateur peut être authentifié silencieusement (SSO) sur plusieurs applications qui font confiance au même tenant Logto.
+
+Si aucune session valide n'existe, Logto affiche la page de connexion.
+
+### Qu'est-ce qu'un grant ? \{#what-are-grants}
+
+Un **grant** représente l'état d'autorisation pour une combinaison utilisateur + application cliente spécifique.
+
+- Une session Logto peut avoir des grants pour plusieurs applications clientes.
+- Un grant est ce à quoi les jetons émis sont associés.
+- Dans cette documentation, utilisez **grant** comme unité d'autorisation inter-applications.
+
+### Comment la session, les grants et l'état d'authentification du client sont liés \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor Utilisateur
+flowchart LR
+  subgraph Logto [Domaine Logto]
+    S[Session Logto]
+    G1[Grant pour App A]
+    G2[Grant pour App B]
+  end
 
-    box Partie de confiance (RP)
-      participant Client as Application cliente
-    end
+  subgraph AppA [Domaine client A]
+    A[Session locale / jetons]
+  end
 
-    box Logto (IdP)
-      participant OIDC as Fournisseur OIDC
-      participant SignIn as Page de connexion
-    end
+  subgraph AppB [Domaine client B]
+    B[Session locale / jetons]
+  end
 
-    Utilisateur ->> Client: Accéder à l'application web
-    Client ->> OIDC: Rediriger l'utilisateur vers OIDC pour l'authentification
-    OIDC -->> OIDC: Vérifier la session de connexion de l'utilisateur
-    OIDC ->> SignIn: Demander à l'utilisateur de se connecter
-    SignIn ->> OIDC: Identifier l'utilisateur et soumettre le résultat de l'interaction
-    OIDC -->> OIDC: Établir la session de connexion de l'utilisateur et l'autorisation d'authentification
-    OIDC ->> Client: Rediriger l'utilisateur vers l'application web avec le code d'authentification (Flux Authorization Code)
-    Client ->> OIDC: Échanger le code contre des jetons
-    OIDC -->> Client: Retourner les jetons
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. L'utilisateur accède à l'application web (RP).
-2. L'application cliente redirige l'utilisateur vers Logto (IdP) pour l'[authentification](https://auth.wiki/authentication).
-3. Le fournisseur OIDC vérifie l'état de la session de connexion de l'utilisateur. Si aucune session n'existe ou si la session a expiré, l'utilisateur est invité à se connecter.
-4. L'utilisateur interagit avec la page de connexion pour s'authentifier.
-5. Après une connexion réussie, Logto crée une nouvelle session pour l'utilisateur et le redirige vers l'application cliente avec un code d'autorisation.
-6. Le fournisseur OIDC crée une nouvelle session de connexion et une autorisation d'authentification pour l'utilisateur.
-7. Le fournisseur OIDC redirige l'utilisateur vers le client avec un code d'authentification ([Flux Authorization Code](https://auth.wiki/authorization-code-flow)).
-8. Le client reçoit le code d'authentification et l'échange contre des jetons pour accéder aux informations de l'utilisateur.
-9. Accorder les jetons à l'application cliente.
+- **Session Logto** contrôle l'expérience SSO centralisée.
+- **Session locale / jetons du client** contrôlent si chaque application considère actuellement l'utilisateur comme connecté.
+- **Grants** relient ces deux mondes en représentant l'état d'autorisation spécifique à l'application.
 
-## Composants \{#components}
+## Récapitulatif de la connexion (pourquoi la déconnexion est multi-couches) \{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### Session de connexion centralisée gérée par Logto \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-Dans le flux ci-dessus, la session de connexion centralisée est gérée par Logto. La session est créée lorsque l'utilisateur se connecte avec succès et est détruite lorsque l'utilisateur se déconnecte. La session est également détruite lorsque la session de l'utilisateur expire.
+  box Relying Party (RP)
+    participant Client as Application cliente
+  end
 
-La session de connexion Logto est gérée à l'aide de cookies de session. Le cookie de session est défini lorsque l'utilisateur se connecte. Toutes les requêtes d'authentification sont validées par rapport au cookie de session. Si le cookie de session est présent et valide, l'utilisateur sera automatiquement authentifié et directement redirigé vers l'application cliente avec le code d'autorisation. Sinon, l'utilisateur sera invité à se connecter.
+  box Logto (IdP)
+    participant OIDC as Fournisseur OIDC
+    participant SignIn as Page de connexion
+  end
 
-1. Cookie de session Logto partagé  
-   Pour un utilisateur qui se connecte à plusieurs applications clientes depuis le même agent utilisateur (par exemple, navigateur), l'utilisateur aura un cookie de session partagé sous le domaine Logto. Cela signifie que l'utilisateur n'a besoin de se connecter qu'une seule fois et sera automatiquement authentifié pour les autres applications clientes.
+  User ->> Client: Accéder à l'application
+  Client ->> OIDC: Rediriger pour authentification
+  OIDC -->> OIDC: Vérifier la session Logto
+  OIDC ->> SignIn: Demander la connexion si nécessaire
+  SignIn ->> OIDC: L'utilisateur s'authentifie
+  OIDC -->> OIDC: Créer session et grant
+  OIDC ->> Client: Retourner le code d'autorisation
+  Client ->> OIDC: Échanger le code contre des jetons
+  OIDC -->> Client: Retourner les jetons
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph Utilisateur [Agent utilisateur A]
-      U[Utilisateur]
+## Topologie des sessions entre applications / appareils \{#session-topology-across-apps-devices}
 
-      subgraph Layer1 [Domaine client A]
-        A[Application cliente A]
-      end
+### Cookie de session partagé (même navigateur / agent utilisateur) \{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Layer1 [Domaine client B]
-        B[Application cliente B]
-      end
+Si un utilisateur se connecte à plusieurs applications depuis le même navigateur, ces applications peuvent réutiliser le même cookie de session Logto et le comportement SSO s'applique.
 
-      subgraph Layer2 [Domaine Logto]
-          C{{Session de connexion Logto ?}}
-          D[Page de connexion]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Utilisateur]
+  A["Application cliente A (Domaine client A)"]
+  B["Application cliente B (Domaine client B)"]
+  C{"Session Logto existante ? (Domaine Logto)"}
+  D["Page de connexion (Domaine Logto)"]
 
-    U --> |Connexion| A
-    A --> |Rediriger vers Logto| C
-    U --> |Connexion| B
-    B --> |Rediriger vers Logto| C
-    C --> |Non| D
-    D --> |Créer session| C
-   ```
+  subgraph UA["Agent utilisateur A (même navigateur)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. Cookie de session Logto isolé  
-   Pour un utilisateur qui se connecte à différentes applications clientes depuis différents appareils ou navigateurs, l'utilisateur aura des cookies de session isolés sous le domaine Logto. Cela signifie que l'utilisateur doit se connecter séparément pour chaque application cliente.
+  U -->|Connexion| A
+  A -->|Redirection vers Logto| C
+  U -->|Ouvrir l'application| B
+  B -->|Redirection vers Logto| C
+  C -->|Non| D
+  D -->|Créer session| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[Utilisateur]
+### Cookies de session isolés (appareils / navigateurs différents) \{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DeviceA [Agent utilisateur A]
-      subgraph Layer1 [Domaine client A]
-        A[Application cliente A]
-      end
+Des navigateurs / appareils différents détiennent des cookies Logto différents, donc l'état de session de connexion est isolé.
 
-      subgraph Layer2 [Domaine Logto]
-          C{{Session de connexion Logto ?}}
-          D[Page de connexion]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Utilisateur]
+  A["Application cliente A (Domaine client A)"]
+  C{"Session Logto existante ? (Appareil A, Domaine Logto)"}
+  D["Page de connexion (Appareil A, Domaine Logto)"]
 
-    subgraph DeviceB [Agent utilisateur B]
-      subgraph Layer3 [Domaine client B]
-        B[Application cliente B]
-      end
+  subgraph DeviceA["Agent utilisateur A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Domaine Logto]
-          E{{Session de connexion Logto ?}}
-          F[Page de connexion]
-      end
-    end
+  B["Application cliente B (Domaine client B)"]
+  E{"Session Logto existante ? (Appareil B, Domaine Logto)"}
+  F["Page de connexion (Appareil B, Domaine Logto)"]
 
-    U --> |Connexion| A
-    A --> |Rediriger vers Logto| C
-    U --> |Connexion| B
-    B --> |Rediriger vers Logto| E
-    C --> |Non| D
-    E --> |Non| F
-    D --> |Créer session| C
-    F --> |Créer session| E
-   ```
+  subgraph DeviceB["Agent utilisateur B"]
+    B
+    E
+    F
+  end
 
-## Statut d'authentification distribué géré par les applications clientes \{#distributed-authentication-status-managed-by-the-client-applications}
-
-Chaque application cliente maintient son propre statut d'authentification. Qu'il s'agisse d'une application Native, SPA ou Web, toutes ont leur propre manière de gérer le statut d'authentification de l'utilisateur.
-
-Après une connexion réussie, l'application cliente peut recevoir un [jeton d’identifiant (ID token)](https://auth.wiki/id-token) et un [jeton d’accès (Access token)](https://auth.wiki/access-token). L'application cliente peut utiliser le jeton d’identifiant pour déterminer l'identité de l'utilisateur et le jeton d’accès pour accéder aux ressources de l'utilisateur. Le statut d'authentification de l'utilisateur est représenté par la date d'expiration du jeton d’accès.
-
-- Applications Native et SPA :  
-  L'application cliente doit stocker et gérer ces jetons de manière sécurisée afin de maintenir le statut d'authentification de l'utilisateur. Par exemple, stocker les jetons dans le stockage local ou le stockage de session, et effacer les jetons lorsque l'utilisateur se déconnecte.
-- Applications Web :  
-  Les applications web, comme celles construites avec des frameworks tels que Next.js, gèrent souvent leur propre session pour les utilisateurs connectés en plus des jetons émis par Logto. Une fois que l'utilisateur se connecte et que l'application web reçoit les jetons de Logto, elle peut stocker les jetons côté client comme les applications SPA, ou les stocker côté serveur et gérer la session à l'aide de cookies ou d'autres mécanismes.
+  U -->|Connexion| A
+  A -->|Redirection vers Logto| C
+  U -->|Connexion| B
+  B -->|Redirection vers Logto| E
+  C -->|Non| D
+  E -->|Non| F
+  D -->|Créer session| C
+  F -->|Créer session| E
+```
 
 ## Mécanismes de déconnexion \{#sign-out-mechanisms}
 
-### Effacer les jetons et la session locale côté client \{#clear-tokens-and-local-session-at-the-client-side}
+### 1) Déconnexion côté client uniquement \{#1-client-side-only-sign-out}
 
-Côté client, une déconnexion simple consiste à effacer la session locale et à supprimer les jetons (jeton d’identifiant, jeton d’accès, jeton de rafraîchissement) du stockage local ou du stockage de session. Cela aboutit à une déconnexion uniquement côté client, la session centralisée restant intacte. Les utilisateurs se déconnectant de cette manière peuvent toujours accéder à d'autres applications sous la même session du serveur d'autorisation jusqu'à ce que la session centralisée expire ou soit détruite activement.
+L'application cliente efface sa propre session locale et ses jetons (jetons d’identifiant / d’accès / de rafraîchissement). Cela déconnecte l'utilisateur uniquement de l'état local de cette application.
 
-### Effacer la session de connexion chez Logto \{#clear-sign-in-session-at-logto}
+- La session Logto peut toujours être active.
+- D'autres applications sous la même session Logto peuvent toujours utiliser le SSO.
 
-Pour déconnecter explicitement l'utilisateur et effacer la session chez Logto, l'application cliente doit rediriger l'utilisateur vers l'**endpoint de fin de session** de Logto.
+### 2) Fin de session sur Logto (déconnexion globale dans l'implémentation Logto actuelle) \{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-Par exemple : `https://{your-logto-domain}/oidc/session/end`
+Pour effacer la session Logto centralisée, l'application redirige l'utilisateur vers l'endpoint de fin de session, par exemple :
 
-L'**endpoint de fin de session** est un endpoint OIDC standard qui permet à l'application cliente de notifier le serveur d'autorisation que l'utilisateur s'est déconnecté. L'endpoint effacera la session de connexion centralisée chez Logto.
+`https://{your-logto-domain}/oidc/session/end`
 
-Une fois la session effacée, toute demande d'autorisation ultérieure nécessitera que l'utilisateur se connecte à nouveau.
+Dans le comportement actuel du SDK Logto :
 
-Si un **post-logout redirect URI** est fourni, l'utilisateur sera redirigé vers l'URI spécifié après la suppression de la session. Sinon, l'utilisateur sera redirigé vers la page de post-déconnexion par défaut hébergée par Logto.
+1. `signOut()` redirige vers `/session/end`.
+2. Puis cela va vers `/session/end/confirm`.
+3. Le formulaire de confirmation par défaut envoie automatiquement `logout=true`.
 
-## Déconnexion fédérée : Back-channel logout \{#federated-sign-out-back-channel-logout}
+En conséquence, la déconnexion via le SDK est traitée comme une **déconnexion globale**.
 
-Pour une gestion de la déconnexion plus cohérente, Logto prend en charge le [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html). Le back-channel logout est un mécanisme qui permet à Logto de notifier toutes les applications clientes sous la même session de connexion lorsque l'utilisateur se déconnecte.
+### Que se passe-t-il lors d'une déconnexion globale \{#what-happens-during-global-sign-out}
 
-Ceci est particulièrement utile dans les scénarios où l'utilisateur se déconnecte d'une application cliente et s'attend à être déconnecté de toutes les autres applications clientes sous la même session de connexion Logto.
+```mermaid
+flowchart TD
+  A["Le client lance la déconnexion"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["Révoquer la session Logto centralisée"]
+  D --> E{"Vérifier le grant par application"}
+  E -->|"offline_access non accordé"| F["Révoquer le grant"]
+  E -->|"offline_access accordé"| G["Conserver le grant jusqu'à expiration du TTL du grant"]
+```
 
-Pour activer le back-channel logout pour vos applications clientes, rendez-vous sur la page de détails de l'application dans le tableau de bord Logto et enregistrez un URI de back-channel logout. Logto enverra un jeton de déconnexion à tous les URI enregistrés lorsque l'utilisateur initie une demande de déconnexion depuis n'importe quelle application cliente.
+Lors d'une déconnexion globale :
 
-Si votre application cliente nécessite que la session de connexion soit incluse dans le jeton de déconnexion, activez le paramètre `Is session required` dans la configuration du back-channel logout. Une revendication `sid` sera incluse dans le jeton de déconnexion pour identifier la session de connexion de l'utilisateur chez Logto.
+- La session Logto centralisée est révoquée.
+- Les grants associés aux applications sont traités selon l'état d'autorisation de chaque application :
+  - Si `offline_access` **n'est pas** accordé, les grants associés sont révoqués.
+  - Si `offline_access` **est** accordé, les grants ne sont pas révoqués par la fin de session.
+- Pour les cas `offline_access`, les jetons de rafraîchissement et les grants restent valides jusqu'à expiration du grant.
 
-1. L'utilisateur initie une demande de déconnexion depuis une application cliente.
-2. Logto reçoit la demande de fin de session, génère un jeton de déconnexion et l'envoie à tous les URI de back-channel logout enregistrés.
-3. Chaque application cliente reçoit le jeton de déconnexion et effectue les actions de déconnexion.
+## Durée de vie du grant et impact de `offline_access` \{#grant-lifetime-and-offline-access-impact}
 
-Actions de déconnexion pour chaque application cliente lors de la réception du jeton de déconnexion :
+- Le TTL par défaut d'un grant Logto est de **180 jours**.
+- Si `offline_access` est accordé, la fin de session ne révoque pas ce grant d'application par défaut.
+- La chaîne de jetons de rafraîchissement associée à ce grant peut continuer jusqu'à expiration du grant (ou révocation explicite).
 
-- Valider le jeton de déconnexion.
-- Effacer la session locale et supprimer les jetons du stockage local ou du stockage de session.
+## Déconnexion fédérée : back-channel logout \{#federated-sign-out-back-channel-logout}
+
+Pour la cohérence inter-applications, Logto prend en charge le [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html).
+
+Lorsqu'un utilisateur se déconnecte d'une application, Logto peut notifier toutes les applications participant à la même session en envoyant un jeton de déconnexion à chaque URI de back-channel logout enregistré.
+
+Si `Is session required` est activé dans les paramètres de back-channel de l'application, le jeton de déconnexion inclut `sid` pour identifier la session Logto.
+
+Flux typique :
+
+1. L'utilisateur initie la déconnexion depuis une application.
+2. Logto traite la fin de session et envoie le(s) jeton(s) de déconnexion à l'(aux) URI(s) de back-channel logout enregistrée(s).
+3. Chaque application valide le jeton de déconnexion et efface sa propre session locale / ses jetons.
 
 ## Méthodes de déconnexion dans les SDK Logto \{#sign-out-methods-in-logto-sdks}
 
-Si vous intégrez Logto à votre application cliente à l'aide des SDK Logto :
-
-- Pour les applications SPA et web, la méthode `client.signOut()` effacera le stockage local des jetons et redirigera l'utilisateur vers l'endpoint de fin de session de Logto. Vous pouvez spécifier un **post-logout redirect URI** pour rediriger l'utilisateur après la suppression de la session.
-- Pour les applications natives (y compris les applications hybrides comme **React Native** et **Flutter**), seul le stockage local des jetons est effacé. En effet, dans les applications natives, nous utilisons le webview sans session pour gérer le processus de connexion. Aucun cookie de session n'est stocké dans le navigateur natif, il n'est donc pas nécessaire d'effacer la session de connexion chez Logto. Chaque demande d'authentification est une demande autonome qui ne transporte aucun cookie de session.
+- **SPA et web** : `client.signOut()` efface le stockage local des jetons et redirige vers l'endpoint de fin de session Logto. Vous pouvez fournir une URI de redirection post-déconnexion.
+- **Natif (y compris React Native / Flutter)** : efface généralement uniquement le stockage local des jetons. Le webview sans session signifie qu'il n'y a pas de cookie Logto persistant à effacer.
 
 :::note
-Pour les applications natives qui ne prennent pas en charge le webview sans session ou qui ne reconnaissent pas les paramètres `emphasized` (application Android utilisant le SDK **React Native** ou **Flutter**), vous pouvez forcer l'utilisateur à se reconnecter en passant le paramètre `prompt=login` dans la requête d'autorisation.
+Pour les applications natives qui ne prennent pas en charge le webview sans session ou ne reconnaissent pas les paramètres `emphasized` (application Android utilisant le SDK **React Native** ou **Flutter**), vous pouvez forcer l'utilisateur à saisir à nouveau ses identifiants en passant le paramètre `prompt=login` dans la requête d'autorisation.
 :::
 
 ## Imposer la ré-authentification à chaque accès \{#enforce-re-authentication-on-every-access}
 
-Dans les scénarios à haute sécurité—comme la vérification de l'identité d'un utilisateur avant des actions sensibles—vous pouvez souhaiter exiger que l'utilisateur se ré-authentifie à chaque accès. Pour imposer ce comportement, incluez `prompt=login` dans votre requête d'authentification.
+Pour les actions à haute sécurité, incluez `prompt=login` dans les requêtes d'authentification pour contourner le SSO et forcer la saisie des identifiants à chaque fois.
 
-Définir `prompt=login` force Logto à toujours afficher la page de connexion, que l'utilisateur ait ou non une session active ou se soit récemment connecté. Cela contourne le comportement d'authentification unique (SSO) et garantit que l'utilisateur doit saisir ses identifiants à chaque fois.
+Si vous demandez `offline_access` (pour recevoir des jetons de rafraîchissement), incluez également `consent`, `prompt=login consent`.
 
-Si votre application demande la portée offline_access (pour recevoir un jeton de rafraîchissement), la spécification OpenID Connect exige également d'inclure `prompt=consent`.  
-Dans la plupart des cas, pour à la fois imposer la ré-authentification et garantir l'émission du jeton de rafraîchissement, définissez :
+Paramètre combiné typique :
 
-```
+```txt
 prompt=login consent
 ```
-
-Cela garantit que l'utilisateur est ré-authentifié et consent explicitement à l'accès hors ligne.
 
 ## FAQ \{#faqs}
 
@@ -205,8 +244,8 @@ Cela garantit que l'utilisateur est ré-authentifié et consent explicitement à
 
 </summary>
 
-- Assurez-vous que l'URI de back-channel logout est correctement enregistré dans le tableau de bord Logto.
-- Assurez-vous que votre application cliente dispose d'une session de connexion active valide et qu'il s'agit de la même session que celle ayant initié la demande de déconnexion.
+- Vérifiez que l'URI de back-channel logout est correctement enregistrée dans le tableau de bord Logto.
+- Vérifiez que votre application a un état de connexion actif pour le même utilisateur / contexte de session.
 
 </details>
 

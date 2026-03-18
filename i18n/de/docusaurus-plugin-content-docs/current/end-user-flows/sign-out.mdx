@@ -4,197 +4,236 @@ sidebar_position: 8
 
 # Abmelden
 
-Der Abmeldeprozess in Logto (als OIDC-basierter Identitätsanbieter) ist ein vielschichtiges Konzept, da sowohl die zentralisierte Anmeldesitzung, die von Logto verwaltet wird, als auch der verteilte Authentifizierungsstatus, der von den Client-Anwendungen verwaltet wird, beteiligt sind.
+Das Abmelden in Logto (als OIDC-Identitätsanbieter) umfasst sowohl:
 
-## Anmeldesitzung \{#sign-in-session}
+- Eine **zentralisierte Logto-Sitzung** (Browser-Cookie unter der Logto-Domain) als auch
+- **Verteilten clientseitigen Auth-Status** (Tokens und lokale App-Sitzung in jeder App).
 
-Um den Abmeldeprozess besser zu verstehen, ist es wichtig, zunächst zu verstehen, wie Benutzersitzungen und deren Authentifizierungsstatus in Logto verwaltet werden.
+Um das Abmeldeverhalten zu verstehen, hilft es, diese beiden Ebenen zu trennen und dann zu sehen, wie **Grants** sie verbinden.
+
+## Zentrale Konzepte \{#core-concepts}
+
+### Was ist eine Logto-Sitzung? \{#what-is-a-logto-session}
+
+Eine Logto-Sitzung ist der zentralisierte Anmeldestatus, der von Logto verwaltet wird. Sie wird nach erfolgreicher Authentifizierung erstellt und durch Cookies unter der Logto-Domain repräsentiert.
+
+Wenn das Sitzungs-Cookie gültig ist, kann der Benutzer stillschweigend (SSO) über mehrere Apps hinweg authentifiziert werden, die demselben Logto-Tenant vertrauen.
+
+Wenn keine gültige Sitzung existiert, zeigt Logto die Anmeldeseite an.
+
+### Was sind Grants? \{#what-are-grants}
+
+Ein **Grant** repräsentiert den Autorisierungsstatus für eine bestimmte Kombination aus Benutzer + Client-Anwendung.
+
+- Eine Logto-Sitzung kann Grants für mehrere Client-Apps haben.
+- Ein Grant ist das, womit ausgegebene Tokens verknüpft sind.
+- In dieser Dokumentation wird **Grant** als die bereichsübergreifende Autorisierungseinheit verwendet.
+
+### Wie hängen Sitzung, Grants und Client-Auth-Status zusammen? \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor Benutzer
+flowchart LR
+  subgraph Logto [Logto-Domain]
+    S[Logto-Sitzung]
+    G1[Grant für App A]
+    G2[Grant für App B]
+  end
 
-    box Vertrauende Partei (RP)
-      participant Client as Client-Anwendung
-    end
+  subgraph AppA [Client-Domain A]
+    A[Lokale Sitzung / Tokens]
+  end
 
-    box Logto (IdP)
-      participant OIDC as OIDC-Anbieter
-      participant SignIn as Anmeldeseite
-    end
+  subgraph AppB [Client-Domain B]
+    B[Lokale Sitzung / Tokens]
+  end
 
-    Benutzer ->> Client: Zugriff auf Webanwendung
-    Client ->> OIDC: Benutzer zur Authentifizierung an OIDC weiterleiten
-    OIDC -->> OIDC: Überprüfe Anmeldesitzung des Benutzers
-    OIDC ->> SignIn: Benutzer zur Anmeldung auffordern
-    SignIn ->> OIDC: Benutzer identifizieren und Interaktionsergebnis übermitteln
-    OIDC -->> OIDC: Anmeldesitzung und Authentifizierungsberechtigung für Benutzer erstellen
-    OIDC ->> Client: Benutzer mit Authentifizierungscode zur Webanwendung zurückleiten (Authorization Code Flow)
-    Client ->> OIDC: Code gegen Tokens austauschen
-    OIDC -->> Client: Tokens zurückgeben
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. Der Benutzer greift auf die Webanwendung (RP) zu.
-2. Die Client-Anwendung leitet den Benutzer zu Logto (IdP) zur [Authentifizierung (Authentication)](https://auth.wiki/authentication) weiter.
-3. Der OIDC-Anbieter prüft den Status der Anmeldesitzung des Benutzers. Falls keine Sitzung existiert oder die Sitzung abgelaufen ist, wird der Benutzer zur Anmeldung aufgefordert.
-4. Der Benutzer interagiert mit der Anmeldeseite, um sich zu authentifizieren.
-5. Nach erfolgreicher Anmeldung erstellt Logto eine neue Sitzung für den Benutzer und leitet mit einem Autorisierungscode zurück zur Client-Anwendung.
-6. Der OIDC-Anbieter erstellt eine neue Anmeldesitzung und Authentifizierungsberechtigung für den Benutzer.
-7. Der OIDC-Anbieter leitet den Benutzer mit einem Authentifizierungscode ([Authorization Code Flow](https://auth.wiki/authorization-code-flow)) zurück zum Client.
-8. Der Client erhält den Authentifizierungscode und tauscht ihn gegen Tokens aus, um Benutzerinformationen zu erhalten.
-9. Tokens werden an die Client-Anwendung vergeben.
+- **Logto-Sitzung** steuert die zentralisierte SSO-Erfahrung.
+- **Lokale Client-Sitzung / Tokens** steuern, ob jede App den Benutzer aktuell als angemeldet behandelt.
+- **Grants** verbinden diese beiden Welten, indem sie den app-spezifischen Autorisierungsstatus repräsentieren.
 
-## Komponenten \{#components}
+## Sign-in Rückblick (warum Sign-out mehrschichtig ist) \{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### Zentralisierte Anmeldesitzung, verwaltet von Logto \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-Im obigen Ablauf wird die zentralisierte Anmeldesitzung von Logto verwaltet. Die Sitzung wird erstellt, wenn sich der Benutzer erfolgreich anmeldet, und zerstört, wenn sich der Benutzer abmeldet. Die Sitzung wird ebenfalls zerstört, wenn die Sitzung des Benutzers abläuft.
+  box Relying Party (RP)
+    participant Client as Client-Anwendung
+  end
 
-Die Logto-Anmeldesitzung wird mit Session-Cookies verwaltet. Das Session-Cookie wird gesetzt, wenn sich der Benutzer anmeldet. Alle Authentifizierungsanfragen werden gegen das Session-Cookie validiert. Ist das Session-Cookie vorhanden und gültig, wird der Benutzer automatisch authentifiziert und direkt mit dem Autorisierungscode zur Client-Anwendung weitergeleitet. Andernfalls wird der Benutzer zur Anmeldung aufgefordert.
+  box Logto (IdP)
+    participant OIDC as OIDC-Anbieter
+    participant SignIn as Anmeldeseite
+  end
 
-1. Geteiltes Logto-Session-Cookie  
-   Meldet sich ein Benutzer mit demselben User-Agent (z. B. Browser) bei mehreren Client-Anwendungen an, hat der Benutzer ein geteiltes Session-Cookie unter der Logto-Domain. Das bedeutet, dass sich der Benutzer nur einmal anmelden muss und automatisch für andere Client-Anwendungen authentifiziert wird.
+  User ->> Client: Anwendung aufrufen
+  Client ->> OIDC: Weiterleitung zur Authentifizierung
+  OIDC -->> OIDC: Logto-Sitzung prüfen
+  OIDC ->> SignIn: Anmeldung anfordern, falls nötig
+  SignIn ->> OIDC: Benutzer authentifiziert sich
+  OIDC -->> OIDC: Sitzung und Grant erstellen
+  OIDC ->> Client: Autorisierungscode zurückgeben
+  Client ->> OIDC: Code gegen Tokens tauschen
+  OIDC -->> Client: Tokens zurückgeben
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph Benutzer [User Agent A]
-      U[Benutzer]
+## Sitzungs-Topologie über Apps / Geräte hinweg \{#session-topology-across-apps-devices}
 
-      subgraph Layer1 [Client-Domain A]
-        A[Client-Anwendung A]
-      end
+### Geteiltes Sitzungs-Cookie (gleicher Browser / User Agent) \{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Layer1 [Client-Domain B]
-        B[Client-Anwendung B]
-      end
+Wenn sich ein Benutzer in mehreren Apps im selben Browser anmeldet, können diese Apps dasselbe Logto-Sitzungs-Cookie wiederverwenden und SSO-Verhalten gilt.
 
-      subgraph Layer2 [Logto-Domain]
-          C{{Logto-Anmeldesitzung?}}
-          D[Anmeldeseite]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Benutzer]
+  A["Client-Anwendung A (Client-Domain A)"]
+  B["Client-Anwendung B (Client-Domain B)"]
+  C{"Logto-Sitzung vorhanden? (Logto-Domain)"}
+  D["Anmeldeseite (Logto-Domain)"]
 
-    U --> |Anmelden| A
-    A --> |Weiterleitung zu Logto| C
-    U --> |Anmelden| B
-    B --> |Weiterleitung zu Logto| C
-    C --> |Nein| D
-    D --> |Sitzung erstellen| C
-   ```
+  subgraph UA["User Agent A (gleicher Browser)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. Isoliertes Logto-Session-Cookie  
-   Meldet sich ein Benutzer von verschiedenen Geräten oder Browsern bei unterschiedlichen Client-Anwendungen an, hat der Benutzer isolierte Session-Cookies unter der Logto-Domain. Das bedeutet, dass sich der Benutzer für jede Client-Anwendung separat anmelden muss.
+  U -->|Anmelden| A
+  A -->|Weiterleitung zu Logto| C
+  U -->|App öffnen| B
+  B -->|Weiterleitung zu Logto| C
+  C -->|Nein| D
+  D -->|Sitzung erstellen| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[Benutzer]
+### Isolierte Sitzungs-Cookies (verschiedene Geräte / Browser) \{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DeviceA [User Agent A]
-      subgraph Layer1 [Client-Domain A]
-        A[Client-Anwendung A]
-      end
+Verschiedene Browser / Geräte halten unterschiedliche Logto-Cookies, daher ist der Anmeldestatus isoliert.
 
-      subgraph Layer2 [Logto-Domain]
-          C{{Logto-Anmeldesitzung?}}
-          D[Anmeldeseite]
-      end
-    end
+```mermaid
+flowchart TD
+  U[Benutzer]
+  A["Client-Anwendung A (Client-Domain A)"]
+  C{"Logto-Sitzung vorhanden? (Gerät A, Logto-Domain)"}
+  D["Anmeldeseite (Gerät A, Logto-Domain)"]
 
-    subgraph DeviceB [User Agent B]
-      subgraph Layer3 [Client-Domain B]
-        B[Client-Anwendung B]
-      end
+  subgraph DeviceA["User Agent A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Logto-Domain]
-          E{{Logto-Anmeldesitzung?}}
-          F[Anmeldeseite]
-      end
-    end
+  B["Client-Anwendung B (Client-Domain B)"]
+  E{"Logto-Sitzung vorhanden? (Gerät B, Logto-Domain)"}
+  F["Anmeldeseite (Gerät B, Logto-Domain)"]
 
-    U --> |Anmelden| A
-    A --> |Weiterleitung zu Logto| C
-    U --> |Anmelden| B
-    B --> |Weiterleitung zu Logto| E
-    C --> |Nein| D
-    E --> |Nein| F
-    D --> |Sitzung erstellen| C
-    F --> |Sitzung erstellen| E
-   ```
+  subgraph DeviceB["User Agent B"]
+    B
+    E
+    F
+  end
 
-## Verteilter Authentifizierungsstatus, verwaltet von den Client-Anwendungen \{#distributed-authentication-status-managed-by-the-client-applications}
+  U -->|Anmelden| A
+  A -->|Weiterleitung zu Logto| C
+  U -->|Anmelden| B
+  B -->|Weiterleitung zu Logto| E
+  C -->|Nein| D
+  E -->|Nein| F
+  D -->|Sitzung erstellen| C
+  F -->|Sitzung erstellen| E
+```
 
-Jede Client-Anwendung verwaltet ihren eigenen Authentifizierungsstatus. Egal ob Native-, SPA- oder Webanwendung – alle haben ihre eigene Methode, den Authentifizierungsstatus des Benutzers zu verwalten.
+## Abmelde-Mechanismen \{#sign-out-mechanisms}
 
-Nach erfolgreicher Anmeldung kann die Client-Anwendung ein [ID-Token (ID token)](https://auth.wiki/id-token) und ein [Zugangstoken (Access token)](https://auth.wiki/access-token) erhalten. Die Client-Anwendung kann das ID-Token verwenden, um die Identität des Benutzers zu bestimmen, und das Zugangstoken, um auf die Ressourcen des Benutzers zuzugreifen. Der Authentifizierungsstatus des Benutzers wird durch die Ablaufzeit des Zugangstokens repräsentiert.
+### 1) Nur clientseitiges Abmelden \{#1-client-side-only-sign-out}
 
-- Native- und SPA-Anwendungen:  
-  Die Client-Anwendung muss diese Tokens sicher speichern und verwalten, um den Authentifizierungsstatus des Benutzers aufrechtzuerhalten. Zum Beispiel können die Tokens im Local Storage oder Session Storage gespeichert und beim Abmelden entfernt werden.
-- Webanwendungen:  
-  Webanwendungen, wie sie mit Frameworks wie Next.js gebaut werden, verwalten oft ihre eigene Sitzung für angemeldete Benutzer zusätzlich zu den von Logto ausgegebenen Tokens. Nach der Anmeldung und dem Empfang der Tokens von Logto kann die Webanwendung die Tokens clientseitig wie SPA-Anwendungen speichern oder serverseitig speichern und die Sitzung mit Cookies oder anderen Mechanismen verwalten.
+Die Client-App löscht ihre eigene lokale Sitzung und Tokens (ID- / Zugangstoken / Auffrischungstoken). Dadurch wird der Benutzer nur aus dem lokalen Zustand dieser App abgemeldet.
 
-## Abmeldemechanismen \{#sign-out-mechanisms}
+- Die Logto-Sitzung kann weiterhin aktiv sein.
+- Andere Apps unter derselben Logto-Sitzung können weiterhin SSO nutzen.
 
-### Tokens und lokale Sitzung auf Client-Seite löschen \{#clear-tokens-and-local-session-at-the-client-side}
+### 2) End-Sitzung bei Logto (globales Abmelden in aktueller Logto-Implementierung) \{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-Auf der Client-Seite beinhaltet eine einfache Abmeldung das Löschen der lokalen Sitzung und das Entfernen der Tokens (ID-Token, Zugangstoken, Auffrischungstoken) aus dem Local Storage oder Session Storage. Dies führt zu einer rein clientseitigen Abmeldung, bei der die zentralisierte Sitzung bestehen bleibt. Benutzer, die sich auf diese Weise abmelden, können möglicherweise weiterhin auf andere Anwendungen unter derselben Autorisierungsserver-Sitzung zugreifen, bis die zentralisierte Sitzung abläuft oder aktiv zerstört wird.
+Um die zentralisierte Logto-Sitzung zu löschen, leitet die App den Benutzer zum End-Sitzung-Endpunkt weiter, zum Beispiel:
 
-### Anmeldesitzung bei Logto löschen \{#clear-sign-in-session-at-logto}
+`https://{your-logto-domain}/oidc/session/end`
 
-Um den Benutzer explizit abzumelden und die Sitzung bei Logto zu löschen, muss die Client-Anwendung den Benutzer zum **End-Session-Endpunkt** von Logto weiterleiten.
+Im aktuellen Logto SDK-Verhalten:
 
-Z. B. `https://{your-logto-domain}/oidc/session/end`
+1. `signOut()` leitet zu `/session/end` weiter.
+2. Dann geht es zu `/session/end/confirm`.
+3. Das Standard-Bestätigungsformular sendet automatisch `logout=true`.
 
-Der **End-Session-Endpunkt** ist ein standardisierter OIDC-Endpunkt, der es der Client-Anwendung ermöglicht, dem Autorisierungsserver mitzuteilen, dass sich der Benutzer abgemeldet hat. Der Endpunkt löscht die zentralisierte Anmeldesitzung bei Logto.
+Dadurch wird das aktuelle SDK-Abmelden als **globales Abmelden** behandelt.
 
-Sobald die Sitzung gelöscht ist, erfordern alle nachfolgenden Autorisierungsanfragen, dass sich der Benutzer erneut anmeldet.
+### Was passiert beim globalen Abmelden \{#what-happens-during-global-sign-out}
 
-Wird eine **Post-Logout-Redirect-URI** angegeben, wird der Benutzer nach dem Löschen der Sitzung zur angegebenen URI weitergeleitet. Andernfalls wird der Benutzer zur Standard-Post-Logout-Seite von Logto weitergeleitet.
+```mermaid
+flowchart TD
+  A["Client startet Abmelden"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["Zentralisierte Logto-Sitzung widerrufen"]
+  D --> E{"Pro-App-Grant prüfen"}
+  E -->|"offline_access nicht gewährt"| F["Grant widerrufen"]
+  E -->|"offline_access gewährt"| G["Grant bleibt bis Grant-TTL abläuft"]
+```
 
-## Föderierte Abmeldung: Back-Channel-Logout \{#federated-sign-out-back-channel-logout}
+Beim globalen Abmelden gilt:
 
-Für ein konsistenteres Abmeldemanagement unterstützt Logto [Back-Channel-Logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html). Back-Channel-Logout ist ein Mechanismus, der es Logto ermöglicht, alle Client-Anwendungen unter derselben Anmeldesitzung zu benachrichtigen, wenn sich der Benutzer abmeldet.
+- Die zentralisierte Logto-Sitzung wird widerrufen.
+- Zugehörige App-Grants werden je nach Autorisierungsstatus der App behandelt:
+  - Wenn `offline_access` **nicht** gewährt ist, werden die zugehörigen Grants widerrufen.
+  - Wenn `offline_access` **gewährt** ist, werden Grants durch End-Sitzung nicht widerrufen.
+- Bei `offline_access`-Fällen bleiben Auffrischungstoken und Grants bis zum Ablauf des Grants gültig.
 
-Dies ist besonders nützlich in Szenarien, in denen sich der Benutzer von einer Client-Anwendung abmeldet und erwartet, dass er auch bei allen anderen Client-Anwendungen unter derselben Logto-Anmeldesitzung abgemeldet wird.
+## Grant-Lebensdauer und Auswirkung von `offline_access` \{#grant-lifetime-and-offline-access-impact}
 
-Um Back-Channel-Logout für deine Client-Anwendungen zu aktivieren, gehe zur Anwendungsdetailseite im Logto-Dashboard und registriere eine Back-Channel-Logout-URI. Logto sendet ein Logout-Token an alle registrierten URIs, wenn der Benutzer eine Abmeldeanfrage von einer beliebigen Client-Anwendung auslöst.
+- Die Standard-Grant-TTL in Logto beträgt **180 Tage**.
+- Wenn `offline_access` gewährt ist, wird der App-Grant durch End-Sitzung standardmäßig nicht widerrufen.
+- Die mit diesem Grant verknüpfte Auffrischungstoken-Kette kann weiterlaufen, bis der Grant abläuft (oder explizit widerrufen wird).
 
-Wenn deine Client-Anwendung erfordert, dass die Anmeldesitzung im Logout-Token enthalten ist, aktiviere die Einstellung `Is session required` in der Back-Channel-Logout-Konfiguration. Ein `sid`-Anspruch (Claim) wird dann im Logout-Token enthalten sein, um die Anmeldesitzung des Benutzers bei Logto zu identifizieren.
+## Föderiertes Abmelden: Back-Channel-Logout \{#federated-sign-out-back-channel-logout}
 
-1. Der Benutzer initiiert eine Abmeldeanfrage von einer Client-Anwendung.
-2. Logto erhält die End-Session-Anfrage, generiert ein Logout-Token und sendet das Logout-Token an alle registrierten Back-Channel-Logout-URIs.
-3. Jede Client-Anwendung empfängt das Logout-Token und führt Abmeldeaktionen durch.
+Für bereichsübergreifende Konsistenz unterstützt Logto [Back-Channel-Logout](https://openid.net/specs/openid-connect-backchannel-1_0-final.html).
 
-Abmeldeaktionen für jede Client-Anwendung beim Empfang des Logout-Tokens:
+Wenn sich ein Benutzer von einer App abmeldet, kann Logto alle Apps, die an derselben Sitzung teilnehmen, benachrichtigen, indem ein Logout-Token an jede registrierte Back-Channel-Logout-URI gesendet wird.
 
-- Das Logout-Token validieren.
-- Die lokale Sitzung löschen und Tokens aus Local Storage oder Session Storage entfernen.
+Wenn `Is session required` in den Back-Channel-Einstellungen der App aktiviert ist, enthält das Logout-Token `sid`, um die Logto-Sitzung zu identifizieren.
 
-## Abmeldemethoden in Logto SDKs \{#sign-out-methods-in-logto-sdks}
+Typischer Ablauf:
 
-Wenn du Logto mit deiner Client-Anwendung über die Logto-SDKs integrierst:
+1. Benutzer startet Abmelden in einer App.
+2. Logto verarbeitet End-Sitzung und sendet Logout-Token(s) an registrierte Back-Channel-Logout-URI(s).
+3. Jede App validiert das Logout-Token und löscht ihre eigene lokale Sitzung / Tokens.
 
-- Für SPA- und Webanwendungen löscht die Methode `client.signOut()` den lokalen Token-Speicher und leitet den Benutzer zum End-Session-Endpunkt von Logto weiter. Du kannst eine **Post-Logout-Redirect-URI** angeben, um den Benutzer nach dem Löschen der Sitzung weiterzuleiten.
-- Für native Anwendungen (einschließlich hybrider Apps wie **React Native** und **Flutter**) wird nur der lokale Token-Speicher gelöscht. Das liegt daran, dass in nativen Anwendungen der Anmeldeprozess über ein sitzungsloses Webview erfolgt. Es werden keine Session-Cookies im nativen Browser gespeichert, daher muss die Anmeldesitzung bei Logto nicht gelöscht werden. Jede Authentifizierungsanfrage ist eine eigenständige Anfrage, die keine Session-Cookies überträgt.
+## Abmelde-Methoden in Logto SDKs \{#sign-out-methods-in-logto-sdks}
+
+- **SPA und Web**: `client.signOut()` löscht den lokalen Token-Speicher und leitet zum Logto-End-Sitzung-Endpunkt weiter. Du kannst eine Post-Logout-Redirect-URI angeben.
+- **Native (einschließlich React Native / Flutter)**: löscht in der Regel nur den lokalen Token-Speicher. Sitzungslose Webviews bedeuten, dass kein persistentes Logto-Browser-Cookie gelöscht werden muss.
 
 :::note
-Für native Anwendungen, die kein sitzungsloses Webview unterstützen oder die `emphasized`-Einstellungen nicht erkennen (Android-App mit **React Native** oder **Flutter** SDK), kannst du den Benutzer zwingen, sich erneut anzumelden, indem du den Parameter `prompt=login` in der Autorisierungsanfrage übergibst.
+Für native Anwendungen, die keine sitzungslose Webview unterstützen oder die `emphasized` Einstellungen nicht erkennen (Android-App mit **React Native** oder **Flutter** SDK), kannst du den Benutzer zwingen, sich erneut anzumelden, indem du den Parameter `prompt=login` in der Authentifizierungsanfrage übergibst.
 :::
 
-## Erzwinge erneute Authentifizierung bei jedem Zugriff \{#enforce-re-authentication-on-every-access}
+## Erzwinge Re-Authentifizierung bei jedem Zugriff \{#enforce-re-authentication-on-every-access}
 
-In Hochsicherheits-Szenarien – wie der Überprüfung der Identität eines Benutzers vor sensiblen Aktionen – möchtest du möglicherweise verlangen, dass sich der Benutzer bei jedem Zugriff erneut authentifiziert. Um dieses Verhalten zu erzwingen, füge `prompt=login` in deine Authentifizierungsanfrage ein.
+Für sicherheitskritische Aktionen füge `prompt=login` in Auth-Anfragen ein, um SSO zu umgehen und jedes Mal die Eingabe der Zugangsdaten zu erzwingen.
 
-Die Einstellung `prompt=login` zwingt Logto dazu, immer die Anmeldeseite anzuzeigen, unabhängig davon, ob der Benutzer eine aktive Sitzung hat oder sich kürzlich angemeldet hat. Dies umgeht das Single Sign-On (SSO)-Verhalten und stellt sicher, dass der Benutzer jedes Mal zur Eingabe seiner Zugangsdaten aufgefordert wird.
+Wenn du `offline_access` anforderst (um Auffrischungstoken zu erhalten), füge auch `consent`, `prompt=login consent` hinzu.
 
-Wenn deine App den offline_access-Bereich (Scope) anfordert (um ein Auffrischungstoken zu erhalten), verlangt die OpenID Connect-Spezifikation, dass du auch `prompt=consent` einfügst.  
-In den meisten Fällen, um sowohl die erneute Authentifizierung zu erzwingen als auch die Ausgabe eines Auffrischungstokens sicherzustellen, setze:
+Typische kombinierte Einstellung:
 
-```
+```txt
 prompt=login consent
 ```
-
-Dies garantiert, dass der Benutzer erneut authentifiziert wird und ausdrücklich dem Offline-Zugriff zustimmt.
 
 ## FAQs \{#faqs}
 
@@ -206,7 +245,7 @@ Dies garantiert, dass der Benutzer erneut authentifiziert wird und ausdrücklich
 </summary>
 
 - Stelle sicher, dass die Back-Channel-Logout-URI korrekt im Logto-Dashboard registriert ist.
-- Stelle sicher, dass deine Client-Anwendung eine gültige aktive Anmeldesitzung hat und es sich um dieselbe Sitzung handelt, die die Abmeldeanfrage initiiert hat.
+- Stelle sicher, dass deine App einen aktiven Anmeldestatus für denselben Benutzer / Sitzungs-Kontext hat.
 
 </details>
 

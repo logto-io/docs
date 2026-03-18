@@ -4,214 +4,253 @@ sidebar_position: 8
 
 # 登出 (Sign-out)
 
-在 Logto（作為基於 OIDC 的身分提供者）中，登出流程是一個多面向的概念，因為同時涉及由 Logto 管理的集中式登入會話，以及由用戶端應用程式管理的分散式驗證 (Authentication) 狀態。
+在 Logto（作為 OIDC 身分提供者）中，登出涉及：
 
-## 登入會話 \{#sign-in-session}
+- **集中式 Logto 工作階段**（Logto 網域下的瀏覽器 cookie），以及
+- **分散式用戶端驗證狀態**（每個應用程式中的權杖和本地應用程式工作階段）。
 
-為了更好地理解登出流程，首先需要了解 Logto 如何管理使用者的登入會話與其驗證 (Authentication) 狀態。
+為了理解登出行為，建議將這兩層分開，並了解 **授權單元 (grants)** 如何連結它們。
+
+## 核心概念 \{#core-concepts}
+
+### 什麼是 Logto 工作階段？ \{#what-is-a-logto-session}
+
+Logto 工作階段是由 Logto 管理的集中式登入狀態。它在驗證成功後建立，並以 Logto 網域下的 cookie 表示。
+
+如果工作階段 cookie 有效，使用者可以在多個信任同一 Logto 租戶的應用程式間靜默驗證（單一登入，SSO）。
+
+若不存在有效的工作階段，Logto 會顯示登入頁面。
+
+### 什麼是授權單元 (grants)？ \{#what-are-grants}
+
+**授權單元 (grant)** 代表特定使用者 + 用戶端應用程式組合的授權狀態。
+
+- 一個 Logto 工作階段可以擁有多個用戶端應用程式的授權單元。
+- 授權單元是已發行權杖所關聯的對象。
+- 在本文件集中，**授權單元 (grant)** 作為跨應用程式的授權單位。
+
+### 工作階段、授權單元與用戶端驗證狀態的關係 \{#how-session-grants-and-client-auth-status-relate}
 
 ```mermaid
-  sequenceDiagram
-    autonumber
-    actor User
+flowchart LR
+  subgraph Logto [Logto 網域]
+    S[Logto 工作階段 (Logto session)]
+    G1[App A 的授權單元 (Grant for App A)]
+    G2[App B 的授權單元 (Grant for App B)]
+  end
 
-    box Relying Party (RP)
-      participant Client as Client application
-    end
+  subgraph AppA [用戶端網域 A]
+    A[本地工作階段 / 權杖 (Local session / tokens)]
+  end
 
-    box Logto (IdP)
-      participant OIDC as OIDC provider
-      participant SignIn as Sign-in page
-    end
+  subgraph AppB [用戶端網域 B]
+    B[本地工作階段 / 權杖 (Local session / tokens)]
+  end
 
-    User ->> Client: 存取網頁應用程式
-    Client ->> OIDC: 將使用者導向 OIDC 進行驗證 (Authentication)
-    OIDC -->> OIDC: 檢查使用者的登入會話
-    OIDC ->> SignIn: 提示使用者登入
-    SignIn ->> OIDC: 識別使用者並提交互動結果
-    OIDC -->> OIDC: 建立使用者的登入會話與驗證 (Authentication) 授權
-    OIDC ->> Client: 將使用者導回網頁應用程式並附帶驗證 (Authentication) 代碼（授權碼流程）
-    Client ->> OIDC: 以代碼換取權杖
-    OIDC -->> Client: 回傳權杖
+  S --> G1
+  S --> G2
+  G1 --> A
+  G2 --> B
 ```
 
-1. 使用者存取網頁應用程式（RP）。
-2. 用戶端應用程式將使用者導向 Logto（IdP）進行[驗證 (Authentication)](https://auth.wiki/authentication)。
-3. OIDC 提供者檢查使用者的登入會話狀態。若無會話或會話已過期，則提示使用者登入。
-4. 使用者與登入頁面互動以完成驗證 (Authentication)。
-5. 驗證 (Authentication) 成功後，Logto 為使用者建立新會話，並帶著授權碼導回用戶端應用程式。
-6. OIDC 提供者為使用者建立新的登入會話與驗證 (Authentication) 授權。
-7. OIDC 提供者將使用者導回用戶端並附帶驗證 (Authentication) 代碼（[授權碼流程 (Authorization Code flow)](https://auth.wiki/authorization-code-flow)）。
-8. 用戶端收到驗證 (Authentication) 代碼並換取權杖以存取使用者資訊。
-9. 將權杖授予用戶端應用程式。
+- **Logto 工作階段** 控制集中式單一登入 (SSO) 體驗。
+- **用戶端本地工作階段 / 權杖** 控制每個應用程式是否將使用者視為已登入。
+- **授權單元 (grants)** 透過代表應用程式專屬授權狀態，連結這兩個世界。
 
-## 組成元件 \{#components}
+## 登入回顧（為什麼登出是多層次的） \{#sign-in-recap-why-sign-out-is-multi-layered}
 
-### 由 Logto 管理的集中式登入會話 \{#centralized-sign-in-session-managed-by-logto}
+```mermaid
+sequenceDiagram
+  autonumber
+  actor User
 
-在上述流程中，集中式登入會話由 Logto 管理。當使用者成功登入時會建立會話，當使用者登出或會話過期時會銷毀會話。
+  box Relying Party (RP)
+    participant Client as 用戶端應用程式 (Client application)
+  end
 
-Logto 的登入會話是透過會話 Cookie 管理。使用者登入時會設置會話 Cookie，所有驗證 (Authentication) 請求都會根據此 Cookie 驗證。如果會話 Cookie 存在且有效，使用者會自動驗證 (Authentication) 並直接導回用戶端應用程式並附帶授權碼。否則，會提示使用者登入。
+  box Logto (IdP)
+    participant OIDC as OIDC 提供者 (OIDC provider)
+    participant SignIn as 登入頁面 (Sign-in page)
+  end
 
-1. 共享 Logto 會話 Cookie  
-   若使用者從同一個使用者代理（如瀏覽器）登入多個用戶端應用程式，則會在 Logto 網域下擁有共享的會話 Cookie。這表示使用者只需登入一次，即可自動驗證 (Authentication) 其他用戶端應用程式。
+  User ->> Client: 存取應用程式 (Access application)
+  Client ->> OIDC: 重新導向進行驗證 (Redirect for authentication)
+  OIDC -->> OIDC: 檢查 Logto 工作階段 (Check Logto session)
+  OIDC ->> SignIn: 如有需要提示登入 (Prompt sign-in if needed)
+  SignIn ->> OIDC: 使用者驗證 (User authenticates)
+  OIDC -->> OIDC: 建立工作階段與授權單元 (Create session and grant)
+  OIDC ->> Client: 回傳授權碼 (Return authorization code)
+  Client ->> OIDC: 以授權碼換取權杖 (Exchange code for tokens)
+  OIDC -->> Client: 回傳權杖 (Return tokens)
+```
 
-   ```mermaid
-    flowchart TD
-    subgraph User [使用者代理 A]
-      U[使用者]
+## 跨應用程式 / 裝置的工作階段拓撲 \{#session-topology-across-apps-devices}
 
-      subgraph Layer1 [用戶端網域 A]
-        A[用戶端應用程式 A]
-      end
+### 共用工作階段 cookie（同一瀏覽器 / 使用者代理） \{#shared-session-cookie-same-browser-user-agent}
 
-      subgraph Layer1 [用戶端網域 B]
-        B[用戶端應用程式 B]
-      end
+若使用者從同一瀏覽器登入多個應用程式，這些應用程式可重用同一 Logto 工作階段 cookie，並享有單一登入 (SSO) 行為。
 
-      subgraph Layer2 [Logto 網域]
-          C{{Logto 登入會話？}}
-          D[登入頁面]
-      end
-    end
+```mermaid
+flowchart TD
+  U[使用者 (User)]
+  A["用戶端應用程式 A (Client domain A)"]
+  B["用戶端應用程式 B (Client domain B)"]
+  C{"Logto 工作階段存在？ (Logto domain)"}
+  D["登入頁面 (Logto domain)"]
 
-    U --> |登入| A
-    A --> |導向 Logto| C
-    U --> |登入| B
-    B --> |導向 Logto| C
-    C --> |否| D
-    D --> |建立會話| C
-   ```
+  subgraph UA["使用者代理 A (同一瀏覽器)"]
+    U
+    A
+    B
+    C
+    D
+  end
 
-2. 隔離 Logto 會話 Cookie  
-   若使用者從不同裝置或瀏覽器登入不同用戶端應用程式，則會在 Logto 網域下擁有隔離的會話 Cookie。這表示每個用戶端應用程式都需分別登入。
+  U -->|登入| A
+  A -->|重新導向至 Logto| C
+  U -->|開啟應用程式| B
+  B -->|重新導向至 Logto| C
+  C -->|否| D
+  D -->|建立工作階段| C
+```
 
-   ```mermaid
-    flowchart TD
-    U[使用者]
+### 隔離的工作階段 cookie（不同裝置 / 瀏覽器） \{#isolated-session-cookies-different-devices-browsers}
 
-    subgraph DeviceA [使用者代理 A]
-      subgraph Layer1 [用戶端網域 A]
-        A[用戶端應用程式 A]
-      end
+不同瀏覽器 / 裝置持有不同的 Logto cookie，因此登入工作階段彼此隔離。
 
-      subgraph Layer2 [Logto 網域]
-          C{{Logto 登入會話？}}
-          D[登入頁面]
-      end
-    end
+```mermaid
+flowchart TD
+  U[使用者 (User)]
+  A["用戶端應用程式 A (Client domain A)"]
+  C{"Logto 工作階段存在？ (Device A, Logto domain)"}
+  D["登入頁面 (Device A, Logto domain)"]
 
-    subgraph DeviceB [使用者代理 B]
-      subgraph Layer3 [用戶端網域 B]
-        B[用戶端應用程式 B]
-      end
+  subgraph DeviceA["使用者代理 A"]
+    A
+    C
+    D
+  end
 
-      subgraph Layer4 [Logto 網域]
-          E{{Logto 登入會話？}}
-          F[登入頁面]
-      end
-    end
+  B["用戶端應用程式 B (Client domain B)"]
+  E{"Logto 工作階段存在？ (Device B, Logto domain)"}
+  F["登入頁面 (Device B, Logto domain)"]
 
-    U --> |登入| A
-    A --> |導向 Logto| C
-    U --> |登入| B
-    B --> |導向 Logto| E
-    C --> |否| D
-    E --> |否| F
-    D --> |建立會話| C
-    F --> |建立會話| E
-   ```
+  subgraph DeviceB["使用者代理 B"]
+    B
+    E
+    F
+  end
 
-## 由用戶端應用程式管理的分散式驗證 (Authentication) 狀態 \{#distributed-authentication-status-managed-by-the-client-applications}
-
-每個用戶端應用程式都會維護自己的驗證 (Authentication) 狀態。無論是 Native、SPA 或 Web 應用程式，都有各自管理使用者驗證 (Authentication) 狀態的方式。
-
-登入成功後，用戶端應用程式可能會收到 [ID 權杖 (ID token)](https://auth.wiki/id-token) 與 [存取權杖 (Access token)](https://auth.wiki/access-token)。用戶端應用程式可利用 ID 權杖判斷使用者身分，並用存取權杖存取使用者資源。使用者的驗證 (Authentication) 狀態由存取權杖的過期時間表示。
-
-- Native 與 SPA 應用程式：  
-  用戶端應用程式需安全地儲存並管理這些權杖以維持使用者驗證 (Authentication) 狀態。例如，將權杖儲存在 local storage 或 session storage，並於使用者登出時清除權杖。
-- Web 應用程式：  
-  例如使用 Next.js 等框架建構的 Web 應用程式，通常會在 Logto 發放的權杖之外，額外管理自己的登入使用者會話。當使用者登入並收到 Logto 的權杖後，可以像 SPA 應用程式一樣將權杖儲存在前端，或將權杖儲存在後端並透過 Cookie 或其他機制管理會話。
+  U -->|登入| A
+  A -->|重新導向至 Logto| C
+  U -->|登入| B
+  B -->|重新導向至 Logto| E
+  C -->|否| D
+  E -->|否| F
+  D -->|建立工作階段| C
+  F -->|建立工作階段| E
+```
 
 ## 登出機制 \{#sign-out-mechanisms}
 
-### 清除用戶端本地權杖與會話 \{#clear-tokens-and-local-session-at-the-client-side}
+### 1) 僅用戶端登出 \{#1-client-side-only-sign-out}
 
-在用戶端，簡單的登出操作即為清除本地會話並移除權杖（ID 權杖、存取權杖、重新整理權杖）於 local storage 或 session storage。這僅會造成用戶端本地登出，集中式會話仍然存在。以此方式登出的使用者，仍可能在集中式授權伺服器會話有效期間內存取其他應用程式，直到集中式會話過期或被主動銷毀。
+用戶端應用程式清除自身本地工作階段與權杖（ID / 存取 / 重新整理權杖）。這僅將使用者從該應用程式的本地狀態登出。
 
-### 清除 Logto 的登入會話 \{#clear-sign-in-session-at-logto}
+- Logto 工作階段可能仍然有效。
+- 其他同一 Logto 工作階段下的應用程式仍可單一登入 (SSO)。
 
-若需明確登出使用者並清除 Logto 的會話，用戶端應用程式需將使用者導向 Logto 的 **end session endpoint**。
+### 2) Logto 端結束工作階段（目前 Logto 實作下的全域登出） \{#2-end-session-at-logto-global-sign-out-in-current-logto-implementation}
 
-例如：`https://{your-logto-domain}/oidc/session/end`
+若要清除集中式 Logto 工作階段，應用程式會將使用者重新導向至結束工作階段端點，例如：
 
-**end session endpoint** 是標準 OIDC 端點，允許用戶端應用程式通知授權伺服器使用者已登出。此端點會清除 Logto 的集中式登入會話。
+`https://{your-logto-domain}/oidc/session/end`
 
-會話清除後，任何後續授權請求都需使用者重新登入。
+目前 Logto SDK 行為如下：
 
-若有提供 **post-logout redirect URI**，會話清除後會將使用者導向指定 URI；否則，會導向 Logto 預設的登出後頁面。
+1. `signOut()` 會重新導向至 `/session/end`。
+2. 接著進入 `/session/end/confirm`。
+3. 預設確認表單會自動提交 `logout=true`。
 
-## 聯合登出：後端通道登出 (Back-channel logout) \{#federated-sign-out-back-channel-logout}
+因此，目前 SDK 的登出被視為 **全域登出**。
 
-為了更一致地管理登出，Logto 支援 [後端通道登出 (Back-channel logout)](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)。這是一種機制，讓 Logto 能在使用者登出時通知所有同一登入會話下的用戶端應用程式。
+### 全域登出時會發生什麼事 \{#what-happens-during-global-sign-out}
 
-這在使用者從某一用戶端應用程式登出時，期望同時從所有同一 Logto 登入會話下的應用程式登出時特別有用。
+```mermaid
+flowchart TD
+  A["用戶端啟動登出 (Client starts sign-out)"] --> B["/session/end"]
+  B --> C["/session/end/confirm (logout=true)"]
+  C --> D["撤銷集中式 Logto 工作階段 (Revoke centralized Logto session)"]
+  D --> E{"檢查每個應用程式授權單元 (Check per-app grant)"}
+  E -->|"未授予 offline_access"| F["撤銷授權單元 (Revoke grant)"]
+  E -->|"已授予 offline_access"| G["保留授權單元直到 TTL 到期 (Keep grant until grant TTL expires)"]
+```
 
-若要為你的用戶端應用程式啟用後端通道登出，請至 Logto 控制台的應用程式詳細頁面，註冊後端通道登出 URI。當使用者從任一用戶端應用程式發起登出請求時，Logto 會向所有註冊的 URI 發送登出權杖。
+全域登出期間：
 
-若你的用戶端應用程式需要在登出權杖中包含登入會話，請在後端通道登出設定中開啟 `Is session required` 選項。Logto 會在登出權杖中加入 `sid` 宣告 (Claim) 以識別 Logto 上的使用者登入會話。
+- 集中式 Logto 工作階段會被撤銷。
+- 相關應用程式授權單元依應用程式授權狀態處理：
+  - 若 **未**授予 `offline_access`，相關授權單元會被撤銷。
+  - 若 **已**授予 `offline_access`，結束工作階段不會撤銷該授權單元。
+- 對於 `offline_access` 情境，重新整理權杖與授權單元會持續有效，直到授權單元到期。
 
-1. 使用者從某一用戶端應用程式發起登出請求。
-2. Logto 收到結束會話請求，產生登出權杖，並將其發送至所有註冊的後端通道登出 URI。
-3. 各用戶端應用程式收到登出權杖並執行登出動作。
+## 授權單元存續時間與 `offline_access` 影響 \{#grant-lifetime-and-offline-access-impact}
 
-各用戶端應用程式收到登出權杖後的登出動作：
+- Logto 預設授權單元 TTL 為 **180 天**。
+- 若授予 `offline_access`，結束工作階段預設不會撤銷該應用程式授權單元。
+- 與該授權單元關聯的重新整理權杖可持續使用，直到授權單元到期（或被明確撤銷）。
 
-- 驗證登出權杖。
-- 清除本地會話並移除 local storage 或 session storage 中的權杖。
+## 聯合登出：後端通道登出 (back-channel logout) \{#federated-sign-out-back-channel-logout}
+
+為了跨應用程式一致性，Logto 支援 [後端通道登出 (back-channel logout)](https://openid.net/specs/openid-connect-backchannel-1_0-final.html)。
+
+當使用者從某個應用程式登出時，Logto 會向所有參與同一工作階段的應用程式發送登出權杖至其註冊的後端通道登出 URI。
+
+若應用程式後端通道設定中啟用 `Is session required`，登出權杖會包含 `sid` 以識別 Logto 工作階段。
+
+典型流程：
+
+1. 使用者從某個應用程式啟動登出。
+2. Logto 處理結束工作階段，並向註冊的後端通道登出 URI 發送登出權杖。
+3. 各應用程式驗證登出權杖並清除自身本地工作階段 / 權杖。
 
 ## Logto SDK 的登出方法 \{#sign-out-methods-in-logto-sdks}
 
-若你透過 Logto SDK 整合用戶端應用程式：
-
-- 對於 SPA 與 Web 應用程式，`client.signOut()` 方法會清除本地權杖儲存並將使用者導向 Logto 的 end session endpoint。你可指定 **post-logout redirect URI**，於會話清除後導向使用者。
-- 對於原生應用程式（包含 **React Native**、**Flutter** 等混合應用程式），僅會清除本地權杖儲存。這是因為原生應用程式登入流程採用無會話 WebView，原生瀏覽器不會儲存會話 Cookie，因此無需清除 Logto 的登入會話。每次驗證 (Authentication) 請求都是獨立請求，不會帶有會話 Cookie。
+- **SPA 與網頁**：`client.signOut()` 會清除本地權杖儲存並重新導向至 Logto 結束工作階段端點。你可以提供登出後重新導向 URI。
+- **原生（包含 React Native / Flutter）**：通常僅清除本地權杖儲存。無持久 Logto 瀏覽器 cookie 可清除（sessionless webview）。
 
 :::note
-若原生應用程式不支援無會話 WebView 或無法識別 `emphasized` 設定（如 Android 應用程式使用 **React Native** 或 **Flutter** SDK），可在授權請求中傳入 `prompt=login` 參數，強制提示使用者重新登入。
+對於不支援 sessionless webview 或未識別 `emphasized` 設定的原生應用程式（如 **React Native** 或 **Flutter** SDK 的 Android 應用程式），你可以在驗證請求中傳遞 `prompt=login` 參數，強制使用者再次登入。
 :::
 
-## 強制每次存取都重新驗證 (Authentication) \{#enforce-re-authentication-on-every-access}
+## 強制每次存取都重新驗證 \{#enforce-re-authentication-on-every-access}
 
-在高安全性場景（如在敏感操作前驗證使用者身分），你可能希望每次存取都要求使用者重新驗證 (Authentication)。可在驗證 (Authentication) 請求中加入 `prompt=login` 來強制此行為。
+對於高安全性操作，在驗證請求中加入 `prompt=login`，可繞過 SSO 並每次強制輸入憑證。
 
-設定 `prompt=login` 會讓 Logto 每次都顯示登入頁面，不論使用者是否已有有效會話或剛登入過。這會繞過單一登入 (SSO, Single Sign-On) 行為，確保每次都提示使用者輸入憑證。
+若請求 `offline_access`（以取得重新整理權杖），也請加入 `consent`，即 `prompt=login consent`。
 
-若你的應用程式請求 offline_access 權限範圍（以獲取重新整理權杖），根據 OpenID Connect 規範，也需包含 `prompt=consent`。
-大多數情況下，若要同時強制重新驗證 (Authentication) 並確保發放重新整理權杖，請設定：
+典型組合設定：
 
-```
+```txt
 prompt=login consent
 ```
-
-這可保證使用者重新驗證 (Authentication) 並明確同意離線存取。
 
 ## 常見問題 \{#faqs}
 
 <details>
   <summary>
 
-### 我沒有收到後端通道登出通知 \{#im-not-receiving-the-back-channel-logout-notifications}
+### 我沒有收到後端通道登出通知。 \{#im-not-receiving-the-back-channel-logout-notifications}
 
 </summary>
 
 - 請確認後端通道登出 URI 已正確註冊於 Logto 控制台。
-- 請確認你的用戶端應用程式有有效的登入會話，且與發起登出請求的會話相同。
+- 請確認你的應用程式對同一使用者 / 工作階段上下文有有效登入狀態。
 
 </details>
 
 ## 相關資源 \{#related-resources}
 
 <Url href="https://blog.logto.io/oidc-back-channel-logout/">
-  了解 OIDC 後端通道登出 (Back-channel logout)。
+  理解 OIDC 後端通道登出 (Understanding OIDC back-channel logout)。
 </Url>
