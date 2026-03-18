@@ -159,8 +159,9 @@ const normalizeTranslatedMdx = (content) =>
       );
       // Fix translated MDX where a custom component closing tag is followed by trailing text on
       // the same line, e.g. `</CloudLink> more text`, by moving that text onto the next line.
+      // This also supports list items like `- </CloudLink> more text` or `1. </CloudLink> more text`.
       const match =
-        /^(?<indent>\s*)(?<closingTag><\/[A-Z][\dA-Za-z]*>)\s+(?<trailingText>\S.*)$/.exec(
+        /^(?<indent>\s*)(?<listPrefix>(?:(?:[*+-]|\d+\.)\s+)?)?(?<closingTag><\/[A-Z][\dA-Za-z]*>)\s+(?<trailingText>\S.*)$/.exec(
           normalizedHeadingLine
         );
 
@@ -168,9 +169,10 @@ const normalizeTranslatedMdx = (content) =>
         return [normalizedHeadingLine];
       }
 
-      const { indent, closingTag, trailingText } = match.groups;
+      const { indent, listPrefix = '', closingTag, trailingText } = match.groups;
+      const trailingIndent = `${indent}${' '.repeat(listPrefix.length)}`;
 
-      return [`${indent}${closingTag}`, `${indent}${trailingText}`];
+      return [`${indent}${listPrefix}${closingTag}`, `${trailingIndent}${trailingText}`];
     })
     .join('\n');
 
