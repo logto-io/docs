@@ -133,6 +133,47 @@ const confirm = async () =>
     process.stdin.once('data', (data) => resolve(data.toString().trim()));
   });
 
+/**
+ * Split trailing text after closing custom component tags into the next line.
+ *
+ * This prevents invalid MDX like:
+ * </CloudLink> some text
+ *
+ * which may trigger `end-tag-mismatch` lint errors after translation.
+ *
+ * @param {string} content
+ * @returns {string}
+ */
+const normalizeTranslatedMdx = (content) =>
+  content
+    // Normalize irregular whitespace that may slip in from model output, e.g. French `U+202F`.
+    .replaceAll(/[\u00A0\u2002-\u200A\u202F]/g, ' ')
+    .replaceAll(/[\u2060\uFEFF]/g, '')
+    .split('\n')
+    .flatMap((line) => {
+      // Fix headings like `### Title{slug} \{#slug}` where the model accidentally injects
+      // a bare `{slug}` before the real escaped anchor. The replacement keeps only `\{#slug}`.
+      const normalizedHeadingLine = line.replace(
+        /^(#{1,6}\s+.*?)(?<!\\){([\w-]+)}\s+(\\{#\2})$/,
+        '$1 $3'
+      );
+      // Fix translated MDX where a custom component closing tag is followed by trailing text on
+      // the same line, e.g. `</CloudLink> more text`, by moving that text onto the next line.
+      const match =
+        /^(?<indent>\s*)(?<closingTag><\/[A-Z][\dA-Za-z]*>)\s+(?<trailingText>\S.*)$/.exec(
+          normalizedHeadingLine
+        );
+
+      if (!match?.groups) {
+        return [normalizedHeadingLine];
+      }
+
+      const { indent, closingTag, trailingText } = match.groups;
+
+      return [`${indent}${closingTag}`, `${indent}${trailingText}`];
+    })
+    .join('\n');
+
 const translate = async (locale, files) => {
   const filteredFiles = await filterFiles(files, locale, sync, check);
 
@@ -179,9 +220,10 @@ const translate = async (locale, files) => {
         task.title = `Translating ${file}...`;
         const content = await fs.readFile(file, 'utf8');
         const translated = await openAiTranslate.translate(content, locale, task);
+        const normalized = normalizeTranslatedMdx(translated);
         const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
         await fs.mkdir(path.dirname(targetFile), { recursive: true });
-        await fs.writeFile(targetFile, translated, 'utf8');
+        await fs.writeFile(targetFile, normalized, 'utf8');
         // eslint-disable-next-line @silverhand/fp/no-mutation
         task.title = `Done: ${targetFile}`;
       },
