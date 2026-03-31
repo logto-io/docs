@@ -12,6 +12,7 @@ import LightBulb from '@site/src/assets/light-bulb.svg';
 import OpenSource from '@site/src/assets/open-source.svg';
 import Organization from '@site/src/assets/organization.svg';
 import Security from '@site/src/assets/security.svg';
+import Sessions from '@site/src/assets/sessions.svg';
 import UserFlows from '@site/src/assets/user-flows.svg';
 import UserManagement from '@site/src/assets/user-management.svg';
 import Vault from '@site/src/assets/vault.svg';
@@ -28,6 +29,7 @@ const icons: IconMap = Object.freeze({
   introduction: Introduction,
   'integrate-logto': Integrate,
   'end-user-flows': UserFlows,
+  sessions: Sessions,
   connectors: Connectors,
   customization: Customization,
   authorization: Authorization,
