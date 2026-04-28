@@ -63,6 +63,7 @@ const config: Config = {
     addAliasPlugin,
     injectHeadTagsPlugin,
     'docusaurus-plugin-sass',
+    'docusaurus-plugin-copy-page-button',
     ogImageGenerator,
     disableExpensiveBundlerOptimizationPlugin,
     [
