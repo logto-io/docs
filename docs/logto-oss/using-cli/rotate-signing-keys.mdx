@@ -9,19 +9,21 @@ If you're using Logto Cloud, you can rotate signing keys in the Console UI, plea
 
 Logto OSS has supported rotating signing keys since v1.8.
 
-Logto OIDC signing keys, as known as “OIDC private keys” and “OIDC cookie keys”, are the signing keys used to encrypt JWTs (access tokens and ID tokens) and browser cookies in Logto sign-in sessions.
+Logto OIDC signing keys, as known as “OIDC private keys” and “OIDC cookie keys”, are the signing keys used to sign JWTs (access tokens and ID tokens) and browser cookies in Logto sign-in sessions.
 
 Rotate your signing keys regularly can reduce the risks of potential key compromise. Logto recommends you to rotate your signing keys at least once a year.
 
 ## Rotate OIDC private signing keys \{#rotate-oidc-private-signing-keys}
 
-Use the CLI command below to generate a new OIDC private signing key. The new key will be automatically utilized after reboot.
+Use the CLI command below to generate a new OIDC private signing key. By default, the new key takes effect immediately. To stage the rotation and give clients time to refresh JWKS before the new key signs JWTs, configure a grace period.
 
 Available options:
 
 ```
---type    (Optional) The signing key algorithm for your JWTs.
-          Values are "rsa" or "ec". Defaults to "ec".
+--type          (Optional) The signing key algorithm for your JWTs.
+                Values are "rsa" or "ec". Defaults to "ec".
+--gracePeriod   (Optional) Grace period in seconds for staged private key rotation.
+                Defaults to the PRIVATE_KEY_ROTATION_GRACE_PERIOD environment variable, or 0 if unset.
 ```
 
 <Tabs groupId="cmd">
@@ -50,9 +52,45 @@ npx @logto/cli db config rotate oidc.privateKeys -- --type rsa
 
 </Tabs>
 
+For example, to stage the new private key for 4 hours before it becomes active:
+
+<Tabs groupId="cmd-private-key-grace-period">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto db config rotate oidc.privateKeys --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="Local" label="local">
+
+```bash
+npm run cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+
+</Tabs>
+
+You can also set the default grace period for private key rotation with an environment variable:
+
+```bash
+PRIVATE_KEY_ROTATION_GRACE_PERIOD=14400
+```
+
+Set this environment variable on the Logto service when rotating through Console UI or Management API, or in the shell where you run the CLI command when rotating through CLI.
+
 ## Rotate OIDC cookie keys \{#rotate-oidc-cookie-keys}
 
-Use the CLI command below to generate a new OIDC cookie key. The new key will be automatically utilized after reboot.
+Use the CLI command below to generate a new OIDC cookie key. Cookie key rotation does not support a grace period.
 
 <Tabs groupId="cmd">
 
@@ -82,9 +120,15 @@ npx @logto/cli db config rotate oidc.cookieKeys
 
 ## What about the previous keys? \{#what-about-the-previous-keys}
 
-Logto key rotation commands will not delete your previous signing keys, and they will be kept in the database unless you manually delete them.
+For OIDC private keys, Logto keeps up to three keys during staged rotation:
 
-Also, be cautious when deleting your previous keys, as it may cause unexpected issues. It is recommended to keep both the new key and the previous key for a period of time (e.g. 2 weeks), until you are confident that all your users have migrated to the new key.
+- `Next`: The new key waiting for the grace period to end.
+- `Current`: The key currently used to sign newly issued JWTs.
+- `Previous`: The most recently rotated-out key, kept so existing JWTs can remain valid.
+
+After the grace period, the `Next` key becomes `Current`, the old `Current` key becomes `Previous`, and the oldest `Previous` key is removed.
+
+For cookie keys, Logto keeps the current and previous key. Be cautious when deleting previous keys, as it may cause unexpected issues. It is recommended to keep the previous key until you are confident that all existing sessions or tokens signed with it have expired.
 
 ## Troubleshooting \{#troubleshooting}
 
