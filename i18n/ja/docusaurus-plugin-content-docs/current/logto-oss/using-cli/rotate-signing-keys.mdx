@@ -9,19 +9,21 @@ Logto Cloud を利用している場合は、Console UI で署名鍵のローテ
 
 Logto OSS では v1.8 から署名鍵のローテーションがサポートされています。
 
-Logto OIDC 署名鍵（「OIDC プライベート鍵」や「OIDC クッキー鍵」とも呼ばれます）は、Logto のサインインセッションにおいて JWT（アクセス トークン (Access token) や ID トークン (ID token)）およびブラウザクッキーを暗号化するために使用される署名鍵です。
+Logto OIDC 署名鍵（「OIDC プライベート鍵」や「OIDC クッキー鍵」とも呼ばれます）は、Logto のサインインセッションで JWT（アクセス トークン (Access token)、ID トークン (ID token)）やブラウザクッキーに署名するために使用される鍵です。
 
 署名鍵を定期的にローテーションすることで、鍵漏洩のリスクを低減できます。Logto では、少なくとも年に一度は署名鍵をローテーションすることを推奨しています。
 
 ## OIDC プライベート署名鍵のローテーション \{#rotate-oidc-private-signing-keys}
 
-以下の CLI コマンドを使用して、新しい OIDC プライベート署名鍵を生成します。新しい鍵は再起動後に自動的に利用されます。
+以下の CLI コマンドを使用して、新しい OIDC プライベート署名鍵を生成します。デフォルトでは、新しい鍵は即座に有効になります。ローテーションを段階的に行い、クライアントが新しい鍵で JWT に署名される前に JWKS をリフレッシュする時間を確保したい場合は、グレースピリオドを設定してください。
 
 利用可能なオプション：
 
 ```
---type    （オプション）JWT 用の署名鍵アルゴリズム。
-          値は "rsa" または "ec"。デフォルトは "ec"。
+--type          (任意) JWT の署名鍵アルゴリズム。
+                "rsa" または "ec" を指定可能。デフォルトは "ec"。
+--gracePeriod   (任意) プライベート鍵ローテーションのグレースピリオド（秒）。
+                デフォルトは PRIVATE_KEY_ROTATION_GRACE_PERIOD 環境変数、未設定の場合は 0。
 ```
 
 <Tabs groupId="cmd">
@@ -50,9 +52,45 @@ npx @logto/cli db config rotate oidc.privateKeys -- --type rsa
 
 </Tabs>
 
+例えば、新しいプライベート鍵を 4 時間後に有効化するよう段階的にローテーションする場合：
+
+<Tabs groupId="cmd-private-key-grace-period">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto db config rotate oidc.privateKeys --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="Local" label="local">
+
+```bash
+npm run cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+
+</Tabs>
+
+プライベート鍵ローテーションのデフォルトのグレースピリオドは、環境変数で設定することもできます：
+
+```bash
+PRIVATE_KEY_ROTATION_GRACE_PERIOD=14400
+```
+
+この環境変数は、Admin Console や Management API でローテーションする場合は Logto サービスに、CLI でローテーションする場合はコマンドを実行するシェルに設定してください。
+
 ## OIDC クッキー鍵のローテーション \{#rotate-oidc-cookie-keys}
 
-以下の CLI コマンドを使用して、新しい OIDC クッキー鍵を生成します。新しい鍵は再起動後に自動的に利用されます。
+以下の CLI コマンドを使用して、新しい OIDC クッキー鍵を生成します。クッキー鍵のローテーションにはグレースピリオドはサポートされていません。
 
 <Tabs groupId="cmd">
 
@@ -82,15 +120,21 @@ npx @logto/cli db config rotate oidc.cookieKeys
 
 ## 以前の鍵はどうなりますか？ \{#what-about-the-previous-keys}
 
-Logto の鍵ローテーションコマンドは、以前の署名鍵を削除しません。手動で削除しない限り、データベースに保持されます。
+OIDC プライベート鍵の場合、Logto は段階的なローテーション中に最大 3 つの鍵を保持します：
 
-また、以前の鍵を削除する際は注意が必要です。予期しない問題が発生する可能性があります。新しい鍵と以前の鍵の両方を一定期間（例：2 週間）保持し、すべてのユーザーが新しい鍵に移行したことを確認してから削除することを推奨します。
+- `Next`: グレースピリオド終了待ちの新しい鍵。
+- `Current`: 新たに発行される JWT の署名に現在使用されている鍵。
+- `Previous`: 直近でローテーションされた鍵で、既存の JWT を有効に保つために保持されます。
+
+グレースピリオド終了後、`Next` 鍵が `Current` となり、古い `Current` 鍵が `Previous` となり、最も古い `Previous` 鍵は削除されます。
+
+クッキー鍵の場合、Logto は現在の鍵と前回の鍵を保持します。前回の鍵を削除する際は、予期しない問題が発生する可能性があるため注意してください。すべての既存セッションやトークンが失効したことを確認するまで、前回の鍵を保持することを推奨します。
 
 ## トラブルシューティング \{#troubleshooting}
 
 ### Cloudflare Zero Trust で Logto を OIDC プロバイダーとして利用する場合 \{#using-logto-as-oidc-provider-in-cloudflare-zero-trust}
 
-Cloudflare Zero Trust で Logto を OIDC プロバイダーとして利用する場合、ECDSA アルゴリズムを使用する OIDC プロバイダーはサポートされていません。OIDC プライベート署名鍵をローテーションする際は、ローテーションコマンドで `--type rsa` を指定し、RSA アルゴリズムを使用してください。
+Cloudflare Zero Trust で Logto を OIDC プロバイダーとして利用する場合、ECDSA アルゴリズムを使用する OIDC プロバイダーはサポートされていない点にご注意ください。OIDC プライベート署名鍵をローテーションする際は、ローテーションコマンドで `--type rsa` を指定し、RSA アルゴリズムを使用してください：
 
 <Tabs groupId="cmd-cloudflare-zero-trust">
   <TabItem value="cli" label="CLI">

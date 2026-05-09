@@ -4,24 +4,26 @@ import Tabs from '@theme/Tabs';
 # Rotar claves de firma (OSS)
 
 :::note
-Si estás utilizando Logto Cloud, puedes rotar las claves de firma en la interfaz de la Consola. Por favor, consulta [este tutorial](/developers/signing-keys/#rotate-signing-keys-from-console-ui).
+Si estás usando Logto Cloud, puedes rotar las claves de firma en la interfaz de la Consola. Por favor, consulta [este tutorial](/developers/signing-keys/#rotate-signing-keys-from-console-ui).
 :::
 
-Logto OSS ha soportado la rotación de claves de firma desde la versión v1.8.
+Logto OSS admite la rotación de claves de firma desde la versión v1.8.
 
-Las claves de firma OIDC de Logto, también conocidas como “claves privadas OIDC” y “claves de cookie OIDC”, son las claves de firma utilizadas para cifrar JWTs (tokens de acceso (Access tokens) y tokens de ID (ID tokens)) y cookies del navegador en las sesiones de inicio de sesión de Logto.
+Las claves de firma OIDC de Logto, también conocidas como “claves privadas OIDC” y “claves de cookie OIDC”, son las claves de firma utilizadas para firmar JWTs (tokens de acceso (Access tokens) y tokens de ID (ID tokens)) y cookies del navegador en las sesiones de inicio de sesión de Logto.
 
 Rotar tus claves de firma regularmente puede reducir los riesgos de una posible filtración de claves. Logto recomienda rotar tus claves de firma al menos una vez al año.
 
 ## Rotar claves privadas de firma OIDC \{#rotate-oidc-private-signing-keys}
 
-Utiliza el siguiente comando de CLI para generar una nueva clave privada de firma OIDC. La nueva clave se utilizará automáticamente después de reiniciar.
+Utiliza el siguiente comando CLI para generar una nueva clave privada de firma OIDC. Por defecto, la nueva clave entra en vigor inmediatamente. Para programar la rotación y dar tiempo a los clientes para actualizar JWKS antes de que la nueva clave firme JWTs, configura un período de gracia.
 
 Opciones disponibles:
 
 ```
---type    (Opcional) El algoritmo de clave de firma para tus JWTs.
-          Los valores son "rsa" o "ec". Por defecto es "ec".
+--type          (Opcional) El algoritmo de clave de firma para tus JWTs.
+                Los valores son "rsa" o "ec". Por defecto es "ec".
+--gracePeriod   (Opcional) Período de gracia en segundos para la rotación programada de la clave privada.
+                Por defecto toma el valor de la variable de entorno PRIVATE_KEY_ROTATION_GRACE_PERIOD, o 0 si no está definida.
 ```
 
 <Tabs groupId="cmd">
@@ -50,9 +52,45 @@ npx @logto/cli db config rotate oidc.privateKeys -- --type rsa
 
 </Tabs>
 
+Por ejemplo, para programar la nueva clave privada durante 4 horas antes de que se active:
+
+<Tabs groupId="cmd-private-key-grace-period">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto db config rotate oidc.privateKeys --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="Local" label="local">
+
+```bash
+npm run cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+
+</Tabs>
+
+También puedes establecer el período de gracia predeterminado para la rotación de la clave privada con una variable de entorno:
+
+```bash
+PRIVATE_KEY_ROTATION_GRACE_PERIOD=14400
+```
+
+Establece esta variable de entorno en el servicio Logto al rotar a través de la Consola de Administración o Management API, o en la terminal donde ejecutes el comando CLI al rotar mediante CLI.
+
 ## Rotar claves de cookie OIDC \{#rotate-oidc-cookie-keys}
 
-Utiliza el siguiente comando de CLI para generar una nueva clave de cookie OIDC. La nueva clave se utilizará automáticamente después de reiniciar.
+Utiliza el siguiente comando CLI para generar una nueva clave de cookie OIDC. La rotación de la clave de cookie no admite período de gracia.
 
 <Tabs groupId="cmd">
 
@@ -82,11 +120,17 @@ npx @logto/cli db config rotate oidc.cookieKeys
 
 ## ¿Qué pasa con las claves anteriores? \{#what-about-the-previous-keys}
 
-Los comandos de rotación de claves de Logto no eliminarán tus claves de firma anteriores, y se mantendrán en la base de datos a menos que las elimines manualmente.
+Para las claves privadas OIDC, Logto mantiene hasta tres claves durante la rotación programada:
 
-Además, ten cuidado al eliminar tus claves anteriores, ya que puede causar problemas inesperados. Se recomienda mantener tanto la nueva clave como la anterior durante un período de tiempo (por ejemplo, 2 semanas), hasta que estés seguro de que todos tus usuarios han migrado a la nueva clave.
+- `Next`: La nueva clave esperando que finalice el período de gracia.
+- `Current`: La clave que se utiliza actualmente para firmar los JWTs recién emitidos.
+- `Previous`: La clave más recientemente reemplazada, mantenida para que los JWTs existentes sigan siendo válidos.
 
-## Resolución de problemas \{#troubleshooting}
+Después del período de gracia, la clave `Next` pasa a ser `Current`, la antigua clave `Current` pasa a ser `Previous`, y la clave `Previous` más antigua se elimina.
+
+Para las claves de cookie, Logto mantiene la clave actual y la anterior. Ten cuidado al eliminar claves anteriores, ya que puede causar problemas inesperados. Se recomienda mantener la clave anterior hasta que estés seguro de que todas las sesiones o tokens existentes firmados con ella hayan expirado.
+
+## Solución de problemas \{#troubleshooting}
 
 ### Usar Logto como proveedor OIDC en Cloudflare Zero Trust \{#using-logto-as-oidc-provider-in-cloudflare-zero-trust}
 
