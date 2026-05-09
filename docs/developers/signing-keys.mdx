@@ -7,7 +7,7 @@ sidebar_position: 5
 
 # Signing keys
 
-Logto [OIDC signing keys](https://auth.wiki/signing-key), as known as "OIDC private keys" and "OIDC cookie keys", are the signing keys used to sign JWTs ([access tokens](https://auth.wiki/access-token) and [ID tokens](https://auth.wiki/id-token)) and browser cookies in Logto [sign-in sessions](/sessions#what-is-a-logto-session). These signing keys are generated when seeding Logto database ([open-source](/logto-oss)) or creating a new tenant ([Cloud](/logto-cloud)) and can be managed through [CLI](/logto-oss/using-cli) (open-source), Management APIs or Console UI.
+Logto [OIDC signing keys](https://auth.wiki/signing-key), also known as "OIDC private keys" and "OIDC cookie keys", are the signing keys used to sign JWTs ([access tokens](https://auth.wiki/access-token) and [ID tokens](https://auth.wiki/id-token)) and browser cookies in Logto [sign-in sessions](/sessions#what-is-a-logto-session). These signing keys are generated when seeding Logto database ([open-source](/logto-oss)) or creating a new tenant ([Cloud](/logto-cloud)) and can be managed through [CLI](/logto-oss/using-cli) (open-source), Management APIs or Console UI.
 
 By default, Logto uses the elliptic curve (EC) algorithm to generate digital signatures. However, considering that users often need to verify JWT signatures and many older tools do not support the EC algorithm (only supporting RSA), we have implemented the functionality to rotate private keys and allow users to choose the signature algorithm (including both RSA and EC). This ensures compatibility with services that use outdated signature verification tools.
 
@@ -28,25 +28,29 @@ Logto introduces a "Signing Keys Rotation" feature, which allows you to create a
 
 1. Navigate to <CloudLink to="/tenant-settings/oidc-configs">Console > Tenant settings > OIDC configs</CloudLink>. From there, you can manage both OIDC private keys and OIDC cookie keys.
 2. To rotate the signing key, click the "Rotate private keys" or "Rotate cookie keys" button. When rotating private keys, you have the option to change the signing algorithm.
-3. And you'll find a table that lists all the signing keys in use. Note: You can delete the previous key, but you cannot delete the current one.
+3. And you'll find a table that lists all the signing keys in use. For OIDC private keys, you can delete the previous key, but you cannot delete the current or next key. For OIDC cookie keys, you can delete the previous key, but you cannot delete the current key.
 
-   | Status   | Description                                                                                                               |
-   | -------- | ------------------------------------------------------------------------------------------------------------------------- |
-   | Current  | This indicates that this key is currently in active use within your applications and APIs.                                |
-   | Previous | It refers to a key that was previously used but has been rotated out. Existing tokens with this signing key remain valid. |
+   | Status   | Description                                                                                                                                                                               |
+   | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Next     | This status is used for staged OIDC private key rotation. The key has been created, but Logto will not use it to sign new JWTs until the grace period ends and the key becomes effective. |
+   | Current  | This indicates that this key is currently used by Logto to sign newly issued JWTs or cookies.                                                                                             |
+   | Previous | It refers to a key that was previously used but has been rotated out. Existing JWTs or cookies signed with this key remain valid until they expire or the key is deleted.                 |
 
 Please remember that rotation involves the following three actions:
 
-1. **Creating a new signing key**: This will require all your **applications** and **APIs** to adopt the new signing key.
-2. **Rotating the current key**: The existing key will be designated as "previous" after the rotation and will not be utilized by newly created applications and APIs. However, tokens signed with this key will still remain valid.
-3. **Removing your previous key**: Keys labeled as "previous" will be revoked and removed from the table.
+1. **Creating a new signing key**: For OIDC private keys, Logto can stage the new key as "Next" first so your applications and APIs have time to refresh the public key from the `/oidc/jwks` endpoint before the new key is used for signing.
+2. **Rotating the current key**: When the rotation becomes effective, the "Next" key becomes "Current", and the existing "Current" key becomes "Previous". Tokens signed with the previous key will still remain valid.
+3. **Removing the oldest previous key**: Logto keeps at most one "Previous" private key. If a previous private key already exists when the staged key becomes current, the older previous key will be removed.
+
+For Logto Cloud, OIDC private key rotation takes effect after a 4-hour grace period. During this period, the new key is prepared and exposed through JWKS before Logto starts signing newly issued JWTs with it. In the Console table, the **Effective at** column shows when a staged "Next" key will become "Current".
+
+For self-hosted OSS deployments, the default private key rotation grace period is `0` seconds, which means the rotation is immediate. To use staged rotation, set the `PRIVATE_KEY_ROTATION_GRACE_PERIOD` environment variable on the Logto service, or pass an explicit `rotationGracePeriod` value in the request body when calling the Management API endpoint `POST /api/configs/oidc/private-keys/rotate`.
 
 :::warning
-Never rotate signing keys consecutively (two or more times), as this may invalidate ALL issued tokens.
+Avoid rotating signing keys repeatedly before the pending rotation becomes effective unless you intentionally want to replace the staged "Next" key.
 
-- For OSS users, after rotating the signing key, a Logto instance restart is required for the new signing key to take effect.
-- For Cloud users, the new signing key takes effect immediately after rotation, but please make sure not to rotate the signing key multiple times consecutively.
-  :::
+Deleting the only "Previous" key too early may invalidate existing JWTs or cookies that were signed with that key.
+:::
 
 ## Related resources \{#related-resources}
 
