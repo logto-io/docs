@@ -1,27 +1,29 @@
 import TabItem from '@theme/TabItem';
 import Tabs from '@theme/Tabs';
 
-# 輪替簽章金鑰（OSS）
+# 旋轉簽章金鑰（OSS）
 
 :::note
-如果你使用的是 Logto Cloud，可以在 Console UI 中輪替簽章金鑰，請參考[本教學](/developers/signing-keys/#rotate-signing-keys-from-console-ui)。
+如果你使用 Logto Cloud，可以在 Console UI 旋轉簽章金鑰，請參考[本教學](/developers/signing-keys/#rotate-signing-keys-from-console-ui)。
 :::
 
-Logto OSS 自 v1.8 起支援輪替簽章金鑰。
+Logto OSS 自 v1.8 起支援旋轉簽章金鑰。
 
-Logto OIDC 簽章金鑰（也稱為「OIDC 私鑰」和「OIDC Cookie 金鑰」），是用於加密 JWT（存取權杖 (Access tokens) 和 ID 權杖 (ID tokens)）以及 Logto 登入階段中的瀏覽器 Cookie 的簽章金鑰。
+Logto OIDC 簽章金鑰，也稱為「OIDC 私鑰」與「OIDC Cookie 金鑰」，是用於簽署 JWT（存取權杖 (Access tokens) 與 ID 權杖 (ID tokens)）以及 Logto 登入階段的瀏覽器 Cookie 的簽章金鑰。
 
-定期輪替你的簽章金鑰可以降低金鑰洩漏的潛在風險。Logto 建議你至少每年輪替一次簽章金鑰。
+定期旋轉你的簽章金鑰可以降低金鑰洩漏的風險。Logto 建議你至少每年旋轉一次簽章金鑰。
 
-## 輪替 OIDC 私有簽章金鑰 \{#rotate-oidc-private-signing-keys}
+## 旋轉 OIDC 私有簽章金鑰 \{#rotate-oidc-private-signing-keys}
 
-使用下方 CLI 指令產生新的 OIDC 私有簽章金鑰。重新啟動後，系統會自動使用新金鑰。
+使用下方 CLI 指令產生新的 OIDC 私有簽章金鑰。預設情況下，新金鑰會立即生效。若要分階段旋轉並讓用戶端有時間刷新 JWKS，可設定寬限期。
 
 可用選項：
 
 ```
---type    （選填）JWT 的簽章金鑰演算法。
-          可選值為 "rsa" 或 "ec"。預設為 "ec"。
+--type          （選填）JWT 的簽章金鑰演算法。
+                可選值為 "rsa" 或 "ec"。預設為 "ec"。
+--gracePeriod   （選填）分階段私鑰旋轉的寬限期（秒）。
+                預設為 PRIVATE_KEY_ROTATION_GRACE_PERIOD 環境變數，若未設定則為 0。
 ```
 
 <Tabs groupId="cmd">
@@ -50,9 +52,45 @@ npx @logto/cli db config rotate oidc.privateKeys -- --type rsa
 
 </Tabs>
 
-## 輪替 OIDC Cookie 金鑰 \{#rotate-oidc-cookie-keys}
+例如，若要讓新私鑰在 4 小時後才生效，可這樣設定：
 
-使用下方 CLI 指令產生新的 OIDC Cookie 金鑰。重新啟動後，系統會自動使用新金鑰。
+<Tabs groupId="cmd-private-key-grace-period">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto db config rotate oidc.privateKeys --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="Local" label="local">
+
+```bash
+npm run cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+
+</Tabs>
+
+你也可以透過環境變數設定私鑰旋轉的預設寬限期：
+
+```bash
+PRIVATE_KEY_ROTATION_GRACE_PERIOD=14400
+```
+
+當你透過 Admin Console 或 Management API 旋轉時，請在 Logto 服務上設定此環境變數；若透過 CLI 旋轉，請在執行 CLI 指令的 shell 設定此變數。
+
+## 旋轉 OIDC Cookie 金鑰 \{#rotate-oidc-cookie-keys}
+
+使用下方 CLI 指令產生新的 OIDC Cookie 金鑰。Cookie 金鑰旋轉不支援寬限期。
 
 <Tabs groupId="cmd">
 
@@ -80,17 +118,23 @@ npx @logto/cli db config rotate oidc.cookieKeys
 
 </Tabs>
 
-## 之前的金鑰怎麼辦？ \{#what-about-the-previous-keys}
+## 之前的金鑰會怎樣？ \{#what-about-the-previous-keys}
 
-Logto 的金鑰輪替指令不會刪除你之前的簽章金鑰，這些金鑰會保留在資料庫中，除非你手動刪除。
+對於 OIDC 私鑰，Logto 在分階段旋轉期間最多保留三把金鑰：
 
-同時，刪除舊金鑰時請務必小心，否則可能導致不可預期的問題。建議新舊金鑰同時保留一段時間（例如 2 週），直到你確定所有使用者都已切換至新金鑰。
+- `Next`：等待寬限期結束的新金鑰。
+- `Current`：目前用於簽署新發行 JWT 的金鑰。
+- `Previous`：最近剛被替換掉的金鑰，保留以確保現有 JWT 仍然有效。
+
+寬限期結束後，`Next` 金鑰會變成 `Current`，舊的 `Current` 變成 `Previous`，最舊的 `Previous` 會被移除。
+
+對於 Cookie 金鑰，Logto 會保留目前與上一把金鑰。刪除上一把金鑰時請特別小心，否則可能導致非預期問題。建議在確定所有用該金鑰簽署的現有階段或權杖都已過期後再移除。
 
 ## 疑難排解 \{#troubleshooting}
 
-### 在 Cloudflare Zero Trust 中將 Logto 作為 OIDC Provider \{#using-logto-as-oidc-provider-in-cloudflare-zero-trust}
+### 在 Cloudflare Zero Trust 中作為 OIDC Provider 使用 Logto \{#using-logto-as-oidc-provider-in-cloudflare-zero-trust}
 
-如果你打算在 Cloudflare Zero Trust 中將 Logto 作為 OIDC Provider，請注意 Cloudflare Zero Trust 不支援使用 ECDSA 演算法的 OIDC Provider。輪替 OIDC 私有簽章金鑰時，請務必在輪替指令中指定 `--type rsa`，以使用 RSA 演算法：
+如果你打算在 Cloudflare Zero Trust 中將 Logto 作為 OIDC provider，請注意其不支援使用 ECDSA 演算法的 OIDC provider。旋轉 OIDC 私有簽章金鑰時，請務必在旋轉指令中指定 `--type rsa` 以使用 RSA 演算法：
 
 <Tabs groupId="cmd-cloudflare-zero-trust">
   <TabItem value="cli" label="CLI">

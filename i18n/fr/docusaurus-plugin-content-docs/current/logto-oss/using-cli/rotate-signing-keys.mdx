@@ -4,24 +4,26 @@ import Tabs from '@theme/Tabs';
 # Rotation des clés de signature (OSS)
 
 :::note
-Si vous utilisez Logto Cloud, vous pouvez faire pivoter les clés de signature dans l’interface Console, veuillez vous référer à [ce tutoriel](/developers/signing-keys/#rotate-signing-keys-from-console-ui).
+Si vous utilisez Logto Cloud, vous pouvez faire la rotation des clés de signature dans l’interface Console, veuillez vous référer à [ce tutoriel](/developers/signing-keys/#rotate-signing-keys-from-console-ui).
 :::
 
 Logto OSS prend en charge la rotation des clés de signature depuis la version v1.8.
 
-Les clés de signature Logto OIDC, également appelées « clés privées OIDC » et « clés de cookie OIDC », sont les clés de signature utilisées pour chiffrer les JWTs (jetons d’accès (Access tokens) et jetons d’identifiant (ID tokens)) et les cookies de navigateur dans les sessions de connexion Logto.
+Les clés de signature OIDC de Logto, également appelées « clés privées OIDC » et « clés de cookie OIDC », sont les clés utilisées pour signer les JWTs (jetons d’accès et jetons d’identifiant) et les cookies de navigateur dans les sessions de connexion Logto.
 
-Faire pivoter régulièrement vos clés de signature peut réduire les risques de compromission potentielle des clés. Logto vous recommande de faire pivoter vos clés de signature au moins une fois par an.
+Faire tourner régulièrement vos clés de signature peut réduire les risques de compromission potentielle des clés. Logto vous recommande de faire tourner vos clés de signature au moins une fois par an.
 
-## Faire pivoter les clés privées de signature OIDC \{#rotate-oidc-private-signing-keys}
+## Rotation des clés privées de signature OIDC \{#rotate-oidc-private-signing-keys}
 
-Utilisez la commande CLI ci-dessous pour générer une nouvelle clé privée de signature OIDC. La nouvelle clé sera automatiquement utilisée après redémarrage.
+Utilisez la commande CLI ci-dessous pour générer une nouvelle clé privée de signature OIDC. Par défaut, la nouvelle clé prend effet immédiatement. Pour préparer la rotation et donner aux clients le temps d’actualiser JWKS avant que la nouvelle clé ne signe les JWTs, configurez une période de grâce.
 
 Options disponibles :
 
 ```
---type    (Optionnel) L’algorithme de clé de signature pour vos JWTs.
-          Les valeurs sont "rsa" ou "ec". Par défaut : "ec".
+--type          (Optionnel) L’algorithme de clé de signature pour vos JWTs.
+                Les valeurs sont "rsa" ou "ec". Par défaut "ec".
+--gracePeriod   (Optionnel) Période de grâce en secondes pour la rotation différée de la clé privée.
+                Par défaut la variable d’environnement PRIVATE_KEY_ROTATION_GRACE_PERIOD, ou 0 si non définie.
 ```
 
 <Tabs groupId="cmd">
@@ -50,9 +52,45 @@ npx @logto/cli db config rotate oidc.privateKeys -- --type rsa
 
 </Tabs>
 
-## Faire pivoter les clés de cookie OIDC \{#rotate-oidc-cookie-keys}
+Par exemple, pour préparer la nouvelle clé privée pendant 4 heures avant qu’elle ne devienne active :
 
-Utilisez la commande CLI ci-dessous pour générer une nouvelle clé de cookie OIDC. La nouvelle clé sera automatiquement utilisée après redémarrage.
+<Tabs groupId="cmd-private-key-grace-period">
+
+  <TabItem value="cli" label="CLI">
+
+```bash
+logto db config rotate oidc.privateKeys --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="Local" label="local">
+
+```bash
+npm run cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+  <TabItem value="npx" label="npx">
+
+```bash
+npx @logto/cli db config rotate oidc.privateKeys -- --type rsa --gracePeriod 14400
+```
+
+  </TabItem>
+
+</Tabs>
+
+Vous pouvez également définir la période de grâce par défaut pour la rotation de la clé privée avec une variable d’environnement :
+
+```bash
+PRIVATE_KEY_ROTATION_GRACE_PERIOD=14400
+```
+
+Définissez cette variable d’environnement sur le service Logto lors d’une rotation via la Console d’administration ou Management API, ou dans le shell où vous exécutez la commande CLI lors d’une rotation via CLI.
+
+## Rotation des clés de cookie OIDC \{#rotate-oidc-cookie-keys}
+
+Utilisez la commande CLI ci-dessous pour générer une nouvelle clé de cookie OIDC. La rotation des clés de cookie ne prend pas en charge la période de grâce.
 
 <Tabs groupId="cmd">
 
@@ -82,9 +120,15 @@ npx @logto/cli db config rotate oidc.cookieKeys
 
 ## Qu’en est-il des clés précédentes ? \{#what-about-the-previous-keys}
 
-Les commandes de rotation des clés Logto ne supprimeront pas vos anciennes clés de signature, elles seront conservées dans la base de données sauf si vous les supprimez manuellement.
+Pour les clés privées OIDC, Logto conserve jusqu’à trois clés lors d’une rotation différée :
 
-De plus, soyez prudent lors de la suppression de vos anciennes clés, car cela peut entraîner des problèmes inattendus. Il est recommandé de conserver à la fois la nouvelle clé et l’ancienne clé pendant une certaine période (par exemple 2 semaines), jusqu’à ce que vous soyez sûr que tous vos utilisateurs ont migré vers la nouvelle clé.
+- `Next` : La nouvelle clé en attente de la fin de la période de grâce.
+- `Current` : La clé actuellement utilisée pour signer les nouveaux JWTs.
+- `Previous` : La clé la plus récemment remplacée, conservée pour que les JWTs existants restent valides.
+
+Après la période de grâce, la clé `Next` devient `Current`, l’ancienne clé `Current` devient `Previous`, et la plus ancienne clé `Previous` est supprimée.
+
+Pour les clés de cookie, Logto conserve la clé actuelle et la précédente. Soyez prudent lors de la suppression des clés précédentes, car cela peut entraîner des problèmes inattendus. Il est recommandé de conserver la clé précédente jusqu’à ce que vous soyez certain que toutes les sessions ou tous les jetons existants signés avec elle ont expiré.
 
 ## Dépannage \{#troubleshooting}
 
