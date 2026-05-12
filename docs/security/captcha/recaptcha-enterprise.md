@@ -45,6 +45,39 @@ reCAPTCHA Enterprise supports two verification modes:
 The verification mode you select in Logto must match the key type you created in Google Cloud Console. If you created a score-based key, select **Invisible**. If you created a checkbox challenge key, select **Checkbox**.
 :::
 
+## Bring your UI {#bring-your-ui}
+
+If you use [Bring your UI](/customization/bring-your-ui/), Logto can't inject or run reCAPTCHA in your custom frontend automatically. After enabling CAPTCHA in Logto Console, your custom UI must load the reCAPTCHA Enterprise script, get a CAPTCHA token, and send it to the Experience API.
+
+For **Invisible** mode, load the script with your site key:
+
+```html
+<script src="https://www.google.com/recaptcha/enterprise.js?render=<siteKey>" async defer></script>
+```
+
+If you configured a custom domain in Logto, replace `www.google.com` with that domain, for example `recaptcha.net`.
+
+Before starting the interaction, execute reCAPTCHA with the fixed action `interaction` and pass the returned token as `captchaToken` in `PUT /api/experience`:
+
+```js
+const captchaToken = await grecaptcha.enterprise.execute('<siteKey>', {
+  action: 'interaction',
+});
+
+await fetch('/api/experience', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    interactionEvent: 'SignIn',
+    captchaToken,
+  }),
+});
+```
+
+For **Checkbox** mode, load the script with `render=explicit`, render the widget in your page, and use the callback token as `captchaToken` when calling `PUT /api/experience`.
+
 ## Custom domain {#custom-domain}
 
 By default, Logto loads the reCAPTCHA script from `www.google.com`. However, in some regions where Google's standard domain is inaccessible, you can configure an alternative domain.
