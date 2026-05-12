@@ -12,6 +12,10 @@ CAPTCHA bot protection helps secure your user flows by verifying that users are 
 CAPTCHA applies to identifier, password, verification-code, registration, and password-recovery actions. It does not apply to [magic link](/end-user-flows/one-time-token) or [passkey sign-in](/end-user-flows/sign-up-and-sign-in/passkey-sign-in), so users who complete sign-in with a magic link or passkey do not need to solve an additional CAPTCHA challenge.
 :::
 
+:::note
+If you use [Bring your UI](/customization/bring-your-ui/), the built-in CAPTCHA integration does not run in your custom frontend. Your custom UI must load the CAPTCHA provider script, execute the challenge, and send the token as `captchaToken` in `PUT /api/experience`.
+:::
+
 ## Enabling CAPTCHA bot protection {#enabling-captcha-bot-protection}
 
 Follow these steps to activate CAPTCHA for your user flows (identifier sign-in, password sign-in, registration, and password recovery):
