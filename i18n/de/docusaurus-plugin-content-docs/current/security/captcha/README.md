@@ -12,7 +12,11 @@ Der CAPTCHA-Bot-Schutz hilft dabei, deine Benutzerflüsse zu sichern, indem übe
 CAPTCHA gilt für Aktionen wie Identifikator, Passwort, Verifizierungscode, Registrierung und Passwort-Wiederherstellung. Es gilt nicht für [Magic Link](/end-user-flows/one-time-token) oder [Passkey-Anmeldung](/end-user-flows/sign-up-and-sign-in/passkey-sign-in), sodass Benutzer, die sich mit einem Magic Link oder Passkey anmelden, keine zusätzliche CAPTCHA-Herausforderung lösen müssen.
 :::
 
-## Aktivierung des CAPTCHA-Bot-Schutzes {#enabling-captcha-bot-protection}
+:::note
+Wenn du [Bring your UI](/customization/bring-your-ui/) verwendest, läuft die integrierte CAPTCHA-Integration nicht in deinem eigenen Frontend. Deine eigene UI muss das CAPTCHA-Anbieter-Skript laden, die Herausforderung ausführen und das Token als `captchaToken` in `PUT /api/experience` senden.
+:::
+
+## CAPTCHA-Bot-Schutz aktivieren {#enabling-captcha-bot-protection}
 
 Folge diesen Schritten, um CAPTCHA für deine Benutzerflüsse (Identifikator-Anmeldung, Passwort-Anmeldung, Registrierung und Passwort-Wiederherstellung) zu aktivieren:
 
@@ -20,11 +24,11 @@ Folge diesen Schritten, um CAPTCHA für deine Benutzerflüsse (Identifikator-Anm
 2. **Anbieter auswählen**: Wähle deinen bevorzugten CAPTCHA-Anbieter (z. B. Google reCAPTCHA Enterprise oder Cloudflare Turnstile).
 3. **Konfiguration**: Folge den Anweisungen auf der linken Seite der Seite, um den ausgewählten CAPTCHA-Anbieter zu konfigurieren.
 4. **Speichern**: Klicke auf **Speichern und fertig**, um deine Einstellungen zu übernehmen.
-5. **(Optional) CAPTCHA aktivieren**: CAPTCHA wird automatisch auf der Sicherheitsseite aktiviert, sobald ein Anbieter konfiguriert ist. Du kannst die Einstellungen jedoch bei Bedarf manuell überprüfen oder anpassen.
+5. **(Optional) CAPTCHA aktivieren**: CAPTCHA wird automatisch auf der Sicherheitsseite aktiviert, sobald ein Anbieter konfiguriert ist. Du kannst die Einstellungen jedoch manuell überprüfen oder anpassen, falls erforderlich.
 
-## Vorschau der CAPTCHA-Integration {#previewing-captcha-integration}
+## CAPTCHA-Integration testen {#previewing-captcha-integration}
 
-Du hast zwei Möglichkeiten, die CAPTCHA-Integration in der Vorschau anzuzeigen und zu testen:
+Du hast zwei Möglichkeiten, die CAPTCHA-Integration zu testen und in der Vorschau anzuzeigen:
 
 1. **Eigene Anwendung verwenden**: Navigiere zu den Anmelde-, Registrierungs- oder Passwort-Wiederherstellungsseiten deiner Anwendung und führe die jeweiligen Benutzeraktionen durch.
 2. **Demo-App**: Gehe zu **Erste Schritte** und verwende die bereitgestellte Demo-Anwendung, um die CAPTCHA-Funktionalität zu testen.
