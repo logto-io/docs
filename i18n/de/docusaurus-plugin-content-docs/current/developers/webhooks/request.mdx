@@ -7,23 +7,60 @@ sidebar_position: 4
 
 # Webhooks-Anfrage
 
-Sobald ein gültiges Hook-Ereignis ausgelöst wird, sucht Logto die entsprechenden Webhooks und sendet pro Hook-Konfiguration eine POST-Anfrage.
+Wenn ein Webhook-Ereignis ausgelöst wird, sendet Logto eine `POST`-Anfrage an jeden abonnierten Endpunkt. Der vollständige Ereigniskatalog befindet sich unter [Webhooks-Ereignisse](/developers/webhooks/events); diese Seite dokumentiert die **Struktur der Anfrage**, die Logto liefert.
 
 ## Anfrage-Header \{#request-headers}
 
-| Key                     | Anpassbar | Hinweise                                                                                          |
-| ----------------------- | --------- | ------------------------------------------------------------------------------------------------- |
-| user-agent              | ✅        | Standardmäßig `Logto (https://logto.io/)`.                                                        |
-| content-type            | ✅        | Standardmäßig `application/json`.                                                                 |
-| logto-signature-sha-256 |           | Die Signatur des Anfrage-Bodys, siehe [Webhooks absichern](/developers/webhooks/secure-webhooks). |
+| Schlüssel               | Anpassbar | Anmerkungen                                                                                          |
+| ----------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| user-agent              | ✅        | Standardmäßig `Logto (https://logto.io/)`.                                                           |
+| content-type            | ✅        | Standardmäßig `application/json`.                                                                    |
+| logto-signature-sha-256 |           | Signatur des Anfragetextes. Siehe [Sicherung deiner Webhooks](/developers/webhooks/secure-webhooks). |
 
-Du kannst anpassbare Header überschreiben, indem du [Anfrage-Header anpasst](/developers/webhooks/configure-webhooks/#secure-webhook) mit dem gleichen Schlüssel.
+Anpassbare Header können über die [sichere Webhook](/developers/webhooks/configure-webhooks/#secure-webhook)-Konfiguration überschrieben werden.
 
-## Interaction-Hook-Events Anfrage-Body \{#interaction-hook-events-request-body}
+## Überblick über den Anfragetext \{#request-body-overview}
 
-Verfügbare Ereignisse: `PostRegister`, `PostSignIn`, `PostResetPassword`
+Der Text ist ein JSON-Objekt. Seine genaue Struktur hängt davon ab, zu welcher Familie das Ereignis gehört:
 
-Der Anfrage-Body ist ein JSON-Objekt, das drei Arten von Datenfeldern enthält:
+| Familie           | Ereignisse                                                                                   | Wann es ausgelöst wird                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Benutzerfluss** | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | Ein Benutzer schließt einen Anmelde-, Anmelde- oder Passwortzurücksetzungsfluss ab, der von der Experience API behandelt wird.             |
+| **Datenmutation** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | Das zugrunde liegende Datenmodell wird verändert — durch einen Management API-Aufruf oder durch einen Benutzerfluss in der Experience API. |
+| **Ausnahme**      | `Identifier.Lockout`                                                                         | Ein Sicherheitsvorfall — zum Beispiel ein Konto, das nach aufeinanderfolgenden fehlgeschlagenen Verifizierungsversuchen gesperrt wurde.    |
+
+Jede Familie teilt einen kleinen Satz von [gemeinsamen Feldern](#common-fields). Jede Familie fügt dann ihre eigenen Anfragekontextfelder sowie eine ereignisspezifische Nutzlast hinzu.
+
+### Gemeinsame Felder \{#common-fields}
+
+In jeder Lieferung unabhängig von der Familie vorhanden:
+
+| Feld      | Typ      | Optional | Anmerkungen                                          |
+| --------- | -------- | -------- | ---------------------------------------------------- |
+| hookId    | `string` |          | Die Webhook-Konfigurationskennung in Logto.          |
+| event     | `string` |          | Das Ereignis, das diese Lieferung ausgelöst hat.     |
+| createdAt | `string` |          | Die Erstellungszeit der Nutzlast im ISO 8601-Format. |
+| userAgent | `string` | ✅       | Der User-Agent der auslösenden Anfrage.              |
+
+Jede Familie enthält auch die IP-Adresse der auslösenden Anfrage — unter dem Feldnamen `userIp` für Benutzerflussereignisse und `ip` für Datenmutations- und Ausnahmeereignisse. Die Semantik ist identisch; der historische Namensunterschied wird aus Gründen der Rückwärtskompatibilität beibehalten.
+
+## Nutzlasten von Benutzerflussereignissen \{#user-flow-event-payloads}
+
+**Ereignisse:** `PostRegister`, `PostSignIn`, `PostResetPassword`.
+
+Ausgelöst, wenn ein Benutzer einen Anmelde-, Anmelde- oder Passwortzurücksetzungsfluss abschließt, der von der Experience API behandelt wird. Zusätzlich zu den [gemeinsamen Feldern](#common-fields) enthält der Text:
+
+| Feld             | Typ                                          | Optional | Anmerkungen                                                                                                                                                      |
+| ---------------- | -------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |          | Der Benutzerfluss-Ereignistyp. Entspricht `PostSignIn` / `PostRegister` / `PostResetPassword`. Der Feldname behält die historische "Interaktions"-Benennung bei. |
+| sessionId        | `string`                                     | ✅       | Die Sitzungs-ID (nicht Interaktions-ID) für dieses Ereignis, falls zutreffend.                                                                                   |
+| userIp           | `string`                                     | ✅       | Die IP-Adresse der auslösenden Anfrage.                                                                                                                          |
+| userId           | `string`                                     | ✅       | Die Benutzer-ID, die mit diesem Ereignis verknüpft ist, falls zutreffend.                                                                                        |
+| user             | `UserEntity`                                 | ✅       | Die Benutzerentität, die mit diesem Ereignis verknüpft ist, falls zutreffend.                                                                                    |
+| applicationId    | `string`                                     | ✅       | Die Anwendungs-ID, die mit diesem Ereignis verknüpft ist, falls zutreffend.                                                                                      |
+| application      | `ApplicationEntity`                          | ✅       | Die Anwendungsentität, die mit diesem Ereignis verknüpft ist, falls zutreffend.                                                                                  |
+
+#### Entitätsstrukturen \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| Feld             | Typ                 | Optional | Hinweise                                                                       |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------------------------ |
-| hookId           | `string`            |          | Die Kennung in Logto.                                                          |
-| event            | `string`            |          | Das Ereignis, das diesen Hook auslöst.                                         |
-| createdAt        | `string`            |          | Das Erstellungsdatum der Nutzlast im ISO-Format.                               |
-| interactionEvent | `string`            |          | Das Interaktionsereignis, das diesen Hook auslöst.                             |
-| sessionId        | `string`            | ✅       | Die Session-ID (nicht Interaction-ID) für dieses Ereignis, falls zutreffend.   |
-| userAgent        | `string`            | ✅       | Der User-Agent für die Anfrage, die diesen Hook auslöst.                       |
-| userIp           | `string`            | ✅       | Die IP-Adresse für die Anfrage, die diesen Hook auslöst.                       |
-| userId           | `string`            | ✅       | Die zugehörige Benutzer-ID für dieses Ereignis, falls zutreffend.              |
-| user             | `UserEntity`        | ✅       | Die zugehörige Benutzer-Entität für dieses Ereignis, falls zutreffend.         |
-| applicationId    | `string`            | ✅       | Die zugehörige Anwendungs-ID für dieses Ereignis, falls zutreffend.            |
-| application      | `ApplicationEntity` | ✅       | Die zugehörigen Anwendungsinformationen für dieses Ereignis, falls zutreffend. |
+Siehe [Benutzer](/user-management/user-data) und [Anwendungen](/integrate-logto/application-data-structure) für die vollständige Feldreferenz.
 
-Siehe [Benutzer](/user-management/user-data) und [Anwendungen](/integrate-logto/application-data-structure) für detaillierte Feldbeschreibungen.
+## Nutzlasten von Datenmutationsereignissen \{#data-mutation-event-payloads}
 
-## Datenmutations-Hook-Events Anfrage-Body \{#data-mutation-hook-events-request-body}
+**Ereignisse:** jedes Ereignis unter `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` — siehe [Webhooks-Ereignisse → Datenmutations-Hook-Ereignisse](/developers/webhooks/events#data-mutation-hook-events) für den vollständigen Katalog.
 
-### Standard-Anfrage-Body-Felder \{#standard-request-body-fields}
+Der Text enthält immer:
 
-| Feld      | Typ      | Optional | Hinweise                                         |
-| --------- | -------- | -------- | ------------------------------------------------ |
-| hookId    | `string` |          | Die Kennung in Logto.                            |
-| event     | `string` |          | Das Ereignis, das diesen Hook auslöst.           |
-| createdAt | `string` |          | Das Erstellungsdatum der Nutzlast im ISO-Format. |
-| userAgent | `string` | ✅       | Der User-Agent für die Anfrage.                  |
-| ip        | `string` | ✅       | Die IP-Adresse für die Anfrage.                  |
+- Die [gemeinsamen Felder](#common-fields).
+- Ein `ip`-Feld — die IP-Adresse der auslösenden Anfrage (optional, vorhanden, wenn bekannt).
+- Einen **API-Kontext**, der beschreibt, wie die Änderung ausgelöst wurde. Der Kontext ist eine von zwei Varianten, abhängig von der Auslöserquelle:
+  - [Experience API-Kontext](#experience-api-context-fields) — wenn die Änderung aus einem benutzerorientierten Fluss stammt.
+  - [Management API-Kontext](#management-api-context-fields) — wenn die Änderung aus einem direkten Management API-Aufruf stammt.
+- Eine **ereignisspezifische Nutzlast** — die betroffene Entität in `data` und (für einige Ereignisse) zusätzliche Felder auf oberster Ebene. Siehe [ereignisspezifische Daten-Nutzlasten](#event-specific-data-payloads).
 
-### Interaction-API-Kontext-Body-Felder \{#interaction-api-context-body-fields}
+### Experience API-Kontextfelder \{#experience-api-context-fields}
 
-Datenmutations-Hook-Events, die durch Benutzer-Interaktions-API-Aufrufe ausgelöst werden.
+Vorhanden, wenn die Änderung durch einen benutzerorientierten Fluss in der Experience API ausgelöst wurde — zum Beispiel `User.Created` während der Anmeldung oder `User.Data.Updated` während der Profilaktualisierungen.
 
-Verfügbare Ereignisse: `User.Created`, `User.Data.Updated`
+| Feld             | Typ                                          | Optional | Anmerkungen                                                                                                                           |
+| ---------------- | -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅       | Der Benutzerfluss-Ereignistyp, der die Änderung hervorgebracht hat. Der Feldname behält die historische "Interaktions"-Benennung bei. |
+| sessionId        | `string`                                     | ✅       | Die Sitzungs-ID (nicht Interaktions-ID) für dieses Ereignis, falls zutreffend.                                                        |
+| applicationId    | `string`                                     | ✅       | Die Anwendungs-ID, falls zutreffend.                                                                                                  |
+| application      | `ApplicationEntity`                          | ✅       | Die Anwendungsentität, falls zutreffend.                                                                                              |
 
-| Feld             | Typ                 | Optional | Hinweise                                                                       |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------------------------ |
-| interactionEvent | `string`            | ✅       | Das Interaktionsereignis, das diesen Hook auslöst.                             |
-| sessionId        | `string`            | ✅       | Die Session-ID (nicht Interaction-ID) für dieses Ereignis, falls zutreffend.   |
-| applicationId    | `string`            | ✅       | Die zugehörige Anwendungs-ID für dieses Ereignis, falls zutreffend.            |
-| application      | `ApplicationEntity` | ✅       | Die zugehörigen Anwendungsinformationen für dieses Ereignis, falls zutreffend. |
+### Management API-Kontextfelder \{#management-api-context-fields}
 
-### Management-API-Kontext-Body-Felder \{#management-api-context-body-fields}
+Vorhanden, wenn die Änderung durch einen Management API-Aufruf ausgelöst wurde.
 
-Datenmutations-Hook-Events, die durch Management API-Aufrufe ausgelöst werden.
+| Feld         | Typ      | Optional | Anmerkungen                                                                                                     |
+| ------------ | -------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅       | Der Pfad des API-Aufrufs, der diesen Hook ausgelöst hat.                                                        |
+| method       | `string` | ✅       | Die HTTP-Methode des API-Aufrufs.                                                                               |
+| status       | `number` | ✅       | Der Antwortstatuscode des API-Aufrufs.                                                                          |
+| params       | `object` | ✅       | Die koa-Pfadparameter des API-Aufrufs.                                                                          |
+| matchedRoute | `string` | ✅       | Die koa-übereinstimmende Route. Logto verwendet dieses Feld, um aktivierte Webhook-Ereignisfilter abzugleichen. |
 
-| Feld         | Typ      | Optional | Hinweise                                                                                                                                |
-| ------------ | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| path         | `string` | ✅       | Der Pfad des API-Aufrufs, der diesen Hook auslöst.                                                                                      |
-| method       | `string` | ✅       | Die Methode des API-Aufrufs, der diesen Hook auslöst.                                                                                   |
-| status       | `number` | ✅       | Der Antwort-Statuscode des API-Aufrufs, der diesen Hook auslöst.                                                                        |
-| params       | `object` | ✅       | Die Koa-Pfad-Parameter des API-Aufrufs, der diesen Hook auslöst.                                                                        |
-| matchedRoute | `string` | ✅       | Die Koa-Matched-Route des API-Aufrufs, der diesen Hook auslöst. Logto verwendet dieses Feld, um die aktivierten Hook-Events zuzuordnen. |
+### Ereignisspezifische Daten-Nutzlasten \{#event-specific-data-payloads}
 
-### Daten-Payload-Body-Felder \{#data-payload-body-fields}
+Jedes Datenmutationsereignis enthält ein oberstes `data`-Feld, das die betroffene Entität trägt, oder `null`, wenn die Änderung nicht als einzelne Entität zusammengefasst werden kann (Lösch- und Mitgliedschaftsereignisse). Einige Ereignisse enthalten auch ereignisspezifische Felder auf oberster Ebene über `data` hinaus — `Organization.Membership.Updated` ist ein solcher Fall, der unten dokumentiert ist.
 
-**Benutzer-Ereignisse**
+#### Benutzerereignisse \{#user-events}
 
-| Ereignis          | Feld | Typ        | Optional | Hinweise                                                |
-| ----------------- | ---- | ---------- | -------- | ------------------------------------------------------- |
-| User.Created      | data | UserEntity |          | Die erstellte Benutzer-Entität für dieses Ereignis.     |
-| User.Data.Updated | data | UserEntity |          | Die aktualisierte Benutzer-Entität für dieses Ereignis. |
-| User.Deleted      | data | null       | /        |                                                         |
+| Ereignis          | Feld | Typ          | Optional | Anmerkungen                        |
+| ----------------- | ---- | ------------ | -------- | ---------------------------------- |
+| User.Created      | data | `UserEntity` |          | Die erstellte Benutzerentität.     |
+| User.Data.Updated | data | `UserEntity` |          | Die aktualisierte Benutzerentität. |
+| User.Deleted      | data | `null`       | /        |                                    |
 
-**Rollen-Ereignisse**
+#### Rollenereignisse \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| Ereignis           | Feld   | Typ          | Optional | Hinweise                                                                                                                                                                          |
-| ------------------ | ------ | ------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Role.Created       | data   | Rolle (Role) |          | Die erstellte Rollen-Entität für dieses Ereignis.                                                                                                                                 |
-| Role.Data.Updated  | data   | Rolle (Role) |          | Die aktualisierte Rollen-Entität für dieses Ereignis.                                                                                                                             |
-| Role.Deleted       | data   | null         |          |                                                                                                                                                                                   |
-| Role.Scope.Updated | data   | Scope[]      |          | Die aktualisierten Berechtigungen (Scopes), die der Rolle zugewiesen sind.                                                                                                        |
-| Role.Scope.Updated | roleId | string       | ✅       | Die Rollen-ID, der Berechtigungen zugewiesen sind. (Nur verfügbar, wenn das Ereignis durch das Erstellen einer neuen Rolle mit vorab zugewiesenen Berechtigungen ausgelöst wurde) |
+| Ereignis            | Feld   | Typ       | Optional | Anmerkungen                                                                                                                                                                  |
+| ------------------- | ------ | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Role.Created        | data   | `Role`    |          | Die erstellte Rollenentität.                                                                                                                                                 |
+| Role.Data.Updated   | data   | `Role`    |          | Die aktualisierte Rollenentität.                                                                                                                                             |
+| Role.Deleted        | data   | `null`    | /        |                                                                                                                                                                              |
+| Role.Scopes.Updated | data   | `Scope[]` |          | Die aktualisierten Berechtigungen, die der Rolle zugewiesen sind.                                                                                                            |
+| Role.Scopes.Updated | roleId | `string`  | ✅       | Die Rollen-ID, der Berechtigungen zugewiesen sind. (Nur verfügbar, wenn das Ereignis durch das Erstellen einer Rolle mit vorab zugewiesenen Berechtigungen ausgelöst wurde.) |
 
-**Berechtigungs- (Scope-) Ereignisse**
+#### Berechtigung (Scope) Ereignisse \{#permission-events}
 
-| Ereignis           | Feld | Typ   | Optional | Hinweise                                                     |
-| ------------------ | ---- | ----- | -------- | ------------------------------------------------------------ |
-| Scope.Created      | data | Scope |          | Die erstellte Berechtigungs-Entität für dieses Ereignis.     |
-| Scope.Data.Updated | data | Scope |          | Die aktualisierte Berechtigungs-Entität für dieses Ereignis. |
-| Scope.Deleted      | data | null  | /        |                                                              |
+| Ereignis           | Feld | Typ     | Optional | Anmerkungen                             |
+| ------------------ | ---- | ------- | -------- | --------------------------------------- |
+| Scope.Created      | data | `Scope` |          | Die erstellte Berechtigungsentität.     |
+| Scope.Data.Updated | data | `Scope` |          | Die aktualisierte Berechtigungsentität. |
+| Scope.Deleted      | data | `null`  | /        |                                         |
 
-**Organisations-Ereignisse**
+#### Organisationsevents \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,139 @@ type Organization = {
 };
 ```
 
-| Ereignis                        | Feld | Typ                         | Optional | Hinweise                                                     |
-| ------------------------------- | ---- | --------------------------- | -------- | ------------------------------------------------------------ |
-| Organization.Created            | data | Organisation (Organization) |          | Die erstellte Organisations-Entität für dieses Ereignis.     |
-| Organization.Data.Updated       | data | Organisation (Organization) |          | Die aktualisierte Organisations-Entität für dieses Ereignis. |
-| Organization.Deleted            | data | null                        | /        |                                                              |
-| Organization.Membership.Updated | data | null                        | /        |                                                              |
+| Ereignis                        | Feld | Typ            | Optional | Anmerkungen                                                                                                                                                                    |
+| ------------------------------- | ---- | -------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Organization.Created            | data | `Organization` |          | Die erstellte Organisationsentität.                                                                                                                                            |
+| Organization.Data.Updated       | data | `Organization` |          | Die aktualisierte Organisationsentität.                                                                                                                                        |
+| Organization.Deleted            | data | `null`         | /        |                                                                                                                                                                                |
+| Organization.Membership.Updated | data | `null`         | /        | Die Änderung wird durch optionale Delta-Arrays auf oberster Ebene beschrieben. Siehe [Organization.Membership.Updated Nutzlast](#organizationmembershipupdated-payload) unten. |
 
-**OrganisationRollen-Ereignisse**
+##### Organization.Membership.Updated Nutzlast \{#organizationmembershipupdated-payload}
+
+Zusätzlich zu den Standardfeldern des Anfragetextes und den Management API-Kontextfeldern trägt das `Organization.Membership.Updated`-Ereignis eine `organizationId` sowie optionale Delta-Arrays auf oberster Ebene der Nutzlast (neben `event`, `createdAt` usw. — **nicht** innerhalb von `data`, das für dieses Ereignis immer `null` ist).
+
+| Feld                  | Typ        | Optional | Anmerkungen                                                                                                                                                                             |
+| --------------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| organizationId        | `string`   |          | Die Organisation, deren Mitgliedschaft sich geändert hat.                                                                                                                               |
+| addedUserIds          | `string[]` | ✅       | Benutzer-IDs, die durch diesen Auslöser neu hinzugefügt wurden. Weggelassen, wenn keine Benutzer hinzugefügt wurden oder wenn der Auslöser die Benutzerzugehörigkeit nicht beeinflusst. |
+| removedUserIds        | `string[]` | ✅       | Benutzer-IDs, die durch diesen Auslöser entfernt wurden. Weggelassen, wenn keine Benutzer entfernt wurden.                                                                              |
+| addedApplicationIds   | `string[]` | ✅       | Anwendungs-IDs, die neu hinzugefügt wurden. Weggelassen, wenn keine Anwendungen hinzugefügt wurden oder wenn der Auslöser die Anwendungszugehörigkeit nicht beeinflusst.                |
+| removedApplicationIds | `string[]` | ✅       | Anwendungs-IDs, die entfernt wurden. Weggelassen, wenn keine Anwendungen entfernt wurden.                                                                                               |
+
+Die vier Delta-Arrays sind **optional und additiv** — sie ändern nicht die bestehende Nutzlaststruktur für Verbraucher, die sie nicht erwarten, und das Legacy-Feld `data: null` wird weiterhin unverändert ausgegeben.
+
+###### Auslöser und welche Delta-Felder sie möglicherweise ausgeben \{#membership-triggers}
+
+| Auslöser                                                      | Mögliche Delta-Felder                          |
+| ------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                               | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                                | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`                     | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                        | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                         | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId`       | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`)       | `addedUserIds`                                 |
+| Just-in-time Bereitstellung bei Benutzeranmeldung / Anmeldung | `addedUserIds`                                 |
+
+###### Leere Deltas werden weggelassen — abwesend ≠ leere Änderung \{#empty-deltas-are-omitted}
+
+Leere Delta-Arrays werden **vollständig weggelassen** aus der Nutzlast. Zum Beispiel, ein `PUT /organizations/:id/users`, das die Mitgliedschaftsmenge mit der bestehenden Menge ersetzt, erzeugt keine wirkliche Änderung, und die Nutzlast reduziert sich auf nur `{ organizationId }` mit allen vier Delta-Feldern abwesend. Dasselbe gilt für das erneute Hinzufügen eines bestehenden Mitglieds, das erneute Akzeptieren einer Einladung durch einen Benutzer, der bereits Mitglied ist, und eine JIT-Anmeldung durch einen Benutzer, der bereits bereitgestellt ist.
+
+**Verbraucher müssen ein fehlendes Feld als "keine Änderung auf dieser Seite" behandeln, nicht als "eine leere Änderung".**
+
+###### Pro-Array-Limit (stille Kürzung) \{#membership-delta-cap}
+
+Jedes Delta-Array ist auf **5000 Einträge** begrenzt. Wenn ein einzelner Management API-Aufruf mehr als 5000 Benutzer (oder Anwendungen) in einem Vorgang hinzufügt oder entfernt, wird das entsprechende Delta-Array stillschweigend auf seine ersten 5000 Einträge gekürzt — **es gibt keinen Marker in der Nutzlast**, dass ein Limit ausgelöst wurde.
+
+Wenn deine Anwendung administrative Massenoperationen durchführt, die plausibel mehr als 5000 Mitglieder in einem Aufruf betreffen können, behandle ein Array von genau 5000 Einträgen als Signal, um die autoritative Mitgliedschaft über die Management API abzugleichen:
+
+- `GET /organizations/:id/users` — vollständige Benutzerzugehörigkeit.
+- `GET /organizations/:id/applications` — vollständige Anwendungszugehörigkeit.
+
+Dies folgt demselben Muster wie das `push`-Ereignis von GitHub, das `commits` auf 20 Einträge begrenzt und Verbraucher auf die Vergleichs-API für die vollständige Liste verweist.
+
+###### Überspringen von No-Op-Ereignissen \{#skipping-no-op-events}
+
+Jeder `PUT` gegen die Mitgliedschaftsrouten gibt ein Ereignis aus, unabhängig davon, ob sich tatsächlich etwas geändert hat — damit jeder zustandsersetzende Aufruf mindestens eine Webhook-Lieferung zu Prüfzwecken hat. Um No-Op-Lieferungen auf der Verbraucherseite zu überspringen, filtere nach Delta-Array-Präsenz:
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // echte Mitgliedschaftsänderung — bearbeite sie
+}
+```
+
+`?.length` ist sowohl für `undefined` als auch für `[]` falsch, sodass dasselbe Prädikat robust ist, unabhängig davon, ob das Feld fehlt oder (in einer hypothetischen Zukunft) als leeres Array ausgegeben wird.
+
+###### Beispiel-Nutzlasten \{#membership-example-payloads}
+
+**Einen Benutzer hinzufügen (`POST /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**Die Benutzerzugehörigkeitsmenge ersetzen (`PUT /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**Einen Benutzer entfernen (`DELETE /organizations/:id/users/:userId`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**Eine Anwendung hinzufügen (`POST /organizations/:id/applications`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**Ein bestehendes Mitglied erneut hinzufügen, No-Op `PUT` oder erneutes Akzeptieren einer bereits bestehenden Einladung (keine wirkliche Änderung):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**Massenoperation, die das 5000-Limit erreicht (still gekürzt):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … genau 5000 Einträge insgesamt */"]
+}
+```
+
+Das Sehen eines Arrays von genau 5000 Einträgen sollte einen abgleichenden `GET /organizations/:id/users` (oder `/applications`) auslösen.
+
+#### Organisationsrollenereignisse \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +347,32 @@ type OrganizationScope = {
 };
 ```
 
-| Ereignis                       | Feld               | Typ              | Optional | Hinweise                                                                                                                                                                          |
-| ------------------------------ | ------------------ | ---------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OrganizationRole.Created       | data               | OrganizationRole |          | Die erstellte Organisationsrollen-Entität für dieses Ereignis.                                                                                                                    |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |          | Die aktualisierte Organisationsrollen-Entität für dieses Ereignis.                                                                                                                |
-| OrganizationRole.Deleted       | data               | null             | /        |                                                                                                                                                                                   |
-| OrganizationRole.Scope.Updated | data               | null             | /        |                                                                                                                                                                                   |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅       | Die Rollen-ID, der Berechtigungen zugewiesen sind. (Nur verfügbar, wenn das Ereignis durch das Erstellen einer neuen Rolle mit vorab zugewiesenen Berechtigungen ausgelöst wurde) |
+| Ereignis                        | Feld               | Typ                | Optional | Anmerkungen                                                                                                                                                                  |
+| ------------------------------- | ------------------ | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |          | Die erstellte Organisationsrollenentität.                                                                                                                                    |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |          | Die aktualisierte Organisationsrollenentität.                                                                                                                                |
+| OrganizationRole.Deleted        | data               | `null`             | /        |                                                                                                                                                                              |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /        |                                                                                                                                                                              |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅       | Die Rollen-ID, der Berechtigungen zugewiesen sind. (Nur verfügbar, wenn das Ereignis durch das Erstellen einer Rolle mit vorab zugewiesenen Berechtigungen ausgelöst wurde.) |
 
-**Organisationsberechtigungs- (OrganizationScope-) Ereignisse**
+#### Organisationsberechtigung (Scope) Ereignisse \{#organization-permission-events}
 
-| Ereignis                       | Feld | Typ               | Optional | Hinweise                                              |
-| ------------------------------ | ---- | ----------------- | -------- | ----------------------------------------------------- |
-| OrganizationScope.Created      | data | OrganizationScope |          | Die erstellte Organisationsberechtigungs-Entität.     |
-| OrganizationScope.Data.Updated | data | OrganizationScope |          | Die aktualisierte Organisationsberechtigungs-Entität. |
-| OrganizationScope.Deleted      | data | null              | /        |                                                       |
+| Ereignis                       | Feld | Typ                 | Optional | Anmerkungen                                          |
+| ------------------------------ | ---- | ------------------- | -------- | ---------------------------------------------------- |
+| OrganizationScope.Created      | data | `OrganizationScope` |          | Die erstellte Organisationsberechtigungsentität.     |
+| OrganizationScope.Data.Updated | data | `OrganizationScope` |          | Die aktualisierte Organisationsberechtigungsentität. |
+| OrganizationScope.Deleted      | data | `null`              | /        |                                                      |
 
-## Ausnahme-Hook-Events Anfrage-Body \{#exception-hook-events-request-body}
+## Ausnahmeereignis-Nutzlasten \{#exception-event-payloads}
 
-Verfügbare Ereignisse: `Identifier.Lockout`
+**Ereignisse:** `Identifier.Lockout`.
 
-Der Anfrage-Body ist ein JSON-Objekt, das die Standard-Anfrage-Body-Felder und zusätzliche Felder wie unten enthält:
+Ausgelöst bei Sicherheitsvorfällen — zum Beispiel, ein Konto, das nach aufeinanderfolgenden fehlgeschlagenen Verifizierungsversuchen gesperrt wurde. Diese Ereignisse stammen immer aus einem benutzerorientierten Fluss, daher enthält der Text:
+
+- Die [gemeinsamen Felder](#common-fields).
+- Das `ip`-Feld (gleiche Struktur wie bei Datenmutationsereignissen).
+- Die [Experience API-Kontextfelder](#experience-api-context-fields).
+- Die unten stehenden ausnahmespezifischen Felder.
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +382,7 @@ enum SignInIdentifier {
 }
 ```
 
-| Feld             | Typ                 | Optional | Hinweise                                                                       |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------------------------ |
-| hookId           | `string`            |          | Die Kennung in Logto.                                                          |
-| event            | `string`            |          | Das Ereignis, das diesen Hook auslöst.                                         |
-| createdAt        | `string`            |          | Das Erstellungsdatum der Nutzlast im ISO-Format.                               |
-| userAgent        | `string`            | ✅       | Der User-Agent für die Anfrage.                                                |
-| ip               | `string`            | ✅       | Die IP-Adresse für die Anfrage.                                                |
-| interactionEvent | `string`            | ✅       | Das Interaktionsereignis, das diesen Hook auslöst.                             |
-| sessionId        | `string`            | ✅       | Die Session-ID (nicht Interaction-ID) für dieses Ereignis, falls zutreffend.   |
-| applicationId    | `string`            | ✅       | Die zugehörige Anwendungs-ID für dieses Ereignis, falls zutreffend.            |
-| application      | `ApplicationEntity` | ✅       | Die zugehörigen Anwendungsinformationen für dieses Ereignis, falls zutreffend. |
-| type             | `SignInIdentifier`  |          | Der Identifikatortyp des Benutzers, z. B. E-Mail, Telefon oder Benutzername.   |
-| value            | `string`            |          | Der Identifikatorwert des Benutzers, der die Sperrung ausgelöst hat.           |
+| Feld  | Typ                | Optional | Anmerkungen                                                                  |
+| ----- | ------------------ | -------- | ---------------------------------------------------------------------------- |
+| type  | `SignInIdentifier` |          | Der Identifikatortyp des Benutzers, z. B. E-Mail, Telefon oder Benutzername. |
+| value | `string`           |          | Der Identifikatorwert des Benutzers, der die Sperrung ausgelöst hat.         |

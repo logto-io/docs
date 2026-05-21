@@ -7,23 +7,60 @@ sidebar_position: 4
 
 # Webhooks リクエスト
 
-有効なフックイベントが発生すると、Logto は対応する Webhook を検索し、各フック設定ごとに POST リクエストを送信します。
+Webhook イベントが発生すると、Logto はそれに登録されたすべてのエンドポイントに `POST` リクエストを送信します。完全なイベントカタログは [Webhooks イベント](/developers/webhooks/events) にあります。このページでは、Logto が配信するリクエストの**形状**を記載しています。
 
 ## リクエストヘッダー \{#request-headers}
 
-| Key                     | カスタマイズ可 | 備考                                                                                                             |
-| ----------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| user-agent              | ✅             | デフォルトは `Logto (https://logto.io/)` です。                                                                  |
-| content-type            | ✅             | デフォルトは `application/json` です。                                                                           |
-| logto-signature-sha-256 |                | リクエストボディの署名。 [Webhook のセキュリティ保護](/developers/webhooks/secure-webhooks) を参照してください。 |
+| Key                     | カスタマイズ可能 | 備考                                                                                                             |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| user-agent              | ✅               | デフォルトでは `Logto (https://logto.io/)`。                                                                     |
+| content-type            | ✅               | デフォルトでは `application/json`。                                                                              |
+| logto-signature-sha-256 |                  | リクエストボディの署名。[Webhooks のセキュリティ確保](/developers/webhooks/secure-webhooks) を参照してください。 |
 
-カスタマイズ可能なヘッダーは、同じキーで [リクエストヘッダーのカスタマイズ](/developers/webhooks/configure-webhooks/#secure-webhook) により上書きできます。
+カスタマイズ可能なヘッダーは、[セキュア Webhook](/developers/webhooks/configure-webhooks/#secure-webhook) 設定を通じて上書きできます。
 
-## インタラクションフックイベントのリクエストボディ \{#interaction-hook-events-request-body}
+## リクエストボディの概要 \{#request-body-overview}
 
-利用可能なイベント: `PostRegister`, `PostSignIn`, `PostResetPassword`
+ボディは JSON オブジェクトです。その正確な形状は、イベントが属するファミリーによって異なります：
 
-リクエストボディは、3 種類のデータフィールドを含む JSON オブジェクトです：
+| ファミリー         | イベント                                                                                     | 発生タイミング                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **ユーザーフロー** | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | ユーザーが Experience API によって処理されるサインアップ、サインイン、またはパスワードリセットフローを完了したとき。 |
+| **データ変更**     | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | 基本データモデルが変更されたとき — Management API コールまたは Experience API 上のユーザーフローによって。           |
+| **例外**           | `Identifier.Lockout`                                                                         | セキュリティインシデント — 例えば、連続した認証失敗後にアカウントがロックされた場合。                                |
+
+すべてのファミリーは、[共通フィールド](#common-fields) の小さなセットを共有しています。各ファミリーはその後、独自のリクエストコンテキストフィールドとイベント固有のペイロードを追加します。
+
+### 共通フィールド \{#common-fields}
+
+ファミリーに関係なく、すべての配信に含まれます：
+
+| フィールド | タイプ   | オプション | 備考                                       |
+| ---------- | -------- | ---------- | ------------------------------------------ |
+| hookId     | `string` |            | Logto 内の Webhook 設定識別子。            |
+| event      | `string` |            | この配信をトリガーしたイベント。           |
+| createdAt  | `string` |            | ISO 8601 形式のペイロード作成時間。        |
+| userAgent  | `string` | ✅         | トリガーリクエストのユーザーエージェント。 |
+
+各ファミリーには、トリガーリクエストの IP アドレスも含まれています — ユーザーフローイベントでは `userIp` フィールド、データ変更および例外イベントでは `ip` フィールドとして。意味は同じですが、後方互換性のために歴史的な名前の違いが保持されています。
+
+## ユーザーフローイベントペイロード \{#user-flow-event-payloads}
+
+**イベント:** `PostRegister`, `PostSignIn`, `PostResetPassword`.
+
+ユーザーが Experience API によって処理されるサインアップ、サインイン、またはパスワードリセットフローを完了したときに発生します。[共通フィールド](#common-fields) に加えて、ボディには以下が含まれます：
+
+| フィールド       | タイプ                                       | オプション | 備考                                                                                                                                                                             |
+| ---------------- | -------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |            | ユーザーフローイベントタイプ。`PostSignIn` / `PostRegister` / `PostResetPassword` にそれぞれマッピングされます。フィールド名は歴史的な「インタラクション」命名を保持しています。 |
+| sessionId        | `string`                                     | ✅         | このイベントのセッション ID（インタラクション ID ではありません）、該当する場合。                                                                                                |
+| userIp           | `string`                                     | ✅         | トリガーリクエストの IP アドレス。                                                                                                                                               |
+| userId           | `string`                                     | ✅         | このイベントに関連付けられたユーザー ID、該当する場合。                                                                                                                          |
+| user             | `UserEntity`                                 | ✅         | このイベントに関連付けられたユーザーエンティティ、該当する場合。                                                                                                                 |
+| applicationId    | `string`                                     | ✅         | このイベントに関連付けられたアプリケーション ID、該当する場合。                                                                                                                  |
+| application      | `ApplicationEntity`                          | ✅         | このイベントに関連付けられたアプリケーションエンティティ、該当する場合。                                                                                                         |
+
+#### エンティティの形状 \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| フィールド       | 型                  | オプション | 備考                                                                |
-| ---------------- | ------------------- | ---------- | ------------------------------------------------------------------- |
-| hookId           | `string`            |            | Logto 内の識別子。                                                  |
-| event            | `string`            |            | このフックをトリガーしたイベント。                                  |
-| createdAt        | `string`            |            | ペイロードの作成時刻（ISO 形式）。                                  |
-| interactionEvent | `string`            |            | このフックをトリガーしたインタラクションイベント。                  |
-| sessionId        | `string`            | ✅         | このイベントのセッション ID（インタラクション ID ではありません）。 |
-| userAgent        | `string`            | ✅         | このフックをトリガーしたリクエストのユーザーエージェント。          |
-| userIp           | `string`            | ✅         | このフックをトリガーしたリクエストの IP アドレス。                  |
-| userId           | `string`            | ✅         | このイベントに関連するユーザー ID。                                 |
-| user             | `UserEntity`        | ✅         | このイベントに関連するユーザーエンティティ。                        |
-| applicationId    | `string`            | ✅         | このイベントに関連するアプリケーション ID。                         |
-| application      | `ApplicationEntity` | ✅         | このイベントに関連するアプリケーション情報。                        |
+完全なフィールドリファレンスについては、[ユーザー](/user-management/user-data) および [アプリケーション](/integrate-logto/application-data-structure) を参照してください。
 
-各フィールドの詳細な説明は [ユーザー](/user-management/user-data) および [アプリケーション](/integrate-logto/application-data-structure) リファレンスを参照してください。
+## データ変更イベントペイロード \{#data-mutation-event-payloads}
 
-## データ変更フックイベントのリクエストボディ \{#data-mutation-hook-events-request-body}
+**イベント:** `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` — 完全なカタログについては [Webhooks イベント → データ変更フックイベント](/developers/webhooks/events#data-mutation-hook-events) を参照してください。
 
-### 標準リクエストボディフィールド \{#standard-request-body-fields}
+ボディには常に以下が含まれます：
 
-| フィールド | 型       | オプション | 備考                               |
-| ---------- | -------- | ---------- | ---------------------------------- |
-| hookId     | `string` |            | Logto 内の識別子。                 |
-| event      | `string` |            | このフックをトリガーしたイベント。 |
-| createdAt  | `string` |            | ペイロードの作成時刻（ISO 形式）。 |
-| userAgent  | `string` | ✅         | リクエストのユーザーエージェント。 |
-| ip         | `string` | ✅         | リクエストの IP アドレス。         |
+- [共通フィールド](#common-fields)。
+- `ip` フィールド — トリガーリクエストの IP アドレス（オプション、既知の場合に存在）。
+- 変更がどのようにトリガーされたかを説明する **API コンテキスト**。コンテキストは、トリガーソースに応じて 2 つのバリアントのいずれかです：
+  - [Experience API コンテキスト](#experience-api-context-fields) — 変更がユーザー向けフローから発生した場合。
+  - [Management API コンテキスト](#management-api-context-fields) — 変更が直接の Management API コールから発生した場合。
+- **イベント固有のペイロード** — `data` 内の影響を受けたエンティティと（いくつかのイベントでは）追加のトップレベルフィールド。詳細は [イベント固有のデータペイロード](#event-specific-data-payloads) を参照してください。
 
-### インタラクション API コンテキストボディフィールド \{#interaction-api-context-body-fields}
+### Experience API コンテキストフィールド \{#experience-api-context-fields}
 
-ユーザーのインタラクション API コールによってトリガーされるデータ変更フックイベント。
+変更が Experience API 上のユーザー向けフローによってトリガーされた場合に存在します — 例えば、サインアップ中の `User.Created` やプロフィール更新中の `User.Data.Updated`。
 
-利用可能なイベント: `User.Created`, `User.Data.Updated`
+| フィールド       | タイプ                                       | オプション | 備考                                                                                                             |
+| ---------------- | -------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅         | 変更を引き起こしたユーザーフローイベントタイプ。フィールド名は歴史的な「インタラクション」命名を保持しています。 |
+| sessionId        | `string`                                     | ✅         | このイベントのセッション ID（インタラクション ID ではありません）、該当する場合。                                |
+| applicationId    | `string`                                     | ✅         | アプリケーション ID、該当する場合。                                                                              |
+| application      | `ApplicationEntity`                          | ✅         | アプリケーションエンティティ、該当する場合。                                                                     |
 
-| フィールド       | 型                  | オプション | 備考                                                                |
-| ---------------- | ------------------- | ---------- | ------------------------------------------------------------------- |
-| interactionEvent | `string`            | ✅         | このフックをトリガーしたインタラクションイベント。                  |
-| sessionId        | `string`            | ✅         | このイベントのセッション ID（インタラクション ID ではありません）。 |
-| applicationId    | `string`            | ✅         | このイベントに関連するアプリケーション ID。                         |
-| application      | `ApplicationEntity` | ✅         | このイベントに関連するアプリケーション情報。                        |
+### Management API コンテキストフィールド \{#management-api-context-fields}
 
-### Management API コンテキストボディフィールド \{#management-api-context-body-fields}
+変更が Management API コールによってトリガーされた場合に存在します。
 
-Management API コールによってトリガーされるデータ変更フックイベント。
+| フィールド   | タイプ   | オプション | 備考                                                                                                    |
+| ------------ | -------- | ---------- | ------------------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅         | このフックをトリガーした API コールのパス。                                                             |
+| method       | `string` | ✅         | API コールの HTTP メソッド。                                                                            |
+| status       | `number` | ✅         | API コールのレスポンスステータスコード。                                                                |
+| params       | `object` | ✅         | API コールの koa パスパラメータ。                                                                       |
+| matchedRoute | `string` | ✅         | koa の一致したルート。Logto はこのフィールドを使用して有効な Webhook イベントフィルターを一致させます。 |
 
-| フィールド   | 型       | オプション | 備考                                                                                                               |
-| ------------ | -------- | ---------- | ------------------------------------------------------------------------------------------------------------------ |
-| path         | `string` | ✅         | このフックをトリガーした API コールのパス。                                                                        |
-| method       | `string` | ✅         | このフックをトリガーした API コールのメソッド。                                                                    |
-| status       | `number` | ✅         | このフックをトリガーした API コールのレスポンスステータスコード。                                                  |
-| params       | `object` | ✅         | このフックをトリガーした API コールの koa パスパラメータ。                                                         |
-| matchedRoute | `string` | ✅         | このフックをトリガーした API コールの koa マッチルート。Logto はこのフィールドで有効なフックイベントを判定します。 |
+### イベント固有のデータペイロード \{#event-specific-data-payloads}
 
-### データペイロードボディフィールド \{#data-payload-body-fields}
+すべてのデータ変更イベントには、影響を受けたエンティティを含むトップレベルの `data` フィールドが含まれています。変更が単一のエンティティとして要約できない場合（削除およびメンバーシップイベント）、`null` になります。いくつかのイベントには、`data` 以外のイベント固有のトップレベルフィールドも含まれています — `Organization.Membership.Updated` がその一例で、以下に記載されています。
 
-**ユーザーイベント**
+#### ユーザーイベント \{#user-events}
 
-| イベント          | フィールド | 型         | オプション | 備考                                   |
-| ----------------- | ---------- | ---------- | ---------- | -------------------------------------- |
-| User.Created      | data       | UserEntity |            | このイベントで作成されたユーザー情報。 |
-| User.Data.Updated | data       | UserEntity |            | このイベントで更新されたユーザー情報。 |
-| User.Deleted      | data       | null       | /          |                                        |
+| イベント          | フィールド | タイプ       | オプション | 備考                             |
+| ----------------- | ---------- | ------------ | ---------- | -------------------------------- |
+| User.Created      | data       | `UserEntity` |            | 作成されたユーザーエンティティ。 |
+| User.Data.Updated | data       | `UserEntity` |            | 更新されたユーザーエンティティ。 |
+| User.Deleted      | data       | `null`       | /          |                                  |
 
-**ロールイベント**
+#### ロールイベント \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| イベント           | フィールド | 型      | オプション | 備考                                                                                        |
-| ------------------ | ---------- | ------- | ---------- | ------------------------------------------------------------------------------------------- |
-| Role.Created       | data       | Role    |            | このイベントで作成されたロール情報。                                                        |
-| Role.Data.Updated  | data       | Role    |            | このイベントで更新されたロール情報。                                                        |
-| Role.Deleted       | data       | null    |            |                                                                                             |
-| Role.Scope.Updated | data       | Scope[] |            | ロールに割り当てられた更新済みスコープ。                                                    |
-| Role.Scope.Updated | roleId     | string  | ✅         | スコープが割り当てられたロール ID。（事前割り当てスコープ付き新規ロール作成時のみ利用可能） |
+| イベント            | フィールド | タイプ    | オプション | 備考                                                                                                                                      |
+| ------------------- | ---------- | --------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Role.Created        | data       | `Role`    |            | 作成されたロールエンティティ。                                                                                                            |
+| Role.Data.Updated   | data       | `Role`    |            | 更新されたロールエンティティ。                                                                                                            |
+| Role.Deleted        | data       | `null`    | /          |                                                                                                                                           |
+| Role.Scopes.Updated | data       | `Scope[]` |            | ロールに割り当てられた更新されたスコープ。                                                                                                |
+| Role.Scopes.Updated | roleId     | `string`  | ✅         | スコープが割り当てられたロール ID。（事前に割り当てられたスコープを持つロールの作成によってイベントがトリガーされた場合にのみ利用可能。） |
 
-**権限（スコープ）イベント**
+#### 権限 (スコープ) イベント \{#permission-events}
 
-| イベント           | フィールド | 型    | オプション | 備考                                   |
-| ------------------ | ---------- | ----- | ---------- | -------------------------------------- |
-| Scope.Created      | data       | Scope |            | このイベントで作成されたスコープ情報。 |
-| Scope.Data.Updated | data       | Scope |            | このイベントで更新されたスコープ情報。 |
-| Scope.Deleted      | data       | null  | /          |                                        |
+| イベント           | フィールド | タイプ  | オプション | 備考                             |
+| ------------------ | ---------- | ------- | ---------- | -------------------------------- |
+| Scope.Created      | data       | `Scope` |            | 作成されたスコープエンティティ。 |
+| Scope.Data.Updated | data       | `Scope` |            | 更新されたスコープエンティティ。 |
+| Scope.Deleted      | data       | `null`  | /          |                                  |
 
-**組織イベント**
+#### 組織イベント \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,139 @@ type Organization = {
 };
 ```
 
-| イベント                        | フィールド | 型           | オプション | 備考                               |
-| ------------------------------- | ---------- | ------------ | ---------- | ---------------------------------- |
-| Organization.Created            | data       | Organization |            | このイベントで作成された組織情報。 |
-| Organization.Data.Updated       | data       | Organization |            | このイベントで更新された組織情報。 |
-| Organization.Deleted            | data       | null         | /          |                                    |
-| Organization.Membership.Updated | data       | null         | /          |                                    |
+| イベント                        | フィールド | タイプ         | オプション | 備考                                                                                                                                                                             |
+| ------------------------------- | ---------- | -------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data       | `Organization` |            | 作成された組織エンティティ。                                                                                                                                                     |
+| Organization.Data.Updated       | data       | `Organization` |            | 更新された組織エンティティ。                                                                                                                                                     |
+| Organization.Deleted            | data       | `null`         | /          |                                                                                                                                                                                  |
+| Organization.Membership.Updated | data       | `null`         | /          | 変更はオプションのトップレベルのデルタ配列によって説明されます。詳細は [Organization.Membership.Updated ペイロード](#organizationmembershipupdated-payload) を参照してください。 |
 
-**組織ロールイベント**
+##### Organization.Membership.Updated ペイロード \{#organizationmembershipupdated-payload}
+
+標準のリクエストボディフィールドと Management API コンテキストフィールドに加えて、`Organization.Membership.Updated` イベントは `organizationId` とペイロードのトップレベルにオプションのデルタ配列を持ちます（`event`、`createdAt` などの隣に — このイベントでは常に `null` である `data` 内ではありません）。
+
+| フィールド            | タイプ     | オプション | 備考                                                                                                                                                            |
+| --------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| organizationId        | `string`   |            | メンバーシップが変更された組織。                                                                                                                                |
+| addedUserIds          | `string[]` | ✅         | このトリガーによって新たに追加されたユーザー ID。ユーザーが追加されなかった場合、またはトリガーがユーザーメンバーシップに影響を与えない場合は省略されます。     |
+| removedUserIds        | `string[]` | ✅         | このトリガーによって削除されたユーザー ID。削除されたユーザーがいない場合は省略されます。                                                                       |
+| addedApplicationIds   | `string[]` | ✅         | 新たに追加されたアプリケーション ID。アプリケーションが追加されなかった場合、またはトリガーがアプリケーションメンバーシップに影響を与えない場合は省略されます。 |
+| removedApplicationIds | `string[]` | ✅         | 削除されたアプリケーション ID。削除されたアプリケーションがいない場合は省略されます。                                                                           |
+
+4 つのデルタ配列は **オプションで追加的** です — それらを期待しない消費者に対して既存のペイロード形状を変更せず、レガシーの `data: null` フィールドは変更されずに出力されます。
+
+###### トリガーとそれらが発行する可能性のあるデルタフィールド \{#membership-triggers}
+
+| トリガー                                                                | 可能なデルタフィールド                         |
+| ----------------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                                         | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                                          | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`                               | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                                  | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                                   | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId`                 | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`)                 | `addedUserIds`                                 |
+| ユーザーサインアップ / サインイン時のジャストインタイムプロビジョニング | `addedUserIds`                                 |
+
+###### 空のデルタは省略されます — 不在 ≠ 空の変更 \{#empty-deltas-are-omitted}
+
+空のデルタ配列はペイロードから **完全に省略されます**。例えば、既存のセットでメンバーシップセットを置き換える `PUT /organizations/:id/users` は実際の変更を生じず、ペイロードは `organizationId` のみを持ち、4 つのデルタフィールドはすべて不在です。同様に、既存メンバーの再追加、すでにメンバーであるユーザーによる招待の再受諾、すでにプロビジョニングされているユーザーによる JIT サインインも同様です。
+
+**消費者は、欠落しているフィールドを「その側に変更なし」として扱い、「空の変更」として扱わないようにしなければなりません。**
+
+###### 配列ごとの上限（静かに切り捨て） \{#membership-delta-cap}
+
+各デルタ配列は **5000 エントリ** に制限されています。単一の Management API コールが 1 回の操作で 5000 人以上のユーザー（またはアプリケーション）に影響を与える場合、対応するデルタ配列は最初の 5000 エントリに静かに切り捨てられます — **上限が発動したことを示すペイロード内のマーカーはありません**。
+
+管理上の一括操作が 1 回のコールで 5000 人以上のメンバーに影響を与える可能性がある場合、5000 エントリちょうどの配列を見たら、Management API を介して権威あるメンバーシップを調整する信号として扱います：
+
+- `GET /organizations/:id/users` — 完全なユーザーメンバーシップ。
+- `GET /organizations/:id/applications` — 完全なアプリケーションメンバーシップ。
+
+これは、GitHub の `push` イベントと同じパターンに従っており、`commits` を 20 エントリに制限し、消費者に完全なリストのために比較 API を指示します。
+
+###### 無操作イベントのスキップ \{#skipping-no-op-events}
+
+メンバーシップルートに対するすべての `PUT` は、実際に何かが変更されたかどうかに関係なくイベントを発行します — したがって、監査目的で少なくとも 1 つの Webhook 配信があるようにします。消費者側で無操作の配信をスキップするには、デルタ配列の存在でフィルタリングします：
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // 実際のメンバーシップ変更 — 処理します
+}
+```
+
+`?.length` は `undefined` と `[]` の両方に対して偽であるため、フィールドが不在であるか（将来的に仮に）空の配列として出力されるかに関係なく、この述語は堅牢です。
+
+###### ペイロードの例 \{#membership-example-payloads}
+
+**ユーザーを追加する（`POST /organizations/:id/users`）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**ユーザーメンバーシップセットを置き換える（`PUT /organizations/:id/users`）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**ユーザーを削除する（`DELETE /organizations/:id/users/:userId`）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**アプリケーションを追加する（`POST /organizations/:id/applications`）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**既存メンバーの再追加、無操作の `PUT`、またはすでにメンバーである招待の再受諾（実際の変更なし）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**5000 の上限に達する一括操作（静かに切り捨て）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … exactly 5000 entries total */"]
+}
+```
+
+5000 エントリちょうどの配列を見たら、調整するために `GET /organizations/:id/users`（または `/applications`）を促します。
+
+#### 組織ロールイベント \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +347,32 @@ type OrganizationScope = {
 };
 ```
 
-| イベント                       | フィールド         | 型               | オプション | 備考                                                                                        |
-| ------------------------------ | ------------------ | ---------------- | ---------- | ------------------------------------------------------------------------------------------- |
-| OrganizationRole.Created       | data               | OrganizationRole |            | このイベントで作成された組織ロール情報。                                                    |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |            | このイベントで更新された組織ロール情報。                                                    |
-| OrganizationRole.Deleted       | data               | null             | /          |                                                                                             |
-| OrganizationRole.Scope.Updated | data               | null             | /          |                                                                                             |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅         | スコープが割り当てられたロール ID。（事前割り当てスコープ付き新規ロール作成時のみ利用可能） |
+| イベント                        | フィールド         | タイプ             | オプション | 備考                                                                                                                                      |
+| ------------------------------- | ------------------ | ------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |            | 作成された組織ロールエンティティ。                                                                                                        |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |            | 更新された組織ロールエンティティ。                                                                                                        |
+| OrganizationRole.Deleted        | data               | `null`             | /          |                                                                                                                                           |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /          |                                                                                                                                           |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅         | スコープが割り当てられたロール ID。（事前に割り当てられたスコープを持つロールの作成によってイベントがトリガーされた場合にのみ利用可能。） |
 
-**組織権限（OrganizationScope）イベント**
+#### 組織権限 (スコープ) イベント \{#organization-permission-events}
 
-| イベント                       | フィールド | 型                | オプション | 備考                         |
-| ------------------------------ | ---------- | ----------------- | ---------- | ---------------------------- |
-| OrganizationScope.Created      | data       | OrganizationScope |            | 作成された組織スコープ情報。 |
-| OrganizationScope.Data.Updated | data       | OrganizationScope |            | 更新された組織スコープ情報。 |
-| OrganizationScope.Deleted      | data       | null              | /          |                              |
+| イベント                       | フィールド | タイプ              | オプション | 備考                                 |
+| ------------------------------ | ---------- | ------------------- | ---------- | ------------------------------------ |
+| OrganizationScope.Created      | data       | `OrganizationScope` |            | 作成された組織スコープエンティティ。 |
+| OrganizationScope.Data.Updated | data       | `OrganizationScope` |            | 更新された組織スコープエンティティ。 |
+| OrganizationScope.Deleted      | data       | `null`              | /          |                                      |
 
-## 例外フックイベントのリクエストボディ \{#exception-hook-events-request-body}
+## 例外イベントペイロード \{#exception-event-payloads}
 
-利用可能なイベント: `Identifier.Lockout`
+**イベント:** `Identifier.Lockout`.
 
-リクエストボディは、標準リクエストボディフィールドと以下の追加フィールドを含む JSON オブジェクトです：
+セキュリティインシデントで発生します — 例えば、連続した認証失敗後にアカウントがロックされた場合。これらのイベントは常にユーザー向けフローから発生するため、ボディには以下が含まれます：
+
+- [共通フィールド](#common-fields)。
+- `ip` フィールド（データ変更イベントと同じ形状）。
+- [Experience API コンテキストフィールド](#experience-api-context-fields)。
+- 以下の例外固有のフィールド。
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +382,7 @@ enum SignInIdentifier {
 }
 ```
 
-| フィールド       | 型                  | オプション | 備考                                                                |
-| ---------------- | ------------------- | ---------- | ------------------------------------------------------------------- |
-| hookId           | `string`            |            | Logto 内の識別子。                                                  |
-| event            | `string`            |            | このフックをトリガーしたイベント。                                  |
-| createdAt        | `string`            |            | ペイロードの作成時刻（ISO 形式）。                                  |
-| userAgent        | `string`            | ✅         | リクエストのユーザーエージェント。                                  |
-| ip               | `string`            | ✅         | リクエストの IP アドレス。                                          |
-| interactionEvent | `string`            | ✅         | このフックをトリガーしたインタラクションイベント。                  |
-| sessionId        | `string`            | ✅         | このイベントのセッション ID（インタラクション ID ではありません）。 |
-| applicationId    | `string`            | ✅         | このイベントに関連するアプリケーション ID。                         |
-| application      | `ApplicationEntity` | ✅         | このイベントに関連するアプリケーション情報。                        |
-| type             | `SignInIdentifier`  |            | ユーザーの識別子タイプ（例：email、phone、username）。              |
-| value            | `string`            |            | ロックアウトを引き起こしたユーザーの識別子値。                      |
+| フィールド | タイプ             | オプション | 備考                                                             |
+| ---------- | ------------------ | ---------- | ---------------------------------------------------------------- |
+| type       | `SignInIdentifier` |            | ユーザーの識別子タイプ、例：メール、電話番号、またはユーザー名。 |
+| value      | `string`           |            | ロックアウトを引き起こしたユーザーの識別子値。                   |

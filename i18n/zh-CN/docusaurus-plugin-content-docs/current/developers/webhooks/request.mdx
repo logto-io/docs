@@ -1,29 +1,66 @@
 ---
 id: webhooks-request
-title: Webhook 请求
-sidebar_label: Webhook 请求
+title: Webhooks 请求
+sidebar_label: Webhooks 请求
 sidebar_position: 4
 ---
 
-# Webhook 请求
+# Webhooks 请求
 
-当一个有效的 hook 事件被触发后，Logto 会查找对应的 webhook，并根据每个 hook 配置发送一个 POST 请求。
+当一个 webhook 事件触发时，Logto 会向每个订阅了该事件的端点发送一个 `POST` 请求。完整的事件目录在 [Webhooks 事件](/developers/webhooks/events)中；本页面记录了 Logto 发送的请求的**结构**。
 
 ## 请求头 \{#request-headers}
 
-| Key                     | 可自定义 | 说明                                                                         |
-| ----------------------- | -------- | ---------------------------------------------------------------------------- |
-| user-agent              | ✅       | 默认值为 `Logto (https://logto.io/)`。                                       |
-| content-type            | ✅       | 默认值为 `application/json`。                                                |
-| logto-signature-sha-256 |          | 请求体的签名，详见[保护你的 webhook](/developers/webhooks/secure-webhooks)。 |
+| Key                     | Customizable | Notes                                                                          |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------ |
+| user-agent              | ✅           | 默认是 `Logto (https://logto.io/)`。                                           |
+| content-type            | ✅           | 默认是 `application/json`。                                                    |
+| logto-signature-sha-256 |              | 请求体的签名。参见 [保护你的 webhooks](/developers/webhooks/secure-webhooks)。 |
 
-你可以通过[自定义请求](/developers/webhooks/configure-webhooks/#secure-webhook)头部并使用相同的 key 来覆盖可自定义的请求头。
+可定制的头可以通过 [secure webhook](/developers/webhooks/configure-webhooks/#secure-webhook) 配置进行覆盖。
 
-## 交互 hook 事件请求体 \{#interaction-hook-events-request-body}
+## 请求体概述 \{#request-body-overview}
 
-可用事件：`PostRegister`、`PostSignIn`、`PostResetPassword`
+请求体是一个 JSON 对象。其具体结构取决于事件所属的类别：
 
-请求体是一个包含三类数据字段的 JSON 对象：
+| Family       | Events                                                                                       | When it fires                                                                        |
+| ------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **用户流程** | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | 用户完成由 Experience API 处理的注册、登录或重置密码流程时触发。                     |
+| **数据变更** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | 底层数据模型发生变更时触发——通过 Management API 调用或 Experience API 上的用户流程。 |
+| **异常**     | `Identifier.Lockout`                                                                         | 安全事件——例如，连续验证失败后账户被锁定。                                           |
+
+每个类别共享一小组[公共字段](#common-fields)。然后，每个类别在其自身的请求上下文字段和特定事件的有效负载上进行扩展。
+
+### 公共字段 \{#common-fields}
+
+无论类别如何，每次传递中都存在：
+
+| Field     | Type     | Optional | Notes                             |
+| --------- | -------- | -------- | --------------------------------- |
+| hookId    | `string` |          | Logto 中的 webhook 配置标识符。   |
+| event     | `string` |          | 触发此次传递的事件。              |
+| createdAt | `string` |          | 有效负载创建时间，ISO 8601 格式。 |
+| userAgent | `string` | ✅       | 触发请求的用户代理。              |
+
+每个类别还包括触发请求的 IP 地址——在用户流程事件中字段名为 `userIp`，在数据变更和异常事件中为 `ip`。语义相同；历史名称差异是为了向后兼容。
+
+## 用户流程事件有效负载 \{#user-flow-event-payloads}
+
+**事件：** `PostRegister`, `PostSignIn`, `PostResetPassword`。
+
+当用户完成由 Experience API 处理的注册、登录或重置密码流程时触发。除了[公共字段](#common-fields)，请求体还包含：
+
+| Field            | Type                                         | Optional | Notes                                                                                                          |
+| ---------------- | -------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |          | 用户流程事件类型。分别映射到 `PostSignIn` / `PostRegister` / `PostResetPassword`。字段名称保留历史“交互”命名。 |
+| sessionId        | `string`                                     | ✅       | 此事件的会话 ID（不是交互 ID），如果适用。                                                                     |
+| userIp           | `string`                                     | ✅       | 触发请求的 IP 地址。                                                                                           |
+| userId           | `string`                                     | ✅       | 与此事件相关的用户 ID，如果适用。                                                                              |
+| user             | `UserEntity`                                 | ✅       | 与此事件相关的用户实体，如果适用。                                                                             |
+| applicationId    | `string`                                     | ✅       | 与此事件相关的应用程序 ID，如果适用。                                                                          |
+| application      | `ApplicationEntity`                          | ✅       | 与此事件相关的应用程序实体，如果适用。                                                                         |
+
+#### 实体结构 \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| 字段             | 类型                | 可选 | 说明                                                 |
-| ---------------- | ------------------- | ---- | ---------------------------------------------------- |
-| hookId           | `string`            |      | Logto 中的标识符。                                   |
-| event            | `string`            |      | 触发此 hook 的事件。                                 |
-| createdAt        | `string`            |      | 负载的创建时间，ISO 格式。                           |
-| interactionEvent | `string`            |      | 触发此 hook 的交互事件。                             |
-| sessionId        | `string`            | ✅   | 此事件的 Session ID（不是 Interaction ID），如适用。 |
-| userAgent        | `string`            | ✅   | 触发此 hook 的请求的 user-agent。                    |
-| userIp           | `string`            | ✅   | 触发此 hook 的请求的 IP 地址。                       |
-| userId           | `string`            | ✅   | 此事件相关的用户 ID，如适用。                        |
-| user             | `UserEntity`        | ✅   | 此事件相关的用户实体，如适用。                       |
-| applicationId    | `string`            | ✅   | 此事件相关的应用 ID，如适用。                        |
-| application      | `ApplicationEntity` | ✅   | 此事件相关的应用信息，如适用。                       |
+参见 [用户](/user-management/user-data) 和 [应用程序](/integrate-logto/application-data-structure) 以获取完整字段参考。
 
-详细字段说明请参见 [用户](/user-management/user-data) 和 [应用](/integrate-logto/application-data-structure) 参考文档。
+## 数据变更事件有效负载 \{#data-mutation-event-payloads}
 
-## 数据变更 hook 事件请求体 \{#data-mutation-hook-events-request-body}
+**事件：** `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` 下的每个事件——参见 [Webhooks 事件 → 数据变更 hook 事件](/developers/webhooks/events#data-mutation-hook-events) 以获取完整目录。
 
-### 标准请求体字段 \{#standard-request-body-fields}
+请求体始终包含：
 
-| 字段      | 类型     | 可选 | 说明                       |
-| --------- | -------- | ---- | -------------------------- |
-| hookId    | `string` |      | Logto 中的标识符。         |
-| event     | `string` |      | 触发此 hook 的事件。       |
-| createdAt | `string` |      | 负载的创建时间，ISO 格式。 |
-| userAgent | `string` | ✅   | 请求的 user-agent。        |
-| ip        | `string` | ✅   | 请求的 IP 地址。           |
+- [公共字段](#common-fields)。
+- 一个 `ip` 字段——触发请求的 IP 地址（可选，已知时存在）。
+- 描述变更如何触发的**API 上下文**。上下文根据触发源有两种变体之一：
+  - [Experience API 上下文](#experience-api-context-fields)——当变更来自用户界面流程时。
+  - [Management API 上下文](#management-api-context-fields)——当变更来自直接的 Management API 调用时。
+- **事件特定的有效负载**——在 `data` 中的受影响实体和（对于某些事件）额外的顶级字段。参见[事件特定数据有效负载](#event-specific-data-payloads)。
 
-### 交互 API 上下文体字段 \{#interaction-api-context-body-fields}
+### Experience API 上下文字段 \{#experience-api-context-fields}
 
-由用户交互 API 调用触发的数据变更 hook 事件。
+当变更由 Experience API 上的用户界面流程触发时存在——例如，注册期间的 `User.Created` 或个人资料更新期间的 `User.Data.Updated`。
 
-可用事件：`User.Created`、`User.Data.Updated`
+| Field            | Type                                         | Optional | Notes                                                    |
+| ---------------- | -------------------------------------------- | -------- | -------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅       | 产生变更的用户流程事件类型。字段名称保留历史“交互”命名。 |
+| sessionId        | `string`                                     | ✅       | 此事件的会话 ID（不是交互 ID），如果适用。               |
+| applicationId    | `string`                                     | ✅       | 应用程序 ID，如果适用。                                  |
+| application      | `ApplicationEntity`                          | ✅       | 应用程序实体，如果适用。                                 |
 
-| 字段             | 类型                | 可选 | 说明                                                 |
-| ---------------- | ------------------- | ---- | ---------------------------------------------------- |
-| interactionEvent | `string`            | ✅   | 触发此 hook 的交互事件。                             |
-| sessionId        | `string`            | ✅   | 此事件的 Session ID（不是 Interaction ID），如适用。 |
-| applicationId    | `string`            | ✅   | 此事件相关的应用 ID，如适用。                        |
-| application      | `ApplicationEntity` | ✅   | 此事件相关的应用信息，如适用。                       |
+### Management API 上下文字段 \{#management-api-context-fields}
 
-### Management API 上下文体字段 \{#management-api-context-body-fields}
+当变更由 Management API 调用触发时存在。
 
-由 Management API 调用触发的数据变更 hook 事件。
+| Field        | Type     | Optional | Notes                                                           |
+| ------------ | -------- | -------- | --------------------------------------------------------------- |
+| path         | `string` | ✅       | 触发此 hook 的 API 调用路径。                                   |
+| method       | `string` | ✅       | API 调用的 HTTP 方法。                                          |
+| status       | `number` | ✅       | API 调用的响应状态码。                                          |
+| params       | `object` | ✅       | API 调用的 koa 路径参数。                                       |
+| matchedRoute | `string` | ✅       | koa 匹配的路由。Logto 使用此字段匹配启用的 webhook 事件过滤器。 |
 
-| 字段         | 类型     | 可选 | 说明                                                                             |
-| ------------ | -------- | ---- | -------------------------------------------------------------------------------- |
-| path         | `string` | ✅   | 触发此 hook 的 API 调用路径。                                                    |
-| method       | `string` | ✅   | 触发此 hook 的 API 调用方法。                                                    |
-| status       | `number` | ✅   | 触发此 hook 的 API 调用响应状态码。                                              |
-| params       | `object` | ✅   | 触发此 hook 的 API 调用的 koa 路径参数。                                         |
-| matchedRoute | `string` | ✅   | 触发此 hook 的 API 调用的 koa 匹配路由。Logto 使用此字段匹配已启用的 hook 事件。 |
+### 事件特定数据有效负载 \{#event-specific-data-payloads}
 
-### 数据负载体字段 \{#data-payload-body-fields}
+每个数据变更事件都包含一个顶级 `data` 字段，携带受影响的实体，或在变更无法总结为单个实体时为 `null`（删除和成员事件）。某些事件还包括 `data` 之外的事件特定顶级字段——`Organization.Membership.Updated` 就是这样一个例子，下面有详细说明。
 
-**用户事件**
+#### 用户事件 \{#user-events}
 
-| 事件              | 字段 | 类型       | 可选 | 说明                   |
-| ----------------- | ---- | ---------- | ---- | ---------------------- |
-| User.Created      | data | UserEntity |      | 此事件创建的用户实体。 |
-| User.Data.Updated | data | UserEntity |      | 此事件更新的用户实体。 |
-| User.Deleted      | data | null       | /    |                        |
+| Event             | Field | Type         | Optional | Notes            |
+| ----------------- | ----- | ------------ | -------- | ---------------- |
+| User.Created      | data  | `UserEntity` |          | 创建的用户实体。 |
+| User.Data.Updated | data  | `UserEntity` |          | 更新的用户实体。 |
+| User.Deleted      | data  | `null`       | /        |                  |
 
-**角色 (Role) 事件**
+#### 角色事件 \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| 事件               | 字段   | 类型    | 可选 | 说明                                                                                  |
-| ------------------ | ------ | ------- | ---- | ------------------------------------------------------------------------------------- |
-| Role.Created       | data   | Role    |      | 此事件创建的角色 (Role) 实体。                                                        |
-| Role.Data.Updated  | data   | Role    |      | 此事件更新的角色 (Role) 实体。                                                        |
-| Role.Deleted       | data   | null    |      |                                                                                       |
-| Role.Scope.Updated | data   | Scope[] |      | 分配给角色 (Role) 的已更新权限 (Scope)。                                              |
-| Role.Scope.Updated | roleId | string  | ✅   | 分配权限 (Scope) 的角色 (Role) ID。（仅当事件由创建带有预分配权限的新角色触发时可用） |
+| Event               | Field  | Type      | Optional | Notes                                                                 |
+| ------------------- | ------ | --------- | -------- | --------------------------------------------------------------------- |
+| Role.Created        | data   | `Role`    |          | 创建的角色实体。                                                      |
+| Role.Data.Updated   | data   | `Role`    |          | 更新的角色实体。                                                      |
+| Role.Deleted        | data   | `null`    | /        |                                                                       |
+| Role.Scopes.Updated | data   | `Scope[]` |          | 分配给角色的更新权限。                                                |
+| Role.Scopes.Updated | roleId | `string`  | ✅       | 分配权限的角色 ID。（仅在事件由创建具有预分配权限的角色触发时可用。） |
 
-**权限 (Scope) 事件**
+#### 权限 (Scope) 事件 \{#permission-events}
 
-| 事件               | 字段 | 类型  | 可选 | 说明                            |
-| ------------------ | ---- | ----- | ---- | ------------------------------- |
-| Scope.Created      | data | Scope |      | 此事件创建的权限 (Scope) 实体。 |
-| Scope.Data.Updated | data | Scope |      | 此事件更新的权限 (Scope) 实体。 |
-| Scope.Deleted      | data | null  | /    |                                 |
+| Event              | Field | Type    | Optional | Notes            |
+| ------------------ | ----- | ------- | -------- | ---------------- |
+| Scope.Created      | data  | `Scope` |          | 创建的权限实体。 |
+| Scope.Data.Updated | data  | `Scope` |          | 更新的权限实体。 |
+| Scope.Deleted      | data  | `null`  | /        |                  |
 
-**组织 (Organization) 事件**
+#### 组织事件 \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,139 @@ type Organization = {
 };
 ```
 
-| 事件                            | 字段 | 类型         | 可选 | 说明                                   |
-| ------------------------------- | ---- | ------------ | ---- | -------------------------------------- |
-| Organization.Created            | data | Organization |      | 此事件创建的组织 (Organization) 实体。 |
-| Organization.Data.Updated       | data | Organization |      | 此事件更新的组织 (Organization) 实体。 |
-| Organization.Deleted            | data | null         | /    |                                        |
-| Organization.Membership.Updated | data | null         | /    |                                        |
+| Event                           | Field | Type           | Optional | Notes                                                                                                                         |
+| ------------------------------- | ----- | -------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data  | `Organization` |          | 创建的组织实体。                                                                                                              |
+| Organization.Data.Updated       | data  | `Organization` |          | 更新的组织实体。                                                                                                              |
+| Organization.Deleted            | data  | `null`         | /        |                                                                                                                               |
+| Organization.Membership.Updated | data  | `null`         | /        | 变更由可选的顶级增量数组描述。参见下面的 [Organization.Membership.Updated 有效负载](#organizationmembershipupdated-payload)。 |
 
-**组织角色 (OrganizationRole) 事件**
+##### Organization.Membership.Updated 有效负载 \{#organizationmembershipupdated-payload}
+
+除了标准请求体字段和 Management API 上下文字段外，`Organization.Membership.Updated` 事件还携带一个 `organizationId`，以及有效负载顶级的可选增量数组（在 `event`、`createdAt` 等旁边——**不在** `data` 内，对于此事件始终为 `null`）。
+
+| Field                 | Type       | Optional | Notes                                                                       |
+| --------------------- | ---------- | -------- | --------------------------------------------------------------------------- |
+| organizationId        | `string`   |          | 成员变更的组织。                                                            |
+| addedUserIds          | `string[]` | ✅       | 此触发器新增的用户 ID。当没有用户被添加，或触发器不影响用户成员时省略。     |
+| removedUserIds        | `string[]` | ✅       | 此触发器移除的用户 ID。当没有用户被移除时省略。                             |
+| addedApplicationIds   | `string[]` | ✅       | 新增的应用程序 ID。当没有应用程序被添加，或触发器不影响应用程序成员时省略。 |
+| removedApplicationIds | `string[]` | ✅       | 移除的应用程序 ID。当没有应用程序被移除时省略。                             |
+
+四个增量数组是**可选且附加的**——它们不会改变不期望它们的消费者的现有有效负载结构，且遗留的 `data: null` 字段仍然不变地发出。
+
+###### 触发器及其可能发出的增量字段 \{#membership-triggers}
+
+| Trigger                                                 | Possible delta fields                          |
+| ------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                         | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                          | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`               | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                  | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                   | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId` | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`) | `addedUserIds`                                 |
+| 即时供应在用户注册 / 登录时                             | `addedUserIds`                                 |
+
+###### 空增量被省略——缺席 ≠ 空变更 \{#empty-deltas-are-omitted}
+
+空增量数组**完全省略**在有效负载中。例如，一个用现有集合替换成员集的 `PUT /organizations/:id/users` 不会产生实际变更，有效负载仅简化为 `{ organizationId }`，所有四个增量字段缺失。同样适用于重新添加现有成员、已是成员的用户重新接受邀请以及已供应用户的即时登录。
+
+**消费者必须将缺失字段视为“该方面没有变更”，而不是“空变更”。**
+
+###### 每个数组的上限（静默截断） \{#membership-delta-cap}
+
+每个增量数组的上限为**5000 个条目**。当单个 Management API 调用在一次操作中添加或移除超过 5000 个用户（或应用程序）时，相应的增量数组会被静默截断为其前 5000 个条目——**没有在有效负载中标记**上限触发。
+
+如果你的应用程序执行可能在一次调用中影响超过 5000 个成员的管理批量操作，请将正好 5000 个条目的数组视为通过 Management API 调和权威成员的信号：
+
+- `GET /organizations/:id/users`——完整的用户成员。
+- `GET /organizations/:id/applications`——完整的应用程序成员。
+
+这遵循与 GitHub 的 `push` 事件相同的模式，该事件将 `commits` 限制为 20 个条目，并指向消费者使用比较 API 获取完整列表。
+
+###### 跳过无操作事件 \{#skipping-no-op-events}
+
+每次针对成员路由的 `PUT` 都会发出一个事件，无论是否实际发生了变更——以便任何状态替换调用至少有一个 webhook 传递用于审计目的。要在消费者端跳过无操作传递，请过滤增量数组的存在：
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // 实际成员变更——处理它
+}
+```
+
+`?.length` 对于 `undefined` 和 `[]` 都是假的，因此无论字段是缺失还是（在某个假设的未来）作为空数组发出，相同的谓词都是稳健的。
+
+###### 示例有效负载 \{#membership-example-payloads}
+
+**添加用户 (`POST /organizations/:id/users`)：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**替换用户成员集 (`PUT /organizations/:id/users`)：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**移除用户 (`DELETE /organizations/:id/users/:userId`)：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**添加应用程序 (`POST /organizations/:id/applications`)：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**重新添加现有成员、无操作 `PUT` 或已是成员的邀请重新接受（无实际变更）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**达到 5000 上限的批量操作（静默截断）：**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … 总共正好 5000 个条目 */"]
+}
+```
+
+看到一个正好 5000 个条目的数组应该提示进行调和 `GET /organizations/:id/users`（或 `/applications`）。
+
+#### 组织角色事件 \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +347,32 @@ type OrganizationScope = {
 };
 ```
 
-| 事件                           | 字段               | 类型             | 可选 | 说明                                                                                                  |
-| ------------------------------ | ------------------ | ---------------- | ---- | ----------------------------------------------------------------------------------------------------- |
-| OrganizationRole.Created       | data               | OrganizationRole |      | 此事件创建的组织角色 (OrganizationRole) 实体。                                                        |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |      | 此事件更新的组织角色 (OrganizationRole) 实体。                                                        |
-| OrganizationRole.Deleted       | data               | null             | /    |                                                                                                       |
-| OrganizationRole.Scope.Updated | data               | null             | /    |                                                                                                       |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅   | 分配权限 (Scope) 的组织角色 (OrganizationRole) ID。（仅当事件由创建带有预分配权限的新角色触发时可用） |
+| Event                           | Field              | Type               | Optional | Notes                                                                 |
+| ------------------------------- | ------------------ | ------------------ | -------- | --------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |          | 创建的组织角色实体。                                                  |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |          | 更新的组织角色实体。                                                  |
+| OrganizationRole.Deleted        | data               | `null`             | /        |                                                                       |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /        |                                                                       |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅       | 分配权限的角色 ID。（仅在事件由创建具有预分配权限的角色触发时可用。） |
 
-**组织权限 (OrganizationScope) 事件**
+#### 组织权限 (Scope) 事件 \{#organization-permission-events}
 
-| 事件                           | 字段 | 类型              | 可选 | 说明                                      |
-| ------------------------------ | ---- | ----------------- | ---- | ----------------------------------------- |
-| OrganizationScope.Created      | data | OrganizationScope |      | 创建的组织权限 (OrganizationScope) 实体。 |
-| OrganizationScope.Data.Updated | data | OrganizationScope |      | 更新的组织权限 (OrganizationScope) 实体。 |
-| OrganizationScope.Deleted      | data | null              | /    |                                           |
+| Event                          | Field | Type                | Optional | Notes                |
+| ------------------------------ | ----- | ------------------- | -------- | -------------------- |
+| OrganizationScope.Created      | data  | `OrganizationScope` |          | 创建的组织权限实体。 |
+| OrganizationScope.Data.Updated | data  | `OrganizationScope` |          | 更新的组织权限实体。 |
+| OrganizationScope.Deleted      | data  | `null`              | /        |                      |
 
-## 异常 hook 事件请求体 \{#exception-hook-events-request-body}
+## 异常事件有效负载 \{#exception-event-payloads}
 
-可用事件：`Identifier.Lockout`
+**事件：** `Identifier.Lockout`。
 
-请求体是一个包含标准请求体字段和如下附加字段的 JSON 对象：
+在安全事件中触发——例如，连续验证失败后账户被锁定。这些事件始终源自用户界面流程，因此请求体包含：
+
+- [公共字段](#common-fields)。
+- `ip` 字段（与数据变更事件的形状相同）。
+- [Experience API 上下文字段](#experience-api-context-fields)。
+- 以下异常特定字段。
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +382,7 @@ enum SignInIdentifier {
 }
 ```
 
-| 字段             | 类型                | 可选 | 说明                                                 |
-| ---------------- | ------------------- | ---- | ---------------------------------------------------- |
-| hookId           | `string`            |      | Logto 中的标识符。                                   |
-| event            | `string`            |      | 触发此 hook 的事件。                                 |
-| createdAt        | `string`            |      | 负载的创建时间，ISO 格式。                           |
-| userAgent        | `string`            | ✅   | 请求的 user-agent。                                  |
-| ip               | `string`            | ✅   | 请求的 IP 地址。                                     |
-| interactionEvent | `string`            | ✅   | 触发此 hook 的交互事件。                             |
-| sessionId        | `string`            | ✅   | 此事件的 Session ID（不是 Interaction ID），如适用。 |
-| applicationId    | `string`            | ✅   | 此事件相关的应用 ID，如适用。                        |
-| application      | `ApplicationEntity` | ✅   | 此事件相关的应用信息，如适用。                       |
-| type             | `SignInIdentifier`  |      | 用户的标识符类型，例如 email、phone 或 username。    |
-| value            | `string`            |      | 触发锁定的用户标识符值。                             |
+| Field | Type               | Optional | Notes                                            |
+| ----- | ------------------ | -------- | ------------------------------------------------ |
+| type  | `SignInIdentifier` |          | 用户的标识符类型，例如，电子邮件、电话或用户名。 |
+| value | `string`           |          | 触发锁定的用户标识符值。                         |
