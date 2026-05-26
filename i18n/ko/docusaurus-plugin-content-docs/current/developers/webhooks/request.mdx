@@ -7,23 +7,60 @@ sidebar_position: 4
 
 # Webhooks 요청
 
-유효한 hook 이벤트가 발생하면, Logto는 해당하는 webhooks를 찾아 각 hook 설정마다 POST 요청을 보냅니다.
+Webhook 이벤트가 발생하면, Logto는 해당 이벤트에 구독된 모든 엔드포인트에 `POST` 요청을 보냅니다. 전체 이벤트 카탈로그는 [Webhooks 이벤트](/developers/webhooks/webhooks-events)에 있으며, 이 페이지에서는 Logto가 전달하는 **요청의 형태**를 문서화합니다.
 
 ## 요청 헤더 \{#request-headers}
 
-| Key                     | Customizable | Notes                                                                                            |
-| ----------------------- | ------------ | ------------------------------------------------------------------------------------------------ |
-| user-agent              | ✅           | 기본값은 `Logto (https://logto.io/)` 입니다.                                                     |
-| content-type            | ✅           | 기본값은 `application/json` 입니다.                                                              |
-| logto-signature-sha-256 |              | 요청 본문의 서명입니다. [webhooks 보안 설정](/developers/webhooks/secure-webhooks)을 참고하세요. |
+| Key                     | Customizable | Notes                                                                                       |
+| ----------------------- | ------------ | ------------------------------------------------------------------------------------------- |
+| user-agent              | ✅           | 기본값은 `Logto (https://logto.io/)`입니다.                                                 |
+| content-type            | ✅           | 기본값은 `application/json`입니다.                                                          |
+| logto-signature-sha-256 |              | 요청 본문의 서명입니다. [Webhooks 보안](/developers/webhooks/secure-webhooks)을 참조하세요. |
 
-동일한 key로 [요청 헤더 커스터마이즈](/developers/webhooks/configure-webhooks/#secure-webhook)하여 커스터마이즈 가능한 헤더를 덮어쓸 수 있습니다.
+사용자 정의 가능한 헤더는 [보안 webhook](/developers/webhooks/configure-webhooks/#secure-webhook) 구성에서 재정의할 수 있습니다.
 
-## 상호작용 hook 이벤트 요청 본문 \{#interaction-hook-events-request-body}
+## 요청 본문 개요 \{#request-body-overview}
 
-사용 가능한 이벤트: `PostRegister`, `PostSignIn`, `PostResetPassword`
+본문은 JSON 객체입니다. 그 정확한 형태는 이벤트가 속한 패밀리에 따라 다릅니다:
 
-요청 본문은 세 가지 유형의 데이터 필드를 포함하는 JSON 객체입니다:
+| Family            | Events                                                                                       | When it fires                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **User flow**     | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | 사용자가 Experience API에 의해 처리되는 가입, 로그인 또는 비밀번호 재설정 흐름을 완료할 때.  |
+| **Data mutation** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | 기본 데이터 모델이 변경될 때 — Management API 호출 또는 Experience API의 사용자 흐름에 의해. |
+| **Exception**     | `Identifier.Lockout`                                                                         | 보안 사고 — 예를 들어, 연속된 인증 실패 시도 후 계정이 잠긴 경우.                            |
+
+모든 패밀리는 [공통 필드](#common-fields)의 작은 집합을 공유합니다. 각 패밀리는 자체 요청-컨텍스트 필드와 이벤트별 페이로드를 추가합니다.
+
+### 공통 필드 \{#common-fields}
+
+패밀리와 상관없이 모든 전달에 존재합니다:
+
+| Field     | Type     | Optional | Notes                                     |
+| --------- | -------- | -------- | ----------------------------------------- |
+| hookId    | `string` |          | Logto의 webhook 구성 식별자입니다.        |
+| event     | `string` |          | 이 전달을 트리거한 이벤트입니다.          |
+| createdAt | `string` |          | ISO 8601 형식의 페이로드 생성 시간입니다. |
+| userAgent | `string` | ✅       | 트리거 요청의 사용자 에이전트입니다.      |
+
+각 패밀리에는 또한 트리거 요청의 IP 주소가 포함됩니다 — 사용자 흐름 이벤트의 경우 `userIp` 필드, 데이터 변이 및 예외 이벤트의 경우 `ip` 필드로. 의미는 동일하며, 역사적인 이름 차이는 하위 호환성을 위해 유지됩니다.
+
+## 사용자 흐름 이벤트 페이로드 \{#user-flow-event-payloads}
+
+**이벤트:** `PostRegister`, `PostSignIn`, `PostResetPassword`.
+
+사용자가 Experience API에 의해 처리되는 가입, 로그인 또는 비밀번호 재설정 흐름을 완료할 때 발생합니다. [공통 필드](#common-fields) 외에도 본문에는 다음이 포함됩니다:
+
+| Field            | Type                                         | Optional | Notes                                                                                                                                                    |
+| ---------------- | -------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |          | 사용자 흐름 이벤트 유형입니다. 각각 `PostSignIn` / `PostRegister` / `PostResetPassword`에 매핑됩니다. 필드 이름은 역사적인 "상호작용" 명명을 유지합니다. |
+| sessionId        | `string`                                     | ✅       | 이 이벤트에 대한 세션 ID (상호작용 ID 아님), 해당되는 경우.                                                                                              |
+| userIp           | `string`                                     | ✅       | 트리거 요청의 IP 주소입니다.                                                                                                                             |
+| userId           | `string`                                     | ✅       | 이 이벤트와 관련된 사용자 ID, 해당되는 경우.                                                                                                             |
+| user             | `UserEntity`                                 | ✅       | 이 이벤트와 관련된 사용자 엔티티, 해당되는 경우.                                                                                                         |
+| applicationId    | `string`                                     | ✅       | 이 이벤트와 관련된 애플리케이션 ID, 해당되는 경우.                                                                                                       |
+| application      | `ApplicationEntity`                          | ✅       | 이 이벤트와 관련된 애플리케이션 엔티티, 해당되는 경우.                                                                                                   |
+
+#### 엔티티 형태 \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| Field            | Type                | Optional | Notes                                                     |
-| ---------------- | ------------------- | -------- | --------------------------------------------------------- |
-| hookId           | `string`            |          | Logto의 식별자입니다.                                     |
-| event            | `string`            |          | 이 hook을 트리거한 이벤트입니다.                          |
-| createdAt        | `string`            |          | 페이로드 생성 시간 (ISO 형식)입니다.                      |
-| interactionEvent | `string`            |          | 이 hook을 트리거한 상호작용 이벤트입니다.                 |
-| sessionId        | `string`            | ✅       | 이 이벤트의 세션 ID (Interaction ID 아님), 해당되는 경우. |
-| userAgent        | `string`            | ✅       | 이 hook을 트리거한 요청의 user-agent입니다.               |
-| userIp           | `string`            | ✅       | 이 hook을 트리거한 요청의 IP 주소입니다.                  |
-| userId           | `string`            | ✅       | 이 이벤트와 관련된 사용자 ID, 해당되는 경우.              |
-| user             | `UserEntity`        | ✅       | 이 이벤트와 관련된 사용자 엔티티, 해당되는 경우.          |
-| applicationId    | `string`            | ✅       | 이 이벤트와 관련된 애플리케이션 ID, 해당되는 경우.        |
-| application      | `ApplicationEntity` | ✅       | 이 이벤트와 관련된 애플리케이션 정보, 해당되는 경우.      |
+전체 필드 참조는 [사용자](/user-management/user-data) 및 [애플리케이션](/integrate-logto/application-data-structure)을 참조하세요.
 
-자세한 필드 설명은 [사용자](/user-management/user-data) 및 [애플리케이션](/integrate-logto/application-data-structure) 참고 문서를 확인하세요.
+## 데이터 변이 이벤트 페이로드 \{#data-mutation-event-payloads}
 
-## 데이터 변이 hook 이벤트 요청 본문 \{#data-mutation-hook-events-request-body}
+**이벤트:** `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` 아래의 모든 이벤트 — 전체 카탈로그는 [Webhooks 이벤트 → 데이터 변이 훅 이벤트](/developers/webhooks/webhooks-events#data-mutation-hook-events)를 참조하세요.
 
-### 표준 요청 본문 필드 \{#standard-request-body-fields}
+본문에는 항상 다음이 포함됩니다:
 
-| Field     | Type     | Optional | Notes                                |
-| --------- | -------- | -------- | ------------------------------------ |
-| hookId    | `string` |          | Logto의 식별자입니다.                |
-| event     | `string` |          | 이 hook을 트리거한 이벤트입니다.     |
-| createdAt | `string` |          | 페이로드 생성 시간 (ISO 형식)입니다. |
-| userAgent | `string` | ✅       | 요청의 user-agent입니다.             |
-| ip        | `string` | ✅       | 요청의 IP 주소입니다.                |
+- [공통 필드](#common-fields).
+- `ip` 필드 — 트리거 요청의 IP 주소 (선택 사항, 알려진 경우에 존재).
+- 변경이 어떻게 트리거되었는지를 설명하는 **API 컨텍스트**. 컨텍스트는 트리거 소스에 따라 두 가지 변형 중 하나입니다:
+  - [Experience API 컨텍스트](#experience-api-context-fields) — 변경이 사용자 대면 흐름에서 발생한 경우.
+  - [Management API 컨텍스트](#management-api-context-fields) — 변경이 직접적인 Management API 호출에서 발생한 경우.
+- **이벤트별 페이로드** — `data`에 영향을 받은 엔티티와 (일부 이벤트의 경우) 추가 최상위 필드. [이벤트별 데이터 페이로드](#event-specific-data-payloads)를 참조하세요.
 
-### 상호작용 API 컨텍스트 본문 필드 \{#interaction-api-context-body-fields}
+### Experience API 컨텍스트 필드 \{#experience-api-context-fields}
 
-사용자 상호작용 API 호출로 트리거되는 데이터 변이 hook 이벤트입니다.
+변경이 Experience API의 사용자 대면 흐름에 의해 트리거된 경우에 존재합니다 — 예를 들어, 가입 중 `User.Created` 또는 프로필 업데이트 중 `User.Data.Updated`.
 
-사용 가능한 이벤트: `User.Created`, `User.Data.Updated`
+| Field            | Type                                         | Optional | Notes                                                                                             |
+| ---------------- | -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅       | 변경을 발생시킨 사용자 흐름 이벤트 유형입니다. 필드 이름은 역사적인 "상호작용" 명명을 유지합니다. |
+| sessionId        | `string`                                     | ✅       | 이 이벤트에 대한 세션 ID (상호작용 ID 아님), 해당되는 경우.                                       |
+| applicationId    | `string`                                     | ✅       | 애플리케이션 ID, 해당되는 경우.                                                                   |
+| application      | `ApplicationEntity`                          | ✅       | 애플리케이션 엔티티, 해당되는 경우.                                                               |
 
-| Field            | Type                | Optional | Notes                                                     |
-| ---------------- | ------------------- | -------- | --------------------------------------------------------- |
-| interactionEvent | `string`            | ✅       | 이 hook을 트리거한 상호작용 이벤트입니다.                 |
-| sessionId        | `string`            | ✅       | 이 이벤트의 세션 ID (Interaction ID 아님), 해당되는 경우. |
-| applicationId    | `string`            | ✅       | 이 이벤트와 관련된 애플리케이션 ID, 해당되는 경우.        |
-| application      | `ApplicationEntity` | ✅       | 이 이벤트와 관련된 애플리케이션 정보, 해당되는 경우.      |
+### Management API 컨텍스트 필드 \{#management-api-context-fields}
 
-### Management API 컨텍스트 본문 필드 \{#management-api-context-body-fields}
+변경이 Management API 호출에 의해 트리거된 경우에 존재합니다.
 
-Management API 호출로 트리거되는 데이터 변이 hook 이벤트입니다.
+| Field        | Type     | Optional | Notes                                                                                        |
+| ------------ | -------- | -------- | -------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅       | 이 훅을 트리거한 API 호출의 경로입니다.                                                      |
+| method       | `string` | ✅       | API 호출의 HTTP 메서드입니다.                                                                |
+| status       | `number` | ✅       | API 호출의 응답 상태 코드입니다.                                                             |
+| params       | `object` | ✅       | API 호출의 koa 경로 매개변수입니다.                                                          |
+| matchedRoute | `string` | ✅       | koa 매칭된 경로입니다. Logto는 이 필드를 사용하여 활성화된 webhook 이벤트 필터를 매칭합니다. |
 
-| Field        | Type     | Optional | Notes                                                                                                                |
-| ------------ | -------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| path         | `string` | ✅       | 이 hook을 트리거한 API 호출의 경로입니다.                                                                            |
-| method       | `string` | ✅       | 이 hook을 트리거한 API 호출의 메서드입니다.                                                                          |
-| status       | `number` | ✅       | 이 hook을 트리거한 API 호출의 응답 상태 코드입니다.                                                                  |
-| params       | `object` | ✅       | 이 hook을 트리거한 API 호출의 koa path params입니다.                                                                 |
-| matchedRoute | `string` | ✅       | 이 hook을 트리거한 API 호출의 koa 매칭된 라우트입니다. Logto는 이 필드를 사용하여 활성화된 hook 이벤트를 매칭합니다. |
+### 이벤트별 데이터 페이로드 \{#event-specific-data-payloads}
 
-### 데이터 페이로드 본문 필드 \{#data-payload-body-fields}
+모든 데이터 변이 이벤트는 영향을 받은 엔티티를 포함하는 최상위 `data` 필드를 포함하며, 변경이 단일 엔티티로 요약될 수 없는 경우 (삭제 및 멤버십 이벤트)에는 `null`입니다. 일부 이벤트는 `data` 외에도 이벤트별 최상위 필드를 포함합니다 — `Organization.Membership.Updated`가 그 중 하나이며, 아래에 문서화되어 있습니다.
 
-**사용자 이벤트**
+#### 사용자 이벤트 \{#user-events}
 
-| Event             | Field | Type       | Optional | Notes                                       |
-| ----------------- | ----- | ---------- | -------- | ------------------------------------------- |
-| User.Created      | data  | UserEntity |          | 이 이벤트로 생성된 사용자 엔티티입니다.     |
-| User.Data.Updated | data  | UserEntity |          | 이 이벤트로 업데이트된 사용자 엔티티입니다. |
-| User.Deleted      | data  | null       | /        |                                             |
+| Event             | Field | Type         | Optional | Notes                           |
+| ----------------- | ----- | ------------ | -------- | ------------------------------- |
+| User.Created      | data  | `UserEntity` |          | 생성된 사용자 엔티티입니다.     |
+| User.Data.Updated | data  | `UserEntity` |          | 업데이트된 사용자 엔티티입니다. |
+| User.Deleted      | data  | `null`       | /        |                                 |
 
-**역할 이벤트**
+#### 역할 이벤트 \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| Event              | Field  | Type    | Optional | Notes                                                                          |
-| ------------------ | ------ | ------- | -------- | ------------------------------------------------------------------------------ |
-| Role.Created       | data   | Role    |          | 이 이벤트로 생성된 역할 엔티티입니다.                                          |
-| Role.Data.Updated  | data   | Role    |          | 이 이벤트로 업데이트된 역할 엔티티입니다.                                      |
-| Role.Deleted       | data   | null    |          |                                                                                |
-| Role.Scope.Updated | data   | Scope[] |          | 역할에 할당된 업데이트된 스코프입니다.                                         |
-| Role.Scope.Updated | roleId | string  | ✅       | 스코프가 할당된 역할 ID입니다. (사전 할당된 스코프로 새 역할 생성 시에만 제공) |
+| Event               | Field  | Type      | Optional | Notes                                                                                                                  |
+| ------------------- | ------ | --------- | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Role.Created        | data   | `Role`    |          | 생성된 역할 엔티티입니다.                                                                                              |
+| Role.Data.Updated   | data   | `Role`    |          | 업데이트된 역할 엔티티입니다.                                                                                          |
+| Role.Deleted        | data   | `null`    | /        |                                                                                                                        |
+| Role.Scopes.Updated | data   | `Scope[]` |          | 역할에 할당된 업데이트된 스코프입니다.                                                                                 |
+| Role.Scopes.Updated | roleId | `string`  | ✅       | 스코프가 할당된 역할 ID입니다. (사전 할당된 스코프와 함께 역할을 생성하여 이벤트가 트리거된 경우에만 사용 가능합니다.) |
 
-**권한(스코프) 이벤트**
+#### 권한 (스코프) 이벤트 \{#permission-events}
 
-| Event              | Field | Type  | Optional | Notes                                       |
-| ------------------ | ----- | ----- | -------- | ------------------------------------------- |
-| Scope.Created      | data  | Scope |          | 이 이벤트로 생성된 스코프 엔티티입니다.     |
-| Scope.Data.Updated | data  | Scope |          | 이 이벤트로 업데이트된 스코프 엔티티입니다. |
-| Scope.Deleted      | data  | null  | /        |                                             |
+| Event              | Field | Type    | Optional | Notes                           |
+| ------------------ | ----- | ------- | -------- | ------------------------------- |
+| Scope.Created      | data  | `Scope` |          | 생성된 스코프 엔티티입니다.     |
+| Scope.Data.Updated | data  | `Scope` |          | 업데이트된 스코프 엔티티입니다. |
+| Scope.Deleted      | data  | `null`  | /        |                                 |
 
-**조직 이벤트**
+#### 조직 이벤트 \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,141 @@ type Organization = {
 };
 ```
 
-| Event                           | Field | Type         | Optional | Notes                                     |
-| ------------------------------- | ----- | ------------ | -------- | ----------------------------------------- |
-| Organization.Created            | data  | Organization |          | 이 이벤트로 생성된 조직 엔티티입니다.     |
-| Organization.Data.Updated       | data  | Organization |          | 이 이벤트로 업데이트된 조직 엔티티입니다. |
-| Organization.Deleted            | data  | null         | /        |                                           |
-| Organization.Membership.Updated | data  | null         | /        |                                           |
+| Event                           | Field | Type           | Optional | Notes                                                                                                                                                |
+| ------------------------------- | ----- | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data  | `Organization` |          | 생성된 조직 엔티티입니다.                                                                                                                            |
+| Organization.Data.Updated       | data  | `Organization` |          | 업데이트된 조직 엔티티입니다.                                                                                                                        |
+| Organization.Deleted            | data  | `null`         | /        |                                                                                                                                                      |
+| Organization.Membership.Updated | data  | `null`         | /        | 변경은 선택적 최상위 델타 배열로 설명됩니다. 아래의 [Organization.Membership.Updated 페이로드](#organizationmembershipupdated-payload)를 참조하세요. |
 
-**OrganizationRole 이벤트**
+##### Organization.Membership.Updated 페이로드 \{#organizationmembershipupdated-payload}
+
+[공통 필드](#common-fields)와 트리거 소스에 따라 적용되는 API 컨텍스트 필드(Management API 라우트의 경우 [Management API 컨텍스트](#management-api-context-fields), 적시 프로비저닝의 경우 [Experience API 컨텍스트](#experience-api-context-fields)) 외에도, `Organization.Membership.Updated` 이벤트는 `organizationId`와 페이로드의 최상위에 선택적 델타 배열을 포함합니다 (예: `event`, `createdAt` 등과 함께, 이 이벤트의 경우 항상 `null`인 `data` 내부가 아님).
+
+| Field                 | Type       | Optional | Notes                                                                                                                                   |
+| --------------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| organizationId        | `string`   |          | 멤버십이 변경된 조직입니다.                                                                                                             |
+| addedUserIds          | `string[]` | ✅       | 이 트리거에 의해 새로 추가된 사용자 ID입니다. 사용자가 추가되지 않았거나, 트리거가 사용자 멤버십에 영향을 미치지 않는 경우 생략됩니다.  |
+| removedUserIds        | `string[]` | ✅       | 이 트리거에 의해 제거된 사용자 ID입니다. 사용자가 제거되지 않은 경우 생략됩니다.                                                        |
+| addedApplicationIds   | `string[]` | ✅       | 새로 추가된 애플리케이션 ID입니다. 애플리케이션이 추가되지 않았거나, 트리거가 애플리케이션 멤버십에 영향을 미치지 않는 경우 생략됩니다. |
+| removedApplicationIds | `string[]` | ✅       | 제거된 애플리케이션 ID입니다. 애플리케이션이 제거되지 않은 경우 생략됩니다.                                                             |
+
+네 개의 델타 배열은 **선택적이고 추가적**입니다 — 이를 기대하지 않는 소비자에게 기존 페이로드 형태를 변경하지 않으며, 레거시 `data: null` 필드는 여전히 변경 없이 출력됩니다.
+
+###### 트리거 및 발행할 수 있는 델타 필드 \{#membership-triggers}
+
+| Trigger                                                 | Possible delta fields                          |
+| ------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                         | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                          | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`               | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                  | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                   | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId` | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`) | `addedUserIds`                                 |
+| 사용자를 새 조직에 추가할 때의 적시 프로비저닝          | `addedUserIds`                                 |
+
+참고: 적시 프로비저닝은 사용자가 이미 멤버인 조직에 대해 `Organization.Membership.Updated`를 발신하지 않습니다.
+
+###### 빈 델타는 생략됩니다 — 부재 ≠ 빈 변경 \{#empty-deltas-are-omitted}
+
+빈 델타 배열은 **페이로드에서 완전히 생략**됩니다. 예를 들어, 기존 세트로 멤버십 세트를 대체하는 `PUT /organizations/:id/users`는 실제 변경을 발생시키지 않으며, 페이로드는 모든 네 개의 델타 필드가 없는 `{ organizationId }`로 축소됩니다. 동일한 멤버를 다시 추가하거나, 이미 멤버인 사용자가 초대를 다시 수락하거나하는 경우에도 마찬가지입니다.
+
+**소비자는 누락된 필드를 "그 측면에서의 변경 없음"으로 처리해야 하며, "빈 변경"으로 처리해서는 안 됩니다.**
+
+###### 배열당 제한 (조용한 잘림) \{#membership-delta-cap}
+
+각 델타 배열은 **5000 항목**으로 제한됩니다. 단일 Management API 호출이 한 번의 작업에서 5000명 이상의 사용자 (또는 애플리케이션)를 추가하거나 제거할 때, 해당 델타 배열은 처음 5000개의 항목으로 조용히 잘립니다 — **제한이 발동되었다는 페이로드 내 마커는 없습니다.**
+
+애플리케이션이 한 번의 호출로 5000명 이상의 멤버에 영향을 미칠 수 있는 관리 대량 작업을 수행하는 경우, 정확히 5000개의 항목으로 구성된 배열을 권위 있는 멤버십을 Management API를 통해 조정하는 신호로 처리하세요:
+
+- `GET /organizations/:id/users` — 전체 사용자 멤버십.
+- `GET /organizations/:id/applications` — 전체 애플리케이션 멤버십.
+
+이는 GitHub의 `push` 이벤트와 동일한 패턴을 따르며, `commits`를 20개의 항목으로 제한하고 전체 목록에 대해 소비자를 비교 API로 안내합니다.
+
+###### 무의미한 이벤트 건너뛰기 \{#skipping-no-op-events}
+
+멤버십 경로에 대한 모든 `PUT`은 실제로 변경된 것이 있는지 여부에 관계없이 이벤트를 발생시킵니다 — 따라서 모든 상태 대체 호출에는 감사 목적으로 적어도 하나의 webhook 전달이 있습니다. 소비자 측에서 무의미한 전달을 건너뛰려면 델타 배열 존재 여부를 기준으로 필터링하세요:
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // 실제 멤버십 변경 — 이를 처리하세요
+}
+```
+
+`?.length`는 `undefined`와 `[]` 모두에 대해 거짓이므로, 필드가 없거나 (어떤 가상의 미래에) 빈 배열로 출력되는 경우에도 동일한 조건이 견고합니다.
+
+###### 예제 페이로드 \{#membership-example-payloads}
+
+**사용자 추가 (`POST /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**사용자 멤버십 세트 대체 (`PUT /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**사용자 제거 (`DELETE /organizations/:id/users/:userId`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**애플리케이션 추가 (`POST /organizations/:id/applications`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**기존 멤버를 다시 추가, 무의미한 `PUT`, 또는 이미 멤버인 초대의 재수락 (실제 변경 없음):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**5000 제한에 도달하는 대량 작업 (조용히 잘림):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … 정확히 5000개의 항목 총계 */"]
+}
+```
+
+정확히 5000개의 항목으로 구성된 배열을 보면 `GET /organizations/:id/users` (또는 `/applications`)를 통해 조정해야 합니다.
+
+#### 조직 역할 이벤트 \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +349,32 @@ type OrganizationScope = {
 };
 ```
 
-| Event                          | Field              | Type             | Optional | Notes                                                                          |
-| ------------------------------ | ------------------ | ---------------- | -------- | ------------------------------------------------------------------------------ |
-| OrganizationRole.Created       | data               | OrganizationRole |          | 이 이벤트로 생성된 조직 역할 엔티티입니다.                                     |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |          | 이 이벤트로 업데이트된 조직 역할 엔티티입니다.                                 |
-| OrganizationRole.Deleted       | data               | null             | /        |                                                                                |
-| OrganizationRole.Scope.Updated | data               | null             | /        |                                                                                |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅       | 스코프가 할당된 역할 ID입니다. (사전 할당된 스코프로 새 역할 생성 시에만 제공) |
+| Event                           | Field              | Type               | Optional | Notes                                                                                                                  |
+| ------------------------------- | ------------------ | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |          | 생성된 조직 역할 엔티티입니다.                                                                                         |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |          | 업데이트된 조직 역할 엔티티입니다.                                                                                     |
+| OrganizationRole.Deleted        | data               | `null`             | /        |                                                                                                                        |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /        |                                                                                                                        |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅       | 스코프가 할당된 역할 ID입니다. (사전 할당된 스코프와 함께 역할을 생성하여 이벤트가 트리거된 경우에만 사용 가능합니다.) |
 
-**조직 권한(OrganizationScope) 이벤트**
+#### 조직 권한 (스코프) 이벤트 \{#organization-permission-events}
 
-| Event                          | Field | Type              | Optional | Notes                                |
-| ------------------------------ | ----- | ----------------- | -------- | ------------------------------------ |
-| OrganizationScope.Created      | data  | OrganizationScope |          | 생성된 조직 스코프 엔티티입니다.     |
-| OrganizationScope.Data.Updated | data  | OrganizationScope |          | 업데이트된 조직 스코프 엔티티입니다. |
-| OrganizationScope.Deleted      | data  | null              | /        |                                      |
+| Event                          | Field | Type                | Optional | Notes                                |
+| ------------------------------ | ----- | ------------------- | -------- | ------------------------------------ |
+| OrganizationScope.Created      | data  | `OrganizationScope` |          | 생성된 조직 스코프 엔티티입니다.     |
+| OrganizationScope.Data.Updated | data  | `OrganizationScope` |          | 업데이트된 조직 스코프 엔티티입니다. |
+| OrganizationScope.Deleted      | data  | `null`              | /        |                                      |
 
-## 예외 hook 이벤트 요청 본문 \{#exception-hook-events-request-body}
+## 예외 이벤트 페이로드 \{#exception-event-payloads}
 
-사용 가능한 이벤트: `Identifier.Lockout`
+**이벤트:** `Identifier.Lockout`.
 
-요청 본문은 표준 요청 본문 필드와 아래의 추가 필드를 포함하는 JSON 객체입니다:
+보안 사고 시 발생합니다 — 예를 들어, 연속된 인증 실패 시도 후 계정이 잠긴 경우. 이러한 이벤트는 항상 사용자 대면 흐름에서 발생하므로, 본문에는 다음이 포함됩니다:
+
+- [공통 필드](#common-fields).
+- `ip` 필드 (데이터 변이 이벤트와 동일한 형태).
+- [Experience API 컨텍스트 필드](#experience-api-context-fields).
+- 아래의 예외별 필드.
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +384,7 @@ enum SignInIdentifier {
 }
 ```
 
-| Field            | Type                | Optional | Notes                                                     |
-| ---------------- | ------------------- | -------- | --------------------------------------------------------- |
-| hookId           | `string`            |          | Logto의 식별자입니다.                                     |
-| event            | `string`            |          | 이 hook을 트리거한 이벤트입니다.                          |
-| createdAt        | `string`            |          | 페이로드 생성 시간 (ISO 형식)입니다.                      |
-| userAgent        | `string`            | ✅       | 요청의 user-agent입니다.                                  |
-| ip               | `string`            | ✅       | 요청의 IP 주소입니다.                                     |
-| interactionEvent | `string`            | ✅       | 이 hook을 트리거한 상호작용 이벤트입니다.                 |
-| sessionId        | `string`            | ✅       | 이 이벤트의 세션 ID (Interaction ID 아님), 해당되는 경우. |
-| applicationId    | `string`            | ✅       | 이 이벤트와 관련된 애플리케이션 ID, 해당되는 경우.        |
-| application      | `ApplicationEntity` | ✅       | 이 이벤트와 관련된 애플리케이션 정보, 해당되는 경우.      |
-| type             | `SignInIdentifier`  |          | 사용자의 식별자 유형 (예: email, phone, username).        |
-| value            | `string`            |          | 잠금이 발생한 사용자의 식별자 값입니다.                   |
+| Field | Type               | Optional | Notes                                                        |
+| ----- | ------------------ | -------- | ------------------------------------------------------------ |
+| type  | `SignInIdentifier` |          | 사용자의 식별자 유형, 예: 이메일, 전화번호 또는 사용자 이름. |
+| value | `string`           |          | 잠금이 발생한 사용자의 식별자 값입니다.                      |

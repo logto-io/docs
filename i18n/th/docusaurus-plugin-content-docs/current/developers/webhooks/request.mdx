@@ -7,23 +7,60 @@ sidebar_position: 4
 
 # คำขอ Webhooks
 
-เมื่อมีการปล่อยเหตุการณ์ hook ที่ถูกต้อง Logto จะค้นหา webhooks ที่เกี่ยวข้องและส่งคำขอ POST ต่อ hook config แต่ละรายการ
+เมื่อเหตุการณ์ webhook ถูกเรียกใช้ Logto จะส่งคำขอ `POST` ไปยังทุก endpoint ที่สมัครรับข้อมูลไว้ แคตตาล็อกเหตุการณ์ทั้งหมดอยู่ใน [Webhooks events](/developers/webhooks/webhooks-events); หน้านี้เอกสาร **รูปแบบของคำขอ** ที่ Logto ส่ง
 
 ## ส่วนหัวของคำขอ \{#request-headers}
 
-| Key                     | ปรับแต่งได้ | หมายเหตุ                                                                                                   |
-| ----------------------- | ----------- | ---------------------------------------------------------------------------------------------------------- |
-| user-agent              | ✅          | ค่าเริ่มต้นคือ `Logto (https://logto.io/)`                                                                 |
-| content-type            | ✅          | ค่าเริ่มต้นคือ `application/json`                                                                          |
-| logto-signature-sha-256 |             | ลายเซ็นของเนื้อหา request ดูที่ [การรักษาความปลอดภัย webhook ของคุณ](/developers/webhooks/secure-webhooks) |
+| Key                     | ปรับแต่งได้ | หมายเหตุ                                                                                 |
+| ----------------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| user-agent              | ✅          | `Logto (https://logto.io/)` โดยค่าเริ่มต้น.                                              |
+| content-type            | ✅          | `application/json` โดยค่าเริ่มต้น.                                                       |
+| logto-signature-sha-256 |             | ลายเซ็นของเนื้อหาคำขอ ดู [securing your webhooks](/developers/webhooks/secure-webhooks). |
 
-คุณสามารถเขียนทับ header ที่ปรับแต่งได้โดย [ปรับแต่ง request](/developers/webhooks/configure-webhooks/#secure-webhook) header ด้วย key เดียวกัน
+ส่วนหัวที่สามารถปรับแต่งได้สามารถถูกแทนที่ผ่านการตั้งค่า [secure webhook](/developers/webhooks/configure-webhooks/#secure-webhook).
 
-## เนื้อหาคำขอของเหตุการณ์ interaction hook \{#interaction-hook-events-request-body}
+## ภาพรวมของเนื้อหาคำขอ \{#request-body-overview}
 
-เหตุการณ์ที่ใช้ได้: `PostRegister`, `PostSignIn`, `PostResetPassword`
+เนื้อหาเป็นวัตถุ JSON รูปแบบที่แน่นอนขึ้นอยู่กับว่ามันเป็นของครอบครัวเหตุการณ์ใด:
 
-เนื้อหาคำขอเป็นอ็อบเจกต์ JSON ที่มีข้อมูล 3 ประเภทดังนี้:
+| Family            | Events                                                                                       | When it fires                                                                                               |
+| ----------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| **User flow**     | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | เมื่อผู้ใช้ทำกระบวนการลงทะเบียน ลงชื่อเข้าใช้ หรือรีเซ็ตรหัสผ่านที่จัดการโดย Experience API เสร็จสิ้น.      |
+| **Data mutation** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | เมื่อโมเดลข้อมูลพื้นฐานถูกเปลี่ยนแปลง — โดยการเรียก Management API หรือโดยกระบวนการผู้ใช้บน Experience API. |
+| **Exception**     | `Identifier.Lockout`                                                                         | เหตุการณ์ด้านความปลอดภัย — เช่น บัญชีถูกล็อกหลังจากพยายามยืนยันตัวตนล้มเหลวติดต่อกัน.                       |
+
+ทุกครอบครัวมีชุด [common fields](#common-fields) ร่วมกัน จากนั้นแต่ละครอบครัวจะเพิ่มฟิลด์บริบทคำขอของตัวเองพร้อมกับ payload เฉพาะเหตุการณ์
+
+### ฟิลด์ทั่วไป \{#common-fields}
+
+มีอยู่ในทุกการส่งไม่ว่าจะเป็นครอบครัวใด:
+
+| Field     | Type     | Optional | Notes                                |
+| --------- | -------- | -------- | ------------------------------------ |
+| hookId    | `string` |          | ตัวระบุการตั้งค่า webhook ใน Logto.  |
+| event     | `string` |          | เหตุการณ์ที่กระตุ้นการส่งนี้.        |
+| createdAt | `string` |          | เวลาสร้าง payload ในรูปแบบ ISO 8601. |
+| userAgent | `string` | ✅       | ตัวแทนผู้ใช้ของคำขอที่กระตุ้น.       |
+
+แต่ละครอบครัวยังรวมถึงที่อยู่ IP ของคำขอที่กระตุ้น — ภายใต้ชื่อฟิลด์ `userIp` สำหรับเหตุการณ์ user-flow และ `ip` สำหรับเหตุการณ์ data-mutation และ exception ความหมายเหมือนกัน; ชื่อที่แตกต่างกันทางประวัติศาสตร์ถูกเก็บรักษาไว้เพื่อความเข้ากันได้ย้อนหลัง
+
+## Payload ของเหตุการณ์ User flow \{#user-flow-event-payloads}
+
+**Events:** `PostRegister`, `PostSignIn`, `PostResetPassword`.
+
+ถูกเรียกใช้เมื่อผู้ใช้ทำกระบวนการลงทะเบียน ลงชื่อเข้าใช้ หรือรีเซ็ตรหัสผ่านที่จัดการโดย Experience API เสร็จสิ้น นอกจาก [common fields](#common-fields) แล้ว เนื้อหายังมี:
+
+| Field            | Type                                         | Optional | Notes                                                                                                                                                  |
+| ---------------- | -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |          | ประเภทเหตุการณ์ user-flow. แผนที่ไปยัง `PostSignIn` / `PostRegister` / `PostResetPassword` ตามลำดับ ชื่อฟิลด์ยังคงชื่อ "interaction" ทางประวัติศาสตร์. |
+| sessionId        | `string`                                     | ✅       | Session ID (ไม่ใช่ Interaction ID) สำหรับเหตุการณ์นี้ ถ้ามี.                                                                                           |
+| userIp           | `string`                                     | ✅       | ที่อยู่ IP ของคำขอที่กระตุ้น.                                                                                                                          |
+| userId           | `string`                                     | ✅       | User ID ที่เกี่ยวข้องกับเหตุการณ์นี้ ถ้ามี.                                                                                                            |
+| user             | `UserEntity`                                 | ✅       | เอนทิตีผู้ใช้ที่เกี่ยวข้องกับเหตุการณ์นี้ ถ้ามี.                                                                                                       |
+| applicationId    | `string`                                     | ✅       | Application ID ที่เกี่ยวข้องกับเหตุการณ์นี้ ถ้ามี.                                                                                                     |
+| application      | `ApplicationEntity`                          | ✅       | เอนทิตีแอปพลิเคชันที่เกี่ยวข้องกับเหตุการณ์นี้ ถ้ามี.                                                                                                  |
+
+#### รูปแบบเอนทิตี \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| Field            | Type                | Optional | หมายเหตุ                                                      |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------- |
-| hookId           | `string`            |          | ตัวระบุใน Logto                                               |
-| event            | `string`            |          | เหตุการณ์ที่เรียกใช้ hook นี้                                 |
-| createdAt        | `string`            |          | เวลาสร้าง payload ในรูปแบบ ISO                                |
-| interactionEvent | `string`            |          | เหตุการณ์ interaction ที่เรียกใช้ hook นี้                    |
-| sessionId        | `string`            | ✅       | Session ID (ไม่ใช่ Interaction ID) สำหรับเหตุการณ์นี้ (ถ้ามี) |
-| userAgent        | `string`            | ✅       | user-agent ของคำขอที่เรียกใช้ hook นี้                        |
-| userIp           | `string`            | ✅       | ที่อยู่ IP ของคำขอที่เรียกใช้ hook นี้                        |
-| userId           | `string`            | ✅       | User ID ที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)                  |
-| user             | `UserEntity`        | ✅       | user entity ที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)              |
-| applicationId    | `string`            | ✅       | Application ID ที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)           |
-| application      | `ApplicationEntity` | ✅       | ข้อมูลแอปพลิเคชันที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)         |
+ดู [Users](/user-management/user-data) และ [Applications](/integrate-logto/application-data-structure) สำหรับการอ้างอิงฟิลด์ทั้งหมด
 
-ดูข้อมูลอ้างอิง [ผู้ใช้](/user-management/user-data) และ [แอปพลิเคชัน](/integrate-logto/application-data-structure) สำหรับคำอธิบาย field โดยละเอียด
+## Payload ของเหตุการณ์ Data mutation \{#data-mutation-event-payloads}
 
-## เนื้อหาคำขอของเหตุการณ์ data mutation hook \{#data-mutation-hook-events-request-body}
+**Events:** ทุกเหตุการณ์ภายใต้ `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` — ดู [Webhooks events → Data mutation hook events](/developers/webhooks/webhooks-events#data-mutation-hook-events) สำหรับแคตตาล็อกทั้งหมด
 
-### ฟิลด์มาตรฐานของเนื้อหาคำขอ \{#standard-request-body-fields}
+เนื้อหามักจะมี:
 
-| Field     | Type     | Optional | หมายเหตุ                       |
-| --------- | -------- | -------- | ------------------------------ |
-| hookId    | `string` |          | ตัวระบุใน Logto                |
-| event     | `string` |          | เหตุการณ์ที่เรียกใช้ hook นี้  |
-| createdAt | `string` |          | เวลาสร้าง payload ในรูปแบบ ISO |
-| userAgent | `string` | ✅       | user-agent ของคำขอ             |
-| ip        | `string` | ✅       | ที่อยู่ IP ของคำขอ             |
+- [common fields](#common-fields).
+- ฟิลด์ `ip` — ที่อยู่ IP ของคำขอที่กระตุ้น (ไม่บังคับ, มีเมื่อทราบ).
+- **บริบท API** ที่อธิบายว่าการเปลี่ยนแปลงถูกกระตุ้นอย่างไร บริบทเป็นหนึ่งในสองรูปแบบขึ้นอยู่กับแหล่งที่มาของการกระตุ้น:
+  - [บริบท Experience API](#experience-api-context-fields) — เมื่อการเปลี่ยนแปลงมาจากกระบวนการที่ผู้ใช้เผชิญหน้า.
+  - [บริบท Management API](#management-api-context-fields) — เมื่อการเปลี่ยนแปลงมาจากการเรียก Management API โดยตรง.
+- **payload เฉพาะเหตุการณ์** — เอนทิตีที่ได้รับผลกระทบใน `data` และ (สำหรับบางเหตุการณ์) ฟิลด์ระดับบนเพิ่มเติม ดู [payload ข้อมูลเฉพาะเหตุการณ์](#event-specific-data-payloads).
 
-### ฟิลด์ context ของ Interaction API \{#interaction-api-context-body-fields}
+### ฟิลด์บริบท Experience API \{#experience-api-context-fields}
 
-เหตุการณ์ data mutation hook ที่ถูกเรียกโดยการเรียก API interaction ของผู้ใช้
+มีเมื่อการเปลี่ยนแปลงถูกกระตุ้นโดยกระบวนการที่ผู้ใช้เผชิญหน้าบน Experience API — ตัวอย่างเช่น, `User.Created` ระหว่างการลงทะเบียนหรือ `User.Data.Updated` ระหว่างการอัปเดตโปรไฟล์
 
-เหตุการณ์ที่ใช้ได้: `User.Created`, `User.Data.Updated`
+| Field            | Type                                         | Optional | Notes                                                                                                   |
+| ---------------- | -------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅       | ประเภทเหตุการณ์ user-flow ที่ทำให้เกิดการเปลี่ยนแปลง ชื่อฟิลด์ยังคงชื่อ "interaction" ทางประวัติศาสตร์. |
+| sessionId        | `string`                                     | ✅       | Session ID (ไม่ใช่ Interaction ID) สำหรับเหตุการณ์นี้ ถ้ามี.                                            |
+| applicationId    | `string`                                     | ✅       | Application ID, ถ้ามี.                                                                                  |
+| application      | `ApplicationEntity`                          | ✅       | เอนทิตีแอปพลิเคชัน, ถ้ามี.                                                                              |
 
-| Field            | Type                | Optional | หมายเหตุ                                                      |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------- |
-| interactionEvent | `string`            | ✅       | เหตุการณ์ interaction ที่เรียกใช้ hook นี้                    |
-| sessionId        | `string`            | ✅       | Session ID (ไม่ใช่ Interaction ID) สำหรับเหตุการณ์นี้ (ถ้ามี) |
-| applicationId    | `string`            | ✅       | Application ID ที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)           |
-| application      | `ApplicationEntity` | ✅       | ข้อมูลแอปพลิเคชันที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)         |
+### ฟิลด์บริบท Management API \{#management-api-context-fields}
 
-### ฟิลด์ context ของ Management API \{#management-api-context-body-fields}
+มีเมื่อการเปลี่ยนแปลงถูกกระตุ้นโดยการเรียก Management API
 
-เหตุการณ์ data mutation hook ที่ถูกเรียกโดยการเรียก Management API
+| Field        | Type     | Optional | Notes                                                                                       |
+| ------------ | -------- | -------- | ------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅       | เส้นทางของการเรียก API ที่กระตุ้น webhook นี้.                                              |
+| method       | `string` | ✅       | วิธี HTTP ของการเรียก API.                                                                  |
+| status       | `number` | ✅       | รหัสสถานะการตอบสนองของการเรียก API.                                                         |
+| params       | `object` | ✅       | พารามิเตอร์เส้นทาง koa ของการเรียก API.                                                     |
+| matchedRoute | `string` | ✅       | เส้นทางที่ตรงกันของ koa Logto ใช้ฟิลด์นี้เพื่อจับคู่ตัวกรองเหตุการณ์ webhook ที่เปิดใช้งาน. |
 
-| Field        | Type     | Optional | หมายเหตุ                                                                                                        |
-| ------------ | -------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| path         | `string` | ✅       | path ของ API call ที่เรียกใช้ hook นี้                                                                          |
-| method       | `string` | ✅       | method ของ API call ที่เรียกใช้ hook นี้                                                                        |
-| status       | `number` | ✅       | รหัสสถานะตอบกลับของ API call ที่เรียกใช้ hook นี้                                                               |
-| params       | `object` | ✅       | koa path params ของ API call ที่เรียกใช้ hook นี้                                                               |
-| matchedRoute | `string` | ✅       | koa matched route ของ API call ที่เรียกใช้ hook นี้ Logto ใช้ field นี้เพื่อจับคู่กับ hook events ที่เปิดใช้งาน |
+### Payload ข้อมูลเฉพาะเหตุการณ์ \{#event-specific-data-payloads}
 
-### ฟิลด์เนื้อหาข้อมูล (Data payload body fields) \{#data-payload-body-fields}
+ทุกเหตุการณ์ data-mutation รวมถึงฟิลด์ `data` ระดับบนที่มีเอนทิตีที่ได้รับผลกระทบ หรือ `null` เมื่อการเปลี่ยนแปลงไม่สามารถสรุปเป็นเอนทิตีเดียวได้ (เหตุการณ์ลบและสมาชิก) บางเหตุการณ์ยังรวมถึงฟิลด์ระดับบนเฉพาะเหตุการณ์นอกเหนือจาก `data` — `Organization.Membership.Updated` เป็นกรณีหนึ่งที่มีการบันทึกไว้ด้านล่าง
 
-**เหตุการณ์ผู้ใช้**
+#### เหตุการณ์ผู้ใช้ \{#user-events}
 
-| Event             | Field | Type       | Optional | หมายเหตุ                                   |
-| ----------------- | ----- | ---------- | -------- | ------------------------------------------ |
-| User.Created      | data  | UserEntity |          | user entity ที่ถูกสร้างสำหรับเหตุการณ์นี้  |
-| User.Data.Updated | data  | UserEntity |          | user entity ที่ถูกอัปเดตสำหรับเหตุการณ์นี้ |
-| User.Deleted      | data  | null       | /        |                                            |
+| Event             | Field | Type         | Optional | Notes                      |
+| ----------------- | ----- | ------------ | -------- | -------------------------- |
+| User.Created      | data  | `UserEntity` |          | เอนทิตีผู้ใช้ที่สร้างขึ้น. |
+| User.Data.Updated | data  | `UserEntity` |          | เอนทิตีผู้ใช้ที่อัปเดต.    |
+| User.Deleted      | data  | `null`       | /        |                            |
 
-**เหตุการณ์บทบาท (Role events)**
+#### เหตุการณ์บทบาท \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| Event              | Field  | Type    | Optional | หมายเหตุ                                                                                                      |
-| ------------------ | ------ | ------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| Role.Created       | data   | Role    |          | role entity ที่ถูกสร้างสำหรับเหตุการณ์นี้                                                                     |
-| Role.Data.Updated  | data   | Role    |          | role entity ที่ถูกอัปเดตสำหรับเหตุการณ์นี้                                                                    |
-| Role.Deleted       | data   | null    |          |                                                                                                               |
-| Role.Scope.Updated | data   | Scope[] |          | scopes ที่ถูกอัปเดตและกำหนดให้กับ role                                                                        |
-| Role.Scope.Updated | roleId | string  | ✅       | role ID ที่ scopes ถูกกำหนดให้ (มีเฉพาะเมื่อเหตุการณ์ถูกเรียกโดยการสร้าง role ใหม่พร้อมกำหนด scopes ล่วงหน้า) |
+| Event               | Field  | Type      | Optional | Notes                                                                                                      |
+| ------------------- | ------ | --------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| Role.Created        | data   | `Role`    |          | เอนทิตีบทบาทที่สร้างขึ้น.                                                                                  |
+| Role.Data.Updated   | data   | `Role`    |          | เอนทิตีบทบาทที่อัปเดต.                                                                                     |
+| Role.Deleted        | data   | `null`    | /        |                                                                                                            |
+| Role.Scopes.Updated | data   | `Scope[]` |          | ขอบเขตที่อัปเดตที่กำหนดให้กับบทบาท.                                                                        |
+| Role.Scopes.Updated | roleId | `string`  | ✅       | ID บทบาทที่ขอบเขตถูกกำหนดให้ (มีเฉพาะเมื่อเหตุการณ์ถูกกระตุ้นโดยการสร้างบทบาทที่มีขอบเขตที่กำหนดล่วงหน้า). |
 
-**เหตุการณ์สิทธิ์ (Permission / Scope events)**
+#### เหตุการณ์สิทธิ์ (Scope) \{#permission-events}
 
-| Event              | Field | Type  | Optional | หมายเหตุ                                    |
-| ------------------ | ----- | ----- | -------- | ------------------------------------------- |
-| Scope.Created      | data  | Scope |          | scope entity ที่ถูกสร้างสำหรับเหตุการณ์นี้  |
-| Scope.Data.Updated | data  | Scope |          | scope entity ที่ถูกอัปเดตสำหรับเหตุการณ์นี้ |
-| Scope.Deleted      | data  | null  | /        |                                             |
+| Event              | Field | Type    | Optional | Notes                      |
+| ------------------ | ----- | ------- | -------- | -------------------------- |
+| Scope.Created      | data  | `Scope` |          | เอนทิตีขอบเขตที่สร้างขึ้น. |
+| Scope.Data.Updated | data  | `Scope` |          | เอนทิตีขอบเขตที่อัปเดต.    |
+| Scope.Deleted      | data  | `null`  | /        |                            |
 
-**เหตุการณ์องค์กร (Organization events)**
+#### เหตุการณ์องค์กร \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,139 @@ type Organization = {
 };
 ```
 
-| Event                           | Field | Type         | Optional | หมายเหตุ                                           |
-| ------------------------------- | ----- | ------------ | -------- | -------------------------------------------------- |
-| Organization.Created            | data  | Organization |          | organization entity ที่ถูกสร้างสำหรับเหตุการณ์นี้  |
-| Organization.Data.Updated       | data  | Organization |          | organization entity ที่ถูกอัปเดตสำหรับเหตุการณ์นี้ |
-| Organization.Deleted            | data  | null         | /        |                                                    |
-| Organization.Membership.Updated | data  | null         | /        |                                                    |
+| Event                           | Field | Type           | Optional | Notes                                                                                                                                                          |
+| ------------------------------- | ----- | -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data  | `Organization` |          | เอนทิตีองค์กรที่สร้างขึ้น.                                                                                                                                     |
+| Organization.Data.Updated       | data  | `Organization` |          | เอนทิตีองค์กรที่อัปเดต.                                                                                                                                        |
+| Organization.Deleted            | data  | `null`         | /        |                                                                                                                                                                |
+| Organization.Membership.Updated | data  | `null`         | /        | การเปลี่ยนแปลงถูกอธิบายโดยอาร์เรย์ delta ระดับบนที่เป็นทางเลือก ดู [Organization.Membership.Updated payload](#organizationmembershipupdated-payload) ด้านล่าง. |
 
-**เหตุการณ์ OrganizationRole**
+##### Payload ของ Organization.Membership.Updated \{#organizationmembershipupdated-payload}
+
+นอกจาก[ฟิลด์ทั่วไป](#common-fields)และฟิลด์บริบท API ที่เหมาะสมตามแหล่งที่มาของทริกเกอร์ ([บริบท Management API](#management-api-context-fields) สำหรับเส้นทาง Management API, [บริบท Experience API](#experience-api-context-fields) สำหรับการจัดเตรียมแบบทันเวลา) แล้ว เหตุการณ์ `Organization.Membership.Updated` ยังมี `organizationId` พร้อมอาร์เรย์ delta ที่เป็นทางเลือกที่ระดับบนของ payload (ถัดจาก `event`, `createdAt`, ฯลฯ, **ไม่ใช่** ภายใน `data`, ซึ่งเป็น `null` เสมอสำหรับเหตุการณ์นี้)
+
+| Field                 | Type       | Optional | Notes                                                                                                                          |
+| --------------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| organizationId        | `string`   |          | องค์กรที่การเป็นสมาชิกเปลี่ยนแปลง.                                                                                             |
+| addedUserIds          | `string[]` | ✅       | User IDs ที่เพิ่มใหม่โดยการกระตุ้นนี้ ถูกละเว้นเมื่อไม่มีผู้ใช้ถูกเพิ่ม หรือเมื่อการกระตุ้นไม่ส่งผลต่อการเป็นสมาชิกของผู้ใช้.  |
+| removedUserIds        | `string[]` | ✅       | User IDs ที่ถูกลบโดยการกระตุ้นนี้ ถูกละเว้นเมื่อไม่มีผู้ใช้ถูกลบ.                                                              |
+| addedApplicationIds   | `string[]` | ✅       | Application IDs ที่เพิ่มใหม่ ถูกละเว้นเมื่อไม่มีแอปพลิเคชันถูกเพิ่ม หรือเมื่อการกระตุ้นไม่ส่งผลต่อการเป็นสมาชิกของแอปพลิเคชัน. |
+| removedApplicationIds | `string[]` | ✅       | Application IDs ที่ถูกลบ ถูกละเว้นเมื่อไม่มีแอปพลิเคชันถูกลบ.                                                                  |
+
+อาร์เรย์ delta ทั้งสี่เป็น **ทางเลือกและเพิ่มเข้าไป** — พวกมันไม่เปลี่ยนรูปแบบ payload ที่มีอยู่สำหรับผู้บริโภคที่ไม่คาดหวังพวกมัน และฟิลด์ `data: null` แบบดั้งเดิมยังคงถูกส่งออกโดยไม่เปลี่ยนแปลง
+
+###### การกระตุ้นและฟิลด์ delta ที่พวกมันอาจส่งออก \{#membership-triggers}
+
+| Trigger                                                               | Possible delta fields                          |
+| --------------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                                       | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                                        | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`                             | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                                | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                                 | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId`               | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`)               | `addedUserIds`                                 |
+| การจัดเตรียมแบบทันทีทันใด (Just-in-time) เมื่อเพิ่มผู้ใช้ในองค์กรใหม่ | `addedUserIds`                                 |
+
+###### Delta ที่ว่างเปล่าถูกละเว้น — การไม่มี ≠ การเปลี่ยนแปลงที่ว่างเปล่า \{#empty-deltas-are-omitted}
+
+อาร์เรย์ delta ที่ว่างเปล่า **ถูกละเว้นทั้งหมด** จาก payload ตัวอย่างเช่น, `PUT /organizations/:id/users` ที่แทนที่ชุดสมาชิกด้วยชุดที่มีอยู่แล้วไม่ก่อให้เกิดการเปลี่ยนแปลงจริง และ payload ลดลงเหลือเพียง `{ organizationId }` โดยไม่มีฟิลด์ delta ทั้งสี่ การเดียวกันนี้ใช้กับการเพิ่มสมาชิกที่มีอยู่แล้ว การยอมรับคำเชิญซ้ำโดยผู้ใช้ที่เป็นสมาชิกอยู่แล้ว
+
+**ผู้บริโภคต้องถือว่าฟิลด์ที่หายไปหมายถึง "ไม่มีการเปลี่ยนแปลงในด้านนั้น" ไม่ใช่ "การเปลี่ยนแปลงที่ว่างเปล่า"**
+
+###### ขีดจำกัดต่ออาร์เรย์ (การตัดทอนอย่างเงียบ ๆ) \{#membership-delta-cap}
+
+แต่ละอาร์เรย์ delta ถูกจำกัดที่ **5000 รายการ** เมื่อการเรียก Management API เดียวเพิ่มหรือลบผู้ใช้ (หรือแอปพลิเคชัน) มากกว่า 5000 รายการในการดำเนินการเดียว อาร์เรย์ delta ที่สอดคล้องกันจะถูกตัดทอนอย่างเงียบ ๆ ไปยัง 5000 รายการแรกของมัน — **ไม่มีตัวบ่งชี้ใน payload** ว่าขีดจำกัดถูกเรียกใช้
+
+หากแอปพลิเคชันของคุณดำเนินการบริหารจัดการแบบกลุ่มที่สามารถส่งผลกระทบต่อสมาชิกมากกว่า 5000 คนในการเรียกเดียว ให้ถือว่าอาร์เรย์ที่มี 5000 รายการพอดีเป็นสัญญาณให้กระทบยอดการเป็นสมาชิกที่มีอำนาจผ่าน Management API:
+
+- `GET /organizations/:id/users` — การเป็นสมาชิกผู้ใช้ทั้งหมด
+- `GET /organizations/:id/applications` — การเป็นสมาชิกแอปพลิเคชันทั้งหมด
+
+สิ่งนี้เป็นไปตามรูปแบบเดียวกับเหตุการณ์ `push` ของ GitHub ซึ่งจำกัด `commits` ที่ 20 รายการและชี้ผู้บริโภคไปที่ API เปรียบเทียบสำหรับรายการทั้งหมด
+
+###### ข้ามเหตุการณ์ที่ไม่มีการดำเนินการ \{#skipping-no-op-events}
+
+ทุก `PUT` ต่อเส้นทางการเป็นสมาชิกจะส่งเหตุการณ์ไม่ว่าจะมีการเปลี่ยนแปลงอะไรจริงหรือไม่ — เพื่อให้การเรียกแทนที่สถานะใด ๆ มีการส่ง webhook อย่างน้อยหนึ่งครั้งเพื่อวัตถุประสงค์ในการตรวจสอบ เพื่อข้ามการส่งที่ไม่มีการดำเนินการในฝั่งผู้บริโภค ให้กรองตามการมีอยู่ของอาร์เรย์ delta:
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // การเปลี่ยนแปลงการเป็นสมาชิกจริง — จัดการมัน
+}
+```
+
+`?.length` เป็นค่าเท็จสำหรับทั้ง `undefined` และ `[]`, ดังนั้นคำทำนายเดียวกันนี้มีความทนทานไม่ว่าจะฟิลด์หายไปหรือ (ในอนาคตที่สมมุติ) ถูกส่งออกเป็นอาร์เรย์ว่างเปล่า
+
+###### ตัวอย่าง payload \{#membership-example-payloads}
+
+**เพิ่มผู้ใช้ (`POST /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**แทนที่ชุดสมาชิกผู้ใช้ (`PUT /organizations/:id/users`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**ลบผู้ใช้ (`DELETE /organizations/:id/users/:userId`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**เพิ่มแอปพลิเคชัน (`POST /organizations/:id/applications`):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**เพิ่มสมาชิกที่มีอยู่แล้ว, no-op `PUT`, หรือการยอมรับคำเชิญซ้ำของสมาชิกที่มีอยู่แล้ว (ไม่มีการเปลี่ยนแปลงจริง):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**การดำเนินการแบบกลุ่มที่ถึงขีดจำกัด 5000 (ตัดทอนอย่างเงียบ ๆ):**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … exactly 5000 entries total */"]
+}
+```
+
+การเห็นอาร์เรย์ที่มี 5000 รายการพอดีควรกระตุ้นการกระทบยอด `GET /organizations/:id/users` (หรือ `/applications`).
+
+#### เหตุการณ์บทบาทองค์กร \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +347,32 @@ type OrganizationScope = {
 };
 ```
 
-| Event                          | Field              | Type             | Optional | หมายเหตุ                                                                                                      |
-| ------------------------------ | ------------------ | ---------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| OrganizationRole.Created       | data               | OrganizationRole |          | organization role entity ที่ถูกสร้างสำหรับเหตุการณ์นี้                                                        |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |          | organization role entity ที่ถูกอัปเดตสำหรับเหตุการณ์นี้                                                       |
-| OrganizationRole.Deleted       | data               | null             | /        |                                                                                                               |
-| OrganizationRole.Scope.Updated | data               | null             | /        |                                                                                                               |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅       | role ID ที่ scopes ถูกกำหนดให้ (มีเฉพาะเมื่อเหตุการณ์ถูกเรียกโดยการสร้าง role ใหม่พร้อมกำหนด scopes ล่วงหน้า) |
+| Event                           | Field              | Type               | Optional | Notes                                                                                                      |
+| ------------------------------- | ------------------ | ------------------ | -------- | ---------------------------------------------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |          | เอนทิตีบทบาทองค์กรที่สร้างขึ้น.                                                                            |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |          | เอนทิตีบทบาทองค์กรที่อัปเดต.                                                                               |
+| OrganizationRole.Deleted        | data               | `null`             | /        |                                                                                                            |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /        |                                                                                                            |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅       | ID บทบาทที่ขอบเขตถูกกำหนดให้ (มีเฉพาะเมื่อเหตุการณ์ถูกกระตุ้นโดยการสร้างบทบาทที่มีขอบเขตที่กำหนดล่วงหน้า). |
 
-**เหตุการณ์สิทธิ์ขององค์กร (Organization permission / OrganizationScope events)**
+#### เหตุการณ์สิทธิ์องค์กร (scope) \{#organization-permission-events}
 
-| Event                          | Field | Type              | Optional | หมายเหตุ                               |
-| ------------------------------ | ----- | ----------------- | -------- | -------------------------------------- |
-| OrganizationScope.Created      | data  | OrganizationScope |          | organization scope entity ที่ถูกสร้าง  |
-| OrganizationScope.Data.Updated | data  | OrganizationScope |          | organization scope entity ที่ถูกอัปเดต |
-| OrganizationScope.Deleted      | data  | null              | /        |                                        |
+| Event                          | Field | Type                | Optional | Notes                            |
+| ------------------------------ | ----- | ------------------- | -------- | -------------------------------- |
+| OrganizationScope.Created      | data  | `OrganizationScope` |          | เอนทิตีขอบเขตองค์กรที่สร้างขึ้น. |
+| OrganizationScope.Data.Updated | data  | `OrganizationScope` |          | เอนทิตีขอบเขตองค์กรที่อัปเดต.    |
+| OrganizationScope.Deleted      | data  | `null`              | /        |                                  |
 
-## เนื้อหาคำขอของเหตุการณ์ exception hook \{#exception-hook-events-request-body}
+## Payload ของเหตุการณ์ Exception \{#exception-event-payloads}
 
-เหตุการณ์ที่ใช้ได้: `Identifier.Lockout`
+**Events:** `Identifier.Lockout`.
 
-เนื้อหาคำขอเป็นอ็อบเจกต์ JSON ที่มีฟิลด์มาตรฐานของเนื้อหาคำขอและฟิลด์เพิ่มเติมดังนี้:
+ถูกเรียกใช้เมื่อเกิดเหตุการณ์ด้านความปลอดภัย — เช่น บัญชีถูกล็อกหลังจากพยายามยืนยันตัวตนล้มเหลวติดต่อกัน เหตุการณ์เหล่านี้มักมาจากกระบวนการที่ผู้ใช้เผชิญหน้า ดังนั้นเนื้อหาจึงมี:
+
+- [common fields](#common-fields).
+- ฟิลด์ `ip` (รูปแบบเดียวกับเหตุการณ์ data-mutation).
+- [ฟิลด์บริบท Experience API](#experience-api-context-fields).
+- ฟิลด์เฉพาะ exception ด้านล่าง
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +382,7 @@ enum SignInIdentifier {
 }
 ```
 
-| Field            | Type                | Optional | หมายเหตุ                                                      |
-| ---------------- | ------------------- | -------- | ------------------------------------------------------------- |
-| hookId           | `string`            |          | ตัวระบุใน Logto                                               |
-| event            | `string`            |          | เหตุการณ์ที่เรียกใช้ hook นี้                                 |
-| createdAt        | `string`            |          | เวลาสร้าง payload ในรูปแบบ ISO                                |
-| userAgent        | `string`            | ✅       | user-agent ของคำขอ                                            |
-| ip               | `string`            | ✅       | ที่อยู่ IP ของคำขอ                                            |
-| interactionEvent | `string`            | ✅       | เหตุการณ์ interaction ที่เรียกใช้ hook นี้                    |
-| sessionId        | `string`            | ✅       | Session ID (ไม่ใช่ Interaction ID) สำหรับเหตุการณ์นี้ (ถ้ามี) |
-| applicationId    | `string`            | ✅       | Application ID ที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)           |
-| application      | `ApplicationEntity` | ✅       | ข้อมูลแอปพลิเคชันที่เกี่ยวข้องกับเหตุการณ์นี้ (ถ้ามี)         |
-| type             | `SignInIdentifier`  |          | ประเภท identifier ของผู้ใช้ เช่น email, phone หรือ username   |
-| value            | `string`            |          | ค่า identifier ของผู้ใช้ที่ทำให้เกิด lockout                  |
+| Field | Type               | Optional | Notes                                                      |
+| ----- | ------------------ | -------- | ---------------------------------------------------------- |
+| type  | `SignInIdentifier` |          | ประเภทตัวระบุของผู้ใช้ เช่น อีเมล โทรศัพท์ หรือชื่อผู้ใช้. |
+| value | `string`           |          | ค่าตัวระบุของผู้ใช้ที่กระตุ้นการล็อกเอาต์.                 |

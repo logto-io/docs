@@ -5,25 +5,62 @@ sidebar_label: Requête Webhooks
 sidebar_position: 4
 ---
 
-# Requête Webhooks
+# Requête de Webhooks
 
-Lorsqu'un événement de hook valide est émis, Logto recherche les webhooks correspondants et envoie une requête POST par configuration de hook.
+Lorsqu'un événement de webhook se déclenche, Logto envoie une requête `POST` à chaque point de terminaison qui y est abonné. Le catalogue complet des événements se trouve dans [Événements de Webhooks](/developers/webhooks/webhooks-events) ; cette page documente la **forme de la requête** que Logto délivre.
 
 ## En-têtes de requête \{#request-headers}
 
-| Clé                     | Personnalisable | Remarques                                                                                                 |
-| ----------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
-| user-agent              | ✅              | `Logto (https://logto.io/)` par défaut.                                                                   |
-| content-type            | ✅              | `application/json` par défaut.                                                                            |
-| logto-signature-sha-256 |                 | la signature du corps de la requête, voir [sécuriser vos webhooks](/developers/webhooks/secure-webhooks). |
+| Clé                     | Personnalisable | Remarques                                                                                                    |
+| ----------------------- | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| user-agent              | ✅              | `Logto (https://logto.io/)` par défaut.                                                                      |
+| content-type            | ✅              | `application/json` par défaut.                                                                               |
+| logto-signature-sha-256 |                 | Signature du corps de la requête. Voir [sécurisation de vos webhooks](/developers/webhooks/secure-webhooks). |
 
-Vous pouvez écraser les en-têtes personnalisables en [personnalisant les en-têtes de requête](/developers/webhooks/configure-webhooks/#secure-webhook) avec la même clé.
+Les en-têtes personnalisables peuvent être remplacés via la configuration du [webhook sécurisé](/developers/webhooks/configure-webhooks/#secure-webhook).
 
-## Corps de la requête des événements d'interaction hook \{#interaction-hook-events-request-body}
+## Aperçu du corps de la requête \{#request-body-overview}
 
-Événements disponibles : `PostRegister`, `PostSignIn`, `PostResetPassword`
+Le corps est un objet JSON. Sa forme exacte dépend de la famille à laquelle appartient l'événement :
 
-Le corps de la requête est un objet JSON qui contient trois types de champs de données :
+| Famille                 | Événements                                                                                   | Quand il se déclenche                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Flux utilisateur**    | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | Un utilisateur termine un flux d'inscription, de connexion ou de réinitialisation de mot de passe géré par l'Experience API. |
+| **Mutation de données** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | Le modèle de données sous-jacent est modifié — par un appel Management API ou par un flux utilisateur sur l'Experience API.  |
+| **Exception**           | `Identifier.Lockout`                                                                         | Un incident de sécurité — par exemple, un compte verrouillé après des tentatives de vérification consécutives échouées.      |
+
+Chaque famille partage un petit ensemble de [champs communs](#common-fields). Chaque famille ajoute ensuite ses propres champs de contexte de requête ainsi qu'une charge utile spécifique à l'événement.
+
+### Champs communs \{#common-fields}
+
+Présents dans chaque livraison, quelle que soit la famille :
+
+| Champ     | Type     | Optionnel | Remarques                                                  |
+| --------- | -------- | --------- | ---------------------------------------------------------- |
+| hookId    | `string` |           | L'identifiant de configuration du webhook dans Logto.      |
+| event     | `string` |           | L'événement qui a déclenché cette livraison.               |
+| createdAt | `string` |           | L'heure de création de la charge utile au format ISO 8601. |
+| userAgent | `string` | ✅        | L'agent utilisateur de la requête déclenchante.            |
+
+Chaque famille inclut également l'adresse IP de la requête déclenchante — sous le nom de champ `userIp` pour les événements de flux utilisateur et `ip` pour les événements de mutation de données et d'exception. Les sémantiques sont identiques ; la différence de nom historique est préservée pour la compatibilité ascendante.
+
+## Charges utiles des événements de flux utilisateur \{#user-flow-event-payloads}
+
+**Événements :** `PostRegister`, `PostSignIn`, `PostResetPassword`.
+
+Déclenché lorsqu'un utilisateur termine un flux d'inscription, de connexion ou de réinitialisation de mot de passe géré par l'Experience API. En plus des [champs communs](#common-fields), le corps contient :
+
+| Champ            | Type                                         | Optionnel | Remarques                                                                                                                                                                           |
+| ---------------- | -------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |           | Le type d'événement de flux utilisateur. Correspond à `PostSignIn` / `PostRegister` / `PostResetPassword` respectivement. Le nom du champ conserve le nom historique "interaction". |
+| sessionId        | `string`                                     | ✅        | L'ID de session (pas l'ID d'interaction) pour cet événement, si applicable.                                                                                                         |
+| userIp           | `string`                                     | ✅        | L'adresse IP de la requête déclenchante.                                                                                                                                            |
+| userId           | `string`                                     | ✅        | L'ID utilisateur associé à cet événement, si applicable.                                                                                                                            |
+| user             | `UserEntity`                                 | ✅        | L'entité utilisateur associée à cet événement, si applicable.                                                                                                                       |
+| applicationId    | `string`                                     | ✅        | L'ID de l'application associée à cet événement, si applicable.                                                                                                                      |
+| application      | `ApplicationEntity`                          | ✅        | L'entité application associée à cet événement, si applicable.                                                                                                                       |
+
+#### Formes des entités \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -60,70 +97,57 @@ type ApplicationEntity = {
 };
 ```
 
-| Champ            | Type                | Optionnel | Remarques                                                                      |
-| ---------------- | ------------------- | --------- | ------------------------------------------------------------------------------ |
-| hookId           | `string`            |           | L'identifiant dans Logto.                                                      |
-| event            | `string`            |           | L'événement qui déclenche ce hook.                                             |
-| createdAt        | `string`            |           | La date de création du payload au format ISO.                                  |
-| interactionEvent | `string`            |           | L'événement d'interaction qui déclenche ce hook.                               |
-| sessionId        | `string`            | ✅        | L'ID de session (et non l'ID d'interaction) pour cet événement, si applicable. |
-| userAgent        | `string`            | ✅        | Le user-agent pour la requête qui déclenche ce hook.                           |
-| userIp           | `string`            | ✅        | L'adresse IP pour la requête qui déclenche ce hook.                            |
-| userId           | `string`            | ✅        | L'ID utilisateur associé à cet événement, si applicable.                       |
-| user             | `UserEntity`        | ✅        | L'entité utilisateur associée à cet événement, si applicable.                  |
-| applicationId    | `string`            | ✅        | L'ID d'application associé à cet événement, si applicable.                     |
-| application      | `ApplicationEntity` | ✅        | Les informations de l'application associée à cet événement, si applicable.     |
+Voir [Utilisateurs](/user-management/user-data) et [Applications](/integrate-logto/application-data-structure) pour la référence complète des champs.
 
-Voir la référence [Utilisateurs](/user-management/user-data) et [Applications](/integrate-logto/application-data-structure) pour des explications détaillées des champs.
+## Charges utiles des événements de mutation de données \{#data-mutation-event-payloads}
 
-## Corps de la requête des événements de mutation de données hook \{#data-mutation-hook-events-request-body}
+**Événements :** chaque événement sous `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` — voir [Événements de Webhooks → Événements de hook de mutation de données](/developers/webhooks/webhooks-events#data-mutation-hook-events) pour le catalogue complet.
 
-### Champs standards du corps de la requête \{#standard-request-body-fields}
+Le corps contient toujours :
 
-| Champ     | Type     | Optionnel | Remarques                                     |
-| --------- | -------- | --------- | --------------------------------------------- |
-| hookId    | `string` |           | L'identifiant dans Logto.                     |
-| event     | `string` |           | L'événement qui déclenche ce hook.            |
-| createdAt | `string` |           | La date de création du payload au format ISO. |
-| userAgent | `string` | ✅        | Le user-agent pour la requête.                |
-| ip        | `string` | ✅        | L'adresse IP pour la requête.                 |
+- Les [champs communs](#common-fields).
+- Un champ `ip` — l'adresse IP de la requête déclenchante (optionnel, présent lorsqu'elle est connue).
+- Un **contexte API** décrivant comment le changement a été déclenché. Le contexte est l'une des deux variantes selon la source du déclencheur :
+  - [Contexte de l'Experience API](#experience-api-context-fields) — lorsque le changement provient d'un flux orienté utilisateur.
+  - [Contexte de la Management API](#management-api-context-fields) — lorsque le changement provient d'un appel direct à la Management API.
+- Une **charge utile spécifique à l'événement** — l'entité affectée dans `data` et (pour certains événements) des champs supplémentaires au niveau supérieur. Voir [charges utiles de données spécifiques à l'événement](#event-specific-data-payloads).
 
-### Champs du corps de contexte Interaction API \{#interaction-api-context-body-fields}
+### Champs de contexte de l'Experience API \{#experience-api-context-fields}
 
-Événements de mutation de données hook déclenchés par des appels API d'interaction utilisateur.
+Présents lorsque le changement a été déclenché par un flux orienté utilisateur sur l'Experience API — par exemple, `User.Created` lors de l'inscription ou `User.Data.Updated` lors des mises à jour de profil.
 
-Événements disponibles : `User.Created`, `User.Data.Updated`
+| Champ            | Type                                         | Optionnel | Remarques                                                                                                                      |
+| ---------------- | -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅        | Le type d'événement de flux utilisateur qui a produit le changement. Le nom du champ conserve le nom historique "interaction". |
+| sessionId        | `string`                                     | ✅        | L'ID de session (pas l'ID d'interaction) pour cet événement, si applicable.                                                    |
+| applicationId    | `string`                                     | ✅        | L'ID de l'application, si applicable.                                                                                          |
+| application      | `ApplicationEntity`                          | ✅        | L'entité application, si applicable.                                                                                           |
 
-| Champ            | Type                | Optionnel | Remarques                                                                      |
-| ---------------- | ------------------- | --------- | ------------------------------------------------------------------------------ |
-| interactionEvent | `string`            | ✅        | L'événement d'interaction qui déclenche ce hook.                               |
-| sessionId        | `string`            | ✅        | L'ID de session (et non l'ID d'interaction) pour cet événement, si applicable. |
-| applicationId    | `string`            | ✅        | L'ID d'application associé à cet événement, si applicable.                     |
-| application      | `ApplicationEntity` | ✅        | Les informations de l'application associée à cet événement, si applicable.     |
+### Champs de contexte de la Management API \{#management-api-context-fields}
 
-### Champs du corps de contexte Management API \{#management-api-context-body-fields}
+Présents lorsque le changement a été déclenché par un appel à la Management API.
 
-Événements de mutation de données hook déclenchés par des appels Management API.
+| Champ        | Type     | Optionnel | Remarques                                                                                                          |
+| ------------ | -------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| path         | `string` | ✅        | Le chemin de l'appel API qui a déclenché ce hook.                                                                  |
+| method       | `string` | ✅        | La méthode HTTP de l'appel API.                                                                                    |
+| status       | `number` | ✅        | Le code de statut de la réponse de l'appel API.                                                                    |
+| params       | `object` | ✅        | Les paramètres de chemin koa de l'appel API.                                                                       |
+| matchedRoute | `string` | ✅        | La route correspondante koa. Logto utilise ce champ pour correspondre aux filtres d'événements de webhook activés. |
 
-| Champ        | Type     | Optionnel | Remarques                                                                                                                                     |
-| ------------ | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| path         | `string` | ✅        | Le chemin de l'appel API qui déclenche ce hook.                                                                                               |
-| method       | `string` | ✅        | La méthode de l'appel API qui déclenche ce hook.                                                                                              |
-| status       | `number` | ✅        | Le code de statut de la réponse de l'appel API qui déclenche ce hook.                                                                         |
-| params       | `object` | ✅        | Les paramètres de chemin koa de la requête de l'appel API qui déclenche ce hook.                                                              |
-| matchedRoute | `string` | ✅        | La route koa correspondante de l'appel API qui déclenche ce hook. Logto utilise ce champ pour faire correspondre les événements hook activés. |
+### Charges utiles de données spécifiques à l'événement \{#event-specific-data-payloads}
 
-### Champs du corps de la charge utile de données \{#data-payload-body-fields}
+Chaque événement de mutation de données inclut un champ `data` au niveau supérieur contenant l'entité affectée, ou `null` lorsque le changement ne peut pas être résumé en une seule entité (événements de suppression et d'appartenance). Certains événements incluent également des champs spécifiques à l'événement au niveau supérieur au-delà de `data` — `Organization.Membership.Updated` est un tel cas, documenté ci-dessous.
 
-**Événements utilisateur**
+#### Événements utilisateur \{#user-events}
 
-| Événement         | Champ | Type       | Optionnel | Remarques                                            |
-| ----------------- | ----- | ---------- | --------- | ---------------------------------------------------- |
-| User.Created      | data  | UserEntity |           | L'entité utilisateur créée pour cet événement.       |
-| User.Data.Updated | data  | UserEntity |           | L'entité utilisateur mise à jour pour cet événement. |
-| User.Deleted      | data  | null       | /         |                                                      |
+| Événement         | Champ | Type         | Optionnel | Remarques                         |
+| ----------------- | ----- | ------------ | --------- | --------------------------------- |
+| User.Created      | data  | `UserEntity` |           | L'entité utilisateur créée.       |
+| User.Data.Updated | data  | `UserEntity` |           | L'entité utilisateur mise à jour. |
+| User.Deleted      | data  | `null`       | /         |                                   |
 
-**Événements Rôle (Role)**
+#### Événements de rôle \{#role-events}
 
 ```tsx
 type Role = {
@@ -145,23 +169,23 @@ type Scope = {
 };
 ```
 
-| Événement          | Champ  | Type    | Optionnel | Remarques                                                                                                                                                                      |
-| ------------------ | ------ | ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Role.Created       | data   | Role    |           | L'entité rôle créée pour cet événement.                                                                                                                                        |
-| Role.Data.Updated  | data   | Role    |           | L'entité rôle mise à jour pour cet événement.                                                                                                                                  |
-| Role.Deleted       | data   | null    |           |                                                                                                                                                                                |
-| Role.Scope.Updated | data   | Scope[] |           | Les portées mises à jour attribuées au rôle.                                                                                                                                   |
-| Role.Scope.Updated | roleId | string  | ✅        | L'ID du rôle auquel les portées sont attribuées. (Disponible uniquement lorsque l'événement a été déclenché par la création d'un nouveau rôle avec des portées pré-attribuées) |
+| Événement           | Champ  | Type      | Optionnel | Remarques                                                                                                                                                             |
+| ------------------- | ------ | --------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Role.Created        | data   | `Role`    |           | L'entité de rôle créée.                                                                                                                                               |
+| Role.Data.Updated   | data   | `Role`    |           | L'entité de rôle mise à jour.                                                                                                                                         |
+| Role.Deleted        | data   | `null`    | /         |                                                                                                                                                                       |
+| Role.Scopes.Updated | data   | `Scope[]` |           | Les portées mises à jour assignées au rôle.                                                                                                                           |
+| Role.Scopes.Updated | roleId | `string`  | ✅        | L'ID du rôle auquel les portées sont assignées. (Disponible uniquement lorsque l'événement a été déclenché par la création d'un rôle avec des portées pré-assignées.) |
 
-**Événements Permission (Scope)**
+#### Événements de permission (Portée) \{#permission-events}
 
-| Événement          | Champ | Type  | Optionnel | Remarques                                       |
-| ------------------ | ----- | ----- | --------- | ----------------------------------------------- |
-| Scope.Created      | data  | Scope |           | L'entité portée créée pour cet événement.       |
-| Scope.Data.Updated | data  | Scope |           | L'entité portée mise à jour pour cet événement. |
-| Scope.Deleted      | data  | null  | /         |                                                 |
+| Événement          | Champ | Type    | Optionnel | Remarques                       |
+| ------------------ | ----- | ------- | --------- | ------------------------------- |
+| Scope.Created      | data  | `Scope` |           | L'entité de portée créée.       |
+| Scope.Data.Updated | data  | `Scope` |           | L'entité de portée mise à jour. |
+| Scope.Deleted      | data  | `null`  | /         |                                 |
 
-**Événements Organisation (Organization)**
+#### Événements d'organisation \{#organization-events}
 
 ```tsx
 type Organization = {
@@ -173,14 +197,139 @@ type Organization = {
 };
 ```
 
-| Événement                       | Champ | Type         | Optionnel | Remarques                                             |
-| ------------------------------- | ----- | ------------ | --------- | ----------------------------------------------------- |
-| Organization.Created            | data  | Organization |           | L'entité organisation créée pour cet événement.       |
-| Organization.Data.Updated       | data  | Organization |           | L'entité organisation mise à jour pour cet événement. |
-| Organization.Deleted            | data  | null         | /         |                                                       |
-| Organization.Membership.Updated | data  | null         | /         |                                                       |
+| Événement                       | Champ | Type           | Optionnel | Remarques                                                                                                                                                                               |
+| ------------------------------- | ----- | -------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data  | `Organization` |           | L'entité d'organisation créée.                                                                                                                                                          |
+| Organization.Data.Updated       | data  | `Organization` |           | L'entité d'organisation mise à jour.                                                                                                                                                    |
+| Organization.Deleted            | data  | `null`         | /         |                                                                                                                                                                                         |
+| Organization.Membership.Updated | data  | `null`         | /         | Le changement est décrit par des tableaux delta optionnels au niveau supérieur. Voir [Charge utile Organization.Membership.Updated](#organizationmembershipupdated-payload) ci-dessous. |
 
-**Événements OrganisationRôle (OrganizationRole)**
+##### Charge utile Organization.Membership.Updated \{#organizationmembershipupdated-payload}
+
+En plus des [champs communs](#common-fields) et des champs de contexte API correspondant à la source du déclencheur ([contexte Management API](#management-api-context-fields) pour les routes de la Management API, [contexte Experience API](#experience-api-context-fields) pour l'approvisionnement just-in-time), l'événement `Organization.Membership.Updated` transporte un `organizationId` ainsi que des tableaux delta optionnels au niveau supérieur de la charge utile (à côté de `event`, `createdAt`, etc. ; **pas** à l'intérieur de `data`, qui est toujours `null` pour cet événement).
+
+| Champ                 | Type       | Optionnel | Remarques                                                                                                                                                                                |
+| --------------------- | ---------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| organizationId        | `string`   |           | L'organisation dont l'appartenance a changé.                                                                                                                                             |
+| addedUserIds          | `string[]` | ✅        | Les IDs des utilisateurs nouvellement ajoutés par ce déclencheur. Omis lorsqu'aucun utilisateur n'a été ajouté, ou lorsque le déclencheur n'affecte pas l'appartenance des utilisateurs. |
+| removedUserIds        | `string[]` | ✅        | Les IDs des utilisateurs supprimés par ce déclencheur. Omis lorsqu'aucun utilisateur n'a été supprimé.                                                                                   |
+| addedApplicationIds   | `string[]` | ✅        | Les IDs des applications nouvellement ajoutées. Omis lorsqu'aucune application n'a été ajoutée, ou lorsque le déclencheur n'affecte pas l'appartenance des applications.                 |
+| removedApplicationIds | `string[]` | ✅        | Les IDs des applications supprimées. Omis lorsqu'aucune application n'a été supprimée.                                                                                                   |
+
+Les quatre tableaux delta sont **optionnels et additifs** — ils ne modifient pas la forme de la charge utile existante pour les consommateurs qui ne les attendent pas, et le champ `data: null` hérité est toujours émis inchangé.
+
+###### Déclencheurs et champs delta qu'ils peuvent émettre \{#membership-triggers}
+
+| Déclencheur                                                                                  | Champs delta possibles                         |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `POST /organizations/:id/users`                                                              | `addedUserIds`                                 |
+| `PUT /organizations/:id/users`                                                               | `addedUserIds`, `removedUserIds`               |
+| `DELETE /organizations/:id/users/:userId`                                                    | `removedUserIds`                               |
+| `POST /organizations/:id/applications`                                                       | `addedApplicationIds`                          |
+| `PUT /organizations/:id/applications`                                                        | `addedApplicationIds`, `removedApplicationIds` |
+| `DELETE /organizations/:id/applications/:applicationId`                                      | `removedApplicationIds`                        |
+| `PUT /organization-invitations/:id/status` (`Accepted`)                                      | `addedUserIds`                                 |
+| Approvisionnement juste-à-temps lors de l'ajout de l'utilisateur à une nouvelle organisation | `addedUserIds`                                 |
+
+###### Les deltas vides sont omis — absent ≠ changement vide \{#empty-deltas-are-omitted}
+
+Les tableaux delta vides sont **entièrement omis** de la charge utile. Par exemple, un `PUT /organizations/:id/users` qui remplace l'ensemble d'appartenance par l'ensemble existant ne produit aucun changement réel, et la charge utile se réduit à simplement `{ organizationId }` avec les quatre champs delta absents. Il en va de même pour une réintégration d'un membre existant, une réacceptation d'une invitation par un utilisateur qui est déjà membre qui est déjà membre.
+
+**Les consommateurs doivent traiter un champ manquant comme "aucun changement de ce côté", et non comme "un changement vide".**
+
+###### Limite par tableau (troncation silencieuse) \{#membership-delta-cap}
+
+Chaque tableau delta est limité à **5000 entrées**. Lorsqu'un seul appel Management API ajoute ou supprime plus de 5000 utilisateurs (ou applications) en une seule opération, le tableau delta correspondant est silencieusement tronqué à ses 5000 premières entrées — **il n'y a pas de marqueur dans la charge utile** indiquant qu'une limite a été atteinte.
+
+Si votre application effectue des opérations administratives en masse qui peuvent vraisemblablement affecter plus de 5000 membres en un seul appel, traitez un tableau de exactement 5000 entrées comme un signal pour réconcilier l'appartenance autoritaire via la Management API :
+
+- `GET /organizations/:id/users` — appartenance complète des utilisateurs.
+- `GET /organizations/:id/applications` — appartenance complète des applications.
+
+Cela suit le même modèle que l'événement `push` de GitHub, qui limite `commits` à 20 entrées et pointe les consommateurs vers l'API de comparaison pour la liste complète.
+
+###### Ignorer les événements sans effet \{#skipping-no-op-events}
+
+Chaque `PUT` contre les routes d'appartenance émet un événement, qu'il y ait eu un changement ou non — afin que tout appel de remplacement d'état ait au moins une livraison de webhook à des fins d'audit. Pour ignorer les livraisons sans effet du côté consommateur, filtrez sur la présence des tableaux delta :
+
+```ts
+if (
+  payload.addedUserIds?.length ||
+  payload.removedUserIds?.length ||
+  payload.addedApplicationIds?.length ||
+  payload.removedApplicationIds?.length
+) {
+  // changement réel d'appartenance — traitez-le
+}
+```
+
+`?.length` est faux pour `undefined` et `[]`, donc le même prédicat est robuste que le champ soit absent ou (dans un avenir hypothétique) émis comme un tableau vide.
+
+###### Exemples de charges utiles \{#membership-example-payloads}
+
+**Ajouter un utilisateur (`POST /organizations/:id/users`) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_001"]
+}
+```
+
+**Remplacer l'ensemble d'appartenance utilisateur (`PUT /organizations/:id/users`) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedUserIds": ["u_002"],
+  "removedUserIds": ["u_001"]
+}
+```
+
+**Supprimer un utilisateur (`DELETE /organizations/:id/users/:userId`) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_001"]
+}
+```
+
+**Ajouter une application (`POST /organizations/:id/applications`) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "addedApplicationIds": ["app_xyz"]
+}
+```
+
+**Réintégrer un membre existant, `PUT` sans effet, ou réacceptation d'une invitation déjà membre (aucun changement réel) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc"
+}
+```
+
+**Opération en masse qui atteint la limite de 5000 (troncation silencieuse) :**
+
+```json
+{
+  "event": "Organization.Membership.Updated",
+  "organizationId": "org_abc",
+  "removedUserIds": ["u_0001", "u_0002", "/* … exactement 5000 entrées au total */"]
+}
+```
+
+Voir un tableau de exactement 5000 entrées devrait inciter à un `GET /organizations/:id/users` de réconciliation (ou `/applications`).
+
+#### Événements de rôle d'organisation \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -198,27 +347,32 @@ type OrganizationScope = {
 };
 ```
 
-| Événement                      | Champ              | Type             | Optionnel | Remarques                                                                                                                                                                      |
-| ------------------------------ | ------------------ | ---------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| OrganizationRole.Created       | data               | OrganizationRole |           | L'entité rôle d'organisation créée pour cet événement.                                                                                                                         |
-| OrganizationRole.Data.Updated  | data               | OrganizationRole |           | L'entité rôle d'organisation mise à jour pour cet événement.                                                                                                                   |
-| OrganizationRole.Deleted       | data               | null             | /         |                                                                                                                                                                                |
-| OrganizationRole.Scope.Updated | data               | null             | /         |                                                                                                                                                                                |
-| OrganizationRole.Scope.Updated | organizationRoleId | string           | ✅        | L'ID du rôle auquel les portées sont attribuées. (Disponible uniquement lorsque l'événement a été déclenché par la création d'un nouveau rôle avec des portées pré-attribuées) |
+| Événement                       | Champ              | Type               | Optionnel | Remarques                                                                                                                                                             |
+| ------------------------------- | ------------------ | ------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OrganizationRole.Created        | data               | `OrganizationRole` |           | L'entité de rôle d'organisation créée.                                                                                                                                |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |           | L'entité de rôle d'organisation mise à jour.                                                                                                                          |
+| OrganizationRole.Deleted        | data               | `null`             | /         |                                                                                                                                                                       |
+| OrganizationRole.Scopes.Updated | data               | `null`             | /         |                                                                                                                                                                       |
+| OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅        | L'ID du rôle auquel les portées sont assignées. (Disponible uniquement lorsque l'événement a été déclenché par la création d'un rôle avec des portées pré-assignées.) |
 
-**Événements Permission d'organisation (OrganizationScope)**
+#### Événements de permission d'organisation (portée) \{#organization-permission-events}
 
-| Événement                      | Champ | Type              | Optionnel | Remarques                                   |
-| ------------------------------ | ----- | ----------------- | --------- | ------------------------------------------- |
-| OrganizationScope.Created      | data  | OrganizationScope |           | L'entité portée d'organisation créée.       |
-| OrganizationScope.Data.Updated | data  | OrganizationScope |           | L'entité portée d'organisation mise à jour. |
-| OrganizationScope.Deleted      | data  | null              | /         |                                             |
+| Événement                      | Champ | Type                | Optionnel | Remarques                                      |
+| ------------------------------ | ----- | ------------------- | --------- | ---------------------------------------------- |
+| OrganizationScope.Created      | data  | `OrganizationScope` |           | L'entité de portée d'organisation créée.       |
+| OrganizationScope.Data.Updated | data  | `OrganizationScope` |           | L'entité de portée d'organisation mise à jour. |
+| OrganizationScope.Deleted      | data  | `null`              | /         |                                                |
 
-## Corps de la requête des événements d'exception hook \{#exception-hook-events-request-body}
+## Charges utiles des événements d'exception \{#exception-event-payloads}
 
-Événements disponibles : `Identifier.Lockout`
+**Événements :** `Identifier.Lockout`.
 
-Le corps de la requête est un objet JSON qui contient les champs standards du corps de la requête et des champs additionnels comme ci-dessous :
+Déclenché lors d'incidents de sécurité — par exemple, un compte verrouillé après des tentatives de vérification consécutives échouées. Ces événements proviennent toujours d'un flux orienté utilisateur, donc le corps contient :
+
+- Les [champs communs](#common-fields).
+- Le champ `ip` (même forme que les événements de mutation de données).
+- Les [champs de contexte de l'Experience API](#experience-api-context-fields).
+- Les champs spécifiques à l'exception ci-dessous.
 
 ```tsx
 enum SignInIdentifier {
@@ -228,16 +382,7 @@ enum SignInIdentifier {
 }
 ```
 
-| Champ            | Type                | Optionnel | Remarques                                                                      |
-| ---------------- | ------------------- | --------- | ------------------------------------------------------------------------------ |
-| hookId           | `string`            |           | L'identifiant dans Logto.                                                      |
-| event            | `string`            |           | L'événement qui déclenche ce hook.                                             |
-| createdAt        | `string`            |           | La date de création du payload au format ISO.                                  |
-| userAgent        | `string`            | ✅        | Le user-agent pour la requête.                                                 |
-| ip               | `string`            | ✅        | L'adresse IP pour la requête.                                                  |
-| interactionEvent | `string`            | ✅        | L'événement d'interaction qui déclenche ce hook.                               |
-| sessionId        | `string`            | ✅        | L'ID de session (et non l'ID d'interaction) pour cet événement, si applicable. |
-| applicationId    | `string`            | ✅        | L'ID d'application associé à cet événement, si applicable.                     |
-| application      | `ApplicationEntity` | ✅        | Les informations de l'application associée à cet événement, si applicable.     |
-| type             | `SignInIdentifier`  |           | Le type d'identifiant utilisateur, ex : email, téléphone ou nom d'utilisateur. |
-| value            | `string`            |           | La valeur de l'identifiant utilisateur qui a déclenché le verrouillage.        |
+| Champ | Type               | Optionnel | Remarques                                                                                   |
+| ----- | ------------------ | --------- | ------------------------------------------------------------------------------------------- |
+| type  | `SignInIdentifier` |           | Le type d'identifiant de l'utilisateur, par exemple, email, téléphone ou nom d'utilisateur. |
+| value | `string`           |           | La valeur de l'identifiant de l'utilisateur qui a déclenché le verrouillage.                |
