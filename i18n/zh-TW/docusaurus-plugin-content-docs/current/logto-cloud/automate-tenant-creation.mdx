@@ -1,0 +1,242 @@
+---
+id: automate-tenant-creation
+title: 自動化租戶管理
+sidebar_position: 8
+---
+
+# 自動化租戶管理
+
+你可以透過程式化方式管理 Logto Cloud 租戶，包括建立租戶並持續進行設定，無需切換至 Console。
+
+當你需要從自己的導入流程、內部平台、AI agent 或整合自動化中佈建租戶時，這會非常有用。
+
+自動化流程如下：
+
+1. 使用 **Logto Cloud Personal Access Token (PAT)** 呼叫 Logto Cloud API。
+2. 透過 `POST /api/tenants` 建立租戶。
+3. 從建立回應中讀取預設機器對機器 (M2M) 應用程式憑證。
+4. 使用預設 M2M 應用程式為新租戶取得 Management API 存取權杖 (Access token)。
+5. 呼叫新租戶的 Management API，持續佈建應用程式、使用者、角色 (Roles)、資源 (Resources)、組織 (Organizations) 及其他設定。
+
+## 開始前的準備 \{#before-you-start}
+
+請準備下列變數：
+
+| Variable             | Description                                                               |
+| -------------------- | ------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API 端點。對於 Logto Cloud，請使用 `https://cloud.logto.io`。 |
+| `LOGTO_CLOUD_PAT`    | 你的 Logto Cloud 帳號的 PAT。                                             |
+| `TENANT_NAME`        | 要建立的租戶顯示名稱。                                                    |
+| `TENANT_TAG`         | 租戶類型。請使用 `development` 或 `production`。                          |
+| `REGION_NAME`        | 租戶的區域識別碼。                                                        |
+
+將它們設為環境變數：
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="My automated tenant"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## 取得可用區域 \{#get-available-regions}
+
+在建立租戶前，先查詢你的 Logto Cloud 帳號可用的區域：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+回應內容包含可用區域。建立租戶時，請將 `name` 欄位作為 `REGION_NAME` 使用。
+
+範例回應：
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## 建立租戶 \{#create-a-tenant}
+
+使用 Logto Cloud PAT 呼叫 `POST /api/tenants`：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+回應內容包含已建立的租戶及預設 M2M 應用程式。該 M2M 應用程式會建立於新租戶中，並擁有該租戶的 Management API 存取權。
+
+範例回應：
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "My automated tenant",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+將你需要的值儲存以供下一步使用：
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## 取得新租戶的 Management API 存取權杖 (Access token) \{#get-a-management-api-access-token-for-the-new-tenant}
+
+使用預設 M2M 應用程式憑證，向新租戶請求存取權杖：
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+範例回應：
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+儲存存取權杖：
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## 持續佈建新租戶 \{#continue-provisioning-the-new-tenant}
+
+使用 Management API 存取權杖呼叫新租戶的 Management API。
+
+例如，列出應用程式：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+或建立一個應用程式：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My web app",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+此時，你的自動化流程可以繼續進行任何 Management API 操作，例如建立使用者、應用程式、API 資源 (API resources)、角色 (Roles)、組織 (Organizations)、連接器 (Connectors) 或登入體驗 (Sign-in experience) 設定。
+
+## 完整自動化範例 \{#full-automation-example}
+
+以下 Node.js 範例會建立租戶、用回傳的預設 M2M 憑證換取 Management API 存取權杖，並列出新租戶中的應用程式：
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'My automated tenant',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`建立租戶失敗: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`取得 Management API 權杖失敗: ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`列出應用程式失敗: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## 相關資源 \{#related-resources}
+
+- [Personal access token](/user-management/personal-access-token)
+- [Interact with Management API](/integrate-logto/interact-with-management-api)
+- [Machine-to-machine quick start](/quick-starts/m2m)

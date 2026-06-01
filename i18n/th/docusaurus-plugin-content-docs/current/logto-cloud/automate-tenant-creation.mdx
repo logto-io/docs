@@ -1,0 +1,242 @@
+---
+id: automate-tenant-creation
+title: จัดการผู้เช่า (tenant) อัตโนมัติ
+sidebar_position: 8
+---
+
+# จัดการผู้เช่า (tenant) อัตโนมัติ
+
+คุณสามารถจัดการผู้เช่า Logto Cloud แบบโปรแกรมมิ่งได้ รวมถึงการสร้างผู้เช่าและดำเนินการตั้งค่าต่อโดยไม่ต้องสลับไปที่ Console
+
+สิ่งนี้มีประโยชน์เมื่อคุณต้องการเตรียมผู้เช่าจากกระบวนการ onboarding ของคุณเอง แพลตฟอร์มภายใน เอเจนต์ AI หรือระบบอัตโนมัติแบบบูรณาการ
+
+ขั้นตอนการอัตโนมัติคือ:
+
+1. ใช้ **Logto Cloud Personal Access Token (PAT)** เพื่อเรียก Logto Cloud API
+2. สร้างผู้เช่าด้วย `POST /api/tenants`
+3. อ่านข้อมูลรับรองแอป Machine-to-machine (M2M) เริ่มต้นจากผลลัพธ์การสร้าง
+4. ใช้แอป M2M เริ่มต้นเพื่อขอรับโทเค็นการเข้าถึง Management API สำหรับผู้เช่าใหม่
+5. เรียก Management API ของผู้เช่าใหม่เพื่อดำเนินการ provisioning แอปพลิเคชัน ผู้ใช้ บทบาท ทรัพยากร องค์กร และการตั้งค่าอื่น ๆ ต่อไป
+
+## ก่อนเริ่มต้น \{#before-you-start}
+
+เตรียมค่าต่อไปนี้:
+
+| Variable             | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | จุดปลาย Logto Cloud API สำหรับ Logto Cloud ใช้ `https://cloud.logto.io` |
+| `LOGTO_CLOUD_PAT`    | PAT สำหรับบัญชี Logto Cloud ของคุณ                                      |
+| `TENANT_NAME`        | ชื่อที่แสดงของผู้เช่าที่จะสร้าง                                         |
+| `TENANT_TAG`         | ประเภทของผู้เช่า ใช้ `development` หรือ `production`                    |
+| `REGION_NAME`        | ตัวระบุภูมิภาคสำหรับผู้เช่า                                             |
+
+ตั้งค่าเป็น environment variables:
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="My automated tenant"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## รับรายการภูมิภาคที่มีอยู่ \{#get-available-regions}
+
+ก่อนสร้างผู้เช่า ให้ดึงรายการภูมิภาคที่บัญชี Logto Cloud ของคุณสามารถใช้ได้:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+ผลลัพธ์จะมีภูมิภาคที่ใช้ได้ ใช้ค่า `name` เป็น `REGION_NAME` ตอนสร้างผู้เช่า
+
+ตัวอย่างผลลัพธ์:
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## สร้างผู้เช่า \{#create-a-tenant}
+
+เรียก `POST /api/tenants` พร้อม Logto Cloud PAT:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+ผลลัพธ์จะมีข้อมูลผู้เช่าที่สร้างและแอป M2M เริ่มต้น แอป M2M นี้ถูกสร้างในผู้เช่าใหม่และมีสิทธิ์เข้าถึง Management API ของผู้เช่านั้น
+
+ตัวอย่างผลลัพธ์:
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "My automated tenant",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+บันทึกค่าที่ต้องใช้ในขั้นตอนถัดไป:
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## ขอรับโทเค็นการเข้าถึง Management API สำหรับผู้เช่าใหม่ \{#get-a-management-api-access-token-for-the-new-tenant}
+
+ใช้ข้อมูลรับรองแอป M2M เริ่มต้นเพื่อขอโทเค็นการเข้าถึงจากผู้เช่าใหม่:
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+ตัวอย่างผลลัพธ์:
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+บันทึก access token:
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## ดำเนินการ provisioning ผู้เช่าใหม่ต่อ \{#continue-provisioning-the-new-tenant}
+
+ใช้ Management API access token เพื่อเรียก Management API ของผู้เช่าใหม่
+
+ตัวอย่างเช่น แสดงรายการแอปพลิเคชัน:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+หรือสร้างแอปพลิเคชัน:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My web app",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+ณ จุดนี้ ระบบอัตโนมัติของคุณสามารถดำเนินการกับ Management API ใด ๆ ต่อได้ เช่น การสร้างผู้ใช้ แอปพลิเคชัน ทรัพยากร API บทบาท องค์กร ตัวเชื่อมต่อ หรือการตั้งค่าประสบการณ์การลงชื่อเข้าใช้
+
+## ตัวอย่างอัตโนมัติเต็มรูปแบบ \{#full-automation-example}
+
+ตัวอย่าง Node.js ต่อไปนี้จะสร้างผู้เช่า แลกเปลี่ยนข้อมูลรับรอง M2M เริ่มต้นเป็น Management API access token และแสดงรายการแอปพลิเคชันในผู้เช่าใหม่:
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'My automated tenant',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`Failed to create tenant: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`Failed to get Management API token: ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`Failed to list applications: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## แหล่งข้อมูลที่เกี่ยวข้อง \{#related-resources}
+
+- [Personal access token](/user-management/personal-access-token)
+- [โต้ตอบกับ Management API](/integrate-logto/interact-with-management-api)
+- [เริ่มต้น Machine-to-machine อย่างรวดเร็ว](/quick-starts/m2m)

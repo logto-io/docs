@@ -1,0 +1,242 @@
+---
+id: automate-tenant-creation
+title: テナント管理の自動化
+sidebar_position: 8
+---
+
+# テナント管理の自動化
+
+Logto Cloud テナントはプログラムで管理できます。これにはテナントの作成や、Console に切り替えることなく設定を続行することが含まれます。
+
+この機能は、独自のオンボーディングフロー、社内プラットフォーム、AI エージェント、または統合自動化からテナントをプロビジョニングする必要がある場合に便利です。
+
+自動化フローは次の通りです：
+
+1. **Logto Cloud パーソナルアクセストークン (PAT)** を使用して Logto Cloud API を呼び出します。
+2. `POST /api/tenants` でテナントを作成します。
+3. 作成レスポンスからデフォルトのマシン間通信 (M2M) アプリケーションの認証情報を取得します。
+4. デフォルトの M2M アプリケーションを使用して、新しいテナントの Management API アクセストークンを取得します。
+5. 新しいテナントの Management API を呼び出して、アプリケーション、ユーザー、ロール、リソース、組織、その他の設定のプロビジョニングを続行します。
+
+## 始める前に \{#before-you-start}
+
+次の値を準備してください：
+
+| Variable             | Description                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API エンドポイント。Logto Cloud の場合は `https://cloud.logto.io` を使用します。 |
+| `LOGTO_CLOUD_PAT`    | Logto Cloud アカウント用の PAT。                                                             |
+| `TENANT_NAME`        | 作成するテナントの表示名。                                                                   |
+| `TENANT_TAG`         | テナントタイプ。`development` または `production` を使用します。                             |
+| `REGION_NAME`        | テナントのリージョン識別子。                                                                 |
+
+これらを環境変数として設定します：
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="My automated tenant"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## 利用可能なリージョンの取得 \{#get-available-regions}
+
+テナントを作成する前に、Logto Cloud アカウントで利用可能なリージョンを取得します：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+レスポンスには利用可能なリージョンが含まれます。テナント作成時には `name` の値を `REGION_NAME` として使用します。
+
+レスポンス例：
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## テナントの作成 \{#create-a-tenant}
+
+Logto Cloud PAT を使って `POST /api/tenants` を呼び出します：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+レスポンスには作成されたテナントとデフォルトの M2M アプリケーションが含まれます。M2M アプリケーションは新しいテナント内に作成され、そのテナントの Management API へのアクセス権を持ちます。
+
+レスポンス例：
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "My automated tenant",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+次のステップで必要な値を保存します：
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## 新しいテナントの Management API アクセストークンの取得 \{#get-a-management-api-access-token-for-the-new-tenant}
+
+デフォルトの M2M アプリケーション認証情報を使って、新しいテナントからアクセストークンをリクエストします：
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+レスポンス例：
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+アクセストークンを保存します：
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## 新しいテナントのプロビジョニングを続行する \{#continue-provisioning-the-new-tenant}
+
+Management API アクセストークンを使って、新しいテナントの Management API を呼び出します。
+
+例えば、アプリケーション一覧を取得する場合：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+またはアプリケーションを作成する場合：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My web app",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+この時点で、ユーザー、アプリケーション、API リソース、ロール、組織、コネクター、サインイン体験設定など、任意の Management API 操作による自動化を続行できます。
+
+## フル自動化例 \{#full-automation-example}
+
+以下の Node.js 例では、テナントを作成し、返されたデフォルトの M2M 認証情報を Management API アクセストークンに交換し、新しいテナント内のアプリケーション一覧を取得します：
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'My automated tenant',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`Failed to create tenant: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`Failed to get Management API token: ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`Failed to list applications: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## 関連リソース \{#related-resources}
+
+- [パーソナルアクセストークン](/user-management/personal-access-token)
+- [Management API との連携](/integrate-logto/interact-with-management-api)
+- [マシン間通信クイックスタート](/quick-starts/m2m)
