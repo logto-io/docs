@@ -1,0 +1,247 @@
+---
+id: automate-tenant-creation
+title: Automatiza la gestión de inquilinos
+sidebar_position: 8
+---
+
+# Automatiza la gestión de inquilinos
+
+Puedes gestionar los inquilinos de Logto Cloud de forma programática, incluyendo la creación de inquilinos y la continuación de la configuración sin cambiar a la Consola.
+
+Esto es útil cuando necesitas aprovisionar inquilinos desde tu propio flujo de incorporación, plataforma interna, agente de IA o automatización de integraciones.
+
+El flujo de automatización es:
+
+1. Usa un **Logto Cloud Personal Access Token (PAT)** para llamar a la API de Logto Cloud.
+2. Crea un inquilino con `POST /api/tenants`.
+3. Lee las credenciales predeterminadas de la aplicación máquina a máquina (M2M) de la respuesta de creación.
+4. Usa la aplicación M2M predeterminada para obtener un token de acceso de la Management API para el nuevo inquilino.
+5. Llama a la Management API del nuevo inquilino para continuar aprovisionando aplicaciones, usuarios, roles, recursos, organizaciones y otros ajustes.
+
+## Antes de comenzar \{#before-you-start}
+
+Prepara los siguientes valores:
+
+| Variable             | Descripción                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | El endpoint de la API de Logto Cloud. Para Logto Cloud, usa `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | Un PAT para tu cuenta de Logto Cloud.                                                 |
+| `TENANT_NAME`        | El nombre visible del inquilino a crear.                                              |
+| `TENANT_TAG`         | El tipo de inquilino. Usa `development` o `production`.                               |
+| `REGION_NAME`        | El identificador de la región para el inquilino.                                      |
+
+Establécelos como variables de entorno:
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="Mi inquilino automatizado"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## Obtener regiones disponibles \{#get-available-regions}
+
+Antes de crear un inquilino, obtén las regiones disponibles para tu cuenta de Logto Cloud:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+La respuesta contiene las regiones disponibles. Usa el valor `name` como `REGION_NAME` al crear el inquilino.
+
+Ejemplo de respuesta:
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## Crear un inquilino \{#create-a-tenant}
+
+Llama a `POST /api/tenants` con el Logto Cloud PAT:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+La respuesta incluye el inquilino creado y una aplicación M2M predeterminada. La aplicación M2M se crea en el nuevo inquilino y tiene acceso a la Management API del inquilino.
+
+Ejemplo de respuesta:
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "Mi inquilino automatizado",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+Guarda los valores que necesitas para el siguiente paso:
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## Obtener un token de acceso de la Management API para el nuevo inquilino \{#get-a-management-api-access-token-for-the-new-tenant}
+
+Usa las credenciales de la aplicación M2M predeterminada para solicitar un token de acceso del nuevo inquilino:
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+Ejemplo de respuesta:
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+Guarda el token de acceso:
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## Continúa aprovisionando el nuevo inquilino \{#continue-provisioning-the-new-tenant}
+
+Usa el token de acceso de la Management API para llamar a la Management API del nuevo inquilino.
+
+Por ejemplo, listar aplicaciones:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+O crear una aplicación:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mi aplicación web",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+En este punto, tu automatización puede continuar con cualquier operación de la Management API, como crear usuarios, aplicaciones, recursos de API, roles, organizaciones, conectores o ajustes de la experiencia de inicio de sesión.
+
+## Ejemplo de automatización completa \{#full-automation-example}
+
+El siguiente ejemplo en Node.js crea un inquilino, intercambia las credenciales M2M predeterminadas devueltas por un token de acceso de la Management API y lista las aplicaciones en el nuevo inquilino:
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+// Crear el inquilino
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Mi inquilino automatizado',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`No se pudo crear el inquilino: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+// Obtener el token de la Management API
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(
+    `No se pudo obtener el token de la Management API: ${await tokenResponse.text()}`
+  );
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+// Listar aplicaciones
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`No se pudieron listar las aplicaciones: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## Recursos relacionados \{#related-resources}
+
+- [Token de acceso personal](/user-management/personal-access-token)
+- [Interactuar con la Management API](/integrate-logto/interact-with-management-api)
+- [Guía rápida de máquina a máquina](/quick-starts/m2m)

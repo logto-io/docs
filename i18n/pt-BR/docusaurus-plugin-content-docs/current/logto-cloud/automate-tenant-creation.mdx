@@ -1,0 +1,245 @@
+---
+id: automate-tenant-creation
+title: Automatizar o gerenciamento de tenants
+sidebar_position: 8
+---
+
+# Automatizar o gerenciamento de tenants
+
+Você pode gerenciar tenants do Logto Cloud programaticamente, incluindo criar tenants e continuar a configuração sem precisar alternar para o Console.
+
+Isso é útil quando você precisa provisionar tenants a partir do seu próprio fluxo de onboarding, plataforma interna, agente de IA ou automação de integração.
+
+O fluxo de automação é:
+
+1. Use um **Logto Cloud Personal Access Token (PAT)** para chamar a API do Logto Cloud.
+2. Crie um tenant com `POST /api/tenants`.
+3. Leia as credenciais padrão do aplicativo Máquina para máquina (M2M) da resposta de criação.
+4. Use o aplicativo M2M padrão para obter um token de acesso da Management API para o novo tenant.
+5. Chame a Management API do novo tenant para continuar o provisionamento de aplicativos, usuários, papéis, recursos, organizações e outras configurações.
+
+## Antes de começar \{#before-you-start}
+
+Prepare os seguintes valores:
+
+| Variable             | Description                                                                       |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | O endpoint da API do Logto Cloud. Para Logto Cloud, use `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | Um PAT para sua conta Logto Cloud.                                                |
+| `TENANT_NAME`        | O nome de exibição do tenant a ser criado.                                        |
+| `TENANT_TAG`         | O tipo do tenant. Use `development` ou `production`.                              |
+| `REGION_NAME`        | O identificador da região para o tenant.                                          |
+
+Defina-os como variáveis de ambiente:
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="Meu tenant automatizado"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## Obter regiões disponíveis \{#get-available-regions}
+
+Antes de criar um tenant, busque as regiões disponíveis para sua conta Logto Cloud:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+A resposta contém as regiões disponíveis. Use o valor de `name` como `REGION_NAME` ao criar o tenant.
+
+Exemplo de resposta:
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## Criar um tenant \{#create-a-tenant}
+
+Chame `POST /api/tenants` com o Logto Cloud PAT:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+A resposta inclui o tenant criado e um aplicativo M2M padrão. O aplicativo M2M é criado no novo tenant e tem acesso à Management API do tenant.
+
+Exemplo de resposta:
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "Meu tenant automatizado",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+Salve os valores necessários para o próximo passo:
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## Obter um token de acesso da Management API para o novo tenant \{#get-a-management-api-access-token-for-the-new-tenant}
+
+Use as credenciais do aplicativo M2M padrão para solicitar um token de acesso do novo tenant:
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+Exemplo de resposta:
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+Salve o token de acesso:
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## Continue o provisionamento do novo tenant \{#continue-provisioning-the-new-tenant}
+
+Use o token de acesso da Management API para chamar a Management API do novo tenant.
+
+Por exemplo, listar aplicativos:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+Ou criar um aplicativo:
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Meu aplicativo web",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+Neste ponto, sua automação pode continuar com qualquer operação da Management API, como criar usuários, aplicativos, recursos de API, papéis, organizações, conectores ou configurações da experiência de login.
+
+## Exemplo de automação completa \{#full-automation-example}
+
+O exemplo Node.js a seguir cria um tenant, troca as credenciais M2M padrão retornadas por um token de acesso da Management API e lista os aplicativos no novo tenant:
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+// Cria o tenant
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Meu tenant automatizado',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`Falha ao criar tenant: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+// Solicita o token de acesso da Management API
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`Falha ao obter token da Management API: ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+// Lista os aplicativos do novo tenant
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`Falha ao listar aplicativos: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## Recursos relacionados \{#related-resources}
+
+- [Personal access token](/user-management/personal-access-token)
+- [Interagir com a Management API](/integrate-logto/interact-with-management-api)
+- [Guia rápido de máquina para máquina](/quick-starts/m2m)

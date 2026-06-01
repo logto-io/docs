@@ -1,0 +1,247 @@
+---
+id: automate-tenant-creation
+title: Automatiser la gestion des locataires
+sidebar_position: 8
+---
+
+# Automatiser la gestion des locataires
+
+Vous pouvez gérer les locataires Logto Cloud de manière programmatique, y compris la création de locataires et la poursuite de la configuration sans passer par la Console.
+
+Ceci est utile lorsque vous devez approvisionner des locataires depuis votre propre flux d'intégration, une plateforme interne, un agent IA ou une automatisation d'intégration.
+
+Le flux d'automatisation est le suivant :
+
+1. Utilisez un **Logto Cloud Personal Access Token (PAT)** pour appeler l'API Logto Cloud.
+2. Créez un locataire avec `POST /api/tenants`.
+3. Lisez les identifiants de l'application machine à machine (M2M) par défaut à partir de la réponse de création.
+4. Utilisez l'application M2M par défaut pour obtenir un jeton d’accès Management API pour le nouveau locataire.
+5. Appelez la Management API du nouveau locataire pour continuer l'approvisionnement des applications, utilisateurs, rôles, ressources, organisations et autres paramètres.
+
+## Avant de commencer \{#before-you-start}
+
+Préparez les valeurs suivantes :
+
+| Variable             | Description                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Le point de terminaison de l'API Logto Cloud. Pour Logto Cloud, utilisez `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | Un PAT pour votre compte Logto Cloud.                                                              |
+| `TENANT_NAME`        | Le nom d'affichage du locataire à créer.                                                           |
+| `TENANT_TAG`         | Le type de locataire. Utilisez `development` ou `production`.                                      |
+| `REGION_NAME`        | L'identifiant de la région pour le locataire.                                                      |
+
+Définissez-les comme variables d'environnement :
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="Mon locataire automatisé"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## Obtenir les régions disponibles \{#get-available-regions}
+
+Avant de créer un locataire, récupérez les régions disponibles pour votre compte Logto Cloud :
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+La réponse contient les régions disponibles. Utilisez la valeur `name` comme `REGION_NAME` lors de la création du locataire.
+
+Exemple de réponse :
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## Créer un locataire \{#create-a-tenant}
+
+Appelez `POST /api/tenants` avec le PAT Logto Cloud :
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+La réponse inclut le locataire créé et une application M2M par défaut. L'application M2M est créée dans le nouveau locataire et a accès à la Management API du locataire.
+
+Exemple de réponse :
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "Mon locataire automatisé",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+Enregistrez les valeurs nécessaires pour l'étape suivante :
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## Obtenir un jeton d’accès Management API pour le nouveau locataire \{#get-a-management-api-access-token-for-the-new-tenant}
+
+Utilisez les identifiants de l'application M2M par défaut pour demander un jeton d’accès au nouveau locataire :
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+Exemple de réponse :
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+Enregistrez le jeton d’accès :
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## Continuer l'approvisionnement du nouveau locataire \{#continue-provisioning-the-new-tenant}
+
+Utilisez le jeton d’accès Management API pour appeler la Management API du nouveau locataire.
+
+Par exemple, lister les applications :
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+Ou créer une application :
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Mon application web",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+À ce stade, votre automatisation peut continuer avec n'importe quelle opération Management API, comme la création d'utilisateurs, d'applications, de ressources API, de rôles, d'organisations, de connecteurs ou de paramètres d'expérience de connexion.
+
+## Exemple d'automatisation complète \{#full-automation-example}
+
+L'exemple Node.js suivant crée un locataire, échange les identifiants M2M par défaut retournés contre un jeton d’accès Management API, et liste les applications du nouveau locataire :
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+// Créer un locataire
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'Mon locataire automatisé',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`Échec de la création du locataire : ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+// Obtenir un jeton d’accès Management API
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`Échec de l'obtention du jeton Management API : ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+// Lister les applications
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(
+    `Échec de la récupération des applications : ${await applicationsResponse.text()}`
+  );
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## Ressources associées \{#related-resources}
+
+- [Jeton d’accès personnel](/user-management/personal-access-token)
+- [Interagir avec Management API](/integrate-logto/interact-with-management-api)
+- [Démarrage rapide machine à machine](/quick-starts/m2m)

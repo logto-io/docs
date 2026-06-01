@@ -1,0 +1,242 @@
+---
+id: automate-tenant-creation
+title: 自动化租户管理
+sidebar_position: 8
+---
+
+# 自动化租户管理
+
+你可以通过编程方式管理 Logto Cloud 租户，包括创建租户和持续配置，无需切换到控制台 (Console)。
+
+当你需要通过自己的注册流程、内部平台、AI 代理或集成自动化来配置租户时，这非常有用。
+
+自动化流程如下：
+
+1. 使用 **Logto Cloud 个人访问令牌 (PAT)** 调用 Logto Cloud API。
+2. 使用 `POST /api/tenants` 创建租户。
+3. 从创建响应中读取默认机器对机器 (M2M) 应用程序凭据。
+4. 使用默认 M2M 应用程序为新租户获取 Management API 访问令牌。
+5. 调用新租户的 Management API，继续配置应用程序、用户、角色、资源、组织 (Organizations) 及其他设置。
+
+## 开始前的准备 \{#before-you-start}
+
+准备以下值：
+
+| Variable             | Description                                                             |
+| -------------------- | ----------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API 端点。对于 Logto Cloud，使用 `https://cloud.logto.io`。 |
+| `LOGTO_CLOUD_PAT`    | 你的 Logto Cloud 账户的 PAT。                                           |
+| `TENANT_NAME`        | 要创建的租户显示名称。                                                  |
+| `TENANT_TAG`         | 租户类型。使用 `development` 或 `production`。                          |
+| `REGION_NAME`        | 租户的区域标识符。                                                      |
+
+将它们设置为环境变量：
+
+```bash
+export CLOUD_API_ENDPOINT="https://cloud.logto.io"
+export LOGTO_CLOUD_PAT="<logto-cloud-pat>"
+export TENANT_NAME="我的自动化租户"
+export TENANT_TAG="development"
+export REGION_NAME="<region-name>"
+```
+
+## 获取可用区域 \{#get-available-regions}
+
+在创建租户之前，获取你的 Logto Cloud 账户可用的区域：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/regions" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+响应中包含可用区域。创建租户时，使用 `name` 的值作为 `REGION_NAME`。
+
+示例响应：
+
+```json
+{
+  "regions": [
+    {
+      "name": "EU",
+      "displayName": "Europe"
+    },
+    {
+      "name": "US",
+      "displayName": "United States"
+    }
+  ]
+}
+```
+
+## 创建租户 \{#create-a-tenant}
+
+使用 Logto Cloud PAT 调用 `POST /api/tenants`：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/tenants" \
+  -X POST \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "'"$TENANT_NAME"'",
+    "tag": "'"$TENANT_TAG"'",
+    "regionName": "'"$REGION_NAME"'"
+  }'
+```
+
+响应中包含已创建的租户和一个默认 M2M 应用程序。该 M2M 应用程序在新租户中创建，并有权访问该租户的 Management API。
+
+示例响应：
+
+```json
+{
+  "id": "new-tenant-id",
+  "name": "我的自动化租户",
+  "tag": "development",
+  "indicator": "https://new-tenant-id.logto.app",
+  "regionName": "EU",
+  "defaultApplication": {
+    "id": "default-m2m-app-id",
+    "secret": "default-m2m-app-secret"
+  }
+}
+```
+
+保存你在下一步需要的值：
+
+```bash
+export TENANT_ID="<response.id>"
+export TENANT_ENDPOINT="<response.indicator>"
+export DEFAULT_M2M_APP_ID="<response.defaultApplication.id>"
+export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
+```
+
+## 获取新租户的 Management API 访问令牌 \{#get-a-management-api-access-token-for-the-new-tenant}
+
+使用默认 M2M 应用程序凭据，从新租户请求访问令牌：
+
+```bash
+curl "$TENANT_ENDPOINT/oidc/token" \
+  -X POST \
+  -u "$DEFAULT_M2M_APP_ID:$DEFAULT_M2M_APP_SECRET" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=client_credentials" \
+  -d "resource=$TENANT_ENDPOINT/api" \
+  -d "scope=all"
+```
+
+示例响应：
+
+```json
+{
+  "access_token": "eyJ...",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "scope": "all"
+}
+```
+
+保存访问令牌：
+
+```bash
+export MANAGEMENT_API_ACCESS_TOKEN="<response.access_token>"
+```
+
+## 继续配置新租户 \{#continue-provisioning-the-new-tenant}
+
+使用 Management API 访问令牌调用新租户的 Management API。
+
+例如，列出应用程序：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN"
+```
+
+或创建一个应用程序：
+
+```bash
+curl "$TENANT_ENDPOINT/api/applications" \
+  -X POST \
+  -H "Authorization: Bearer $MANAGEMENT_API_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "我的 Web 应用",
+    "type": "SPA",
+    "oidcClientMetadata": {
+      "redirectUris": ["https://example.com/callback"],
+      "postLogoutRedirectUris": ["https://example.com"]
+    }
+  }'
+```
+
+此时，你的自动化可以继续进行任何 Management API 操作，例如创建用户、应用程序、API 资源、角色、组织 (Organizations)、连接器 (Connectors) 或登录体验设置。
+
+## 完整自动化示例 \{#full-automation-example}
+
+以下 Node.js 示例会创建一个租户，使用返回的默认 M2M 凭据换取 Management API 访问令牌，并列出新租户中的应用程序：
+
+```js
+const cloudApiEndpoint = 'https://cloud.logto.io';
+const logtoCloudPat = process.env.LOGTO_CLOUD_PAT;
+
+const createTenantResponse = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers: {
+    authorization: `Bearer ${logtoCloudPat}`,
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: '我的自动化租户',
+    tag: 'development',
+    regionName: 'EU',
+  }),
+});
+
+if (!createTenantResponse.ok) {
+  throw new Error(`创建租户失败: ${await createTenantResponse.text()}`);
+}
+
+const tenant = await createTenantResponse.json();
+const tenantEndpoint = tenant.indicator;
+const { id: appId, secret: appSecret } = tenant.defaultApplication;
+
+const tokenResponse = await fetch(`${tenantEndpoint}/oidc/token`, {
+  method: 'POST',
+  headers: {
+    authorization: `Basic ${Buffer.from(`${appId}:${appSecret}`).toString('base64')}`,
+    'content-type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    grant_type: 'client_credentials',
+    resource: `${tenantEndpoint}/api`,
+    scope: 'all',
+  }),
+});
+
+if (!tokenResponse.ok) {
+  throw new Error(`获取 Management API 令牌失败: ${await tokenResponse.text()}`);
+}
+
+const { access_token: managementApiAccessToken } = await tokenResponse.json();
+
+const applicationsResponse = await fetch(`${tenantEndpoint}/api/applications`, {
+  headers: {
+    authorization: `Bearer ${managementApiAccessToken}`,
+  },
+});
+
+if (!applicationsResponse.ok) {
+  throw new Error(`列出应用程序失败: ${await applicationsResponse.text()}`);
+}
+
+const applications = await applicationsResponse.json();
+
+console.log({ tenantId: tenant.id, applications });
+```
+
+## 相关资源 \{#related-resources}
+
+- [个人访问令牌](/user-management/personal-access-token)
+- [与 Management API 交互](/integrate-logto/interact-with-management-api)
+- [机器对机器 (M2M) 快速开始](/quick-starts/m2m)
