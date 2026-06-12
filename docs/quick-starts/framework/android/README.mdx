@@ -10,6 +10,8 @@ framework: Android
 ---
 
 import CodeBlock from '@theme/CodeBlock';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
 
 import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
@@ -66,6 +68,98 @@ In Android, the redirect URI follows the pattern: `$(LOGTO_REDIRECT_SCHEME)://$(
 - The `YOUR_APP_PACKAGE` is your app package name.
 
 Assuming you treat `io.logto.android` as the custom `LOGTO_REDIRECT_SCHEME`, and `io.logto.sample` is your app package name, the Redirect URI should be `io.logto.android://io.logto.sample/callback`.
+
+<Tabs groupId="android-sdk-version">
+
+<TabItem value="v2" label="v2 (stable)">
+
+No additional setup is required. The sign-in experience opens in an embedded WebView, and the SDK intercepts the redirect inside the WebView.
+
+</TabItem>
+
+<TabItem value="v3" label="v3 (beta)">
+
+In v3, the sign-in experience opens in a [Custom Tab](https://developer.android.com/develop/ui/views/layout/webapps/overview-of-android-custom-tabs) (the system browser), and the redirect is routed back to your app through an OS-level intent filter. You need to declare the scheme of your redirect URI with the `logtoRedirectScheme` manifest placeholder in your app's build file:
+
+<Tabs>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin title="build.gradle.kts"
+android {
+  defaultConfig {
+    manifestPlaceholders["logtoRedirectScheme"] = "io.logto.android"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="groovy" label="Groovy">
+
+```groovy title="build.gradle"
+android {
+  defaultConfig {
+    manifestPlaceholders.logtoRedirectScheme = 'io.logto.android'
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+In addition, v3 enforces the redirect URI pattern through Android's intent filter matching, so a redirect URI that deviates from the pattern is never delivered to your app:
+
+- The scheme must equal the `logtoRedirectScheme` manifest placeholder.
+- The host must be your `applicationId`.
+- The path must be `/callback`.
+
+Keep the scheme and the host lowercase, since intent filter matching is case-sensitive and browsers lowercase the scheme.
+
+<details>
+
+<summary>
+
+#### Use App Links instead of a custom scheme \{#use-app-links-instead-of-a-custom-scheme}
+
+</summary>
+
+Custom schemes have no ownership: any app can declare the same scheme and race for the redirect. [Android App Links](https://developer.android.com/training/app-links) bind an `https` redirect URI to a domain you own through a verified [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started) file, so the OS guarantees only your app receives the redirect. This is the redirect option recommended for native apps by [RFC 8252](https://datatracker.ietf.org/doc/html/rfc8252#section-7.2).
+
+To use App Links:
+
+1. Host the Digital Asset Links file at `https://your.domain/.well-known/assetlinks.json`, declaring your application ID and the SHA-256 fingerprints of your signing certificates. When publishing with Play App Signing, you can find the release fingerprint in Play Console under **Setup** > **App signing**. The file must be served as `Content-Type: application/json` with HTTP 200 and no redirects.
+
+2. Declare the App Links intent filter on the SDK's redirect receiver activity `io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity` in your `AndroidManifest.xml` file. If you do not use the custom scheme at all, drop the SDK's built-in filter with `tools:node="removeAll"`, and the `logtoRedirectScheme` manifest placeholder is then no longer required:
+
+   ```xml title="AndroidManifest.xml"
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+     <application>
+       <activity android:name="io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity">
+         <!-- Omit this line to keep the custom-scheme redirect working alongside. -->
+         <intent-filter tools:node="removeAll" />
+         <intent-filter android:autoVerify="true">
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="your.domain" android:path="/callback" />
+         </intent-filter>
+       </activity>
+     </application>
+   </manifest>
+   ```
+
+3. Add `https://your.domain/callback` as a redirect URI (and, if it is used for sign-out, a post sign-out redirect URI) in the application details page of Logto Console, and pass it to `signIn` / `signOut`.
+
+Keep in mind that the callback is now a real URL on your domain, so serve a fallback page there (e.g., a "Return to app" button) for browsers that do not launch App Links on a server redirect. On Android 12+ an unverified domain never opens the app, so a broken `assetlinks.json` fails silently. You can check the verification state with `adb shell pm get-app-links <applicationId>`.
+
+</details>
+
+</TabItem>
+
+</Tabs>
 
 ### Implement sign-in and sign-out \{#implement-sign-in-and-sign-out}
 
