@@ -10,6 +10,8 @@ framework: Android
 ---
 
 import CodeBlock from '@theme/CodeBlock';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
 
 import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
@@ -66,6 +68,96 @@ En Android, el URI de redirección sigue el patrón: `$(LOGTO_REDIRECT_SCHEME):/
 - El `YOUR_APP_PACKAGE` es el nombre del paquete de tu aplicación.
 
 Suponiendo que trates `io.logto.android` como el esquema personalizado `LOGTO_REDIRECT_SCHEME`, y `io.logto.sample` sea el nombre del paquete de tu aplicación, el URI de redirección debería ser `io.logto.android://io.logto.sample/callback`.
+
+<Tabs groupId="android-sdk-version">
+
+<TabItem value="v2" label="v2">
+
+No se requiere configuración adicional. La experiencia de inicio de sesión se abre en un WebView integrado, y el SDK intercepta la redirección dentro del WebView.
+
+</TabItem>
+
+<TabItem value="v3" label="v3 (beta)">
+
+En v3, la experiencia de inicio de sesión se abre en un [Custom Tab](https://developer.android.com/develop/ui/views/layout/webapps/overview-of-android-custom-tabs) (el navegador del sistema), y la redirección se enruta de vuelta a tu aplicación a través de un filtro de intents a nivel del sistema operativo. Debes declarar el esquema de tu URI de redirección con el marcador de posición de manifiesto `logtoRedirectScheme` en el archivo de compilación de tu aplicación:
+
+<Tabs>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin title="build.gradle.kts"
+android {
+  defaultConfig {
+    manifestPlaceholders["logtoRedirectScheme"] = "io.logto.android"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="groovy" label="Groovy">
+
+```groovy title="build.gradle"
+android {
+  defaultConfig {
+    manifestPlaceholders.logtoRedirectScheme = 'io.logto.android'
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+Además, v3 aplica el patrón de URI de redirección a través de la coincidencia de filtros de intents de Android, por lo que un URI de redirección que se desvíe del patrón nunca se entregará a tu aplicación:
+
+- El esquema debe ser igual al marcador de posición de manifiesto `logtoRedirectScheme`.
+- El host debe ser tu `applicationId`.
+- La ruta debe ser `/callback`.
+
+Mantén el esquema y el host en minúsculas, ya que la coincidencia de filtros de intents distingue entre mayúsculas y minúsculas, y los navegadores convierten el esquema a minúsculas.
+
+<details>
+
+<summary>
+
+#### ¿Usar App Links en lugar de un esquema personalizado? \{#use-app-links-instead-of-a-custom-scheme}
+
+</summary>
+
+Para usar [Android App Links](https://developer.android.com/training/app-links) (un URI de redirección `https` en un dominio de tu propiedad) en lugar del esquema personalizado:
+
+1. Aloja el archivo [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started) en `https://your.domain/.well-known/assetlinks.json`, declarando el ID de tu aplicación y las huellas digitales SHA-256 de tus certificados de firma. Al publicar con Play App Signing, puedes encontrar la huella digital de la versión en Play Console bajo **Configuración** > **Firma de la aplicación**. El archivo debe servirse como `Content-Type: application/json` con HTTP 200 y sin redirecciones.
+
+2. Declara el filtro de intents de App Links en la actividad receptora de redirección del SDK `io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity` en tu archivo `AndroidManifest.xml`. Si no usas el esquema personalizado en absoluto, elimina el filtro incorporado del SDK con `tools:node="removeAll"`, y el marcador de posición de manifiesto `logtoRedirectScheme` ya no será necesario:
+
+   ```xml title="AndroidManifest.xml"
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+     <application>
+       <activity android:name="io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity">
+         <!-- Omite esta línea para mantener también funcionando la redirección con esquema personalizado. -->
+         <intent-filter tools:node="removeAll" />
+         <intent-filter android:autoVerify="true">
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="your.domain" android:path="/callback" />
+         </intent-filter>
+       </activity>
+     </application>
+   </manifest>
+   ```
+
+3. Añade `https://your.domain/callback` como URI de redirección (y, si se usa para cerrar sesión, como URI de redirección posterior al cierre de sesión) en la página de detalles de la aplicación de Logto Console, y pásalo a `signIn` / `signOut`.
+
+Ten en cuenta que el callback es ahora una URL real en tu dominio, por lo que debes servir una página de respaldo allí (p. ej., un botón "Volver a la aplicación") para los navegadores que no inicien App Links en una redirección del servidor. El botón solo necesita enlazar a la URL actual (p. ej., estableciendo `href` en `window.location.href`): los parámetros de autorización están en la cadena de consulta, y un clic iniciado por el usuario da a la misma URL otra oportunidad de ser enrutada a tu aplicación. En Android 12+ un dominio no verificado nunca abre la aplicación, por lo que un `assetlinks.json` roto falla silenciosamente. Puedes comprobar el estado de verificación con `adb shell pm get-app-links <applicationId>`.
+
+</details>
+
+</TabItem>
+
+</Tabs>
 
 ### Implementar inicio y cierre de sesión \{#implement-sign-in-and-sign-out}
 

@@ -10,6 +10,8 @@ framework: Android
 ---
 
 import CodeBlock from '@theme/CodeBlock';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
 
 import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
@@ -66,6 +68,96 @@ Android에서는 리디렉트 URI가 다음 패턴을 따릅니다: `$(LOGTO_RED
 - `YOUR_APP_PACKAGE`는 애플리케이션 패키지 이름입니다.
 
 `io.logto.android`를 사용자 정의 `LOGTO_REDIRECT_SCHEME`로, `io.logto.sample`을 애플리케이션 패키지 이름으로 처리한다고 가정하면, 리디렉트 URI는 `io.logto.android://io.logto.sample/callback`이어야 합니다.
+
+<Tabs groupId="android-sdk-version">
+
+<TabItem value="v2" label="v2">
+
+추가 설정이 필요하지 않습니다. 로그인 환경은 임베디드 WebView에서 열리며, SDK가 WebView 내에서 리디렉션을 가로챕니다.
+
+</TabItem>
+
+<TabItem value="v3" label="v3 (beta)">
+
+v3에서는 로그인 환경이 [Custom Tab](https://developer.android.com/develop/ui/views/layout/webapps/overview-of-android-custom-tabs) (시스템 브라우저)에서 열리며, 리디렉션은 OS 수준의 인텐트 필터를 통해 앱으로 다시 라우팅됩니다. 앱의 빌드 파일에서 `logtoRedirectScheme` 매니페스트 플레이스홀더를 사용하여 리디렉트 URI의 스킴을 선언해야 합니다:
+
+<Tabs>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin title="build.gradle.kts"
+android {
+  defaultConfig {
+    manifestPlaceholders["logtoRedirectScheme"] = "io.logto.android"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="groovy" label="Groovy">
+
+```groovy title="build.gradle"
+android {
+  defaultConfig {
+    manifestPlaceholders.logtoRedirectScheme = 'io.logto.android'
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+또한 v3은 Android의 인텐트 필터 매칭을 통해 리디렉트 URI 패턴을 강제하므로, 패턴에서 벗어난 리디렉트 URI는 앱으로 전달되지 않습니다:
+
+- 스킴은 `logtoRedirectScheme` 매니페스트 플레이스홀더와 일치해야 합니다.
+- 호스트는 `applicationId`여야 합니다.
+- 경로는 `/callback`이어야 합니다.
+
+인텐트 필터 매칭은 대소문자를 구분하고 브라우저는 스킴을 소문자로 변환하므로, 스킴과 호스트는 소문자로 유지하세요.
+
+<details>
+
+<summary>
+
+#### 커스텀 스킴 대신 App Links를 사용하시겠습니까? \{#use-app-links-instead-of-a-custom-scheme}
+
+</summary>
+
+커스텀 스킴 대신 [Android App Links](https://developer.android.com/training/app-links)(`https` 리디렉트 URI를 자신이 소유한 도메인에 사용)를 사용하려면:
+
+1. [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started) 파일을 `https://your.domain/.well-known/assetlinks.json`에 호스팅하고, 애플리케이션 ID와 서명 인증서의 SHA-256 지문을 선언하세요. Play App Signing으로 게시하는 경우, Play Console의 **설정** > **앱 서명**에서 릴리스 지문을 찾을 수 있습니다. 파일은 `Content-Type: application/json`으로 HTTP 200과 리디렉션 없이 제공되어야 합니다.
+
+2. SDK의 리디렉트 수신 액티비티 `io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity`에 App Links 인텐트 필터를 `AndroidManifest.xml` 파일에 선언하세요. 커스텀 스킴을 전혀 사용하지 않는 경우, `tools:node="removeAll"`로 SDK의 기본 제공 필터를 제거하면 `logtoRedirectScheme` 매니페스트 플레이스홀더가 더 이상 필요하지 않습니다:
+
+   ```xml title="AndroidManifest.xml"
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+     <application>
+       <activity android:name="io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity">
+         <!-- 커스텀 스킴 리디렉션을 함께 유지하려면 이 줄을 생략하세요. -->
+         <intent-filter tools:node="removeAll" />
+         <intent-filter android:autoVerify="true">
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="your.domain" android:path="/callback" />
+         </intent-filter>
+       </activity>
+     </application>
+   </manifest>
+   ```
+
+3. Logto Console의 애플리케이션 세부 정보 페이지에서 `https://your.domain/callback`을 리디렉트 URI (로그아웃에도 사용하는 경우 로그아웃 후 리디렉트 URI)로 추가하고, `signIn` / `signOut`에 전달하세요.
+
+콜백이 이제 도메인의 실제 URL이므로, 서버 리디렉션에서 App Links를 실행하지 않는 브라우저를 위해 대체 페이지(예: "앱으로 돌아가기" 버튼)를 제공하세요. 버튼은 현재 URL만 링크하면 됩니다(예: `href`를 `window.location.href`로 설정): 인증 매개변수는 쿼리 문자열에 있으며, 사용자가 클릭하면 동일한 URL이 앱으로 라우팅될 수 있는 기회를 다시 얻습니다. Android 12+에서는 미인증 도메인이 앱을 열지 않으므로, `assetlinks.json`이 잘못되면 조용히 실패합니다. `adb shell pm get-app-links <applicationId>`로 인증 상태를 확인할 수 있습니다.
+
+</details>
+
+</TabItem>
+
+</Tabs>
 
 ### 로그인 및 로그아웃 구현 \{#implement-sign-in-and-sign-out}
 
