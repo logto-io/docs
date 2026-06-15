@@ -12,7 +12,9 @@ Protected App 旨在通过将[认证 (Authentication)](https://auth.wiki/authent
 
 Protected App 由 Cloudflare 提供支持，在全球边缘网络上运行，确保你的应用低延迟和高可用性。
 
-Protected App 会维护会话状态和用户信息。如果用户未通过认证 (Authentication)，Protected App 会将其重定向到登录页面。认证 (Authentication) 成功后，Protected App 会将用户请求附带认证 (Authentication) 和用户信息后转发到源服务器。
+Protected App 会维护会话状态和用户信息。如果用户未通过认证 (Authentication)，Protected App 会将其重定向到登录页面。认证 (Authentication) 成功后，Protected App 会将用户请求包装上认证 (Authentication) 和用户信息，然后转发到源服务器。
+
+如需限制哪些已认证 (Authentication) 用户可以访问 Protected App，请在应用的 **规则** 标签页配置[应用级访问控制](/integrate-logto/app-level-access-control)。
 
 此过程可通过以下流程图进行可视化：
 
@@ -28,7 +30,7 @@ graph LR
 
 ## 保护你的源服务器 \{#protect-your-origin-server}
 
-源服务器可以是物理或虚拟设备，不属于 Logto 的 Protected App，存放你的应用内容。类似于内容分发网络 (CDN) 服务器，Protected App 管理认证 (Authentication) 流程并从你的源服务器获取内容。因此，如果用户可以直接访问你的源服务器，就能绕过认证 (Authentication)，你的应用将不再受保护。
+源服务器可以是物理或虚拟设备，不属于 Logto 的 Protected App，存放你的应用内容。类似于内容分发网络 (CDN) 服务器，Protected App 负责认证 (Authentication) 流程并从你的源服务器获取内容。因此，如果用户可以直接访问你的源服务器，就能绕过认证 (Authentication)，你的应用将不再受保护。
 
 因此，保护源服务器连接非常重要，这可以防止攻击者在未认证 (Authentication) 的情况下发现并访问你的源服务器。常见的做法有：
 
@@ -52,19 +54,19 @@ Authorization: Basic base64(appId:appSecret)
 1. Nginx: [配置 HTTP 基本认证 (Authentication)](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basic-authentication/)
 2. Apache: [认证 (Authentication) 与授权 (Authorization)](https://httpd.apache.org/docs/2.4/howto/auth.html)
 
-如需在应用中检查头部，可参考 Cloudflare 提供的 [HTTP Basic Authentication 示例](https://developers.cloudflare.com/workers/examples/basic-auth/)，了解如何使用 HTTP Basic 方案限制访问。
+如需在应用内检查头部，可参考 Cloudflare 提供的 [HTTP Basic Authentication 示例](https://developers.cloudflare.com/workers/examples/basic-auth/)，了解如何使用 HTTP Basic 方案限制访问。
 
 ### JSON Web Token (JWT) 验证 \{#json-web-tokens-jwt-validation}
 
 另一种保护源服务器的方法是使用 JSON Web Token (JWT)。
 
-每个通过认证 (Authentication) 的 Protected App 请求都会包含如下头部：
+每个已认证 (Authentication) 的 Protected App 请求都会包含如下头部：
 
 ```
 Logto-ID-Token: <JWT>
 ```
 
-该 JWT 被称为 [ID 令牌 (ID Token)](https://auth.wiki/id-token)，由 Logto 签名并包含用户信息。通过验证该 JWT，你可以确认请求来自 Protected App，并拒绝所有未包含该头部的请求。
+该 JWT 被称为 [ID 令牌 (ID token)](https://auth.wiki/id-token)，由 Logto 签名并包含用户信息。通过验证该 JWT，你可以确认请求来自 Protected App，并拒绝所有未包含该头部的请求。
 
 该令牌以 [JWS](https://auth.wiki/jws) 令牌的形式加密和签名。
 
@@ -97,12 +99,14 @@ const verifyToken = (req, res, next) => {
 
   // 确保传入请求包含我们的令牌头部
   if (!token) {
-    return res.status(403).send({ status: false, message: '缺少必要的 Logto-ID-Token 头部' });
+    return res
+      .status(403)
+      .send({ status: false, message: 'missing required Logto-ID-Token header' });
   }
 
   jwt.verify(token, getKey, { issuer: ISSUER }, (err, decoded) => {
     if (err) {
-      return res.status(403).send({ status: false, message: '无效的 ID 令牌' });
+      return res.status(403).send({ status: false, message: 'invalid id token' });
     }
 
     req.user = decoded;
@@ -123,7 +127,7 @@ app.listen(3000);
 
 ## 获取认证 (Authentication) 状态和用户信息 \{#get-authentication-state-and-user-information}
 
-如果你需要获取应用的认证 (Authentication) 和用户信息，也可以使用 `Logto-ID-Token` 头部。
+如果你需要为应用获取认证 (Authentication) 和用户信息，也可以使用 `Logto-ID-Token` 头部。
 
 如果你只想解码令牌，可以使用如下代码：
 
@@ -136,13 +140,13 @@ const decodeIdToken = (req, res, next) => {
   if (!token) {
     return res.status(403).send({
       status: false,
-      message: '缺少必要的 Logto-ID-Token 头部',
+      message: 'missing required Logto-ID-Token header',
     });
   }
 
   const parts = token.split('.');
   if (parts.length !== 3) {
-    throw new Error('无效的 ID 令牌');
+    throw new Error('Invalid ID token');
   }
 
   const payload = parts[1];
@@ -164,14 +168,14 @@ app.get('/', (req, res) => {
 app.listen(3000);
 ```
 
-## 自定义 ID 令牌 (ID Token) 声明 (Claims) \{#customize-id-token-claims}
+## 自定义 ID 令牌 (ID token) 声明 (Claims) \{#customize-id-token-claims}
 
-默认情况下，`Logto-ID-Token` 头部包含标准 OIDC 声明 (Claims)（如 `sub`、`name` 和 `email`）。如需包含[扩展声明 (Claims)](/developers/custom-id-token#extended-claims)（如角色或组织数据），需同时配置以下两项：
+默认情况下，`Logto-ID-Token` 头部包含标准 OIDC 声明 (Claims)（如 `sub`、`name` 和 `email`）。如需包含[扩展声明 (Claims)](/developers/custom-id-token#extended-claims)（如角色 (Roles) 或组织 (Organizations) 数据），需同时配置以下两项：
 
-1. **租户开关**：在 <CloudLink to="/customize-jwt">控制台 > 自定义 JWT > ID 令牌 (ID Token)</CloudLink> 启用该声明 (Claim)。
-2. **Protected App 权限 (Scopes)**：在 Protected App 设置中，于 **ID 令牌 (ID Token) 声明 (Claims)** > **附加权限 (Scopes)** 选择对应权限 (Scope)。
+1. **租户开关**：在 <CloudLink to="/customize-jwt">控制台 > 自定义 JWT > ID 令牌 (ID token)</CloudLink> 启用该声明 (Claim)。
+2. **Protected App 权限 (Scopes)**：在 Protected App 设置中，于 **ID 令牌 (ID token) 声明 (Claims)** > **附加权限 (Scopes)** 选择对应权限 (Scope)。
 
-只有在自定义 JWT 启用声明 (Claim) 且 Protected App 选择了对应权限 (Scope) 时，扩展声明 (Claims) 才会包含在转发的 ID 令牌 (ID Token) 中。完整扩展权限 (Scopes) 和声明 (Claims) 列表见 [自定义 ID 令牌 (ID Token)](/developers/custom-id-token)。
+仅当在自定义 JWT 中启用声明 (Claim) 且为 Protected App 选择了对应权限 (Scope) 时，扩展声明 (Claims) 才会包含在转发的 ID 令牌 (ID token) 中。完整的扩展权限 (Scopes) 和声明 (Claims) 列表请参见 [自定义 ID 令牌 (ID token)](/developers/custom-id-token)。
 
 | 权限 (Scope)                         | 声明 (Claims)                        |
 | ------------------------------------ | ------------------------------------ |
@@ -189,18 +193,18 @@ app.listen(3000);
 
 默认情况下，Protected App 会保护所有路由。如果你需要自定义认证 (Authentication) 规则，可以在控制台设置“自定义认证 (Authentication) 规则”字段。
 
-支持正则表达式，以下为两种场景示例：
+支持正则表达式，以下是两种场景示例：
 
 1. 仅保护 `/admin` 和 `/privacy` 路由：`^/(admin|privacy)/.*`
 2. 排除 JPG 图片不做认证 (Authentication)：`^(?!.*\.jpg$).*$`
 
 ## 本地开发 \{#local-development}
 
-Protected App 设计用于与你的源服务器配合使用。如果你的源服务器未公开访问，可以使用 [ngrok](https://ngrok.com/) 或 [Cloudflare Tunnels](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) 等工具将本地服务器暴露到互联网。
+Protected App 设计用于与你的源服务器配合使用。如果你的源服务器无法公开访问，可以使用 [ngrok](https://ngrok.com/) 或 [Cloudflare Tunnels](https://developers.cloudflare.com/pages/how-to/preview-with-cloudflare-tunnel/) 等工具将本地服务器暴露到互联网。
 
 ## 迁移到 SDK 集成 \{#transition-to-sdk-integration}
 
-Protected App 旨在简化认证 (Authentication) 流程。但如果你希望获得更好的控制和自定义，可以在 Logto [创建新应用](/integrate-logto/integrate-logto-into-your-application) 并配置 [SDK 集成](/quick-starts)。为顺利迁移，你可以复用 Protected App 的应用配置。Protected App 实际上是 Logto 中的“传统 Web 应用”，你可以在应用设置中找到 “[AppId](/integrate-logto/application-data-structure#application-id)” 和 “[AppSecret](/integrate-logto/application-data-structure#application-secret)”。迁移完成后，可以将 Protected App 从你的应用中移除。
+Protected App 旨在简化认证 (Authentication) 流程。但如果你希望获得更好的控制和自定义，可以在 Logto [创建新应用](/integrate-logto/integrate-logto-into-your-application) 并配置 [SDK 集成](/quick-starts)。为顺利迁移，你可以复用 Protected App 的应用配置。实际上，Protected App 在 Logto 中属于“传统 Web 应用”，你可以在应用设置中找到 “[AppId](/integrate-logto/application-data-structure#application-id)” 和 “[AppSecret](/integrate-logto/application-data-structure#application-secret)”。迁移完成后，你可以将 Protected App 从应用中移除。
 
 ## 相关资源 \{#related-resources}
 
