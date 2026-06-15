@@ -10,6 +10,8 @@ framework: Android
 ---
 
 import CodeBlock from '@theme/CodeBlock';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
 
 import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
@@ -66,6 +68,96 @@ import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-t
 - `YOUR_APP_PACKAGE` คือชื่อแพ็กเกจของแอปคุณ
 
 สมมติว่าคุณใช้ `io.logto.android` เป็น custom `LOGTO_REDIRECT_SCHEME` และ `io.logto.sample` เป็นชื่อแพ็กเกจแอปของคุณ Redirect URI ควรเป็น `io.logto.android://io.logto.sample/callback`
+
+<Tabs groupId="android-sdk-version">
+
+<TabItem value="v2" label="v2">
+
+ไม่จำเป็นต้องตั้งค่าเพิ่มเติม ประสบการณ์การลงชื่อเข้าใช้จะเปิดใน WebView แบบฝัง และ SDK จะดักจับการ redirect ภายใน WebView
+
+</TabItem>
+
+<TabItem value="v3" label="v3 (beta)">
+
+ใน v3 ประสบการณ์การลงชื่อเข้าใช้จะเปิดใน [Custom Tab](https://developer.android.com/develop/ui/views/layout/webapps/overview-of-android-custom-tabs) (เบราว์เซอร์ของระบบ) และการ redirect จะถูกส่งกลับไปยังแอปของคุณผ่าน intent filter ระดับ OS คุณจำเป็นต้องประกาศ scheme ของ redirect URI ด้วย `logtoRedirectScheme` manifest placeholder ในไฟล์ build ของแอปคุณ:
+
+<Tabs>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin title="build.gradle.kts"
+android {
+  defaultConfig {
+    manifestPlaceholders["logtoRedirectScheme"] = "io.logto.android"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="groovy" label="Groovy">
+
+```groovy title="build.gradle"
+android {
+  defaultConfig {
+    manifestPlaceholders.logtoRedirectScheme = 'io.logto.android'
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+นอกจากนี้ v3 บังคับรูปแบบ redirect URI ผ่านการจับคู่ intent filter ของ Android ดังนั้น redirect URI ที่เบี่ยงเบนจากรูปแบบจะไม่ถูกส่งไปยังแอปของคุณ:
+
+- scheme ต้องเท่ากับ `logtoRedirectScheme` manifest placeholder
+- host ต้องเป็น `applicationId` ของคุณ
+- path ต้องเป็น `/callback`
+
+ให้ scheme และ host เป็นตัวพิมพ์เล็ก เนื่องจากการจับคู่ intent filter คำนึงถึงตัวพิมพ์เล็กใหญ่ และเบราว์เซอร์จะแปลง scheme เป็นตัวพิมพ์เล็ก
+
+<details>
+
+<summary>
+
+#### ใช้ App Links แทน custom scheme? \{#use-app-links-instead-of-a-custom-scheme}
+
+</summary>
+
+หากต้องการใช้ [Android App Links](https://developer.android.com/training/app-links) (redirect URI แบบ `https` บนโดเมนที่คุณเป็นเจ้าของ) แทน custom scheme:
+
+1. โฮสต์ไฟล์ [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started) ที่ `https://your.domain/.well-known/assetlinks.json` โดยระบุ application ID และลายนิ้วมือ SHA-256 ของใบรับรองการลงนามของคุณ เมื่อเผยแพร่ด้วย Play App Signing คุณสามารถดูลายนิ้วมือ release ได้ใน Play Console ใต้ **Setup** > **App signing** ไฟล์ต้องให้บริการเป็น `Content-Type: application/json` พร้อม HTTP 200 และไม่มี redirect
+
+2. ประกาศ App Links intent filter บน activity รับ redirect ของ SDK `io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity` ในไฟล์ `AndroidManifest.xml` ของคุณ หากคุณไม่ได้ใช้ custom scheme เลย ให้ลบ filter ที่ติดมากับ SDK ด้วย `tools:node="removeAll"` และ `logtoRedirectScheme` manifest placeholder ก็จะไม่จำเป็นอีกต่อไป:
+
+   ```xml title="AndroidManifest.xml"
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+     <application>
+       <activity android:name="io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity">
+         <!-- Omit this line to keep the custom-scheme redirect working alongside. -->
+         <intent-filter tools:node="removeAll" />
+         <intent-filter android:autoVerify="true">
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="your.domain" android:path="/callback" />
+         </intent-filter>
+       </activity>
+     </application>
+   </manifest>
+   ```
+
+3. เพิ่ม `https://your.domain/callback` เป็น redirect URI (และหากใช้สำหรับการออกจากระบบ ให้เพิ่มเป็น post sign-out redirect URI ด้วย) ในหน้ารายละเอียดแอปของ Logto Console แล้วส่งไปยัง `signIn` / `signOut`
+
+โปรดทราบว่า callback ตอนนี้เป็น URL จริงบนโดเมนของคุณ ดังนั้นให้บริการหน้า fallback ที่นั่น (เช่น ปุ่ม "กลับไปยังแอป") สำหรับเบราว์เซอร์ที่ไม่เปิด App Links เมื่อ server redirect ปุ่มนั้นเพียงแค่ต้องลิงก์ไปยัง URL ปัจจุบัน (เช่น กำหนด `href` เป็น `window.location.href`): พารามิเตอร์การอนุมัติอยู่ใน query string และการคลิกของผู้ใช้จะให้ URL เดิมโอกาสอีกครั้งในการถูกส่งไปยังแอปของคุณ บน Android 12+ โดเมนที่ยังไม่ได้ยืนยันจะไม่เปิดแอปเลย ดังนั้น `assetlinks.json` ที่เสียหายจะล้มเหลวโดยไม่มีข้อความแจ้ง คุณสามารถตรวจสอบสถานะการยืนยันด้วย `adb shell pm get-app-links <applicationId>`
+
+</details>
+
+</TabItem>
+
+</Tabs>
 
 ### ดำเนินการลงชื่อเข้าใช้และออกจากระบบ \{#implement-sign-in-and-sign-out}
 

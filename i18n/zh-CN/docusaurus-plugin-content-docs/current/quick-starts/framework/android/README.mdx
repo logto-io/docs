@@ -10,6 +10,8 @@ framework: Android
 ---
 
 import CodeBlock from '@theme/CodeBlock';
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
 
 import ApiResourcesDescription from '../../fragments/_api-resources-description.md';
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
@@ -66,6 +68,96 @@ import FetchOrganizationTokenForUser from './api-resources/_fetch-organization-t
 - `YOUR_APP_PACKAGE` 是你的应用包名。
 
 假设你将 `io.logto.android` 作为自定义 `LOGTO_REDIRECT_SCHEME`，并且 `io.logto.sample` 是你的应用包名，那么重定向 URI 应为 `io.logto.android://io.logto.sample/callback`。
+
+<Tabs groupId="android-sdk-version">
+
+<TabItem value="v2" label="v2">
+
+无需额外配置。登录体验在嵌入式 WebView 中打开，SDK 在 WebView 内部拦截重定向。
+
+</TabItem>
+
+<TabItem value="v3" label="v3 (beta)">
+
+在 v3 中，登录体验在 [Custom Tab](https://developer.android.com/develop/ui/views/layout/webapps/overview-of-android-custom-tabs)（系统浏览器）中打开，重定向通过操作系统级别的 intent filter 路由回你的应用。你需要在应用的构建文件中使用 `logtoRedirectScheme` manifest 占位符声明重定向 URI 的方案：
+
+<Tabs>
+
+<TabItem value="kotlin" label="Kotlin">
+
+```kotlin title="build.gradle.kts"
+android {
+  defaultConfig {
+    manifestPlaceholders["logtoRedirectScheme"] = "io.logto.android"
+  }
+}
+```
+
+</TabItem>
+
+<TabItem value="groovy" label="Groovy">
+
+```groovy title="build.gradle"
+android {
+  defaultConfig {
+    manifestPlaceholders.logtoRedirectScheme = 'io.logto.android'
+  }
+}
+```
+
+</TabItem>
+
+</Tabs>
+
+此外，v3 通过 Android 的 intent filter 匹配强制执行重定向 URI 模式，因此偏离该模式的重定向 URI 永远不会被传递到你的应用：
+
+- 方案必须等于 `logtoRedirectScheme` manifest 占位符。
+- 主机必须是你的 `applicationId`。
+- 路径必须是 `/callback`。
+
+请保持方案和主机为小写，因为 intent filter 匹配区分大小写，且浏览器会将方案转换为小写。
+
+<details>
+
+<summary>
+
+#### 使用 App Links 替代自定义方案？ \{#use-app-links-instead-of-a-custom-scheme}
+
+</summary>
+
+要使用 [Android App Links](https://developer.android.com/training/app-links)（你所拥有域名上的 `https` 重定向 URI）替代自定义方案：
+
+1. 在 `https://your.domain/.well-known/assetlinks.json` 托管 [Digital Asset Links](https://developers.google.com/digital-asset-links/v1/getting-started) 文件，声明你的应用 ID 和签名证书的 SHA-256 指纹。使用 Play App Signing 发布时，可以在 Play Console 的**设置** > **应用签名**下找到发布指纹。该文件必须以 `Content-Type: application/json` 和 HTTP 200 且无重定向的方式提供。
+
+2. 在你的 `AndroidManifest.xml` 文件中，在 SDK 的重定向接收 activity `io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity` 上声明 App Links intent filter。如果你完全不使用自定义方案，可使用 `tools:node="removeAll"` 删除 SDK 的内置 filter，此时不再需要 `logtoRedirectScheme` manifest 占位符：
+
+   ```xml title="AndroidManifest.xml"
+   <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:tools="http://schemas.android.com/tools">
+     <application>
+       <activity android:name="io.logto.sdk.android.auth.logto.LogtoRedirectReceiverActivity">
+         <!-- 省略此行以保留自定义方案重定向同时生效。 -->
+         <intent-filter tools:node="removeAll" />
+         <intent-filter android:autoVerify="true">
+           <action android:name="android.intent.action.VIEW" />
+           <category android:name="android.intent.category.DEFAULT" />
+           <category android:name="android.intent.category.BROWSABLE" />
+           <data android:scheme="https" android:host="your.domain" android:path="/callback" />
+         </intent-filter>
+       </activity>
+     </application>
+   </manifest>
+   ```
+
+3. 在 Logto Console 的应用详情页中，将 `https://your.domain/callback` 添加为重定向 URI（如果用于登出，也添加为登出后重定向 URI），并将其传递给 `signIn` / `signOut`。
+
+请注意，回调现在是你域名上的真实 URL，因此请在该处为不会在服务器重定向时启动 App Links 的浏览器提供一个备用页面（例如，一个"返回应用"按钮）。该按钮只需链接到当前 URL（例如，将 `href` 设置为 `window.location.href`）：授权参数在查询字符串中，用户主动点击可给同一 URL 再次路由到你的应用的机会。在 Android 12+ 中，未经验证的域名永远不会打开应用，因此损坏的 `assetlinks.json` 会静默失败。你可以使用 `adb shell pm get-app-links <applicationId>` 检查验证状态。
+
+</details>
+
+</TabItem>
+
+</Tabs>
 
 ### 实现登录和登出 \{#implement-sign-in-and-sign-out}
 
