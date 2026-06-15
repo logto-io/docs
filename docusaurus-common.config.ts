@@ -124,7 +124,7 @@ export const commonConfigs = {
     v4: {
       removeLegacyPostBuildHeadAttribute: false,
     },
-    experimental_faster: {
+    faster: {
       rspackBundler: true,
       rspackPersistentCache: false,
       ssgWorkerThreads: false,
