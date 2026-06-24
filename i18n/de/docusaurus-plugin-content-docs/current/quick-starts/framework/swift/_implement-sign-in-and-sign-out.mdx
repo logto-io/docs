@@ -1,10 +1,68 @@
+import TabItem from '@theme/TabItem';
+import Tabs from '@theme/Tabs';
+
 import ConfigureRedirectUri from '../../fragments/_configure-redirect-uri.mdx';
 import SignInNote from '../../fragments/_sign-in-note.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 
 <SignInFlowSummary />
 
-#### Redirect-URI konfigurieren \{#configure-redirect-uri}
+#### Configure redirect URI \{#configure-redirect-uri}
+
+<Tabs groupId="swift-sdk-version" defaultValue="v2">
+
+<TabItem value="v2" label="v2 (beta)">
+
+<ConfigureRedirectUri
+  figureSrc="/img/assets/ios-redirect-uri.png"
+  redirectUri="io.logto.app://callback"
+/>
+
+In v2, the sign-in experience opens in [`ASWebAuthenticationSession`](https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsession) (the system browser), and the redirect is routed back to your app through OS-level callback matching. For a custom scheme redirect URI such as `io.logto.app://callback`, register only the scheme part (`io.logto.app`) in your app's `Info.plist`, then add the full redirect URI to your Logto application's Redirect URIs.
+
+In Xcode, open your app target, select **Info**, expand **URL Types**, and add one entry with `io.logto.app` in **URL Schemes**. If you edit `Info.plist` directly, add:
+
+```xml title="Info.plist"
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>CFBundleURLName</key>
+    <string>io.logto.app</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>io.logto.app</string>
+    </array>
+  </dict>
+</array>
+```
+
+For the browser flow in v2, you do not need to call `LogtoClient.handle(url:)`; that plugin handoff API was removed with the embedded WebView flow.
+
+<details>
+
+<summary>
+
+#### Use Universal Links instead of a custom scheme? \{#use-universal-links-instead-of-a-custom-scheme}
+
+</summary>
+
+You can also use an HTTPS redirect URI such as `https://example.com/callback`:
+
+1. Add the Associated Domains capability to your app.
+2. Configure `webcredentials:example.com` so `ASWebAuthenticationSession` can match HTTPS callbacks on iOS 17.4 and newer.
+3. If the same URL should also open your app as a Universal Link outside the authentication session, configure `applinks:example.com` and host a valid `apple-app-site-association` file for the domain and path.
+4. Add the HTTPS URI to your Logto application's Redirect URIs.
+5. Pass the same URI to `signInWithBrowser`.
+
+On iOS 17.4 and newer, the SDK uses `ASWebAuthenticationSession`'s HTTPS callback matching API so HTTPS redirects can automatically complete and dismiss the session. On older iOS versions, the authorization request can still use the HTTPS redirect URI, but the session may not close automatically unless your app handles the Universal Link callback itself. Keep a custom scheme redirect as a compatibility option if you need automatic completion on older iOS versions.
+
+</details>
+
+</TabItem>
+
+<TabItem value="v1" label="v1">
 
 <ConfigureRedirectUri
   figureSrc="/img/assets/ios-redirect-uri.png"
@@ -12,16 +70,82 @@ import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 />
 
 :::info
-Die Redirect-URI im iOS SDK ist nur für den internen Gebrauch. Es besteht _KEINE NOTWENDIGKEIT_, ein [Custom URL Scheme](https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app) hinzuzufügen, bis ein Connector dies verlangt.
+The Redirect URI in iOS SDK is only for internal use. There's _NO NEED_ to add a [Custom URL Scheme](https://developer.apple.com/documentation/xcode/defining-a-custom-url-scheme-for-your-app) until a connector asks.
 :::
 
-#### Anmelden und Abmelden \{#sign-in-and-sign-out}
+</TabItem>
+
+</Tabs>
+
+#### Sign-in and sign-out \{#sign-in-and-sign-out}
 
 <SignInNote calling=".signInWithBrowser(redirectUri:)" />
 
-Du kannst `client.signInWithBrowser(redirectUri:)` verwenden, um den Benutzer anzumelden, und `client.signOut()`, um den Benutzer abzumelden.
+<Tabs groupId="swift-sdk-version" defaultValue="v2">
 
-Zum Beispiel in einer SwiftUI-App:
+<TabItem value="v2" label="v2 (beta)">
+
+In v2, `client.signOut(postLogoutRedirectUri:)` performs a complete sign-out: it clears the local credentials, revokes the refresh token, and ends the Logto session by opening the end session endpoint in the system browser. The browser then navigates back to your app through the post sign-out redirect URI. Before using it, switch to the application details page of Logto Console, add the post sign-out redirect URI `io.logto.app://signed-out` and click "Save changes". The post sign-out redirect URI can use the same custom scheme you registered for sign-in.
+
+For example, in a SwiftUI app:
+
+```swift title="ContentView.swift"
+struct ContentView: View {
+  @State var isAuthenticated: Bool
+
+  private let redirectUri = "io.logto.app://callback"
+  private let postLogoutRedirectUri = "io.logto.app://signed-out"
+
+  init() {
+    isAuthenticated = client.isAuthenticated
+  }
+
+  var body: some View {
+    VStack {
+      if isAuthenticated {
+        Button("Sign Out") {
+          Task { [self] in
+            let error = await client.signOut(postLogoutRedirectUri: postLogoutRedirectUri)
+            if let error = error {
+              print(error)
+              return
+            }
+            isAuthenticated = false
+          }
+        }
+      } else {
+        Button("Sign In") {
+          Task { [self] in
+            do {
+              try await client.signInWithBrowser(redirectUri: redirectUri)
+              isAuthenticated = true
+            } catch let error as LogtoClientErrors.SignIn {
+              // error occurred during sign in
+            } catch {
+              // other errors
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+:::note
+
+- You can also call `client.signOut()` without a post sign-out redirect URI. No Console configuration is needed in this case: the browser shows the Logto sign-out page, and the user returns to the app by dismissing it manually.
+- If no UI context is available, you can call `client.clearCredentials()` to clear the local credentials and revoke the refresh token. Note that this keeps the Logto session in the browser, so the next `signInWithBrowser` may silently sign the user back in through that session.
+
+:::
+
+</TabItem>
+
+<TabItem value="v1" label="v1">
+
+You can use `client.signInWithBrowser(redirectUri:)` to sign in the user and `client.signOut()` to sign out the user.
+
+For example, in a SwiftUI app:
 
 ```swift title="ContentView.swift"
 struct ContentView: View {
@@ -34,24 +158,22 @@ struct ContentView: View {
   var body: some View {
     VStack {
       if isAuthenticated {
-        Button("Abmelden") {
+        Button("Sign Out") {
           Task { [self] in
             await client.signOut()
             isAuthenticated = false
           }
         }
       } else {
-        Button("Anmelden") {
+        Button("Sign In") {
           Task { [self] in
             do {
-              try await client.signInWithBrowser(redirectUri: "${
-                props.redirectUris[0] ?? 'io.logto://callback'
-              }")
+              try await client.signInWithBrowser(redirectUri: "io.logto://callback")
               isAuthenticated = true
             } catch let error as LogtoClientErrors.SignIn {
-              // Fehler trat während der Anmeldung auf
+              // error occurred during sign in
             } catch {
-              // andere Fehler
+              // other errors
             }
           }
         }
@@ -60,3 +182,7 @@ struct ContentView: View {
   }
 }
 ```
+
+</TabItem>
+
+</Tabs>
