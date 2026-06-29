@@ -1,0 +1,39 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: 발송 속도 제한 (Send rate limit)
+sidebar_position: 5
+---
+
+# 발송 속도 제한 (Send rate limiting)
+
+Logto는 이메일 및 SMS를 통해 발송되는 인증 코드 및 기타 메시지에 대해 수신자별 내장 속도 제한을 적용합니다. 이는 사용자의 메시지 수신함이나 휴대폰에 공격자가 코드를 스팸으로 보내거나, SMS 트래픽을 과도하게 발생시켜 비용을 증가시키는 등의 발송 남용으로부터 사용자와 메시징 공급자를 보호합니다.
+
+이 제한은 **필수적이며 시스템 수준**입니다. 모든 테넌트에 플랜과 관계없이 적용되며, **테넌트에서 설정할 수 없습니다**. 또한 다음과는 별개로 동작합니다:
+
+- **[식별자 잠금](/security/identifier-lockout)** 및 **[CAPTCHA](/security/captcha)** 정책은 *인증 시도 실패*를 제한하지만, _발송 행위_ 자체를 제한하지는 않습니다.
+- 테넌트별 전체 API 속도 제한(오류 코드 `request.rate_limited`)은 테넌트 전체의 요청량을 제한합니다.
+
+## 동작 방식 \{#how-it-works}
+
+- **수신자별 제한**: Logto는 동일한 수신자(이메일 주소 또는 전화번호)에게 짧은 롤링 시간 창 내에 보낼 수 있는 메시지 수를 제한합니다. 기본적으로 **10분마다 수신자당 최대 10회 발송**이 허용됩니다.
+- **적용 범위**: 모든 서버 측 발송 경로에 적용됩니다. 여기에는 Experience API 및 Account API의 인증 코드 발송(로그인, 회원가입, 비밀번호 재설정, MFA, 식별자 바인딩), Management API의 인증 코드 발송, 조직 초대 발송 및 재발송, Account(`/me`) 인증 코드 발송이 포함됩니다.
+- **제한 초과 시**: 요청은 HTTP `429`와 오류 코드 `request.message_rate_limited`로 거부됩니다. 이는 글로벌 테넌트 제한자(`request.rate_limited`) 및 인증 시도 제한(`session.verification_blocked_too_many_attempts`)과 구분되므로, 통합 시 별도로 처리할 수 있습니다.
+
+## Webhook으로 속도 제한 발송 모니터링하기 \{#monitor-rate-limited-sends-with-a-webhook}
+
+**최종 사용자**가 수신자별 제한에 도달하면, Logto는 `Message.RateLimited` [웹훅 이벤트](/developers/webhooks/webhooks-events#exception-hook-events)를 트리거하여 발송 남용에 대해 알림을 보내거나 대응할 수 있도록 합니다.
+
+- **발생 조건**: 최종 사용자 인증 코드 발송 경로(Experience API 및 Account API)에만 발생합니다. 1st-party 또는 관리자 발송(Management API 인증 코드, 조직 초대, `/me`)에는 발생하지 않습니다.
+- **페이로드**: 훅 컨텍스트에는 `action`(예: `VerificationCodeSend`)과 `recipient`(이메일 주소 또는 전화번호)가 포함됩니다.
+
+**일반적인 사용 사례:**
+
+- 보안 알림을 팀에 전송하여 검토하도록 합니다.
+- 영향을 받은 수신자에 대해 다운스트림 남용 방지 자동화를 트리거합니다.
+
+<CloudLink to="/webhooks">Console > Webhooks</CloudLink>로 이동하여 구독하거나, Management API를
+통해 훅을 생성하세요. 자세한 이벤트 구조 및 설정은 [Webhooks](/developers/webhooks)를 참고하세요.
+
+## 미등록 수신자에 대한 발송 억제 \{#suppressed-delivery-to-unknown-recipients}
+
+계정 열거를 방지하기 위해, 식별자를 통한 회원가입이 비활성화된 경우, **계정이 소유하지 않은** 이메일 주소 또는 전화번호로 로그인 인증 코드가 요청되면 실제로는 발송되지 않으며, API는 실제 발송과 동일하게 응답합니다. 따라서 공격자는 이러한 응답을 통해 어떤 주소가 등록되어 있는지 알 수 없습니다. 기존 사용자에 대한 발송은 영향을 받지 않습니다. 자세한 내용은 [계정 존재 숨기기](/end-user-flows/sign-up-and-sign-in)를 참고하세요.

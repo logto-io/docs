@@ -1,0 +1,38 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: Limite de fréquence d’envoi
+sidebar_position: 5
+---
+
+# Limitation de la fréquence d’envoi
+
+Logto applique une limite de fréquence intégrée, par destinataire, aux codes de vérification sortants et autres messages envoyés par e-mail et SMS. Cela protège vos utilisateurs et vos fournisseurs de messagerie contre les abus d’envoi — comme un attaquant qui spammerait la boîte de réception ou le téléphone d’une victime avec des codes, ou qui gonflerait le trafic SMS pour augmenter vos coûts.
+
+Cette limite est **obligatoire et au niveau du système** : elle s’applique à chaque locataire, quel que soit le plan, et elle **n’est pas** configurable par le locataire. Elle est indépendante de :
+
+- La politique de **[verrouillage d’identifiant](/security/identifier-lockout)** et de **[CAPTCHA](/security/captcha)**, qui limitent les _tentatives de vérification échouées_ au moment de la vérification, et non l’acte d’_envoi_.
+- La limite globale de fréquence d’API par locataire (code d’erreur `request.rate_limited`), qui limite le volume global de requêtes sur un locataire.
+
+## Fonctionnement \{#how-it-works}
+
+- **Plafond par destinataire** : Logto limite le nombre de messages pouvant être envoyés au même destinataire (adresse e-mail ou numéro de téléphone) dans une courte fenêtre temporelle glissante. Par défaut, cela autorise jusqu’à **10 envois par destinataire toutes les 10 minutes**.
+- **Où cela s’applique** : tous les chemins d’envoi côté serveur, y compris les envois de codes de vérification via Experience API et Account API (connexion, inscription, réinitialisation du mot de passe, MFA et liaison d’identifiant), envois de codes de vérification via Management API, envoi et renvoi d’invitations d’organisation, et envois de codes de vérification via Account (`/me`).
+- **Lorsque le plafond est dépassé** : la requête est rejetée avec HTTP `429` et le code d’erreur `request.message_rate_limited` — distinct du limiteur global du locataire (`request.rate_limited`) et du verrouillage au moment de la vérification (`session.verification_blocked_too_many_attempts`), afin que vous puissiez le gérer spécifiquement dans votre intégration.
+
+## Surveiller les envois limités via un webhook \{#monitor-rate-limited-sends-with-a-webhook}
+
+Lorsqu’un **utilisateur final** atteint le plafond par destinataire, Logto déclenche l’événement webhook `Message.RateLimited` [événement webhook](/developers/webhooks/webhooks-events#exception-hook-events), afin que vous puissiez être alerté ou réagir à un abus d’envoi.
+
+- **Déclenché pour** : uniquement les chemins d’envoi de codes de vérification pour les utilisateurs finaux — Experience API et Account API. Il **n’est pas** déclenché pour les envois initiés par une première partie ou un administrateur (codes de vérification Management API, invitations d’organisation ou `/me`).
+- **Payload** : le contexte du hook inclut l’`action` (par exemple, `VerificationCodeSend`) et le `recipient` (l’adresse e-mail ou le numéro de téléphone).
+
+**Cas d’usage courants :**
+
+- Envoyer des alertes de sécurité à votre équipe pour examen.
+- Déclencher une automatisation anti-abus en aval pour le destinataire concerné.
+
+Accédez à <CloudLink to="/webhooks">Console > Webhooks</CloudLink> pour vous abonner, ou créez le hook via Management API. Pour la structure détaillée de l’événement et la configuration, voir [Webhooks](/developers/webhooks).
+
+## Livraison supprimée aux destinataires inconnus \{#suppressed-delivery-to-unknown-recipients}
+
+Pour empêcher l’énumération des comptes, lorsque l’inscription via un identifiant est désactivée, un code de vérification de connexion demandé pour une adresse e-mail ou un numéro de téléphone que **aucun compte ne possède** n’est pas livré silencieusement, et l’API répond comme elle le ferait pour un véritable envoi. Un attaquant ne peut donc pas utiliser ces réponses pour savoir quelles adresses sont enregistrées. La livraison aux utilisateurs existants n’est pas affectée. Voir aussi [Masquer l’existence du compte](/end-user-flows/sign-up-and-sign-in).

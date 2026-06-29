@@ -1,0 +1,38 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: 傳送速率限制 (Send rate limit)
+sidebar_position: 5
+---
+
+# 傳送速率限制 (Send rate limiting)
+
+Logto 針對外發驗證碼及其他透過電子郵件和簡訊發送的訊息，對每個收件人實施內建的速率限制。這可保護你的使用者及訊息服務供應商免於傳送濫用——例如攻擊者大量發送驗證碼到受害者的信箱或手機，或惡意推高簡訊流量以增加你的成本。
+
+此限制為**強制且系統層級**：適用於每個租戶，無論方案為何，且**無法**由租戶自行設定。它獨立於以下項目：
+
+- **[識別碼鎖定](/security/identifier-lockout)** 與 **[CAPTCHA](/security/captcha)** 政策，這些是在驗證時限制*失敗驗證嘗試*，而非*傳送*行為本身。
+- 全域每租戶 API 速率限制（錯誤碼 `request.rate_limited`），該限制針對整個租戶的請求總量。
+
+## 運作方式 \{#how-it-works}
+
+- **每收件人上限**：Logto 限制在短時間內對同一收件人（電子郵件地址或手機號碼）可傳送的訊息數量。預設為**每 10 分鐘內，每個收件人最多可傳送 10 次**。
+- **適用範圍**：所有伺服器端傳送路徑，包括 Experience API 與 Account API 的驗證碼傳送（登入、註冊、重設密碼、MFA、識別碼綁定）、Management API 驗證碼傳送、組織邀請傳送與重發，以及 Account (`/me`) 驗證碼傳送。
+- **超過上限時**：請求會被拒絕，回傳 HTTP `429` 及錯誤碼 `request.message_rate_limited`——這與全域租戶限制器（`request.rate_limited`）及驗證時鎖定（`session.verification_blocked_too_many_attempts`）不同，因此你可在整合時針對此情境進行特別處理。
+
+## 透過 Webhook 監控速率受限的傳送 \{#monitor-rate-limited-sends-with-a-webhook}
+
+當**終端使用者**觸發每收件人上限時，Logto 會觸發 `Message.RateLimited` [Webhook 事件](/developers/webhooks/webhooks-events#exception-hook-events)，讓你能針對傳送濫用發出警示或採取行動。
+
+- **觸發時機**：僅針對終端使用者驗證碼傳送路徑——即 Experience API 與 Account API。**不會**針對第一方或管理員發起的傳送（Management API 驗證碼、組織邀請或 `/me`）觸發。
+- **Payload**：Hook context 會包含 `action`（例如 `VerificationCodeSend`）及 `recipient`（電子郵件地址或手機號碼）。
+
+**常見應用場景：**
+
+- 向你的團隊發送安全警示以供審查。
+- 針對受影響收件人觸發下游防濫用自動化。
+
+前往 <CloudLink to="/webhooks">Console > Webhooks</CloudLink> 訂閱，或透過 Management API 建立 Hook。詳細事件結構與設定，請參閱 [Webhooks](/developers/webhooks)。
+
+## 對未知收件人的傳送抑制 \{#suppressed-delivery-to-unknown-recipients}
+
+為防止帳號枚舉，當透過識別碼註冊功能被停用時，若對**尚未註冊帳號**的電子郵件地址或手機號碼請求登入驗證碼，系統會靜默不傳送，且 API 回應與實際傳送時相同。攻擊者因此無法藉由回應判斷哪些地址已註冊。對現有使用者的傳送不受影響。詳見 [隱藏帳號存在性](/end-user-flows/sign-up-and-sign-in)。
