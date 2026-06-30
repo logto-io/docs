@@ -1,0 +1,40 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: 送信レート制限
+sidebar_position: 5
+---
+
+# 送信レート制限
+
+Logto は、メールや SMS で送信される認証コードやその他のメッセージに対して、受信者ごとに組み込みのレート制限を適用しています。これにより、ユーザーやメッセージングプロバイダーが送信の悪用（たとえば、攻撃者が被害者の受信箱や電話にコードを大量送信したり、SMS トラフィックを増やしてコストを膨らませたりする行為）から保護されます。
+
+この制限は **必須かつシステムレベル** です：すべてのテナントにプランに関係なく適用され、**テナント側で設定変更はできません**。この制限は以下とは独立しています：
+
+- **[識別子ロックアウト](/security/identifier-lockout)** および **[CAPTCHA](/security/captcha)** ポリシー（これらは送信時ではなく、認証失敗時の試行回数を制限します）
+- テナントごとのグローバル API レート制限（エラーコード `request.rate_limited`、これはテナント全体のリクエスト量を制限します）
+
+## 動作概要 \{#how-it-works}
+
+- **受信者ごとの上限**：Logto は、同じ受信者（メールアドレスまたは電話番号）に対して、短いローリング時間枠内で送信できるメッセージ数を制限します。デフォルトでは、**10 分間に受信者ごとに最大 10 回送信** できます。
+- **適用範囲**：すべてのサーバーサイド送信経路（Experience API や Account API の認証コード送信［サインイン、登録、パスワードリセット、多要素認証 (MFA)、識別子バインディング］、Management API の認証コード送信、組織招待の送信・再送、Account（`/me`）の認証コード送信など）
+- **上限超過時**：リクエストは HTTP `429` で拒否され、エラーコード `request.message_rate_limited` が返されます。これはグローバルテナントリミッター（`request.rate_limited`）や認証時ロックアウト（`session.verification_blocked_too_many_attempts`）とは異なるため、統合時に個別に処理できます。
+
+## Webhook でレート制限送信を監視する \{#monitor-rate-limited-sends-with-a-webhook}
+
+**エンドユーザー** が受信者ごとの上限に達した場合、Logto は `Message.RateLimited` [Webhook イベント](/developers/webhooks/webhooks-events#exception-hook-events) をトリガーします。これにより、送信の悪用を検知・対応できます。
+
+- **発火対象**：エンドユーザーの認証コード送信経路のみ（Experience API および Account API）。ファーストパーティや管理者による送信（Management API の認証コード、組織招待、`/me` など）には発火しません。
+- **ペイロード**：フックコンテキストには `action`（例：`VerificationCodeSend`）と `recipient`（メールアドレスまたは電話番号）が含まれます。
+
+**主なユースケース：**
+
+- セキュリティアラートをチームに送信して確認する
+- 対象受信者に対する下流の悪用防止自動化をトリガーする
+
+<CloudLink to="/webhooks">コンソール > Webhooks</CloudLink>
+から購読するか、Management API でフックを作成できます。詳細なイベント構造や設定については
+[Webhooks](/developers/webhooks) を参照してください。
+
+## 未登録受信者への配信抑制 \{#suppressed-delivery-to-unknown-recipients}
+
+アカウント列挙攻撃を防ぐため、識別子によるサインアップが無効な場合、メールアドレスや電話番号に対して **アカウントが存在しない** 場合は、サインイン認証コードのリクエストがあっても静かに配信されず、API は実際の送信時と同じ応答を返します。これにより、攻撃者は応答から登録済みアドレスを特定できません。既存ユーザーへの配信には影響しません。詳細は [アカウント存在の非表示](/end-user-flows/sign-up-and-sign-in) も参照してください。

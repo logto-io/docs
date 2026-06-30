@@ -1,0 +1,38 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: 发送速率限制
+sidebar_position: 5
+---
+
+# 发送速率限制
+
+Logto 对通过电子邮件和短信发送的外发验证码及其他消息，针对每个收件人应用了内置的速率限制。它可以保护你的用户和消息服务提供商免受滥发行为的影响——例如攻击者向受害者的收件箱或手机大量发送验证码，或通过短信轰炸来增加你的成本。
+
+此限制是**强制且系统级别**的：它适用于每个租户，无论套餐如何，且**不可**由租户自行配置。它独立于以下内容：
+
+- **[标识符锁定](/security/identifier-lockout)** 和 **[验证码](/security/captcha)** 策略，这些策略是在验证时限制*失败的验证尝试*，而不是限制*发送*行为。
+- 全局每租户 API 速率限制（错误码 `request.rate_limited`），该限制约束整个租户的请求总量。
+
+## 工作原理 \{#how-it-works}
+
+- **每收件人上限**：Logto 限制在一个短时间滚动窗口内，向同一收件人（电子邮件地址或手机号）发送消息的次数。默认情况下，**每 10 分钟每个收件人最多允许发送 10 次**。
+- **适用范围**：所有服务端发送路径，包括 Experience API 和 Account API 的验证码发送（登录、注册、重置密码、多因素认证 (MFA) 和标识符绑定）、Management API 验证码发送、组织邀请发送和重发，以及 Account (`/me`) 验证码发送。
+- **超出上限时**：请求将被拒绝，返回 HTTP `429` 和错误码 `request.message_rate_limited`——该错误码与全局租户限制器（`request.rate_limited`）和验证时锁定（`session.verification_blocked_too_many_attempts`）不同，因此你可以在集成中专门处理它。
+
+## 使用 Webhook 监控被限速的发送 \{#monitor-rate-limited-sends-with-a-webhook}
+
+当**终端用户**触发每收件人上限时，Logto 会触发 `Message.RateLimited` [Webhook 事件](/developers/webhooks/webhooks-events#exception-hook-events)，这样你可以对滥发行为进行告警或响应。
+
+- **触发对象**：仅限终端用户验证码发送路径——即 Experience API 和 Account API。对于第一方或管理员发起的发送（Management API 验证码、组织邀请或 `/me`），**不会**触发。
+- **负载**：Hook 上下文包含 `action`（例如 `VerificationCodeSend`）和 `recipient`（电子邮件地址或手机号）。
+
+**常见用例：**
+
+- 向你的团队发送安全告警以便审核。
+- 针对受影响的收件人触发下游反滥用自动化。
+
+前往 <CloudLink to="/webhooks">控制台 > Webhook</CloudLink> 进行订阅，或通过 Management API 创建 Hook。有关详细的事件结构和配置，请参见 [Webhook](/developers/webhooks)。
+
+## 对未知收件人的投递抑制 \{#suppressed-delivery-to-unknown-recipients}
+
+为防止账户枚举，当通过标识符注册被禁用时，如果为**没有账户拥有**的电子邮件地址或手机号请求登录验证码，系统会静默不投递，API 的响应与真实发送时一致。因此，攻击者无法通过这些响应判断哪些地址已注册。对现有用户的投递不受影响。另见 [隐藏账户存在性](/end-user-flows/sign-up-and-sign-in)。

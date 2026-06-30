@@ -1,0 +1,38 @@
+---
+slug: /security/send-rate-limit
+sidebar_label: Sende-Rate-Limit
+sidebar_position: 5
+---
+
+# Sende-Rate-Limitierung
+
+Logto wendet eine integrierte, empfängerbasierte Rate-Limitierung für ausgehende Verifizierungscodes und andere Nachrichten an, die per E-Mail und SMS versendet werden. Dies schützt deine Benutzer und deine Messaging-Anbieter vor Sende-Missbrauch – etwa wenn ein Angreifer das Postfach oder Telefon eines Opfers mit Codes zuspammt oder SMS-Traffic erzeugt, um deine Kosten in die Höhe zu treiben.
+
+Dieses Limit ist **verpflichtend und systemweit**: Es gilt für jeden Mandanten, unabhängig vom Tarif, und ist **nicht** mandantenspezifisch konfigurierbar. Es ist unabhängig von:
+
+- Den **[Identifier Lockout](/security/identifier-lockout)**- und **[CAPTCHA](/security/captcha)**-Richtlinien, die _fehlgeschlagene Verifizierungsversuche_ zur Verifizierungszeit drosseln, nicht aber den _Versand_ selbst.
+- Dem globalen, mandantenweiten API-Rate-Limit (Fehlercode `request.rate_limited`), das das gesamte Anfragevolumen eines Mandanten begrenzt.
+
+## Funktionsweise \{#how-it-works}
+
+- **Empfängerbasiertes Limit**: Logto begrenzt, wie viele Nachrichten an denselben Empfänger (E-Mail-Adresse oder Telefonnummer) innerhalb eines kurzen, rollierenden Zeitfensters gesendet werden können. Standardmäßig sind bis zu **10 Sendungen pro Empfänger alle 10 Minuten** erlaubt.
+- **Wo es gilt**: Alle serverseitigen Versandpfade, einschließlich Experience API- und Account API-Verifizierungscode-Versand (Anmeldung, Registrierung, Passwort zurücksetzen, MFA und Identifier-Bindung), Management API-Verifizierungscode-Versand, Organisations-Einladungsversand und -erneuerung sowie Account (`/me`)-Verifizierungscode-Versand.
+- **Wenn das Limit überschritten wird**: Die Anfrage wird mit HTTP `429` und dem Fehlercode `request.message_rate_limited` abgelehnt – dies unterscheidet sich vom globalen Mandanten-Limiter (`request.rate_limited`) und der Verifizierungszeit-Sperre (`session.verification_blocked_too_many_attempts`), sodass du es gezielt in deiner Integration behandeln kannst.
+
+## Überwache rate-limitierte Sendungen mit einem Webhook \{#monitor-rate-limited-sends-with-a-webhook}
+
+Wenn ein **Endbenutzer** das empfängerbasierte Limit erreicht, löst Logto das `Message.RateLimited`-[Webhook-Ereignis](/developers/webhooks/webhooks-events#exception-hook-events) aus, sodass du auf Sende-Missbrauch reagieren oder diesen melden kannst.
+
+- **Wird ausgelöst für**: Nur Endbenutzer-Verifizierungscode-Versandpfade – die Experience API und Account API. Es wird **nicht** ausgelöst für First-Party- oder Admin-initiierte Sendungen (Management API-Verifizierungscodes, Organisationseinladungen oder `/me`).
+- **Payload**: Der Hook-Kontext enthält die `action` (zum Beispiel `VerificationCodeSend`) und den `recipient` (die E-Mail-Adresse oder Telefonnummer).
+
+**Häufige Anwendungsfälle:**
+
+- Sende Sicherheitswarnungen an dein Team zur Überprüfung.
+- Löse nachgelagerte Anti-Missbrauchs-Automatisierung für den betroffenen Empfänger aus.
+
+Navigiere zu <CloudLink to="/webhooks">Konsole > Webhooks</CloudLink>, um dich zu registrieren, oder erstelle den Hook über die Management API. Für die detaillierte Ereignisstruktur und Konfiguration siehe [Webhooks](/developers/webhooks).
+
+## Unterdrückte Zustellung an unbekannte Empfänger \{#suppressed-delivery-to-unknown-recipients}
+
+Um die Konto-Aufzählung zu verhindern, wird – wenn die Anmeldung über einen Identifier deaktiviert ist – ein für eine E-Mail-Adresse oder Telefonnummer angeforderter Anmelde-Verifizierungscode, der **keinem Konto zugeordnet ist**, stillschweigend nicht zugestellt. Die API antwortet dabei genauso, wie sie es bei einem echten Versand tun würde. Ein Angreifer kann diese Antworten daher nicht nutzen, um herauszufinden, welche Adressen registriert sind. Die Zustellung an bestehende Benutzer ist davon nicht betroffen. Siehe auch [Konto-Existenz verbergen](/end-user-flows/sign-up-and-sign-in).
