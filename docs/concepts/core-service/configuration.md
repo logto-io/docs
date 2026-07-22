@@ -45,7 +45,7 @@ If your self-hosted deployment intentionally needs to reach a trusted relying-pa
 
 :::caution
 
-This setting disables SSRF protection for all OIDC provider outbound requests, not just one endpoint. Only disable it when all configured relying-party endpoints are trusted and your network controls prevent access to sensitive internal services. This setting has no effect in Logto Cloud.
+This setting disables SSRF protection for all OIDC provider outbound requests, not just one endpoint. Only disable it when all configured relying-party endpoints are trusted and your network controls prevent access to sensitive internal services.
 
 :::
 
