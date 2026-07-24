@@ -1,0 +1,109 @@
+---
+id: post-sign-in
+title: Post sign-in
+sidebar_label: Post sign-in
+sidebar_position: 4
+---
+
+# Post sign-in
+
+The Post sign-in Action updates an existing user at the end of a successful sign-in. It runs after all authentication factors, including MFA when required, and before Logto completes the OIDC interaction and issues tokens.
+
+It runs for `SignIn` interactions regardless of whether the user authenticated with a password, verification code, social connector, enterprise SSO, passkey, or another supported method. It does not run during registration.
+
+## Event payload \{#event-payload}
+
+The event contains the final user context for the current sign-in:
+
+```ts
+type PostSignInEvent = {
+  // Retained for backward compatibility after the feature was renamed to Actions.
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` includes the standard [user profile](/user-management/user-data#user-profile), plus:
+
+| Field                    | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `hasPassword`            | Whether the user has a local password        |
+| `ssoIdentities`          | Enterprise SSO identities linked to the user |
+| `mfaVerificationFactors` | MFA factor types configured for the user     |
+| `roles`                  | Global roles and their API resource scopes   |
+| `organizations`          | Organizations the user belongs to            |
+| `organizationRoles`      | Organization roles assigned to the user      |
+
+The context also includes fields such as `applicationId`, `lastSignInAt`, `createdAt`, and `updatedAt`. It does not include plaintext passwords, password hashes, MFA secrets, or connector token-set secrets.
+
+## Result and no-op behavior \{#result-and-no-op-behavior}
+
+Return this result to update the user:
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` may contain only the [supported user patch fields](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Return `undefined`, `null`, `{}`, or `{ action: 'updateUser' }` to continue without an Action user update. Other action names, primitive values, arrays, `user: null`, or unsupported user fields are invalid and fail the sign-in.
+
+:::note
+The `allow` script-error policy applies only when script execution fails. It does not allow a malformed result. Always return a supported update or no-op value.
+:::
+
+## Enrichment example \{#enrichment-example}
+
+This example requests current profile data from an external service and stores selected fields in Logto:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+The update completes before Logto finishes the sign-in. When the corresponding OIDC scopes are requested, claims derived from the updated user, such as profile claims in the ID token, can therefore reflect the new values in the current sign-in.
+
+## Ordering and failure behavior \{#ordering-and-failure-behavior}
+
+Before this Action runs, Logto may already have persisted normal sign-in side effects such as `lastSignInAt`, profile changes made during the interaction, MFA state, SSO identity synchronization, and just-in-time organization provisioning. Blocking the sign-in does not roll those changes back.
+
+Choose the error policy based on the role of the external data:
+
+- Use `block` when the update is required for a valid sign-in. This is the default.
+- Use `allow` when stale or missing enrichment data is acceptable. If script execution fails, Logto continues without applying the Action update.
+
+Keep the update idempotent and the external dependency fast. A Post sign-in Action runs on every applicable sign-in.

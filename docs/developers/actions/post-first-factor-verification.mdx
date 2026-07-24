@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: Post first-factor verification
+sidebar_label: Post first-factor verification
+sidebar_position: 3
+---
+
+# Post first-factor verification
+
+The Post first-factor verification Action supports just-in-time user migration from a legacy password system.
+
+Despite its name, this Action does not run after every successful first factor. It runs only when all of the following are true:
+
+- The Experience API interaction is `SignIn`.
+- The user submitted a username, email address, or phone number with a password.
+- Logto's local password verification failed.
+- If the identifier belongs to an existing Logto user, that user is not suspended.
+
+If the local password is valid, Logto continues without running the Action. Registration, forgot-password, non-password sign-in, and suspended-user attempts do not trigger it.
+
+## Event payload \{#event-payload}
+
+The `event` has this shape:
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // Retained for backward compatibility after the feature was renamed to Actions.
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+`user` is `null` when the identifier does not belong to a Logto user. Otherwise, it contains the existing user's editable profile context.
+
+:::danger
+`event.password` is the plaintext password submitted by the user. Send it only to your trusted legacy authentication endpoint over HTTPS. Never log it, store it, place it in `customData`, include it in an error, or return it from the Action.
+:::
+
+## Result \{#result}
+
+After the legacy system verifies the submitted credentials, return one of these results:
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+The result must match the event:
+
+- When `event.user` is `null`, return `createUser`.
+- When `event.user` is present, return `updateUser`.
+- `passwordVerified` must be the literal value `true`.
+- `user` may contain only the [supported user patch fields](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+For a new user, Logto adds the submitted sign-in identifier when the result does not include it. The Action cannot change the submitted identifier to a different value. An email comparison is case-insensitive, phone numbers are compared after normalization, and usernames must match exactly.
+
+When the result is accepted, Logto hashes the submitted password with Argon2i and saves it as the user's local password. The script must not generate or return a password hash.
+
+Return `undefined` when the legacy system rejects the credentials. An empty, malformed, or unsupported result is also treated as invalid credentials.
+
+## Migration example \{#migration-example}
+
+Configure `LEGACY_VERIFY_URL` and `LEGACY_API_TOKEN` as Action environment variables, then adapt this script to your legacy API:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // Treat an authentication rejection as an ordinary invalid-credentials result.
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Legacy authentication service returned ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+The first accepted sign-in works as follows:
+
+1. Local password verification fails, so Logto runs the Action.
+2. The script sends the identifier and password to the legacy system.
+3. The legacy system verifies the credentials and the script returns `createUser` or `updateUser`.
+4. Logto creates or updates the user and stores the submitted password as a new local Argon2i credential.
+5. The user completes MFA if required, and Logto completes the sign-in.
+6. On later sign-ins, the migrated local password succeeds, so this Action is no longer called for that user.
+
+## Security boundaries \{#security-boundaries}
+
+:::warning
+User and password writes from this Action happen before MFA is complete. If the user abandons or fails MFA, those writes remain.
+
+A user created by this Action also bypasses registration-only guards, including email blocklists, SSO-only domain rules, disabled sign-up mode, and registration mandatory-profile checks. Sentinel protection and MFA still apply.
+:::
+
+Use these safeguards:
+
+- Return `passwordVerified: true` only after the legacy system has positively verified the exact submitted password.
+- Keep the legacy endpoint private when possible, require service authentication, use HTTPS, and apply rate limiting.
+- Keep the returned user patch minimal. Do not copy unvalidated identifiers or profile data.
+- Test unknown-user creation, existing-user update, identifier collisions, suspended users, MFA, upstream failures, and concurrent attempts.
+- Monitor `Action.PostFirstFactorVerification` in [audit logs](/developers/audit-logs/event-types).
+- Keep the Action enabled only for the duration of the migration when practical.
+
+If you can export user data and compatible password hashes in advance, consider [bulk user migration](/user-management/user-migration) instead.
