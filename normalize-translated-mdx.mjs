@@ -1,11 +1,19 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { normalizeTranslatedMdx } from './translate.normalize.mjs';
+import {
+  normalizeTranslatedMdx,
+  normalizeTranslatedMdxAfterAutofix,
+} from './translate.normalize.mjs';
 import { i18nBaseDir, validExtensions, walk } from './translate.shared.mjs';
 
-const inputPaths = process.argv.slice(2);
+const afterAutofixFlag = '--after-autofix';
+const arguments_ = process.argv.slice(2);
+const inputPaths = arguments_.filter((argument) => argument !== afterAutofixFlag);
 const roots = inputPaths.length > 0 ? inputPaths : [i18nBaseDir];
+const normalize = arguments_.includes(afterAutofixFlag)
+  ? normalizeTranslatedMdxAfterAutofix
+  : normalizeTranslatedMdx;
 
 const getFiles = async (root) => {
   const stats = await fs.stat(root);
@@ -23,7 +31,7 @@ const files = fileGroups.flat().filter((file) => validExtensions.has(path.extnam
 const results = await Promise.all(
   files.map(async (file) => {
     const content = await fs.readFile(file, 'utf8');
-    const normalized = normalizeTranslatedMdx(content);
+    const normalized = normalize(content);
 
     if (normalized === content) {
       return false;
