@@ -27,7 +27,7 @@ The body is a JSON object. Its exact shape depends on which family the event bel
 | ----------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | **User flow**     | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | A user completes a sign-up, sign-in, or password-reset flow handled by the Experience API.          |
 | **Data mutation** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | The underlying data model is mutated by a Management API call or a user flow on the Experience API. |
-| **Exception**     | `Identifier.Lockout`                                                                         | A security incident, for example an account locked after consecutive failed verification attempts.  |
+| **Exception**     | `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`                           | A security incident, for example an account locked after consecutive failed verification attempts.  |
 
 Every family shares a small set of [common fields](#common-fields). Each family then layers on its own request-context fields plus an event-specific payload.
 
@@ -365,14 +365,15 @@ type OrganizationScope = {
 
 ## Exception event payloads \{#exception-event-payloads}
 
-**Events:** `Identifier.Lockout`.
+**Events:** `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`.
 
-Fired on security incidents, for example an account locked after consecutive failed verification attempts. These events always originate from a user-facing flow, so the body carries:
+Fired on security incidents, for example an account locked after consecutive failed verification attempts, or grants evicted because an app's concurrent-device limit was exceeded.
 
-- The [common fields](#common-fields).
-- The `ip` field (same shape as data-mutation events).
-- The [Experience API context fields](#experience-api-context-fields).
-- The exception-specific fields below.
+Every exception event carries the [common fields](#common-fields) and an `ip` field (same shape as data-mutation events). The remaining fields depend on the event.
+
+### Identifier.Lockout \{#identifierlockout-payload}
+
+Originates from a user-facing flow, so the body also carries the [Experience API context fields](#experience-api-context-fields), plus:
 
 ```tsx
 enum SignInIdentifier {
@@ -386,3 +387,57 @@ enum SignInIdentifier {
 | ----- | ------------------ | -------- | ----------------------------------------------------------- |
 | type  | `SignInIdentifier` |          | The user's identifier type, e.g., email, phone or username. |
 | value | `string`           |          | The user's identifier value that triggered the lockout.     |
+
+### Message.RateLimited \{#messageratelimited-payload}
+
+Originates from a user-facing flow, so the body also carries the [Experience API context fields](#experience-api-context-fields), plus:
+
+| Field     | Type     | Optional | Notes                                                                                        |
+| --------- | -------- | -------- | -------------------------------------------------------------------------------------------- |
+| action    | `string` |          | The rate-limited action, e.g., `VerificationCodeSend`.                                       |
+| recipient | `string` |          | The email address or phone number that hit the [send rate limit](/security/send-rate-limit). |
+
+### Grant.LimitExceeded \{#grantlimitexceeded-payload}
+
+Fired when a successful authorization pushes a user past an app's [max concurrent authenticated devices](/sessions/session-configs#max-concurrent-authenticated-devices-per-app) limit (`maxAllowedGrants`) and Logto revokes their oldest grants for that app.
+
+This event is emitted from the OIDC authorization endpoint rather than the Experience API, so it does **not** carry `interactionEvent` or `sessionId`. Alongside the common fields and `ip`, the body carries:
+
+| Field                         | Type                | Optional | Notes                                                                                                                |
+| ----------------------------- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| userId                        | `string`            |          | The user whose grants were revoked.                                                                                  |
+| applicationId                 | `string`            |          | The application whose `maxAllowedGrants` limit was exceeded.                                                         |
+| application                   | `ApplicationEntity` | ✅       | The application entity. Omitted if the application can't be resolved at delivery time.                               |
+| maxAllowedGrants              | `number`            |          | The limit configured on the application when the event fired.                                                        |
+| preRevocationActiveGrantCount | `number`            |          | The number of active grants the user held for this application before the revocation, including the one just issued. |
+| revokedGrantIds               | `string[]`          |          | The IDs of the grants that were actually revoked, oldest first.                                                      |
+
+Example payload:
+
+```json
+{
+  "hookId": "hook_abc",
+  "event": "Grant.LimitExceeded",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "ip": "192.168.0.1",
+  "userAgent": "Mozilla/5.0",
+  "userId": "u_001",
+  "applicationId": "app_xyz",
+  "application": {
+    "id": "app_xyz",
+    "type": "SPA",
+    "name": "My app",
+    "description": "My app description"
+  },
+  "maxAllowedGrants": 2,
+  "preRevocationActiveGrantCount": 3,
+  "revokedGrantIds": ["grant_001"]
+}
+```
+
+Delivery notes:
+
+- The revoked grant records are destroyed as part of the revocation, so the IDs in `revokedGrantIds` no longer resolve through the grant listing endpoints or the Console — those return **active** grants only. Treat the payload as the record, and persist the IDs on your side if you need them later.
+- The event fires only when at least one grant was **actually revoked**. An authorization that stays within the limit produces no event.
+- It fires on every authorization that exceeds the limit, so a user repeatedly signing in from more devices than allowed produces one event per eviction.
+- Dispatch is fire-and-forget: a slow or failing endpoint never blocks or fails the user's authorization. Failed deliveries are recorded in the audit logs like any other webhook.
