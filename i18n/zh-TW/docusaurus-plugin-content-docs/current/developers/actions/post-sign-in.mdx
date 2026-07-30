@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: 登入後 (Post sign-in)
+sidebar_label: 登入後 (Post sign-in)
+sidebar_position: 4
+---
+
+# 登入後 (Post sign-in)
+
+登入後 (Post sign-in) Action 會在成功登入結束時更新現有使用者。它會在所有驗證因素（包含需要時的多重要素驗證 (MFA, Multi-factor authentication)）完成後、Logto 完成 OIDC 互動並發出權杖之前執行。
+
+不論使用者是透過密碼、驗證碼、社交連接器、企業級單一登入 (Enterprise SSO)、通行密鑰 (passkey) 或其他支援的方法驗證，只要是 `SignIn` 互動都會執行此 Action。註冊過程中不會執行。
+
+## 事件內容 (Event payload) \{#event-payload}
+
+事件包含本次登入的最終使用者內容：
+
+```ts
+type PostSignInEvent = {
+  // 為了向後相容，功能更名為 Actions 後仍保留。
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` 包含標準的 [使用者資料 (user profile)](/user-management/user-data#user-profile)，以及：
+
+| 欄位                     | 說明                                                             |
+| ------------------------ | ---------------------------------------------------------------- |
+| `hasPassword`            | 使用者是否有本地密碼                                             |
+| `ssoIdentities`          | 已連結至使用者的企業級單一登入 (Enterprise SSO) 身分             |
+| `mfaVerificationFactors` | 使用者已設定的 MFA 驗證因素類型                                  |
+| `roles`                  | 全域角色 (Roles) 及其 API 資源 (API resources) 權限範圍 (Scopes) |
+| `organizations`          | 使用者所屬的組織 (Organizations)                                 |
+| `organizationRoles`      | 指派給使用者的組織角色 (Organization roles)                      |
+
+內容還包含 `applicationId`、`lastSignInAt`、`createdAt`、`updatedAt` 等欄位。不包含明文密碼、密碼雜湊、MFA 密鑰或連接器權杖組密鑰。
+
+## 結果與無操作行為 (Result and no-op behavior) \{#result-and-no-op-behavior}
+
+回傳以下結果以更新使用者：
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` 僅能包含 [支援的使用者 patch 欄位](/developers/actions/configure-and-test-actions#supported-user-patch)。
+
+回傳 `undefined`、`null`、`{}` 或 `{ action: 'updateUser' }` 代表不進行 Action 使用者更新並繼續流程。其他 action 名稱、原始值、陣列、`user: null` 或不支援的使用者欄位皆為無效，將導致登入失敗。
+
+:::note
+`allow` 腳本錯誤政策僅在腳本執行失敗時適用。它不會允許格式錯誤的結果。請務必回傳支援的更新或無操作值。
+:::
+
+## 更新登入識別資訊 (Updating sign-in identifiers) \{#updating-sign-in-identifiers}
+
+與 [首次驗證因素後 (Post first-factor verification)](/developers/actions/post-first-factor-verification) 不同，此 Action 可變更識別欄位 `username`、`primaryEmail` 和 `primaryPhone`，包含使用者剛登入時所用的識別資訊。Action 執行時驗證已完成，因此僅影響儲存的個人資料，不影響本次登入判斷。
+
+有兩點需特別注意：
+
+- **使用者未來的登入識別資訊會改變。** 以 `old@example.com` 登入的使用者之後將無法再用該信箱登入。請確保使用者仍保有可用的識別資訊，並將新值視為已確認，因為 Logto 會直接將其儲存為主要電子郵件或電話號碼，不會再進行額外驗證。
+- **識別資訊衝突會中止登入。** 若新識別資訊已屬於其他使用者，Logto 會以 `422` 錯誤（如 `user.email_already_in_use`）拒絕更新並使互動失敗。此檢查在腳本外執行，因此 `allow` 腳本錯誤政策無法略過。請在腳本內自行處理或略過衝突，不要依賴錯誤政策。
+
+僅當識別欄位的值來自你信任的來源（如上游身分提供者或權威系統）時才回傳該欄位。
+
+## 增強範例 (Enrichment example) \{#enrichment-example}
+
+此範例從外部服務請求現有個人資料，並將選定欄位儲存至 Logto：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+更新會在 Logto 完成登入前完成。當請求對應的 OIDC 權限範圍 (Scopes) 時，從更新後使用者資料產生的宣告 (Claims)（如 ID 權杖 (ID token) 中的個人資料宣告）即可反映本次登入的新值。
+
+## 執行順序與失敗行為 (Ordering and failure behavior) \{#ordering-and-failure-behavior}
+
+在此 Action 執行前，Logto 可能已儲存登入的常規副作用，例如 `lastSignInAt`、互動過程中的個人資料變更、MFA 狀態、SSO 身分同步，以及即時組織佈建 (Just-in-time organization provisioning)。阻擋登入不會回滾這些變更。
+
+請根據外部資料的角色選擇錯誤政策：
+
+- 若更新為有效登入所必須，請使用 `block`（預設值）。
+- 若可接受資料過時或缺失，請使用 `allow`。若腳本執行失敗，Logto 將不套用 Action 更新並繼續流程。
+
+請保持更新具冪等性，並確保外部依賴快速。登入後 (Post sign-in) Action 會在每次適用的登入時執行。

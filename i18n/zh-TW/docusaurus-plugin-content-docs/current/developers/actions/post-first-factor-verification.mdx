@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: 首次驗證後動作 (Post first-factor verification)
+sidebar_label: 首次驗證後動作 (Post first-factor verification)
+sidebar_position: 3
+---
+
+# 首次驗證後動作 (Post first-factor verification)
+
+首次驗證後動作 (Post first-factor verification Action) 支援從舊有密碼系統即時遷移使用者。
+
+儘管名稱如此，此動作並非在每次成功的首次驗證後執行。僅當以下所有條件皆成立時才會執行：
+
+- 使用的是使用體驗 (Experience API) 的 `SignIn` 互動。
+- 使用者提交了使用者名稱、電子郵件地址或電話號碼搭配密碼。
+- Logto 的本地密碼驗證失敗。
+- 若該識別碼屬於現有 Logto 使用者，該使用者未被停用。
+
+若本地密碼驗證通過，Logto 會直接繼續，不會執行此動作。註冊、忘記密碼、非密碼登入及停用使用者的嘗試皆不會觸發此動作。
+
+## 事件 payload \{#event-payload}
+
+`event` 物件結構如下：
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // 功能更名為 Actions 後，為相容性保留。
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+當識別碼不屬於 Logto 使用者時，`user` 為 `null`。否則，則包含現有使用者可編輯的個人資料內容。
+
+:::danger
+`event.password` 為使用者提交的明文密碼。僅能透過 HTTPS 傳送至你信任的舊有驗證端點。切勿記錄、儲存、放入 `customData`、包含於錯誤訊息或從 Action 回傳。
+:::
+
+## 結果 \{#result}
+
+舊有系統驗證提交的憑證後，請回傳下列其中一種結果：
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+結果必須與事件相符：
+
+- 當 `event.user` 為 `null` 時，回傳 `createUser`。
+- 當 `event.user` 存在時，回傳 `updateUser`。
+- `passwordVerified` 必須為字面值 `true`。
+- `user` 僅能包含[支援的使用者 patch 欄位](/developers/actions/configure-and-test-actions#supported-user-patch)。
+
+對於新使用者，若結果未包含，Logto 會自動加入提交的登入識別碼。Action 無法將提交的識別碼更改為其他值。電子郵件比對不區分大小寫，電話號碼會正規化後比對，使用者名稱必須完全相符。
+
+當結果被接受時，Logto 會以 Argon2i 雜湊提交的密碼並儲存為使用者本地密碼。腳本不應產生或回傳密碼雜湊值。
+
+當舊有系統拒絕憑證時，請回傳 `undefined`。空值、格式錯誤或不支援的結果也會被視為無效憑證。
+
+## 遷移範例 \{#migration-example}
+
+將 `LEGACY_VERIFY_URL` 與 `LEGACY_API_TOKEN` 設為 Action 環境變數，然後依你的舊有 API 調整下列腳本：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // 將驗證失敗視為一般無效憑證結果。
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`舊有驗證服務回傳 ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+首次成功登入的流程如下：
+
+1. 本地密碼驗證失敗，因此 Logto 執行此動作。
+2. 腳本將識別碼與密碼傳送至舊有系統。
+3. 舊有系統驗證憑證，腳本回傳 `createUser` 或 `updateUser`。
+4. Logto 建立或更新使用者，並將提交的密碼儲存為新的本地 Argon2i 憑證。
+5. 若需要，使用者完成多重要素驗證 (MFA)，Logto 完成登入。
+6. 之後再次登入時，已遷移的本地密碼驗證通過，因此該使用者不再執行此動作。
+
+## 安全邊界 \{#security-boundaries}
+
+:::warning
+此動作寫入使用者與密碼時，MFA 尚未完成。若使用者放棄或未通過 MFA，這些寫入仍會保留。
+
+此動作建立的使用者也會略過僅限註冊的防護措施，包括電子郵件黑名單、僅限 SSO 網域規則、停用註冊模式與註冊必填欄位檢查。哨兵防護與 MFA 仍然適用。
+:::
+
+請採取以下防護措施：
+
+- 僅在舊有系統明確驗證提交密碼後，回傳 `passwordVerified: true`。
+- 儘可能將舊有端點設為私有，要求服務驗證、使用 HTTPS 並實施速率限制。
+- 回傳的使用者 patch 請保持最小化。勿複製未驗證的識別碼或個人資料。
+- 測試未知使用者建立、現有使用者更新、識別碼衝突、停用使用者、多重要素驗證 (MFA)、上游失敗與並發嘗試。
+- 監控 [稽核日誌](/developers/audit-logs/event-types)中的 `Action.PostFirstFactorVerification`。
+- 實際遷移期間才啟用此動作。
+
+若你能事先匯出使用者資料與相容的密碼雜湊，建議改用[批次使用者遷移](/user-management/user-migration)。

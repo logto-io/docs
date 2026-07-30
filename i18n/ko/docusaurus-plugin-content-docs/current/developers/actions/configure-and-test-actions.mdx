@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: 액션 구성 및 테스트 (Configure and test Actions)
+sidebar_label: 액션 구성 및 테스트 (Configure and test Actions)
+sidebar_position: 2
+---
+
+# 액션 구성 및 테스트 (Configure and test Actions)
+
+## 액션 생성하기 (Create an Action) \{#create-an-action}
+
+1. <CloudLink to="/actions">콘솔 > 액션</CloudLink>으로 이동하세요.
+2. **첫 번째 인증 수단 검증 후(Post first-factor verification)** 또는 **로그인 후(Post sign-in)**를 선택하세요.
+3. 스크립트 에디터에서 `runAction` 함수를 구현하세요.
+4. **데이터 소스(Data source)**에서 이벤트 및 결과 타입을 검토하고, 환경 변수를 구성하며, 외부 데이터를 가져오는 예시를 확인하세요.
+5. **테스트 컨텍스트(Test context)**에서 샘플 이벤트를 조정하고 스크립트를 실행하세요.
+6. **설정(Settings)**에서 액션을 활성화하고 스크립트 오류 발생 시 동작을 선택하세요.
+7. 액션을 저장하세요.
+
+저장되고 활성화된 액션만이 프로덕션 환경에서 실행됩니다.
+
+## `runAction` 구현하기 (Implement `runAction`) \{#implement-runaction}
+
+엔트리 함수 이름은 반드시 `runAction`으로 유지하세요. 이 함수는 하나의 payload 객체를 받습니다:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+사용자 업데이트 없이 거부하거나 계속 진행하려면, 해당 액션 타입에서 지원하는 no-op 값을 반환하세요.
+
+### 외부 데이터 가져오기 (Fetch external data) \{#fetch-external-data}
+
+주입된 `fetch` 함수를 사용하여 외부 API를 호출할 수 있습니다. 예를 들어, 로그인 후(Post sign-in) 액션에서 사용자 프로필을 가져올 수 있습니다:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+액션은 인증 요청 경로에서 실행됩니다. 외부 서비스는 빠르고 고가용성을 유지해야 하며, 사용자가 로그인 재시도를 할 수 있음을 고려하세요. Logto는 액션을 재시도하지 않으며, Logto Cloud 원격 러너에서 로컬 실행으로 폴백하지 않습니다.
+
+### 환경 변수 사용하기 (Use environment variables) \{#use-environment-variables}
+
+API URL, 토큰, 기능 설정 등 스크립트에 하드코딩하지 않아야 하는 값은 환경 변수를 사용하세요:
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+환경 변수는 액션 구성의 일부이며, 해당 구성을 읽을 수 있는 관리자에게 표시됩니다. 액션 관리 권한을 제한하고, 반환 결과나 오류 메시지에 비밀번호 등 비밀 정보를 절대 포함하지 마세요.
+
+## 지원되는 사용자 패치 (Supported user patch) \{#supported-user-patch}
+
+액션은 다음 사용자 필드만 반환할 수 있습니다:
+
+| 필드(Field)    | 설명(Description)                    |
+| -------------- | ------------------------------------ |
+| `username`     | 사용자 이름                          |
+| `primaryEmail` | 기본 이메일 주소                     |
+| `primaryPhone` | 기본 전화번호                        |
+| `name`         | 표시 이름                            |
+| `avatar`       | 아바타 URL                           |
+| `profile`      | 표준 OIDC 프로필 필드                |
+| `customData`   | 애플리케이션을 위한 추가 JSON 데이터 |
+
+해당 패치 타입은 다음과 같습니다:
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+사용자 ID, 정지 상태, 아이덴티티, 역할, 조직, MFA 구성, 비밀번호 해시 및 기타 내부 필드 등은 거부됩니다.
+
+업데이트 시, `profile`과 `customData`는 기존 객체와 얕은 병합(shallow-merge)됩니다. 기존 최상위 키와 동일한 중첩 객체를 반환하면 해당 키의 값이 대체되며, 딥 머지가 아닙니다. 식별자 업데이트는 Logto의 고유성 검사도 통과해야 합니다.
+
+## 테스트 컨텍스트 및 드라이 런 (Test context and dry runs) \{#test-context-and-dry-runs}
+
+**테스트 컨텍스트(Test context)**는 **테스트 실행(Run test)**을 클릭할 때만 사용되는 샘플 JSON입니다. 이 값은 액션과 함께 저장되어 향후 테스트에 사용되지만, 프로덕션 실행에서는 항상 실제 인증 이벤트가 사용됩니다.
+
+드라이 런(dry run)은 다음과 같습니다:
+
+- 현재 저장되지 않은 스크립트, 샘플 이벤트, 환경 변수를 사용합니다.
+- 스크립트를 실행하고 반환값을 그대로 표시합니다.
+- 액션을 저장하거나 Logto 사용자를 생성/업데이트하지 않습니다.
+- 프로덕션 액션 감사 이벤트나 실행 지표를 생성하지 않습니다.
+- 선택한 액션 타입에 대한 프로덕션 이벤트 및 결과 검증을 적용하지 않습니다.
+
+:::caution
+드라이 런이 성공했다는 것은 스크립트가 실행되었음을 의미할 뿐, 실제 인증 플로우에서 결과가 허용된다는 보장은 아닙니다. 프로덕션에서 액션을 활성화하기 전에 비프로덕션 테넌트에서 전체 플로우를 테스트하세요.
+
+성공한 테스트 결과는 반환된 그대로 표시됩니다. 스크립트에서 비밀번호, 환경 변수, API 토큰, 기타 비밀 정보를 절대 반환하지 마세요.
+:::
+
+## 오류 처리하기 (Handle errors) \{#handle-errors}
+
+**스크립트 오류 발생 시(On script error)** 설정은 예외 발생, 거부된 프로미스, 외부 요청 실패, 러너 실패 등 실행 실패에 적용됩니다. 잘못된 결과를 유효하게 만들지는 않습니다.
+
+| 액션 타입(Action type)    | `block` (기본값)                    | `allow`                                                                   |
+| ------------------------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| 첫 번째 인증 수단 검증 후 | 잘못된 로컬 자격 증명을 거부합니다. | 콘솔에서는 사용 불가. API로 설정해도 실행 실패 시 자격 증명은 거부됩니다. |
+| 로그인 후                 | 로그인을 실패 처리합니다.           | 액션 업데이트를 적용하지 않고 로그인을 계속 진행합니다.                   |
+
+로그인 후(Post sign-in)의 경우, 잘못된 형식이거나 지원되지 않는 반환값은 `allow`가 선택되어 있어도 항상 로그인을 실패 처리합니다. 스크립트의 모든 성공 경로를 검증하고, 명시적으로 지원되는 결과 또는 no-op을 반환하세요.
+
+## 실행 모니터링 (Monitor executions) \{#monitor-executions}
+
+프로덕션 실행 시 독립적인 [감사 로그](/developers/audit-logs) 이벤트가 생성됩니다:
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+감사 기록에는 액션 타입, 런타임 위치, 실행 시간, 결정, 오류 정책 결과 등 안전한 실행 메타데이터가 포함됩니다. 비밀번호, 환경 변수 값, 스크립트 소스, 기타 민감한 값은 마스킹 처리됩니다.
+
+## Management API로 액션 구성하기 (Configure Actions with the Management API) \{#configure-actions-with-the-management-api}
+
+[Logto Management API](/integrate-logto/interact-with-management-api)를 통해서도 액션을 관리할 수 있습니다:
+
+| 메서드(Method) | 엔드포인트(Endpoint)                | 목적(Purpose)                         |
+| -------------- | ----------------------------------- | ------------------------------------- |
+| `GET`          | `/api/configs/actions`              | 구성된 액션 목록 조회                 |
+| `GET`          | `/api/configs/actions/{actionType}` | 단일 액션 조회                        |
+| `PUT`          | `/api/configs/actions/{actionType}` | 액션 생성 또는 교체                   |
+| `PATCH`        | `/api/configs/actions/{actionType}` | 액션 일부 업데이트                    |
+| `DELETE`       | `/api/configs/actions/{actionType}` | 액션 삭제                             |
+| `POST`         | `/api/configs/actions/test`         | 샘플 이벤트로 스크립트 드라이 런 실행 |
+
+액션 타입 값은 하위 호환성을 위해 기존 식별자를 유지합니다:
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+액션 구성의 형태는 다음과 같습니다:
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+API를 사용할 때, 액션을 실행하려면 `enabled: true`를 명시적으로 설정하세요. `onExecutionError`를 생략하면 기본값은 `block`입니다.

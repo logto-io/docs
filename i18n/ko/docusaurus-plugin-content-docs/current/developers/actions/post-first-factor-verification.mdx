@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: 1차 인증 후 검증 (Post first-factor verification)
+sidebar_label: 1차 인증 후 검증 (Post first-factor verification)
+sidebar_position: 3
+---
+
+# 1차 인증 후 검증 (Post first-factor verification)
+
+1차 인증 후 검증 (Post first-factor verification) 액션은 레거시 비밀번호 시스템에서 실시간 사용자 마이그레이션을 지원합니다.
+
+이름과 달리, 이 액션은 모든 1차 인증 성공 후에 실행되지 않습니다. 다음 모든 조건이 참일 때만 실행됩니다:
+
+- Experience API 상호작용이 `SignIn`일 때.
+- 사용자가 사용자명, 이메일 주소 또는 전화번호와 비밀번호를 제출했을 때.
+- Logto의 로컬 비밀번호 검증이 실패했을 때.
+- 식별자가 기존 Logto 사용자에 속한다면, 해당 사용자가 정지 상태가 아닐 때.
+
+로컬 비밀번호가 유효하다면, Logto는 액션을 실행하지 않고 계속 진행합니다. 회원가입, 비밀번호 찾기, 비밀번호 없는 로그인, 정지된 사용자 시도는 이 액션을 트리거하지 않습니다.
+
+## 이벤트 페이로드 \{#event-payload}
+
+`event`는 다음과 같은 형태를 가집니다:
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // 기능명이 Actions로 변경된 후에도 하위 호환성을 위해 유지됩니다.
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+식별자가 Logto 사용자에 속하지 않으면 `user`는 `null`입니다. 그렇지 않으면 기존 사용자의 수정 가능한 프로필 컨텍스트가 포함됩니다.
+
+:::danger
+`event.password`는 사용자가 제출한 평문 비밀번호입니다. 반드시 신뢰할 수 있는 레거시 인증 (Authentication) 엔드포인트로 HTTPS를 통해서만 전송하세요. 절대 로그로 남기거나, 저장하거나, `customData`에 넣거나, 오류에 포함하거나, 액션에서 반환하지 마세요.
+:::
+
+## 결과 \{#result}
+
+레거시 시스템이 제출된 자격 증명을 검증한 후, 다음 결과 중 하나를 반환하세요:
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+결과는 이벤트와 일치해야 합니다:
+
+- `event.user`가 `null`이면, `createUser`를 반환하세요.
+- `event.user`가 존재하면, `updateUser`를 반환하세요.
+- `passwordVerified`는 반드시 리터럴 값 `true`여야 합니다.
+- `user`에는 [지원되는 사용자 패치 필드](/developers/actions/configure-and-test-actions#supported-user-patch)만 포함할 수 있습니다.
+
+신규 사용자의 경우, 결과에 제출된 로그인 식별자가 포함되어 있지 않으면 Logto가 이를 추가합니다. 액션은 제출된 식별자를 다른 값으로 변경할 수 없습니다. 이메일 비교는 대소문자를 구분하지 않으며, 전화번호는 정규화 후 비교되고, 사용자명은 정확히 일치해야 합니다.
+
+결과가 승인되면, Logto는 제출된 비밀번호를 Argon2i로 해싱하여 사용자의 로컬 비밀번호로 저장합니다. 스크립트에서 비밀번호 해시를 생성하거나 반환해서는 안 됩니다.
+
+레거시 시스템이 자격 증명을 거부하면 `undefined`를 반환하세요. 빈 값, 잘못된 형식, 지원되지 않는 결과도 모두 잘못된 자격 증명으로 처리됩니다.
+
+## 마이그레이션 예시 \{#migration-example}
+
+`LEGACY_VERIFY_URL`과 `LEGACY_API_TOKEN`을 액션 환경 변수로 설정한 후, 아래 스크립트를 레거시 API에 맞게 수정하세요:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // 인증 거부를 일반적인 잘못된 자격 증명 결과로 처리합니다.
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`레거시 인증 (Authentication) 서비스가 ${response.status}를 반환했습니다`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+최초 승인된 로그인은 다음과 같이 동작합니다:
+
+1. 로컬 비밀번호 검증이 실패하여 Logto가 액션을 실행합니다.
+2. 스크립트가 식별자와 비밀번호를 레거시 시스템에 전송합니다.
+3. 레거시 시스템이 자격 증명을 검증하고, 스크립트가 `createUser` 또는 `updateUser`를 반환합니다.
+4. Logto가 사용자를 생성 또는 업데이트하고, 제출된 비밀번호를 새로운 로컬 Argon2i 자격 증명으로 저장합니다.
+5. 필요하다면 사용자가 MFA를 완료하고, Logto가 로그인을 완료합니다.
+6. 이후 로그인에서는 마이그레이션된 로컬 비밀번호가 성공하므로, 이 액션은 해당 사용자에 대해 더 이상 호출되지 않습니다.
+
+## 보안 경계 \{#security-boundaries}
+
+:::warning
+이 액션에서의 사용자 및 비밀번호 쓰기는 MFA가 완료되기 전에 발생합니다. 사용자가 MFA를 포기하거나 실패해도 해당 쓰기는 남아 있습니다.
+
+이 액션으로 생성된 사용자는 이메일 차단 목록, SSO 전용 도메인 규칙, 비활성화된 회원가입 모드, 회원가입 필수 프로필 검사 등 등록 전용 보호를 우회합니다. Sentinel 보호 및 MFA는 여전히 적용됩니다.
+:::
+
+다음과 같은 안전장치를 사용하세요:
+
+- 레거시 시스템이 제출된 비밀번호를 정확히 검증한 경우에만 `passwordVerified: true`를 반환하세요.
+- 가능하다면 레거시 엔드포인트를 비공개로 유지하고, 서비스 인증을 요구하며, HTTPS를 사용하고, 속도 제한을 적용하세요.
+- 반환되는 사용자 패치는 최소한으로 유지하세요. 검증되지 않은 식별자나 프로필 데이터를 복사하지 마세요.
+- 미지정 사용자 생성, 기존 사용자 업데이트, 식별자 충돌, 정지된 사용자, MFA, 상위 시스템 오류, 동시 시도를 테스트하세요.
+- [감사 로그](/developers/audit-logs/event-types)에서 `Action.PostFirstFactorVerification`을 모니터링하세요.
+- 가능하다면 마이그레이션 기간 동안에만 액션을 활성화하세요.
+
+사전에 사용자 데이터와 호환 가능한 비밀번호 해시를 내보낼 수 있다면, [대량 사용자 마이그레이션](/user-management/user-migration)을 고려하세요.

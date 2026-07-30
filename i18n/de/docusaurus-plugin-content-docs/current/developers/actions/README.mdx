@@ -1,0 +1,87 @@
+---
+sidebar_position: 4
+---
+
+# Actions
+
+Logto Actions ermöglichen es dir, vertrauenswürdigen JavaScript-Code an bestimmten Punkten im Authentifizierungsablauf auszuführen. Eine Action läuft synchron ab: Die Authentifizierungsanfrage wartet auf das Skript, und das Skriptergebnis kann den Benutzer aktualisieren oder bestimmen, ob der Ablauf fortgesetzt wird.
+
+Actions sind nützlich, wenn die Entscheidung innerhalb des Authentifizierungsablaufs getroffen werden muss. Häufige Anwendungsfälle sind:
+
+- Migration von Benutzern und Passwörtern aus einem Altsystem beim erstmaligen Anmelden.
+- Aktualisierung des Benutzerprofils oder anwendungsspezifischer Daten, bevor Logto eine Anmeldung abschließt.
+- Aufruf eines externen Dienstes und Anwendung seines Ergebnisses auf den Logto-Benutzer.
+
+:::note
+Actions sind in Logto OSS und Logto Cloud Enterprise-Plänen verfügbar.
+:::
+
+:::warning
+Action-Skripte können die Authentifizierung beeinflussen und Benutzerdaten ändern. Nur vertrauenswürdigen Administratoren sollte es erlaubt sein, sie anzusehen, zu erstellen, zu bearbeiten, zu testen, zu aktivieren oder zu löschen.
+
+In selbstgehosteten Deployments laufen Action-Skripte in einer virtuellen Maschine innerhalb des Logto-Prozesses. Behandle sie als vertrauenswürdigen serverseitigen Code, nicht als Sicherheitsgrenze für nicht vertrauenswürdigen Code.
+:::
+
+## Wie Actions in die Anmeldung passen \{#how-actions-fit-into-sign-in}
+
+Logto bietet derzeit zwei Action-Typen:
+
+```mermaid
+flowchart LR
+  A["Passwort-Anmeldeversuch"] --> B{"Lokales Passwort ist gültig?"}
+  B -->|"Ja"| E["Authentifizierung fortsetzen"]
+  B -->|"Nein"| C["Action nach der ersten Faktorprüfung"]
+  C -->|"Anmeldedaten akzeptiert"| D["Benutzer erstellen oder aktualisieren und lokales Passwort speichern"]
+  C -->|"Abgelehnt oder fehlgeschlagen"| X["Ungültige Anmeldedaten ablehnen"]
+  D --> E
+  E --> F["MFA abschließen (falls erforderlich)"]
+  F --> G["Action nach Anmeldung"]
+  G --> H["Anmeldung abschließen und Tokens ausstellen"]
+```
+
+| Action-Typ                                                                                 | Wann sie ausgeführt wird                                                                                                                                                       | Was sie tun kann                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Action nach der ersten Faktorprüfung](/developers/actions/post-first-factor-verification) | Während einer Passwort-Anmeldung, nur nachdem die lokale Passwortüberprüfung von Logto fehlgeschlagen ist. Sie wird nicht ausgeführt, wenn das lokale Passwort gültig ist.     | Die übermittelten Anmeldedaten gegen ein Altsystem prüfen, dann einen neuen Logto-Benutzer erstellen oder einen bestehenden Benutzer aktualisieren und das übermittelte Passwort migrieren. |
+| [Action nach Anmeldung](/developers/actions/post-sign-in)                                  | Nachdem der Benutzer alle Authentifizierungsfaktoren abgeschlossen hat, einschließlich MFA, falls erforderlich, und bevor Logto die Anmeldung abschließt und Tokens ausstellt. | Den bestehenden Logto-Benutzer mit dem finalen Anmeldekontext aktualisieren und anreichern.                                                                                                 |
+
+Beide Action-Typen laufen nur für `SignIn`-Interaktionen in der Experience API. Die Action nach der ersten Faktorprüfung gilt nur für Passwort-Anmeldungen; die Action nach Anmeldung ist unabhängig von der Authentifizierungsmethode.
+
+## Skriptmodell \{#script-model}
+
+Jeder Action-Typ hat eine Konfiguration und eine JavaScript-Einstiegsfunktion namens `runAction`:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  // Das Ereignis inspizieren, optional externe Daten abrufen und
+  // ein für diesen Action-Typ unterstütztes Ergebnis zurückgeben.
+};
+```
+
+Die Nutzlast enthält:
+
+- `event`: Das produktive Authentifizierungsereignis. Die Struktur hängt vom Action-Typ ab.
+- `environmentVariables`: Die für diese Action konfigurierten Zeichenfolgenwerte. Diese Werte werden durch die Funktionsnutzlast übergeben; sie sind nicht über `process.env` verfügbar.
+
+Der Editor stellt Typinformationen bereit, aber das gespeicherte Skript wird als JavaScript ausgeführt. Das Skript kann asynchron sein und die injizierte `fetch`-Funktion verwenden, um externe HTTPS-APIs aufzurufen. Es kann keine Pakete importieren oder auf Node.js-Globals wie `require` oder `process` zugreifen.
+
+Das unterstützte Ergebnis ist für jeden Action-Typ unterschiedlich; siehe die entsprechende Referenzseite, bevor du eine Action aktivierst.
+
+## Actions und Webhooks \{#actions-and-webhooks}
+
+Actions und [Webhooks](/developers/webhooks) dienen unterschiedlichen Zwecken:
+
+|                                                          | Actions                                                     | Webhooks                                                             |
+| -------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------- |
+| Ausführung                                               | Synchron und im Authentifizierungsablauf                    | Asynchron und außerhalb der Authentifizierungsanfrage                |
+| Kann den aktuellen Authentifizierungsablauf beeinflussen | Ja                                                          | Nein                                                                 |
+| Kann einen Benutzer durch das Ergebnis ändern            | Ja, mit dem unterstützten Benutzer-Patch                    | Nicht direkt; der Empfänger kann die Management API separat aufrufen |
+| Ereignisabdeckung                                        | Ausgewählte Authentifizierungspunkte                        | Eine breite Palette von Interaktions- und Datenänderungsereignissen  |
+| Typische Verwendung                                      | Anmeldedatenmigration, Profilanreicherung vor Token-Ausgabe | Benachrichtigungen, Downstream-Synchronisation, Analytik             |
+
+Behalte asynchrone Arbeiten in Webhooks. Verwende eine Action nur, wenn Logto das Ergebnis benötigt, bevor die Authentifizierung fortgesetzt werden kann.
+
+## Nächste Schritte \{#next-steps}
+
+- [Actions konfigurieren und testen](/developers/actions/configure-and-test-actions)
+- [Benutzer bei Passwort-Anmeldung migrieren](/developers/actions/post-first-factor-verification)
+- [Benutzer nach Anmeldung anreichern](/developers/actions/post-sign-in)

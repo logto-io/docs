@@ -1,0 +1,122 @@
+---
+id: post-sign-in
+title: Pós-login
+sidebar_label: Pós-login
+sidebar_position: 4
+---
+
+# Pós-login
+
+A Ação de Pós-login atualiza um usuário existente ao final de um login bem-sucedido. Ela é executada após todos os fatores de autenticação, incluindo MFA quando necessário, e antes que o Logto conclua a interação OIDC e emita os tokens.
+
+Ela é executada para interações `SignIn`, independentemente de o usuário ter se autenticado com senha, código de verificação, conector social, SSO corporativo, passkey ou outro método suportado. Não é executada durante o registro.
+
+## Payload do evento \{#event-payload}
+
+O evento contém o contexto final do usuário para o login atual:
+
+```ts
+type PostSignInEvent = {
+  // Mantido para compatibilidade retroativa após o recurso ser renomeado para Actions.
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` inclui o [perfil padrão do usuário](/user-management/user-data#user-profile), além de:
+
+| Campo                    | Descrição                                          |
+| ------------------------ | -------------------------------------------------- |
+| `hasPassword`            | Se o usuário possui uma senha local                |
+| `ssoIdentities`          | Identidades SSO corporativas vinculadas ao usuário |
+| `mfaVerificationFactors` | Tipos de fatores MFA configurados para o usuário   |
+| `roles`                  | Papéis globais e seus escopos de recursos de API   |
+| `organizations`          | Organizações às quais o usuário pertence           |
+| `organizationRoles`      | Papéis de organização atribuídos ao usuário        |
+
+O contexto também inclui campos como `applicationId`, `lastSignInAt`, `createdAt` e `updatedAt`. Não inclui senhas em texto puro, hashes de senha, segredos de MFA ou segredos de token-set de conectores.
+
+## Resultado e comportamento no-op \{#result-and-no-op-behavior}
+
+Retorne este resultado para atualizar o usuário:
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` pode conter apenas os [campos de atualização de usuário suportados](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Retorne `undefined`, `null`, `{}`, ou `{ action: 'updateUser' }` para continuar sem uma atualização de usuário pela Action. Outros nomes de ação, valores primitivos, arrays, `user: null` ou campos de usuário não suportados são inválidos e fazem o login falhar.
+
+:::note
+A política de erro de script `allow` se aplica apenas quando a execução do script falha. Ela não permite um resultado malformado. Sempre retorne uma atualização suportada ou um valor no-op.
+:::
+
+## Atualizando identificadores de login \{#updating-sign-in-identifiers}
+
+Diferente de [Pós-verificação do primeiro fator](/developers/actions/post-first-factor-verification), esta Ação pode alterar os campos identificadores `username`, `primaryEmail` e `primaryPhone`, incluindo o identificador com o qual o usuário acabou de fazer login. A autenticação já está concluída quando a Ação é executada, então a atualização afeta apenas o perfil armazenado e não a decisão de login atual.
+
+Duas consequências merecem planejamento:
+
+- **O identificador de login futuro do usuário muda.** Um usuário que fez login com `old@example.com` não poderá mais usar esse endereço depois. Certifique-se de que o usuário mantenha um identificador utilizável e trate o novo valor como confirmado, pois o Logto o armazena como email ou número de telefone principal do usuário sem uma etapa adicional de verificação.
+- **Uma colisão aborta o login.** Se o novo identificador já pertencer a outro usuário, o Logto rejeita a atualização com um erro `422`, como `user.email_already_in_use`, e a interação falha. Essa verificação ocorre fora do script, então a política de erro de script `allow` não a suprime. Resolva ou ignore conflitos dentro do script em vez de depender da política de erro.
+
+Só retorne um campo identificador quando o valor vier de uma fonte confiável, como um provedor de identidade upstream ou um sistema de registro.
+
+## Exemplo de enriquecimento \{#enrichment-example}
+
+Este exemplo solicita dados atuais de perfil de um serviço externo e armazena campos selecionados no Logto:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    // Não encontrou o perfil externo, não faz nada.
+    return;
+  }
+
+  if (!response.ok) {
+    // O serviço de perfil retornou um erro.
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+A atualização é concluída antes que o Logto finalize o login. Quando os escopos OIDC correspondentes são solicitados, reivindicações derivadas do usuário atualizado, como reivindicações de perfil no token de ID, podem refletir os novos valores no login atual.
+
+## Ordem e comportamento em caso de falha \{#ordering-and-failure-behavior}
+
+Antes que esta Ação seja executada, o Logto pode já ter persistido efeitos colaterais normais do login, como `lastSignInAt`, alterações de perfil feitas durante a interação, estado do MFA, sincronização de identidade SSO e provisionamento Just-in-Time de organização. Bloquear o login não desfaz essas alterações.
+
+Escolha a política de erro com base no papel dos dados externos:
+
+- Use `block` quando a atualização for obrigatória para um login válido. Este é o padrão.
+- Use `allow` quando dados de enriquecimento desatualizados ou ausentes forem aceitáveis. Se a execução do script falhar, o Logto continua sem aplicar a atualização da Action.
+
+Mantenha a atualização idempotente e a dependência externa rápida. Uma Ação de Pós-login é executada em todo login aplicável.

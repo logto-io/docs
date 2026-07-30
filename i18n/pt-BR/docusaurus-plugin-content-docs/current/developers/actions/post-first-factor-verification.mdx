@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: Verificação pós primeiro fator
+sidebar_label: Verificação pós primeiro fator
+sidebar_position: 3
+---
+
+# Verificação pós primeiro fator
+
+A Ação de verificação pós primeiro fator oferece suporte à migração de usuários just-in-time de um sistema de senha legado.
+
+Apesar do nome, esta Ação não é executada após todo primeiro fator bem-sucedido. Ela só é executada quando todas as seguintes condições são verdadeiras:
+
+- A interação da Experience API é `SignIn`.
+- O usuário enviou um nome de usuário, endereço de e-mail ou número de telefone com uma senha.
+- A verificação de senha local do Logto falhou.
+- Se o identificador pertence a um usuário Logto existente, esse usuário não está suspenso.
+
+Se a senha local for válida, o Logto continua sem executar a Ação. Tentativas de registro, esqueci a senha, login sem senha e usuários suspensos não a acionam.
+
+## Payload do evento \{#event-payload}
+
+O `event` tem este formato:
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // Mantido para compatibilidade retroativa após o recurso ser renomeado para Actions.
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+`user` é `null` quando o identificador não pertence a um usuário Logto. Caso contrário, contém o contexto editável do perfil do usuário existente.
+
+:::danger
+`event.password` é a senha em texto puro enviada pelo usuário. Envie-a apenas para o seu endpoint de autenticação legado confiável via HTTPS. Nunca registre, armazene, coloque em `customData`, inclua em um erro ou retorne da Ação.
+:::
+
+## Resultado \{#result}
+
+Após o sistema legado verificar as credenciais enviadas, retorne um destes resultados:
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+O resultado deve corresponder ao evento:
+
+- Quando `event.user` é `null`, retorne `createUser`.
+- Quando `event.user` está presente, retorne `updateUser`.
+- `passwordVerified` deve ser literalmente `true`.
+- `user` pode conter apenas os [campos suportados de patch de usuário](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Para um novo usuário, o Logto adiciona o identificador de login enviado quando o resultado não o inclui. A Ação não pode alterar o identificador enviado para outro valor. A comparação de e-mails é case-insensitive, números de telefone são comparados após normalização e nomes de usuário devem coincidir exatamente.
+
+Quando o resultado é aceito, o Logto faz o hash da senha enviada com Argon2i e a salva como senha local do usuário. O script não deve gerar ou retornar um hash de senha.
+
+Retorne `undefined` quando o sistema legado rejeitar as credenciais. Um resultado vazio, malformado ou não suportado também é tratado como credenciais inválidas.
+
+## Exemplo de migração \{#migration-example}
+
+Configure `LEGACY_VERIFY_URL` e `LEGACY_API_TOKEN` como variáveis de ambiente da Ação, depois adapte este script para sua API legada:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // Trate uma rejeição de autenticação como um resultado comum de credenciais inválidas.
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`O serviço de autenticação legado retornou ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+O primeiro login aceito funciona da seguinte forma:
+
+1. A verificação de senha local falha, então o Logto executa a Ação.
+2. O script envia o identificador e a senha para o sistema legado.
+3. O sistema legado verifica as credenciais e o script retorna `createUser` ou `updateUser`.
+4. O Logto cria ou atualiza o usuário e armazena a senha enviada como uma nova credencial local Argon2i.
+5. O usuário completa a MFA se necessário, e o Logto conclui o login.
+6. Em logins posteriores, a senha local migrada é aceita, então esta Ação não é mais chamada para esse usuário.
+
+## Limites de segurança \{#security-boundaries}
+
+:::warning
+Gravações de usuário e senha desta Ação ocorrem antes da conclusão da MFA. Se o usuário abandonar ou falhar na MFA, essas gravações permanecem.
+
+Um usuário criado por esta Ação também ignora proteções exclusivas de registro, incluindo listas de bloqueio de e-mail, regras de domínio apenas SSO, modo de cadastro desativado e verificações obrigatórias de perfil no registro. A proteção Sentinel e a MFA ainda se aplicam.
+:::
+
+Use estas salvaguardas:
+
+- Retorne `passwordVerified: true` apenas após o sistema legado ter verificado positivamente a senha exata enviada.
+- Mantenha o endpoint legado privado sempre que possível, exija autenticação de serviço, use HTTPS e aplique limitação de taxa.
+- Mantenha o patch de usuário retornado mínimo. Não copie identificadores ou dados de perfil não validados.
+- Teste criação de usuário desconhecido, atualização de usuário existente, colisões de identificador, usuários suspensos, MFA, falhas upstream e tentativas concorrentes.
+- Monitore `Action.PostFirstFactorVerification` nos [logs de auditoria](/developers/audit-logs/event-types).
+- Mantenha a Ação habilitada apenas durante a migração, quando possível.
+
+Se você puder exportar dados de usuário e hashes de senha compatíveis com antecedência, considere a [migração em massa de usuários](/user-management/user-migration).

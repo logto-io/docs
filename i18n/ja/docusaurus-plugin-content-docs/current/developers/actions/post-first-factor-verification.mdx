@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: 初回要素認証後の検証 (Post first-factor verification)
+sidebar_label: 初回要素認証後の検証 (Post first-factor verification)
+sidebar_position: 3
+---
+
+# 初回要素認証後の検証 (Post first-factor verification)
+
+初回要素認証後の検証 (Post first-factor verification) アクションは、レガシーパスワードシステムからのジャストインタイムユーザー移行をサポートします。
+
+名前に反して、このアクションはすべての初回要素認証成功後に実行されるわけではありません。次のすべての条件を満たす場合のみ実行されます：
+
+- 体験 (Experience) API のインタラクションが `SignIn` である。
+- ユーザー名、メールアドレス、または電話番号とパスワードが送信された。
+- Logto のローカルパスワード認証 (Authentication) が失敗した。
+- 識別子が既存の Logto ユーザーに属している場合、そのユーザーが停止されていない。
+
+ローカルパスワードが有効な場合、Logto はアクションを実行せずに処理を続行します。登録、パスワード忘れ、非パスワードサインイン、停止ユーザーによる試行ではこのアクションは発動しません。
+
+## イベントペイロード \{#event-payload}
+
+`event` の構造は次の通りです：
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // 機能名が Actions に変更された後も後方互換性のために保持。
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+`user` は、識別子が Logto ユーザーに属していない場合は `null` です。それ以外の場合は既存ユーザーの編集可能なプロファイルコンテキストが含まれます。
+
+:::danger
+`event.password` はユーザーが送信した平文パスワードです。信頼できるレガシー認証 (Authentication) エンドポイントにのみ HTTPS 経由で送信してください。絶対にログに記録したり、保存したり、`customData` に格納したり、エラーに含めたり、アクションから返したりしないでください。
+:::
+
+## 結果 \{#result}
+
+レガシーシステムが送信された認証情報を検証した後、次のいずれかの結果を返します：
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+結果はイベントと一致している必要があります：
+
+- `event.user` が `null` の場合は `createUser` を返します。
+- `event.user` が存在する場合は `updateUser` を返します。
+- `passwordVerified` はリテラル値 `true` でなければなりません。
+- `user` には [サポートされているユーザーパッチフィールド](/developers/actions/configure-and-test-actions#supported-user-patch) のみを含めることができます。
+
+新規ユーザーの場合、結果にサインイン識別子が含まれていなければ、Logto が送信された識別子を追加します。アクションで送信された識別子を別の値に変更することはできません。メールアドレスの比較は大文字小文字を区別せず、電話番号は正規化後に比較され、ユーザー名は完全一致が必要です。
+
+結果が受け入れられると、Logto は送信されたパスワードを Argon2i でハッシュ化し、ユーザーのローカルパスワードとして保存します。スクリプトでパスワードハッシュを生成または返す必要はありません。
+
+レガシーシステムが認証情報を拒否した場合は `undefined` を返してください。空、形式不正、またはサポートされていない結果も無効な認証情報として扱われます。
+
+## 移行例 \{#migration-example}
+
+`LEGACY_VERIFY_URL` と `LEGACY_API_TOKEN` をアクションの環境変数として設定し、次のスクリプトをレガシー API に合わせて調整してください：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // 認証 (Authentication) 拒否は通常の無効な認証情報として扱う。
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`レガシー認証 (Authentication) サービスが ${response.status} を返しました`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+最初に受け入れられたサインインは次のように動作します：
+
+1. ローカルパスワード認証 (Authentication) が失敗し、Logto がアクションを実行します。
+2. スクリプトが識別子とパスワードをレガシーシステムに送信します。
+3. レガシーシステムが認証情報を検証し、スクリプトが `createUser` または `updateUser` を返します。
+4. Logto がユーザーを作成または更新し、送信されたパスワードを新しいローカル Argon2i 資格情報として保存します。
+5. 必要に応じてユーザーが多要素認証 (MFA) を完了し、Logto がサインインを完了します。
+6. 以降のサインインでは、移行されたローカルパスワードが成功するため、このアクションはそのユーザーには呼び出されません。
+
+## セキュリティ境界 \{#security-boundaries}
+
+:::warning
+このアクションによるユーザーおよびパスワードの書き込みは、多要素認証 (MFA) 完了前に行われます。ユーザーが MFA を放棄または失敗した場合でも、その書き込みは残ります。
+
+このアクションで作成されたユーザーは、登録専用ガード（メールブロックリスト、SSO 専用ドメインルール、サインアップ無効モード、登録必須プロファイルチェックなど）をバイパスします。センチネル保護と MFA は引き続き適用されます。
+:::
+
+次のセーフガードを実施してください：
+
+- レガシーシステムが送信されたパスワードを正確に検証した場合のみ `passwordVerified: true` を返す。
+- レガシーエンドポイントは可能な限り非公開とし、サービス認証を必須とし、HTTPS を使用し、レート制限を適用する。
+- 返すユーザーパッチは最小限にとどめる。未検証の識別子やプロファイルデータをコピーしない。
+- 未知ユーザー作成、既存ユーザー更新、識別子の衝突、停止ユーザー、多要素認証 (MFA)、上流障害、同時試行をテストする。
+- [監査ログ](/developers/audit-logs/event-types) の `Action.PostFirstFactorVerification` を監視する。
+- 実用上可能な場合は、移行期間中のみアクションを有効にしておく。
+
+事前にユーザーデータと互換性のあるパスワードハッシュをエクスポートできる場合は、[一括ユーザー移行](/user-management/user-migration) を検討してください。

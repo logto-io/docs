@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: การตรวจสอบหลังปัจจัยแรก (Post first-factor verification)
+sidebar_label: การตรวจสอบหลังปัจจัยแรก (Post first-factor verification)
+sidebar_position: 3
+---
+
+# การตรวจสอบหลังปัจจัยแรก (Post first-factor verification)
+
+Action การตรวจสอบหลังปัจจัยแรก (Post first-factor verification) รองรับการย้ายผู้ใช้แบบ just-in-time จากระบบรหัสผ่านเดิม
+
+แม้ชื่อจะสื่อว่า “หลังปัจจัยแรก” แต่ Action นี้จะไม่ทำงานหลังจากการยืนยันปัจจัยแรกทุกครั้ง จะทำงานเฉพาะเมื่อเงื่อนไขทั้งหมดต่อไปนี้เป็นจริง:
+
+- การโต้ตอบผ่าน Experience API คือ `SignIn`
+- ผู้ใช้ส่งชื่อผู้ใช้ อีเมล หรือเบอร์โทรศัพท์พร้อมรหัสผ่าน
+- การตรวจสอบรหัสผ่านภายในของ Logto ล้มเหลว
+- หาก identifier นั้นเป็นของผู้ใช้ Logto ที่มีอยู่ ผู้ใช้นั้นต้องไม่ถูกระงับ
+
+หากรหัสผ่านภายในถูกต้อง Logto จะดำเนินการต่อโดยไม่เรียกใช้ Action นี้ การลงทะเบียน ลืมรหัสผ่าน การลงชื่อเข้าใช้แบบไม่ใช้รหัสผ่าน และความพยายามของผู้ใช้ที่ถูกระงับจะไม่เรียกใช้ Action นี้
+
+## ข้อมูลเหตุการณ์ (Event payload) \{#event-payload}
+
+`event` มีโครงสร้างดังนี้:
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // คงไว้เพื่อความเข้ากันได้ย้อนหลังหลังจากเปลี่ยนชื่อฟีเจอร์เป็น Actions
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+`user` จะเป็น `null` เมื่อ identifier ไม่ใช่ของผู้ใช้ Logto มิฉะนั้นจะมีข้อมูลโปรไฟล์ที่แก้ไขได้ของผู้ใช้ที่มีอยู่
+
+:::danger
+`event.password` คือรหัสผ่านตัวจริงที่ผู้ใช้ส่งมา ส่งไปเฉพาะ endpoint การยืนยันตัวตนเดิมที่คุณไว้วางใจผ่าน HTTPS เท่านั้น ห้ามบันทึก เก็บไว้ ใส่ใน `customData` รวมใน error หรือส่งกลับจาก Action เด็ดขาด
+:::
+
+## ผลลัพธ์ (Result) \{#result}
+
+หลังจากระบบเดิมตรวจสอบข้อมูลรับรองที่ส่งมาแล้ว ให้ส่งคืนผลลัพธ์อย่างใดอย่างหนึ่งต่อไปนี้:
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+ผลลัพธ์ต้องตรงกับ event:
+
+- เมื่อ `event.user` เป็น `null` ให้ส่งคืน `createUser`
+- เมื่อ `event.user` มีค่า ให้ส่งคืน `updateUser`
+- `passwordVerified` ต้องเป็นค่า `true` เท่านั้น
+- `user` อาจมีเฉพาะ [ฟิลด์ที่รองรับสำหรับ user patch](/developers/actions/configure-and-test-actions#supported-user-patch) เท่านั้น
+
+สำหรับผู้ใช้ใหม่ Logto จะเพิ่ม identifier ที่ใช้ลงชื่อเข้าใช้ที่ส่งมา หากผลลัพธ์ไม่รวมไว้ Action ไม่สามารถเปลี่ยน identifier ที่ส่งมาเป็นค่าอื่นได้ การเปรียบเทียบอีเมลไม่สนใจตัวพิมพ์เล็ก/ใหญ่ เบอร์โทรจะเปรียบเทียบหลัง normalization และชื่อผู้ใช้ต้องตรงกันเป๊ะ
+
+เมื่อผลลัพธ์ได้รับการยอมรับ Logto จะแฮชรหัสผ่านที่ส่งมาด้วย Argon2i และบันทึกเป็นรหัสผ่านภายในของผู้ใช้ สคริปต์ต้องไม่สร้างหรือส่งคืน password hash
+
+ส่งคืน `undefined` เมื่อระบบเดิมปฏิเสธข้อมูลรับรอง ผลลัพธ์ที่ว่าง ผิดรูปแบบ หรือไม่รองรับจะถือว่าเป็นข้อมูลรับรองไม่ถูกต้องเช่นกัน
+
+## ตัวอย่างการย้ายข้อมูล (Migration example) \{#migration-example}
+
+กำหนด `LEGACY_VERIFY_URL` และ `LEGACY_API_TOKEN` เป็น environment variable ของ Action แล้วปรับสคริปต์นี้ให้เข้ากับ API เดิมของคุณ:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // กรณีปฏิเสธการยืนยันตัวตน ให้ถือว่าเป็นข้อมูลรับรองไม่ถูกต้องตามปกติ
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Legacy authentication service returned ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+การลงชื่อเข้าใช้ครั้งแรกที่ได้รับการยอมรับจะทำงานดังนี้:
+
+1. การตรวจสอบรหัสผ่านภายในล้มเหลว Logto จึงเรียกใช้ Action
+2. สคริปต์ส่ง identifier และรหัสผ่านไปยังระบบเดิม
+3. ระบบเดิมตรวจสอบข้อมูลรับรองและสคริปต์ส่งคืน `createUser` หรือ `updateUser`
+4. Logto สร้างหรืออัปเดตผู้ใช้และบันทึกรหัสผ่านที่ส่งมาเป็น credential Argon2i ภายในใหม่
+5. ผู้ใช้ดำเนินการ MFA หากจำเป็น และ Logto ดำเนินการลงชื่อเข้าใช้จนเสร็จสิ้น
+6. ในการลงชื่อเข้าใช้ครั้งถัดไป รหัสผ่านภายในที่ย้ายมาจะสำเร็จ Action นี้จะไม่ถูกเรียกใช้อีกสำหรับผู้ใช้นั้น
+
+## ขอบเขตความปลอดภัย (Security boundaries) \{#security-boundaries}
+
+:::warning
+การเขียนข้อมูลผู้ใช้และรหัสผ่านจาก Action นี้เกิดขึ้นก่อน MFA จะเสร็จสมบูรณ์ หากผู้ใช้ละทิ้งหรือ MFA ล้มเหลว ข้อมูลที่เขียนไว้จะยังคงอยู่
+
+ผู้ใช้ที่สร้างโดย Action นี้จะข้ามการป้องกันเฉพาะการลงทะเบียน เช่น รายการบล็อกอีเมล กฎโดเมน SSO-only โหมดปิดรับสมัคร และการตรวจสอบโปรไฟล์บังคับขณะลงทะเบียน Sentinel protection และ MFA ยังมีผลอยู่
+:::
+
+ใช้มาตรการป้องกันเหล่านี้:
+
+- ส่งคืน `passwordVerified: true` เฉพาะหลังจากระบบเดิมตรวจสอบรหัสผ่านที่ส่งมาตรงเป๊ะแล้วเท่านั้น
+- เก็บ endpoint เดิมให้เป็นส่วนตัวเมื่อเป็นไปได้ กำหนดให้ต้องมีการยืนยันตัวตนของบริการ ใช้ HTTPS และจำกัดอัตราการเข้าถึง
+- ส่งคืน user patch เท่าที่จำเป็น หลีกเลี่ยงการคัดลอก identifier หรือข้อมูลโปรไฟล์ที่ยังไม่ได้ตรวจสอบ
+- ทดสอบกรณีสร้างผู้ใช้ใหม่ อัปเดตผู้ใช้เดิม ชนกันของ identifier ผู้ใช้ถูกระงับ MFA ความล้มเหลว upstream และความพยายามพร้อมกัน
+- เฝ้าติดตาม `Action.PostFirstFactorVerification` ใน [บันทึกการตรวจสอบ (audit logs)](/developers/audit-logs/event-types)
+- เปิดใช้งาน Action นี้เฉพาะช่วงเวลาที่จำเป็นสำหรับการย้ายข้อมูลเท่านั้น
+
+หากคุณสามารถส่งออกข้อมูลผู้ใช้และ password hash ที่เข้ากันได้ล่วงหน้าได้ ให้พิจารณา [การย้ายผู้ใช้แบบกลุ่ม (bulk user migration)](/user-management/user-migration) แทน

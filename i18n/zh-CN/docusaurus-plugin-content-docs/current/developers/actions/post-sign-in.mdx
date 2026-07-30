@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: 登录后 (Post sign-in)
+sidebar_label: 登录后 (Post sign-in)
+sidebar_position: 4
+---
+
+# 登录后 (Post sign-in)
+
+登录后 (Post sign-in) Action 会在成功登录结束时更新现有用户。它在所有认证 (Authentication) 因素（包括需要时的多因素认证 (MFA)）完成后、Logto 完成 OIDC 交互并颁发令牌之前运行。
+
+无论用户是通过密码、验证码、社交连接器、企业单点登录 (SSO)、通行密钥还是其他受支持的方法进行认证 (Authentication)，只要是 `SignIn` 交互，它都会运行。但在注册期间不会运行。
+
+## 事件负载 \{#event-payload}
+
+事件包含当前登录的最终用户上下文：
+
+```ts
+type PostSignInEvent = {
+  // 为了向后兼容，在该功能重命名为 Actions 后保留。
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` 包含标准的 [用户资料](/user-management/user-data#user-profile)，以及：
+
+| 字段                     | 描述                                        |
+| ------------------------ | ------------------------------------------- |
+| `hasPassword`            | 用户是否有本地密码                          |
+| `ssoIdentities`          | 关联到该用户的企业单点登录 (SSO) 身份       |
+| `mfaVerificationFactors` | 为用户配置的多因素认证 (MFA) 因素类型       |
+| `roles`                  | 全局角色 (Roles) 及其 API 资源权限 (Scopes) |
+| `organizations`          | 用户所属的组织 (Organizations)              |
+| `organizationRoles`      | 分配给用户的组织角色 (Roles)                |
+
+上下文还包括如 `applicationId`、`lastSignInAt`、`createdAt` 和 `updatedAt` 等字段。不包含明文密码、密码哈希、多因素认证 (MFA) 密钥或连接器令牌集密钥。
+
+## 结果与无操作行为 \{#result-and-no-op-behavior}
+
+返回如下结果以更新用户：
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` 只能包含 [支持的用户补丁字段](/developers/actions/configure-and-test-actions#supported-user-patch)。
+
+返回 `undefined`、`null`、`{}` 或 `{ action: 'updateUser' }`，即可在不更新 Action 用户的情况下继续。其他 action 名称、原始值、数组、`user: null` 或不支持的用户字段都是无效的，会导致登录失败。
+
+:::note
+`allow` 脚本错误策略仅在脚本执行失败时适用。它不允许格式错误的结果。请始终返回受支持的更新或无操作值。
+:::
+
+## 更新登录标识符 \{#updating-sign-in-identifiers}
+
+与 [首次认证 (Authentication) 因素验证后 (Post first-factor verification)](/developers/actions/post-first-factor-verification) 不同，此 Action 可以更改标识符字段 `username`、`primaryEmail` 和 `primaryPhone`，包括用户刚刚用于登录的标识符。Action 运行时认证 (Authentication) 已完成，因此更新只影响存储的资料，不影响当前登录决策。
+
+有两个后果值得提前规划：
+
+- **用户未来的登录标识符会发生变化。** 用 `old@example.com` 登录的用户之后将无法再使用该地址。请确保用户保留可用的标识符，并将新值视为已确认，因为 Logto 会将其作为用户的主邮箱或手机号存储，无需额外验证步骤。
+- **标识符冲突会中止登录。** 如果新标识符已属于其他用户，Logto 会以 `422` 错误（如 `user.email_already_in_use`）拒绝更新，交互失败。此检查在脚本之外运行，因此 `allow` 脚本错误策略不会忽略它。请在脚本内部解决或跳过冲突，而不是依赖错误策略。
+
+仅当标识符字段的值来自你信任的来源（如上游身份提供商或权威系统）时才返回。
+
+## 丰富化示例 \{#enrichment-example}
+
+此示例从外部服务请求当前资料数据，并将选定字段存储到 Logto：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+更新会在 Logto 完成登录前完成。当请求相应的 OIDC 权限 (Scopes) 时，从更新后的用户派生的声明 (Claims)，如 ID 令牌中的 profile 声明 (Claims)，因此可以反映当前登录中的新值。
+
+## 顺序与失败行为 \{#ordering-and-failure-behavior}
+
+在此 Action 运行之前，Logto 可能已经持久化了常规登录副作用，如 `lastSignInAt`、交互期间的资料更改、多因素认证 (MFA) 状态、单点登录 (SSO) 身份同步和即时组织 (Organizations) 供应。阻止登录不会回滚这些更改。
+
+请根据外部数据的作用选择错误策略：
+
+- 当更新是有效登录所必需时，使用 `block`。这是默认值。
+- 当允许数据过期或缺失时，使用 `allow`。如果脚本执行失败，Logto 会在不应用 Action 更新的情况下继续。
+
+请保持更新具备幂等性，并确保外部依赖响应迅速。登录后 (Post sign-in) Action 会在每次适用的登录时运行。

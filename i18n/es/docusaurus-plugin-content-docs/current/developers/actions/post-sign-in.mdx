@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: Post sign-in
+sidebar_label: Post sign-in
+sidebar_position: 4
+---
+
+# Post sign-in
+
+La Acción Post sign-in actualiza un usuario existente al final de un inicio de sesión exitoso. Se ejecuta después de todos los factores de autenticación, incluyendo MFA cuando es requerido, y antes de que Logto complete la interacción OIDC y emita los tokens.
+
+Se ejecuta para interacciones de `SignIn` sin importar si el usuario se autenticó con una contraseña, código de verificación, conector social, SSO empresarial, passkey u otro método soportado. No se ejecuta durante el registro.
+
+## Carga útil del evento \{#event-payload}
+
+El evento contiene el contexto final del usuario para el inicio de sesión actual:
+
+```ts
+type PostSignInEvent = {
+  // Retenido por compatibilidad hacia atrás después de que la función fue renombrada a Actions.
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` incluye el [perfil de usuario](/user-management/user-data#user-profile) estándar, además de:
+
+| Campo                    | Descripción                                          |
+| ------------------------ | ---------------------------------------------------- |
+| `hasPassword`            | Si el usuario tiene una contraseña local             |
+| `ssoIdentities`          | Identidades de SSO empresarial vinculadas al usuario |
+| `mfaVerificationFactors` | Tipos de factores MFA configurados para el usuario   |
+| `roles`                  | Roles globales y sus alcances de recursos de API     |
+| `organizations`          | Organizaciones a las que pertenece el usuario        |
+| `organizationRoles`      | Roles de organización asignados al usuario           |
+
+El contexto también incluye campos como `applicationId`, `lastSignInAt`, `createdAt` y `updatedAt`. No incluye contraseñas en texto plano, hashes de contraseñas, secretos de MFA ni secretos de conjuntos de tokens de conectores.
+
+## Resultado y comportamiento no-op \{#result-and-no-op-behavior}
+
+Devuelve este resultado para actualizar el usuario:
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` puede contener solo los [campos de actualización de usuario soportados](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Devuelve `undefined`, `null`, `{}`, o `{ action: 'updateUser' }` para continuar sin una actualización de usuario por Action. Otros nombres de acción, valores primitivos, arreglos, `user: null` o campos de usuario no soportados son inválidos y fallarán el inicio de sesión.
+
+:::note
+La política de errores de script `allow` solo aplica cuando la ejecución del script falla. No permite un resultado malformado. Siempre devuelve una actualización soportada o un valor no-op.
+:::
+
+## Actualización de identificadores de inicio de sesión \{#updating-sign-in-identifiers}
+
+A diferencia de [Post first-factor verification](/developers/actions/post-first-factor-verification), esta Acción puede cambiar los campos identificadores `username`, `primaryEmail` y `primaryPhone`, incluyendo el identificador con el que el usuario acaba de iniciar sesión. La autenticación ya está completa cuando se ejecuta la Acción, por lo que la actualización solo afecta al perfil almacenado y no a la decisión de inicio de sesión actual.
+
+Hay dos consecuencias que vale la pena planificar:
+
+- **El identificador de inicio de sesión futuro del usuario cambia.** Un usuario que inició sesión con `old@example.com` ya no podrá usar esa dirección después. Asegúrate de que el usuario conserve un identificador utilizable y trata el nuevo valor como confirmado, ya que Logto lo almacena como el correo electrónico o número de teléfono principal del usuario sin un paso adicional de verificación.
+- **Una colisión aborta el inicio de sesión.** Si el nuevo identificador ya pertenece a otro usuario, Logto rechaza la actualización con un error `422` como `user.email_already_in_use`, y la interacción falla. Esta comprobación se ejecuta fuera del script, por lo que la política de errores de script `allow` no la suprime. Resuelve o salta los conflictos dentro del script en lugar de depender de la política de errores.
+
+Solo devuelve un campo identificador cuando el valor proviene de una fuente en la que confías, como un proveedor de identidad externo o un sistema de registro.
+
+## Ejemplo de enriquecimiento \{#enrichment-example}
+
+Este ejemplo solicita datos actuales del perfil desde un servicio externo y almacena campos seleccionados en Logto:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`El servicio de perfil devolvió ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+La actualización se completa antes de que Logto finalice el inicio de sesión. Cuando se solicitan los alcances OIDC correspondientes, los reclamos derivados del usuario actualizado, como los reclamos de perfil en el token de ID, pueden reflejar los nuevos valores en el inicio de sesión actual.
+
+## Orden y comportamiento ante fallos \{#ordering-and-failure-behavior}
+
+Antes de que se ejecute esta Acción, Logto puede haber persistido efectos secundarios normales del inicio de sesión como `lastSignInAt`, cambios de perfil realizados durante la interacción, estado de MFA, sincronización de identidad SSO y aprovisionamiento Just-in-Time de la organización. Bloquear el inicio de sesión no revierte esos cambios.
+
+Elige la política de errores según el rol de los datos externos:
+
+- Usa `block` cuando la actualización sea requerida para un inicio de sesión válido. Este es el valor predeterminado.
+- Usa `allow` cuando sean aceptables datos de enriquecimiento obsoletos o faltantes. Si la ejecución del script falla, Logto continúa sin aplicar la actualización de la Acción.
+
+Mantén la actualización idempotente y la dependencia externa rápida. Una Acción Post sign-in se ejecuta en cada inicio de sesión aplicable.

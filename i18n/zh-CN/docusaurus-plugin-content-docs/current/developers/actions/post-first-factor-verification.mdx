@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: 首次因子验证后操作 (Post first-factor verification)
+sidebar_label: 首次因子验证后操作 (Post first-factor verification)
+sidebar_position: 3
+---
+
+# 首次因子验证后操作 (Post first-factor verification)
+
+首次因子验证后操作 (Post first-factor verification) Action 支持从传统密码系统即时迁移用户。
+
+尽管名称如此，该 Action 并不会在每次首次因子验证成功后都运行。它仅在以下所有条件都满足时运行：
+
+- Experience API 交互为 `SignIn`。
+- 用户提交了用户名、电子邮件地址或手机号和密码。
+- Logto 的本地密码验证失败。
+- 如果该标识符属于现有 Logto 用户，则该用户未被暂停。
+
+如果本地密码有效，Logto 会继续流程，不会运行该 Action。注册、忘记密码、非密码登录和被暂停用户的尝试不会触发它。
+
+## 事件负载 (Event payload) \{#event-payload}
+
+`event` 结构如下：
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // 为了向后兼容，在该功能重命名为 Actions 后保留。
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+当标识符不属于 Logto 用户时，`user` 为 `null`。否则，它包含现有用户可编辑的资料上下文。
+
+:::danger
+`event.password` 是用户提交的明文密码。仅通过 HTTPS 发送到你信任的传统认证 (Authentication) 端点。切勿记录、存储、放入 `customData`、包含在错误信息中或从 Action 返回该密码。
+:::
+
+## 结果 (Result) \{#result}
+
+传统系统验证提交的凭据后，返回以下结果之一：
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+结果必须与事件匹配：
+
+- 当 `event.user` 为 `null` 时，返回 `createUser`。
+- 当 `event.user` 存在时，返回 `updateUser`。
+- `passwordVerified` 必须为字面值 `true`。
+- `user` 只能包含[支持的用户补丁字段](/developers/actions/configure-and-test-actions#supported-user-patch)。
+
+对于新用户，如果结果中未包含，Logto 会添加提交的登录标识符。Action 不能将提交的标识符更改为其他值。电子邮件比较不区分大小写，手机号在归一化后比较，用户名必须完全匹配。
+
+当结果被接受后，Logto 会使用 Argon2i 对提交的密码进行哈希，并将其保存为用户的本地密码。脚本不得生成或返回密码哈希。
+
+当传统系统拒绝凭据时，返回 `undefined`。空、格式错误或不支持的结果也会被视为无效凭据。
+
+## 迁移示例 (Migration example) \{#migration-example}
+
+将 `LEGACY_VERIFY_URL` 和 `LEGACY_API_TOKEN` 配置为 Action 环境变量，然后将此脚本适配到你的传统 API：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // 将认证 (Authentication) 拒绝视为普通的无效凭据结果。
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`传统认证 (Authentication) 服务返回了 ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+首次接受的登录流程如下：
+
+1. 本地密码验证失败，因此 Logto 运行该 Action。
+2. 脚本将标识符和密码发送到传统系统。
+3. 传统系统验证凭据，脚本返回 `createUser` 或 `updateUser`。
+4. Logto 创建或更新用户，并将提交的密码作为新的本地 Argon2i 凭据保存。
+5. 用户如需完成 MFA，则完成 MFA，Logto 完成登录。
+6. 后续登录时，迁移后的本地密码验证成功，因此该用户不再调用此 Action。
+
+## 安全边界 (Security boundaries) \{#security-boundaries}
+
+:::warning
+该 Action 写入用户和密码发生在 MFA 完成之前。如果用户放弃或未通过 MFA，这些写入仍然保留。
+
+通过该 Action 创建的用户也会绕过仅限注册的保护措施，包括电子邮件黑名单、仅限 SSO 域规则、禁用注册模式和注册强制资料检查。哨兵保护和 MFA 仍然适用。
+:::
+
+请采取以下安全措施：
+
+- 仅在传统系统已正向验证完全相同的提交密码后，返回 `passwordVerified: true`。
+- 尽可能保持传统端点私有，要求服务认证 (Authentication)，使用 HTTPS，并应用限流。
+- 返回的用户补丁保持最小。不要复制未经验证的标识符或资料数据。
+- 测试未知用户创建、现有用户更新、标识符冲突、被暂停用户、MFA、上游故障和并发尝试。
+- 在[审计日志](/developers/audit-logs/event-types)中监控 `Action.PostFirstFactorVerification`。
+- 实际迁移期间，尽量只在需要时启用该 Action。
+
+如果你可以提前导出用户数据和兼容的密码哈希，建议考虑[批量用户迁移](/user-management/user-migration)。

@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: 配置和测试 Actions
+sidebar_label: 配置和测试 Actions
+sidebar_position: 2
+---
+
+# 配置和测试 Actions
+
+## 创建 Action \{#create-an-action}
+
+1. 进入 <CloudLink to="/actions">控制台 > Actions</CloudLink>。
+2. 选择 **Post first-factor verification** 或 **Post sign-in**。
+3. 在脚本编辑器中实现 `runAction` 函数。
+4. 在 **数据源** 下，查看事件和结果类型，配置环境变量，并查找获取外部数据的示例。
+5. 在 **测试上下文** 下，调整示例事件并运行脚本。
+6. 在 **设置** 下，启用该 Action 并选择其脚本错误行为。
+7. 保存该 Action。
+
+只有已保存且已启用的 Action 才会在生产环境中运行。
+
+## 实现 `runAction` \{#implement-runaction}
+
+保持入口函数名为 `runAction`。它接收一个 payload 对象：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+如果要拒绝或继续但不更新用户，请返回特定 Action 类型支持的 no-op 值。
+
+### 获取外部数据 \{#fetch-external-data}
+
+使用注入的 `fetch` 函数调用外部 API。例如，Post sign-in Action 可以获取用户资料：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+Actions 在认证请求 (Authentication request) 路径中运行。请确保外部服务快速且高可用，并假设用户可能会重试登录。Logto 不会重试 Action，也不会从 Logto Cloud 远程运行器回退到本地执行。
+
+### 使用环境变量 \{#use-environment-variables}
+
+对于不应在脚本中硬编码的值（如 API URL、令牌和功能设置），请使用环境变量：
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+环境变量是 Action 配置的一部分，并对有权限读取该配置的管理员可见。请限制 Action 管理权限，并且切勿在返回结果或错误信息中包含密钥。
+
+## 支持的用户补丁字段 \{#supported-user-patch}
+
+Action 只能返回以下用户字段：
+
+| 字段           | 描述                 |
+| -------------- | -------------------- |
+| `username`     | 用户名               |
+| `primaryEmail` | 主邮箱地址           |
+| `primaryPhone` | 主手机号             |
+| `name`         | 显示名称             |
+| `avatar`       | 头像 URL             |
+| `profile`      | 标准 OIDC 资料字段   |
+| `customData`   | 应用的附加 JSON 数据 |
+
+对应的补丁类型为：
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+如用户 ID、冻结状态、身份、角色、组织 (Organizations)、MFA 配置、密码哈希及其他内部字段等均不被支持。
+
+对于更新，`profile` 和 `customData` 会与现有对象进行浅合并。返回带有已存在顶级键的嵌套对象会替换该键的值，不会进行深合并。标识符更新还必须通过 Logto 的唯一性检查。
+
+## 测试上下文与干跑 \{#test-context-and-dry-runs}
+
+**测试上下文** 是仅在你点击 **运行测试** 时使用的示例 JSON。它会与 Action 一起保存以便后续测试，但生产环境执行始终使用真实的认证 (Authentication) 事件。
+
+干跑（dry run）：
+
+- 使用当前未保存的脚本、示例事件和环境变量。
+- 执行脚本并显示其原始返回值。
+- 不会保存 Action，也不会创建或更新 Logto 用户。
+- 不会生成生产环境的 Action 审计事件或执行指标。
+- 不会对所选 Action 类型应用生产事件和结果校验。
+
+:::caution
+干跑成功仅证明脚本已执行，但不能保证其结果在真实认证 (Authentication) 流程中会被接受。在生产环境启用 Action 前，请在非生产租户中测试完整流程。
+
+测试成功的结果会原样显示。切勿从脚本返回密码、环境变量、API 令牌或其他密钥。
+:::
+
+## 错误处理 \{#handle-errors}
+
+**脚本错误时的处理** 设置适用于执行失败，如抛出异常、Promise 被拒绝、外部请求失败或运行器故障。它不会使无效结果变为有效。
+
+| Action 类型                    | `block`（默认）      | `allow`                                                   |
+| ------------------------------ | -------------------- | --------------------------------------------------------- |
+| Post first-factor verification | 拒绝无效的本地凭证。 | 控制台中不可用。即使通过 API 设置，执行失败仍会拒绝凭证。 |
+| Post sign-in                   | 登录失败。           | 登录继续，但不应用 Action 更新。                          |
+
+对于 Post sign-in，无效或不支持的返回值始终会导致登录失败，即使选择了 `allow`。请在脚本中校验每个成功路径，并返回明确支持的结果或 no-op。
+
+## 监控执行情况 \{#monitor-executions}
+
+生产环境执行会生成独立的 [审计日志](/developers/audit-logs) 事件：
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+审计记录包含安全的执行元数据，如 Action 类型、运行位置、耗时、决策和错误策略结果。密码、环境变量值、脚本源码及其他敏感信息均会被脱敏。
+
+## 通过 Management API 配置 Actions \{#configure-actions-with-the-management-api}
+
+你也可以通过 [Logto Management API](/integrate-logto/interact-with-management-api) 管理 Actions：
+
+| 方法     | 端点                                | 目的                  |
+| -------- | ----------------------------------- | --------------------- |
+| `GET`    | `/api/configs/actions`              | 列出已配置的 Actions  |
+| `GET`    | `/api/configs/actions/{actionType}` | 获取单个 Action       |
+| `PUT`    | `/api/configs/actions/{actionType}` | 创建或替换一个 Action |
+| `PATCH`  | `/api/configs/actions/{actionType}` | 部分更新一个 Action   |
+| `DELETE` | `/api/configs/actions/{actionType}` | 删除一个 Action       |
+| `POST`   | `/api/configs/actions/test`         | 使用示例事件干跑脚本  |
+
+Action 类型值保留其原始标识符以保证向后兼容：
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+Action 配置的结构如下：
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+使用 API 时，需显式设置 `enabled: true` 才会运行该 Action。如果未设置 `onExecutionError`，则默认为 `block`。
