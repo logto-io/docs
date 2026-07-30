@@ -1,0 +1,159 @@
+---
+id: post-first-factor-verification
+title: Vérification après le premier facteur
+sidebar_label: Vérification après le premier facteur
+sidebar_position: 3
+---
+
+# Vérification après le premier facteur
+
+L’Action de vérification après le premier facteur prend en charge la migration utilisateur just-in-time depuis un ancien système de mot de passe.
+
+Malgré son nom, cette Action ne s’exécute pas après chaque premier facteur réussi. Elle ne s’exécute que lorsque toutes les conditions suivantes sont réunies :
+
+- L’interaction de l’Experience API est `SignIn`.
+- L’utilisateur a soumis un nom d’utilisateur, une adresse e-mail ou un numéro de téléphone avec un mot de passe.
+- La vérification du mot de passe local de Logto a échoué.
+- Si l’identifiant appartient à un utilisateur Logto existant, cet utilisateur n’est pas suspendu.
+
+Si le mot de passe local est valide, Logto continue sans exécuter l’Action. Les tentatives d’inscription, de mot de passe oublié, de connexion sans mot de passe et d’utilisateur suspendu ne la déclenchent pas.
+
+## Charge utile de l’événement \{#event-payload}
+
+L’objet `event` a cette forme :
+
+```ts
+type PostFirstFactorVerificationEvent = {
+  // Conservé pour la compatibilité ascendante après le renommage de la fonctionnalité en Actions.
+  key: 'inlineHook.postFirstFactorVerification';
+  interactionEvent: 'SignIn';
+  verificationType: 'Password';
+  identifier: {
+    type: 'username' | 'email' | 'phone';
+    value: string;
+  };
+  user: {
+    id: string;
+    username: string | null;
+    primaryEmail: string | null;
+    primaryPhone: string | null;
+    name: string | null;
+    avatar: string | null;
+    customData: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  } | null;
+  password: string;
+};
+```
+
+`user` est `null` lorsque l’identifiant ne correspond à aucun utilisateur Logto. Sinon, il contient le contexte de profil modifiable de l’utilisateur existant.
+
+:::danger
+`event.password` est le mot de passe en clair soumis par l’utilisateur. Envoyez-le uniquement à votre point de terminaison d’authentification héritée de confiance via HTTPS. Ne le journalisez jamais, ne le stockez pas, ne le placez pas dans `customData`, ne l’incluez pas dans une erreur, et ne le retournez pas depuis l’Action.
+:::
+
+## Résultat \{#result}
+
+Après que le système hérité a vérifié les identifiants soumis, retournez l’un des résultats suivants :
+
+```ts
+type PostFirstFactorVerificationResult =
+  | {
+      action: 'createUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    }
+  | {
+      action: 'updateUser';
+      passwordVerified: true;
+      user: ActionUserPatch;
+    };
+```
+
+Le résultat doit correspondre à l’événement :
+
+- Lorsque `event.user` est `null`, retournez `createUser`.
+- Lorsque `event.user` est présent, retournez `updateUser`.
+- `passwordVerified` doit avoir la valeur littérale `true`.
+- `user` ne peut contenir que les [champs de modification utilisateur pris en charge](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Pour un nouvel utilisateur, Logto ajoute l’identifiant de connexion soumis si le résultat ne l’inclut pas. L’Action ne peut pas modifier l’identifiant soumis pour une autre valeur. La comparaison des e-mails est insensible à la casse, les numéros de téléphone sont comparés après normalisation, et les noms d’utilisateur doivent correspondre exactement.
+
+Lorsque le résultat est accepté, Logto hache le mot de passe soumis avec Argon2i et l’enregistre comme mot de passe local de l’utilisateur. Le script ne doit pas générer ni retourner de hachage de mot de passe.
+
+Retournez `undefined` lorsque le système hérité rejette les identifiants. Un résultat vide, mal formé ou non pris en charge est également traité comme des identifiants invalides.
+
+## Exemple de migration \{#migration-example}
+
+Configurez `LEGACY_VERIFY_URL` et `LEGACY_API_TOKEN` comme variables d’environnement de l’Action, puis adaptez ce script à votre API héritée :
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.LEGACY_VERIFY_URL, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${environmentVariables.LEGACY_API_TOKEN}`,
+    },
+    body: JSON.stringify({
+      identifier: event.identifier,
+      password: event.password,
+    }),
+  });
+
+  // Traitez un rejet d’authentification comme un résultat d’identifiants invalides ordinaire.
+  if (response.status === 401 || response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Le service d’authentification hérité a retourné ${response.status}`);
+  }
+
+  const legacyUser = await response.json();
+
+  if (!legacyUser.passwordVerified) {
+    return;
+  }
+
+  return {
+    action: event.user ? 'updateUser' : 'createUser',
+    passwordVerified: true,
+    user: {
+      ...(legacyUser.name && { name: legacyUser.name }),
+      customData: {
+        migratedFrom: 'legacy',
+        legacyUserId: legacyUser.id,
+      },
+    },
+  };
+};
+```
+
+La première connexion acceptée fonctionne comme suit :
+
+1. La vérification du mot de passe local échoue, donc Logto exécute l’Action.
+2. Le script envoie l’identifiant et le mot de passe au système hérité.
+3. Le système hérité vérifie les identifiants et le script retourne `createUser` ou `updateUser`.
+4. Logto crée ou met à jour l’utilisateur et enregistre le mot de passe soumis comme nouveau justificatif Argon2i local.
+5. L’utilisateur effectue la MFA si nécessaire, et Logto termine la connexion.
+6. Lors des connexions ultérieures, le mot de passe local migré fonctionne, donc cette Action n’est plus appelée pour cet utilisateur.
+
+## Limites de sécurité \{#security-boundaries}
+
+:::warning
+Les écritures utilisateur et mot de passe issues de cette Action ont lieu avant la fin de la MFA. Si l’utilisateur abandonne ou échoue la MFA, ces écritures restent.
+
+Un utilisateur créé par cette Action contourne également les gardes réservés à l’inscription, y compris les listes de blocage d’e-mails, les règles de domaine SSO uniquement, le mode d’inscription désactivé et les vérifications de profil obligatoires à l’inscription. La protection Sentinel et la MFA s’appliquent toujours.
+:::
+
+Utilisez ces mesures de sécurité :
+
+- Retournez `passwordVerified: true` uniquement après que le système hérité a vérifié positivement le mot de passe soumis exact.
+- Gardez le point de terminaison hérité privé si possible, exigez une authentification de service, utilisez HTTPS et appliquez une limitation de débit.
+- Gardez la modification utilisateur retournée minimale. Ne copiez pas d’identifiants ou de données de profil non validés.
+- Testez la création d’utilisateur inconnu, la mise à jour d’utilisateur existant, les collisions d’identifiants, les utilisateurs suspendus, la MFA, les échecs en amont et les tentatives concurrentes.
+- Surveillez `Action.PostFirstFactorVerification` dans les [journaux d’audit](/developers/audit-logs/event-types).
+- Gardez l’Action activée uniquement pendant la durée de la migration lorsque cela est possible.
+
+Si vous pouvez exporter les données utilisateur et les hachages de mot de passe compatibles à l’avance, envisagez plutôt la [migration utilisateur en masse](/user-management/user-migration).

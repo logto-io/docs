@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: 로그인 후 (Post sign-in)
+sidebar_label: 로그인 후 (Post sign-in)
+sidebar_position: 4
+---
+
+# 로그인 후 (Post sign-in)
+
+로그인 후 (Post sign-in) 액션은 성공적인 로그인 마지막 단계에서 기존 사용자를 업데이트합니다. 이 액션은 모든 인증 (Authentication) 요소(필요한 경우 다단계 인증 (MFA) 포함) 이후, Logto가 OIDC 상호작용을 완료하고 토큰을 발급하기 전에 실행됩니다.
+
+이 액션은 사용자가 비밀번호, 인증 코드, 소셜 커넥터, 엔터프라이즈 SSO, 패스키 또는 다른 지원되는 방법으로 인증했는지와 관계없이 `SignIn` 상호작용에 대해 실행됩니다. 회원가입(등록) 과정에서는 실행되지 않습니다.
+
+## 이벤트 페이로드 \{#event-payload}
+
+이 이벤트에는 현재 로그인에 대한 최종 사용자 컨텍스트가 포함됩니다:
+
+```ts
+type PostSignInEvent = {
+  // 기능 이름이 Actions로 변경된 후에도 하위 호환성을 위해 유지됩니다.
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user`에는 표준 [사용자 프로필](/user-management/user-data#user-profile) 외에도 다음이 포함됩니다:
+
+| 필드                     | 설명                                        |
+| ------------------------ | ------------------------------------------- |
+| `hasPassword`            | 사용자가 로컬 비밀번호를 가지고 있는지 여부 |
+| `ssoIdentities`          | 사용자에 연결된 엔터프라이즈 SSO 아이덴티티 |
+| `mfaVerificationFactors` | 사용자에게 구성된 MFA 요소 유형             |
+| `roles`                  | 글로벌 역할 및 해당 API 리소스 스코프       |
+| `organizations`          | 사용자가 속한 조직                          |
+| `organizationRoles`      | 사용자에게 할당된 조직 역할                 |
+
+컨텍스트에는 `applicationId`, `lastSignInAt`, `createdAt`, `updatedAt` 등의 필드도 포함됩니다. 평문 비밀번호, 비밀번호 해시, MFA 시크릿, 커넥터 토큰 세트 시크릿 등은 포함되지 않습니다.
+
+## 결과 및 no-op 동작 \{#result-and-no-op-behavior}
+
+사용자를 업데이트하려면 다음과 같이 반환하세요:
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user`에는 [지원되는 사용자 패치 필드](/developers/actions/configure-and-test-actions#supported-user-patch)만 포함될 수 있습니다.
+
+사용자 업데이트 없이 계속 진행하려면 `undefined`, `null`, `{}` 또는 `{ action: 'updateUser' }`를 반환하세요. 다른 액션 이름, 원시 값, 배열, `user: null`, 또는 지원되지 않는 사용자 필드는 유효하지 않으며 로그인을 실패하게 만듭니다.
+
+:::note
+`allow` 스크립트 오류 정책은 스크립트 실행이 실패할 때만 적용됩니다. 잘못된 결과를 허용하지 않습니다. 항상 지원되는 업데이트 또는 no-op 값을 반환하세요.
+:::
+
+## 로그인 식별자 업데이트 \{#updating-sign-in-identifiers}
+
+[Post first-factor verification](/developers/actions/post-first-factor-verification)과 달리, 이 액션에서는 `username`, `primaryEmail`, `primaryPhone`과 같은 식별자 필드를 변경할 수 있습니다. 사용자가 방금 로그인한 식별자도 포함됩니다. 액션이 실행될 때 인증 (Authentication)은 이미 완료되었으므로, 업데이트는 저장된 프로필에만 영향을 미치며 현재 로그인 결정에는 영향을 주지 않습니다.
+
+다음 두 가지 결과를 고려해야 합니다:
+
+- **사용자의 향후 로그인 식별자가 변경됩니다.** `old@example.com`으로 로그인한 사용자는 이후 해당 주소로 더 이상 로그인할 수 없습니다. 사용자가 사용할 수 있는 식별자를 반드시 유지하도록 하고, 새로운 값은 확인된 것으로 간주하세요. Logto는 추가 확인 절차 없이 이를 사용자의 기본 이메일 또는 전화번호로 저장합니다.
+- **충돌이 발생하면 로그인이 중단됩니다.** 새로운 식별자가 이미 다른 사용자에게 속해 있다면, Logto는 `user.email_already_in_use`와 같은 `422` 오류로 업데이트를 거부하고 상호작용이 실패합니다. 이 검사는 스크립트 외부에서 실행되므로, `allow` 스크립트 오류 정책으로 무시되지 않습니다. 오류 정책에 의존하지 말고, 스크립트 내에서 충돌을 해결하거나 건너뛰세요.
+
+신뢰할 수 있는 소스(상위 아이덴티티 제공자 또는 공식 시스템 등)에서 값이 올 때만 식별자 필드를 반환하세요.
+
+## 데이터 확장 예시 \{#enrichment-example}
+
+이 예시는 외부 서비스에서 현재 프로필 데이터를 요청하고, 선택된 필드를 Logto에 저장합니다:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`프로필 서비스가 ${response.status}를 반환했습니다`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+이 업데이트는 Logto가 로그인을 완료하기 전에 완료됩니다. 해당 OIDC 스코프가 요청되면, ID 토큰의 프로필 클레임 등 업데이트된 사용자에서 파생된 클레임이 현재 로그인에서 새로운 값을 반영할 수 있습니다.
+
+## 순서 및 실패 동작 \{#ordering-and-failure-behavior}
+
+이 액션이 실행되기 전에, Logto는 이미 `lastSignInAt`, 상호작용 중에 이루어진 프로필 변경, MFA 상태, SSO 아이덴티티 동기화, Just-in-Time 조직 프로비저닝 등 일반적인 로그인 부수 효과를 저장했을 수 있습니다. 로그인을 차단해도 이러한 변경 사항은 롤백되지 않습니다.
+
+외부 데이터의 역할에 따라 오류 정책을 선택하세요:
+
+- 유효한 로그인을 위해 업데이트가 반드시 필요하다면 `block`을 사용하세요. (기본값)
+- 오래되었거나 누락된 확장 데이터가 허용된다면 `allow`를 사용하세요. 스크립트 실행이 실패하면, Logto는 액션 업데이트를 적용하지 않고 계속 진행합니다.
+
+업데이트는 멱등성을 유지하고, 외부 의존성은 빠르게 처리하세요. 로그인 후 (Post sign-in) 액션은 적용 가능한 모든 로그인에서 실행됩니다.

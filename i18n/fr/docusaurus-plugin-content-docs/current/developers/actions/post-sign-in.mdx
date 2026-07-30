@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: Post sign-in
+sidebar_label: Post sign-in
+sidebar_position: 4
+---
+
+# Post sign-in
+
+L’Action Post sign-in met à jour un utilisateur existant à la fin d’une authentification réussie. Elle s’exécute après tous les facteurs d’authentification, y compris l’authentification multi-facteurs (MFA) si nécessaire, et avant que Logto ne termine l’interaction OIDC et n’émette les jetons.
+
+Elle s’exécute pour les interactions `SignIn` quel que soit le mode d’authentification de l’utilisateur : mot de passe, code de vérification, connecteur social, SSO d’entreprise, passkey ou toute autre méthode prise en charge. Elle ne s’exécute pas lors de l’inscription.
+
+## Charge utile de l’événement \{#event-payload}
+
+L’événement contient le contexte utilisateur final pour la connexion en cours :
+
+```ts
+type PostSignInEvent = {
+  // Conservé pour la compatibilité ascendante après le renommage de la fonctionnalité en Actions.
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` inclut le [profil utilisateur](/user-management/user-data#user-profile) standard, ainsi que :
+
+| Champ                    | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `hasPassword`            | Si l’utilisateur possède un mot de passe local      |
+| `ssoIdentities`          | Identités SSO d’entreprise liées à l’utilisateur    |
+| `mfaVerificationFactors` | Types de facteurs MFA configurés pour l’utilisateur |
+| `roles`                  | Rôles globaux et leurs portées de ressources API    |
+| `organizations`          | Organisations auxquelles l’utilisateur appartient   |
+| `organizationRoles`      | Rôles d’organisation attribués à l’utilisateur      |
+
+Le contexte inclut également des champs tels que `applicationId`, `lastSignInAt`, `createdAt` et `updatedAt`. Il n’inclut pas les mots de passe en clair, les hachages de mots de passe, les secrets MFA ou les secrets de jetons de connecteur.
+
+## Résultat et comportement no-op \{#result-and-no-op-behavior}
+
+Retournez ce résultat pour mettre à jour l’utilisateur :
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` peut contenir uniquement les [champs de modification utilisateur pris en charge](/developers/actions/configure-and-test-actions#supported-user-patch).
+
+Retournez `undefined`, `null`, `{}`, ou `{ action: 'updateUser' }` pour continuer sans mise à jour utilisateur via Action. D’autres noms d’action, valeurs primitives, tableaux, `user: null` ou champs utilisateur non pris en charge sont invalides et font échouer la connexion.
+
+:::note
+La politique d’erreur de script `allow` s’applique uniquement lorsque l’exécution du script échoue. Elle n’autorise pas un résultat mal formé. Retournez toujours une mise à jour prise en charge ou une valeur no-op.
+:::
+
+## Mise à jour des identifiants de connexion \{#updating-sign-in-identifiers}
+
+Contrairement à [Post first-factor verification](/developers/actions/post-first-factor-verification), cette Action peut modifier les champs d’identifiant `username`, `primaryEmail` et `primaryPhone`, y compris l’identifiant utilisé lors de la connexion. L’authentification étant déjà terminée lorsque l’Action s’exécute, la mise à jour n’affecte que le profil stocké et non la décision de connexion en cours.
+
+Deux conséquences méritent d’être anticipées :
+
+- **L’identifiant de connexion futur de l’utilisateur change.** Un utilisateur qui s’est connecté avec `old@example.com` ne pourra plus utiliser cette adresse par la suite. Assurez-vous que l’utilisateur conserve un identifiant utilisable, et considérez la nouvelle valeur comme confirmée, car Logto l’enregistre comme e-mail ou numéro de téléphone principal sans étape de vérification supplémentaire.
+- **Une collision annule la connexion.** Si le nouvel identifiant appartient déjà à un autre utilisateur, Logto rejette la mise à jour avec une erreur `422` telle que `user.email_already_in_use`, et l’interaction échoue. Ce contrôle s’effectue en dehors du script, donc la politique d’erreur `allow` ne le contourne pas. Résolvez ou ignorez les conflits dans le script plutôt que de compter sur la politique d’erreur.
+
+Ne retournez un champ d’identifiant que si la valeur provient d’une source de confiance, telle qu’un fournisseur d’identité en amont ou un système de référence.
+
+## Exemple d’enrichissement \{#enrichment-example}
+
+Cet exemple récupère les données de profil actuelles depuis un service externe et stocke certains champs dans Logto :
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+La mise à jour est effectuée avant que Logto ne termine la connexion. Lorsque les portées OIDC correspondantes sont demandées, les revendications dérivées de l’utilisateur mis à jour, telles que les revendications de profil dans le jeton d’identifiant, peuvent donc refléter les nouvelles valeurs lors de la connexion en cours.
+
+## Ordonnancement et comportement en cas d’échec \{#ordering-and-failure-behavior}
+
+Avant l’exécution de cette Action, Logto peut déjà avoir enregistré les effets secondaires normaux de la connexion tels que `lastSignInAt`, les modifications du profil effectuées pendant l’interaction, l’état MFA, la synchronisation des identités SSO et l’approvisionnement d’organisation just-in-time. Bloquer la connexion ne revient pas sur ces changements.
+
+Choisissez la politique d’erreur en fonction du rôle des données externes :
+
+- Utilisez `block` lorsque la mise à jour est requise pour une connexion valide. C’est la valeur par défaut.
+- Utilisez `allow` si des données d’enrichissement obsolètes ou manquantes sont acceptables. Si l’exécution du script échoue, Logto continue sans appliquer la mise à jour Action.
+
+Gardez la mise à jour idempotente et la dépendance externe rapide. Une Action Post sign-in s’exécute à chaque connexion concernée.

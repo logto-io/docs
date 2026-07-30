@@ -7,7 +7,7 @@
 Logto 按照以下顺序处理环境变量：
 
 - 系统环境变量
-- 项目根目录下的 `.env` 文件，遵循 [dotenv](https://github.com/motdotla/dotenv#readme) 格式
+- 项目根目录下的 `.env` 文件，符合 [dotenv](https://github.com/motdotla/dotenv#readme) 格式
 
 因此，系统环境变量会覆盖 `.env` 文件中的值。
 
@@ -19,22 +19,35 @@ Logto 按照以下顺序处理环境变量：
 
 在默认值中，`protocol` 会根据你的 HTTPS 配置为 `http` 或 `https`。
 
-| Key                               | 默认值                               | 类型                                                     | 描述                                                                                                                                                                                                                    |
-| --------------------------------- | ------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NODE_ENV                          | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | Logto 运行的环境类型。                                                                                                                                                                                                  |
-| PORT                              | `3001`                               | `number`                                                 | Logto 监听的本地端口。                                                                                                                                                                                                  |
-| ADMIN_PORT                        | `3002`                               | `number`                                                 | Logto 管理控制台监听的本地端口。                                                                                                                                                                                        |
-| ADMIN_DISABLE_LOCALHOST           | N/A                                  | <code>string &#124; boolean &#124; number</code>         | 设置为 `1` 或 `true` 可禁用管理控制台端口。如果未设置 `ADMIN_ENDPOINT`，将完全禁用管理控制台。                                                                                                                          |
-| DB_URL                            | N/A                                  | `string`                                                 | Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                                                                                   |
-| DATABASE_STATEMENT_TIMEOUT        | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL `statement_timeout`，单位为毫秒。使用数字字符串（如 `5000`）设置，或使用 `DISABLE_TIMEOUT` 省略启动参数（推荐用于 PgBouncer/RDS Proxy）。如果未设置或无效，客户端默认值为 60000 ms。              |
-| HTTPS_CERT_PATH                   | `undefined`                          | <code>string &#124; undefined</code>                     | 详情见 [启用 HTTPS](#enabling-https)。                                                                                                                                                                                  |
-| HTTPS_KEY_PATH                    | `undefined`                          | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                                                                                  |
-| TRUST_PROXY_HEADER                | `false`                              | `boolean`                                                | 同上。                                                                                                                                                                                                                  |
-| ENDPOINT                          | `'protocol://localhost:$PORT'`       | `string`                                                 | 你可以为线上测试或生产环境指定自定义域名的 URL。这也会影响 [OIDC 发行者 (Issuer) 标识符](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 的值。                                                 |
-| ADMIN_ENDPOINT                    | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | 你可以为生产环境指定自定义域名的 URL（例如 `ADMIN_ENDPOINT=https://admin.domain.com`）。这也会影响管理控制台重定向 URI 的值。                                                                                           |
-| CASE_SENSITIVE_USERNAME           | `true`                               | `boolean`                                                | 指定用户名是否区分大小写。修改该值时请谨慎；更改不会自动调整现有数据库数据，需要手动管理。                                                                                                                              |
-| SECRET_VAULT_KEK                  | `undefined`                          | `string`                                                 | 用于加密 [Secret Vault](/secret-vault) 中数据加密密钥 (DEK) 的密钥加密密钥 (KEK)。Secret Vault 正常工作时必需。必须为 base64 编码字符串。推荐使用 AES-256（32 字节）。示例：`crypto.randomBytes(32).toString('base64')` |
-| PRIVATE_KEY_ROTATION_GRACE_PERIOD | `0`                                  | `number`                                                 | OIDC 私钥轮换的宽限期（秒）。设置为正值时，新私钥会先以 `Next` 状态创建，并在宽限期后才生效。                                                                                                                           |
+| Key                                    | 默认值                               | 类型                                                     | 描述                                                                                                                                                                                                                    |
+| -------------------------------------- | ------------------------------------ | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NODE_ENV                               | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | Logto 运行的环境类型。                                                                                                                                                                                                  |
+| PORT                                   | `3001`                               | `number`                                                 | Logto 监听的本地端口。                                                                                                                                                                                                  |
+| ADMIN_PORT                             | `3002`                               | `number`                                                 | Logto 管理控制台监听的本地端口。                                                                                                                                                                                        |
+| ADMIN_DISABLE_LOCALHOST                | N/A                                  | <code>string &#124; boolean &#124; number</code>         | 设置为 `1` 或 `true` 可禁用管理控制台端口。如果未设置 `ADMIN_ENDPOINT`，将完全禁用管理控制台。                                                                                                                          |
+| DB_URL                                 | N/A                                  | `string`                                                 | Logto 数据库的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                                                                                   |
+| DATABASE_STATEMENT_TIMEOUT             | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL `statement_timeout`，单位为毫秒。使用数字字符串（如 `5000`）设置，或使用 `DISABLE_TIMEOUT` 省略启动参数（推荐用于 PgBouncer/RDS Proxy）。如果未设置或无效，客户端默认值为 60000 毫秒。            |
+| HTTPS_CERT_PATH                        | `undefined`                          | <code>string &#124; undefined</code>                     | 详见 [启用 HTTPS](#enabling-https)。                                                                                                                                                                                    |
+| HTTPS_KEY_PATH                         | `undefined`                          | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                                                                                  |
+| TRUST_PROXY_HEADER                     | `false`                              | `boolean`                                                | 同上。                                                                                                                                                                                                                  |
+| ENDPOINT                               | `'protocol://localhost:$PORT'`       | `string`                                                 | 你可以为在线测试或生产环境指定自定义域名的 URL。这也会影响 [OIDC 发行者 (Issuer) 标识符](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 的值。                                                 |
+| ADMIN_ENDPOINT                         | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | 你可以为生产环境指定自定义域名的 URL（例如 `ADMIN_ENDPOINT=https://admin.domain.com`）。这也会影响管理控制台重定向 URI 的值。                                                                                           |
+| CASE_SENSITIVE_USERNAME                | `true`                               | `boolean`                                                | 指定用户名是否区分大小写。修改此值时请谨慎；更改不会自动调整现有数据库数据，需要手动管理。                                                                                                                              |
+| SECRET_VAULT_KEK                       | `undefined`                          | `string`                                                 | 用于加密 [Secret Vault](/secret-vault) 中数据加密密钥 (DEK) 的密钥加密密钥 (KEK)。Secret Vault 正常工作所必需。必须为 base64 编码字符串。推荐使用 AES-256（32 字节）。示例：`crypto.randomBytes(32).toString('base64')` |
+| PRIVATE_KEY_ROTATION_GRACE_PERIOD      | `0`                                  | `number`                                                 | 分阶段 OIDC 私钥轮换的宽限期（秒）。设置为正值时，新私钥会先以 `Next` 状态创建，并在宽限期后才生效。                                                                                                                    |
+| OIDC_PROVIDER_SSRF_PROTECTION_DISABLED | `false`                              | `boolean`                                                | 仅限自托管。仅当受信任的 OIDC 依赖方端点必须解析为私有网络地址时，设置为 `true`。详见 [OIDC 提供方 SSRF 保护](#oidc-provider-ssrf-protection)。                                                                         |
+
+### OIDC 提供方 SSRF 保护 {#oidc-provider-ssrf-protection}
+
+Logto 默认保护 OIDC 提供方的出站请求，防止服务器端请求伪造 (SSRF)。对特殊用途地址（包括回环和私有网络地址）的请求会被阻止。此保护涵盖依赖方端点，如后端注销 URI、`jwks_uri` 和 `sector_identifier_uri`。
+
+如果你的自托管部署确实需要访问私有网络上的受信任依赖方端点，请设置 `OIDC_PROVIDER_SSRF_PROTECTION_DISABLED=true` 并重启所有 Logto 实例。
+
+:::caution
+
+此设置会禁用所有 OIDC 提供方出站请求的 SSRF 保护，而不仅仅是某一个端点。仅当所有配置的依赖方端点都可信，且你的网络控制能防止访问敏感内部服务时才应禁用。
+
+:::
 
 ### 启用 HTTPS {#enabling-https}
 
@@ -46,15 +59,15 @@ Node 原生支持 HTTPS。提供 **BOTH** `HTTPS_CERT_PATH` 和 `HTTPS_KEY_PATH`
 
 #### 使用 HTTPS 代理 {#using-a-https-proxy}
 
-另一种常见做法是在 Node 前面加一个 HTTPS 代理（如 Nginx）。
+另一种常见做法是在 Node 前面放置一个 HTTPS 代理（如 Nginx）。
 
-在这种情况下，你可能需要将 `TRUST_PROXY_HEADER` 设置为 `true`，表示是否信任代理头字段。Logto 会将该值传递给 [Koa 应用设置](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings)。
+在这种情况下，你可能需要将 `TRUST_PROXY_HEADER` 设置为 `true`，表示信任代理头字段。Logto 会将该值传递给 [Koa 应用设置](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings)。
 
-关于何时配置该字段，请参阅 [信任 TLS 卸载代理](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies)。
+关于何时配置此字段，请参见 [信任 TLS 卸载代理](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies)。
 
 ## 数据库配置 {#database-configs}
 
-管理过多的环境变量既低效又不灵活，因此我们的大多数通用配置都存储在数据库表 `logto_configs` 中。
+管理过多的环境变量既低效又不灵活，因此我们的大部分通用配置都存储在数据库表 `logto_configs` 中。
 
 该表是一个简单的键值存储，key 可枚举如下：
 

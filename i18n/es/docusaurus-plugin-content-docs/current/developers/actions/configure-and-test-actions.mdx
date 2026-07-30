@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: Configurar y probar Actions
+sidebar_label: Configurar y probar Actions
+sidebar_position: 2
+---
+
+# Configurar y probar Actions
+
+## Crear una Action \{#create-an-action}
+
+1. Navega a <CloudLink to="/actions">Consola > Actions</CloudLink>.
+2. Selecciona **Post first-factor verification** o **Post sign-in**.
+3. Implementa la función `runAction` en el editor de scripts.
+4. En **Fuente de datos**, revisa los tipos de evento y resultado, configura las variables de entorno y encuentra un ejemplo para obtener datos externos.
+5. En **Contexto de prueba**, ajusta el evento de muestra y ejecuta el script.
+6. En **Configuración**, habilita la Action y elige el comportamiento ante errores de script.
+7. Guarda la Action.
+
+Solo una Action guardada y habilitada se ejecuta en producción.
+
+## Implementar `runAction` \{#implement-runaction}
+
+Mantén el nombre de la función de entrada como `runAction`. Recibe un único objeto payload:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+Para rechazar o continuar sin actualizar el usuario, devuelve el valor no-op admitido por el tipo de acción específico.
+
+### Obtener datos externos \{#fetch-external-data}
+
+Utiliza la función `fetch` inyectada para llamar a una API externa. Por ejemplo, una Action Post sign-in puede obtener el perfil de un usuario:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+Las Actions se ejecutan en la ruta de la solicitud de autenticación. Mantén los servicios externos rápidos y altamente disponibles, y asume que un usuario puede reintentar el inicio de sesión. Logto no reintenta una Action ni recurre del runner remoto de Logto Cloud a la ejecución local.
+
+### Usar variables de entorno \{#use-environment-variables}
+
+Utiliza variables de entorno para valores que no deben estar codificados en el script, como URLs de API, tokens y configuraciones de funcionalidades:
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+Las variables de entorno forman parte de la configuración de la Action y son visibles para los administradores que pueden leer esa configuración. Restringe el acceso a la gestión de Actions y nunca incluyas secretos en el resultado devuelto ni en un mensaje de error.
+
+## Campos de usuario admitidos para actualización \{#supported-user-patch}
+
+Una Action solo puede devolver estos campos de usuario:
+
+| Campo          | Descripción                               |
+| -------------- | ----------------------------------------- |
+| `username`     | Nombre de usuario                         |
+| `primaryEmail` | Correo electrónico principal              |
+| `primaryPhone` | Número de teléfono principal              |
+| `name`         | Nombre para mostrar                       |
+| `avatar`       | URL del avatar                            |
+| `profile`      | Campos estándar de perfil OIDC            |
+| `customData`   | Datos JSON adicionales para tu aplicación |
+
+El tipo de patch correspondiente es:
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+Campos como el ID de usuario, estado de suspensión, identidades, roles, organizaciones, configuración de MFA, hashes de contraseñas y otros campos internos son rechazados.
+
+Para las actualizaciones, `profile` y `customData` se fusionan superficialmente con los objetos existentes. Devolver un objeto anidado con una clave de nivel superior existente reemplaza el valor en esa clave; no es una fusión profunda. Las actualizaciones de identificadores también deben pasar las comprobaciones de unicidad de Logto.
+
+## Contexto de prueba y ejecuciones de prueba \{#test-context-and-dry-runs}
+
+El **Contexto de prueba** es un JSON de muestra que solo se usa cuando haces clic en **Ejecutar prueba**. Se guarda con la Action para pruebas futuras, pero las ejecuciones en producción siempre usan el evento real de autenticación.
+
+Una ejecución de prueba:
+
+- Utiliza el script actual no guardado, el evento de muestra y las variables de entorno.
+- Ejecuta el script y muestra su valor de retorno sin procesar.
+- No guarda la Action ni crea o actualiza un usuario de Logto.
+- No emite un evento de auditoría de Action de producción ni una métrica de ejecución.
+- No aplica la validación de evento y resultado de producción para el tipo de acción seleccionado.
+
+:::caution
+Una ejecución de prueba exitosa prueba que el script se ejecutó, pero no que su resultado será aceptado durante un flujo real de autenticación. Prueba el flujo completo en un tenant no productivo antes de habilitar la Action en producción.
+
+Los resultados de prueba exitosos se muestran tal como se devuelven. Nunca devuelvas contraseñas, variables de entorno, tokens de API u otros secretos desde un script.
+:::
+
+## Manejar errores \{#handle-errors}
+
+La configuración **En caso de error de script** se aplica a fallos de ejecución como una excepción lanzada, una promesa rechazada, una solicitud externa fallida o un fallo del runner. No hace que un resultado inválido sea válido.
+
+| Tipo de Action                 | `block` (por defecto)                       | `allow`                                                                                                                   |
+| ------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Post first-factor verification | Rechaza las credenciales locales inválidas. | No disponible en la Consola. Incluso si se configura mediante la API, un fallo de ejecución aún rechaza las credenciales. |
+| Post sign-in                   | Falla el inicio de sesión.                  | Continúa el inicio de sesión sin aplicar la actualización de la Action.                                                   |
+
+Para Post sign-in, un valor de retorno mal formado o no admitido siempre falla el inicio de sesión, incluso cuando se selecciona `allow`. Valida cada ruta de éxito en tu script y devuelve un resultado explícito admitido o no-op.
+
+## Monitorizar ejecuciones \{#monitor-executions}
+
+Las ejecuciones en producción crean eventos independientes de [registro de auditoría](/developers/audit-logs):
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+El registro de auditoría incluye metadatos seguros de ejecución como el tipo de Action, ubicación de ejecución, duración, decisión y resultado de la política de errores. Las contraseñas, valores de variables de entorno, código fuente del script y otros valores sensibles son redactados.
+
+## Configurar Actions con la Management API \{#configure-actions-with-the-management-api}
+
+También puedes gestionar Actions a través de la [Management API de Logto](/integrate-logto/interact-with-management-api):
+
+| Método   | Endpoint                            | Propósito                                    |
+| -------- | ----------------------------------- | -------------------------------------------- |
+| `GET`    | `/api/configs/actions`              | Listar Actions configuradas                  |
+| `GET`    | `/api/configs/actions/{actionType}` | Obtener una Action                           |
+| `PUT`    | `/api/configs/actions/{actionType}` | Crear o reemplazar una Action                |
+| `PATCH`  | `/api/configs/actions/{actionType}` | Actualizar parcialmente una Action           |
+| `DELETE` | `/api/configs/actions/{actionType}` | Eliminar una Action                          |
+| `POST`   | `/api/configs/actions/test`         | Ejecutar una prueba con un evento de muestra |
+
+Los valores de tipo de acción mantienen sus identificadores originales por compatibilidad hacia atrás:
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+Una configuración de Action tiene esta forma:
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+Al usar la API, establece explícitamente `enabled: true` para ejecutar la Action. Si se omite `onExecutionError`, el valor predeterminado es `block`.

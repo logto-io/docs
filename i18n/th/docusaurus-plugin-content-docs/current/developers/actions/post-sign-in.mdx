@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: หลังการลงชื่อเข้าใช้
+sidebar_label: หลังการลงชื่อเข้าใช้
+sidebar_position: 4
+---
+
+# หลังการลงชื่อเข้าใช้
+
+Action หลังการลงชื่อเข้าใช้ (Post sign-in Action) จะอัปเดตผู้ใช้ที่มีอยู่หลังจากการลงชื่อเข้าใช้สำเร็จ โดยจะทำงานหลังจากปัจจัยการยืนยันตัวตนทั้งหมด รวมถึง MFA หากจำเป็น และก่อนที่ Logto จะดำเนินการ OIDC interaction ให้เสร็จสิ้นและออกโทเค็น
+
+Action นี้จะทำงานสำหรับ `SignIn` interaction ไม่ว่าผู้ใช้จะยืนยันตัวตนด้วยรหัสผ่าน, รหัสยืนยัน, ตัวเชื่อมต่อโซเชียล, Enterprise SSO, passkey หรือวิธีอื่นที่รองรับก็ตาม โดยจะไม่ทำงานระหว่างการลงทะเบียน
+
+## ข้อมูลเหตุการณ์ (Event payload) \{#event-payload}
+
+เหตุการณ์นี้จะมีบริบทผู้ใช้สุดท้ายสำหรับการลงชื่อเข้าใช้ปัจจุบัน:
+
+```ts
+type PostSignInEvent = {
+  // คงไว้เพื่อความเข้ากันได้ย้อนหลังหลังจากเปลี่ยนชื่อฟีเจอร์เป็น Actions
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` จะมี [โปรไฟล์ผู้ใช้มาตรฐาน](/user-management/user-data#user-profile) พร้อมกับข้อมูลเพิ่มเติมดังนี้:
+
+| ฟิลด์                    | คำอธิบาย                                        |
+| ------------------------ | ----------------------------------------------- |
+| `hasPassword`            | ผู้ใช้มีรหัสผ่านภายในหรือไม่                    |
+| `ssoIdentities`          | Enterprise SSO identities ที่เชื่อมโยงกับผู้ใช้ |
+| `mfaVerificationFactors` | ประเภท MFA ที่ตั้งค่าสำหรับผู้ใช้               |
+| `roles`                  | บทบาท (Roles) ระดับโกลบอลและขอบเขตทรัพยากร API  |
+| `organizations`          | องค์กร (Organizations) ที่ผู้ใช้สังกัด          |
+| `organizationRoles`      | บทบาทองค์กรที่กำหนดให้ผู้ใช้                    |
+
+บริบทนี้ยังมีฟิลด์ เช่น `applicationId`, `lastSignInAt`, `createdAt` และ `updatedAt` ด้วย โดยจะไม่มีรหัสผ่านแบบ plaintext, hash ของรหัสผ่าน, ความลับ MFA หรือความลับ token-set ของตัวเชื่อมต่อ
+
+## ผลลัพธ์และพฤติกรรม no-op \{#result-and-no-op-behavior}
+
+คืนค่าผลลัพธ์นี้เพื่ออัปเดตผู้ใช้:
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` อาจมีเฉพาะ [ฟิลด์ที่รองรับสำหรับการแก้ไขผู้ใช้](/developers/actions/configure-and-test-actions#supported-user-patch) เท่านั้น
+
+คืนค่า `undefined`, `null`, `{}` หรือ `{ action: 'updateUser' }` เพื่อดำเนินการต่อโดยไม่อัปเดตผู้ใช้ผ่าน Action ชื่อ action อื่น, ค่าพื้นฐาน (primitive), อาร์เรย์, `user: null` หรือฟิลด์ผู้ใช้ที่ไม่รองรับจะถือว่าไม่ถูกต้องและจะทำให้การลงชื่อเข้าใช้ล้มเหลว
+
+:::note
+นโยบาย script-error แบบ `allow` จะใช้เฉพาะเมื่อการรันสคริปต์ล้มเหลวเท่านั้น ไม่อนุญาตผลลัพธ์ที่มีรูปแบบผิดเสมอ ควรคืนค่าการอัปเดตที่รองรับหรือค่า no-op เสมอ
+:::
+
+## การอัปเดตตัวระบุการลงชื่อเข้าใช้ \{#updating-sign-in-identifiers}
+
+ต่างจาก [Post first-factor verification](/developers/actions/post-first-factor-verification) Action นี้สามารถเปลี่ยนฟิลด์ตัวระบุ เช่น `username`, `primaryEmail` และ `primaryPhone` ได้ รวมถึงตัวระบุที่ผู้ใช้เพิ่งใช้ลงชื่อเข้าใช้ด้วย การยืนยันตัวตนเสร็จสิ้นแล้วเมื่อ Action นี้ทำงาน ดังนั้นการอัปเดตจะมีผลกับโปรไฟล์ที่จัดเก็บเท่านั้น ไม่กระทบกับการตัดสินใจลงชื่อเข้าใช้ปัจจุบัน
+
+มี 2 ผลลัพธ์ที่ควรวางแผนรับมือ:
+
+- **ตัวระบุการลงชื่อเข้าใช้ในอนาคตของผู้ใช้จะเปลี่ยนไป** ผู้ใช้ที่ลงชื่อเข้าใช้ด้วย `old@example.com` จะไม่สามารถใช้ที่อยู่นั้นได้อีกต่อไป ตรวจสอบให้แน่ใจว่าผู้ใช้ยังมีตัวระบุที่ใช้งานได้ และถือว่าค่าที่ใหม่ได้รับการยืนยันแล้ว เพราะ Logto จะบันทึกเป็นอีเมลหรือเบอร์โทรหลักของผู้ใช้โดยไม่ต้องยืนยันเพิ่มเติม
+- **หากเกิดการชนกันจะยกเลิกการลงชื่อเข้าใช้** หากตัวระบุใหม่เป็นของผู้ใช้อื่นอยู่แล้ว Logto จะปฏิเสธการอัปเดตด้วย error `422` เช่น `user.email_already_in_use` และ interaction จะล้มเหลว การตรวจสอบนี้เกิดนอกสคริปต์ ดังนั้นนโยบาย script-error แบบ `allow` จะไม่สามารถข้ามได้ ควรจัดการหรือข้ามกรณีชนกันในสคริปต์เอง ไม่ควรพึ่ง error policy
+
+ควรคืนค่าฟิลด์ตัวระบุเฉพาะเมื่อค่ามาจากแหล่งที่คุณเชื่อถือได้ เช่น ผู้ให้บริการข้อมูลระบุตัวตน upstream หรือระบบบันทึกหลัก
+
+## ตัวอย่าง enrichment \{#enrichment-example}
+
+ตัวอย่างนี้จะดึงข้อมูลโปรไฟล์ปัจจุบันจากบริการภายนอกและบันทึกฟิลด์ที่เลือกไว้ใน Logto:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+การอัปเดตนี้จะเสร็จก่อนที่ Logto จะจบกระบวนการลงชื่อเข้าใช้ เมื่อมีการร้องขอ OIDC scopes ที่เกี่ยวข้อง การอ้างสิทธิ์ (Claims) ที่ได้จากผู้ใช้ที่อัปเดต เช่น claims โปรไฟล์ใน ID token จึงสามารถสะท้อนค่าล่าสุดใน session การลงชื่อเข้าใช้ปัจจุบันได้
+
+## ลำดับและพฤติกรรมเมื่อเกิดข้อผิดพลาด \{#ordering-and-failure-behavior}
+
+ก่อนที่ Action นี้จะทำงาน Logto อาจบันทึกผลข้างเคียงของการลงชื่อเข้าใช้ตามปกติไปแล้ว เช่น `lastSignInAt`, การเปลี่ยนแปลงโปรไฟล์ระหว่าง interaction, สถานะ MFA, การซิงค์ SSO identity และการจัดเตรียมองค์กรแบบ just-in-time การบล็อกการลงชื่อเข้าใช้จะไม่ย้อนกลับการเปลี่ยนแปลงเหล่านี้
+
+เลือกนโยบาย error ตามบทบาทของข้อมูลภายนอก:
+
+- ใช้ `block` เมื่อการอัปเดตจำเป็นสำหรับการลงชื่อเข้าใช้ที่ถูกต้อง (ค่าเริ่มต้น)
+- ใช้ `allow` เมื่อข้อมูล enrichment ที่ล้าสมัยหรือขาดหายสามารถยอมรับได้ หากการรันสคริปต์ล้มเหลว Logto จะดำเนินการต่อโดยไม่อัปเดต Action
+
+ควรทำให้การอัปเดตนี้ idempotent และการพึ่งพาภายนอกต้องรวดเร็ว Action หลังการลงชื่อเข้าใช้จะทำงานทุกครั้งที่มีการลงชื่อเข้าใช้ที่เกี่ยวข้อง

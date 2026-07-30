@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: 設定與測試 Actions (Configure and test Actions)
+sidebar_label: 設定與測試 Actions (Configure and test Actions)
+sidebar_position: 2
+---
+
+# 設定與測試 Actions (Configure and test Actions)
+
+## 建立 Action \{#create-an-action}
+
+1. 前往 <CloudLink to="/actions">主控台 > Actions</CloudLink>。
+2. 選擇 **Post first-factor verification** 或 **Post sign-in**。
+3. 在腳本編輯器中實作 `runAction` 函式。
+4. 在 **資料來源 (Data source)** 區塊，檢視事件與結果型別、設定環境變數，並參考取得外部資料的範例。
+5. 在 **測試情境 (Test context)** 區塊，調整範例事件並執行腳本。
+6. 在 **設定 (Settings)** 區塊，啟用 Action 並選擇腳本錯誤時的行為。
+7. 儲存 Action。
+
+只有已儲存且啟用的 Action 會在正式環境中執行。
+
+## 實作 `runAction` \{#implement-runaction}
+
+請保持進入點函式名稱為 `runAction`。它會接收一個 payload 物件：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+若要拒絕或繼續但不更新使用者，請回傳該 Action 類型支援的 no-op 值。
+
+### 取得外部資料 \{#fetch-external-data}
+
+使用注入的 `fetch` 函式呼叫外部 API。例如，Post sign-in Action 可以取得使用者個人資料：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+Actions 會在驗證請求 (Authentication request) 路徑中執行。請確保外部服務快速且高可用，並假設使用者可能會重試登入。Logto 不會重試 Action，也不會從 Logto Cloud 遠端執行器回退到本地執行。
+
+### 使用環境變數 \{#use-environment-variables}
+
+對於不應硬編碼在腳本中的值（如 API URL、權杖、功能設定），請使用環境變數：
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+環境變數屬於 Action 設定的一部分，對有權讀取該設定的管理員可見。請限制 Action 管理權限，且切勿在回傳結果或錯誤訊息中包含機密資訊。
+
+## 支援的使用者 patch 欄位 \{#supported-user-patch}
+
+Action 僅能回傳以下使用者欄位：
+
+| 欄位           | 說明                         |
+| -------------- | ---------------------------- |
+| `username`     | 使用者名稱                   |
+| `primaryEmail` | 主要電子郵件地址             |
+| `primaryPhone` | 主要電話號碼                 |
+| `name`         | 顯示名稱                     |
+| `avatar`       | 頭像 URL                     |
+| `profile`      | 標準 OIDC 個人資料欄位       |
+| `customData`   | 應用程式自訂的額外 JSON 資料 |
+
+對應的 patch 型別如下：
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+如使用者 ID、停權狀態、身分、角色 (Roles)、組織 (Organizations)、MFA 設定、密碼雜湊及其他內部欄位皆不允許更新。
+
+對於更新，`profile` 與 `customData` 會與現有物件進行淺合併。若回傳的巢狀物件有現有的頂層 key，則會直接取代該 key 的值（非深層合併）。識別碼更新也必須通過 Logto 的唯一性檢查。
+
+## 測試情境與試跑 (dry runs) \{#test-context-and-dry-runs}
+
+**測試情境 (Test context)** 是僅在點擊 **Run test** 時使用的範例 JSON。它會與 Action 一起儲存以供未來測試，但正式執行時永遠使用真實的驗證事件。
+
+試跑 (dry run)：
+
+- 使用目前未儲存的腳本、範例事件與環境變數。
+- 執行腳本並顯示其原始回傳值。
+- 不會儲存 Action，也不會建立或更新 Logto 使用者。
+- 不會產生正式 Action 稽核事件或執行指標。
+- 不會套用所選 Action 類型的正式事件與結果驗證。
+
+:::caution
+試跑成功僅代表腳本已執行，並不保證其結果在真實驗證流程中會被接受。請在非正式租戶中測試完整流程，再於正式環境啟用 Action。
+
+測試成功的結果會如實顯示。切勿從腳本回傳密碼、環境變數、API 權杖或其他機密資訊。
+:::
+
+## 處理錯誤 \{#handle-errors}
+
+**On script error** 設定適用於執行失敗（如丟出例外、Promise 被拒絕、外部請求失敗或執行器錯誤）。它不會讓無效結果變為有效。
+
+| Action 類型                    | `block`（預設）          | `allow`                                                     |
+| ------------------------------ | ------------------------ | ----------------------------------------------------------- |
+| Post first-factor verification | 拒絕無效的本地認證資訊。 | 主控台不支援。即使透過 API 設定，執行失敗仍會拒絕認證資訊。 |
+| Post sign-in                   | 登入失敗。               | 繼續登入，但不套用 Action 更新。                            |
+
+對於 Post sign-in，格式錯誤或不支援的回傳值一律會導致登入失敗，即使選擇 `allow` 也是如此。請驗證腳本中每個成功路徑，並明確回傳支援的結果或 no-op。
+
+## 監控執行狀況 \{#monitor-executions}
+
+正式執行會產生獨立的 [稽核日誌 (audit log)](/developers/audit-logs) 事件：
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+稽核紀錄包含安全的執行中繼資料，例如 Action 類型、執行位置、耗時、決策與錯誤策略結果。密碼、環境變數值、腳本原始碼及其他敏感資訊皆會被遮蔽。
+
+## 透過 Management API 設定 Actions \{#configure-actions-with-the-management-api}
+
+你也可以透過 [Logto Management API](/integrate-logto/interact-with-management-api) 管理 Actions：
+
+| 方法     | Endpoint                            | 用途                  |
+| -------- | ----------------------------------- | --------------------- |
+| `GET`    | `/api/configs/actions`              | 列出已設定的 Actions  |
+| `GET`    | `/api/configs/actions/{actionType}` | 取得單一 Action       |
+| `PUT`    | `/api/configs/actions/{actionType}` | 建立或取代一個 Action |
+| `PATCH`  | `/api/configs/actions/{actionType}` | 部分更新一個 Action   |
+| `DELETE` | `/api/configs/actions/{actionType}` | 刪除一個 Action       |
+| `POST`   | `/api/configs/actions/test`         | 以範例事件試跑腳本    |
+
+Action 類型值保留原始識別符以維持相容性：
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+Action 設定的型別如下：
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+使用 API 時，請明確設定 `enabled: true` 以啟用 Action。若未設定 `onExecutionError`，預設為 `block`。

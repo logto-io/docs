@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: กำหนดค่าและทดสอบ Actions (Configure and test Actions)
+sidebar_label: กำหนดค่าและทดสอบ Actions (Configure and test Actions)
+sidebar_position: 2
+---
+
+# กำหนดค่าและทดสอบ Actions (Configure and test Actions)
+
+## สร้าง Action (Create an Action) \{#create-an-action}
+
+1. ไปที่ <CloudLink to="/actions">Console > Actions</CloudLink>
+2. เลือก **Post first-factor verification** หรือ **Post sign-in**
+3. เขียนฟังก์ชัน `runAction` ใน script editor
+4. ที่ **Data source** ตรวจสอบ event และ result types, กำหนด environment variables และดูตัวอย่างการดึงข้อมูลภายนอก
+5. ที่ **Test context** ปรับ event ตัวอย่างและรันสคริปต์
+6. ที่ **Settings** เปิดใช้งาน Action และเลือกพฤติกรรมเมื่อเกิด script-error
+7. บันทึก Action
+
+Action ที่จะทำงานใน production ต้องถูกบันทึกและเปิดใช้งานเท่านั้น
+
+## เขียน `runAction` (Implement `runAction`) \{#implement-runaction}
+
+ให้ใช้ชื่อฟังก์ชันหลักว่า `runAction` โดยจะรับอ็อบเจกต์ payload เพียงตัวเดียว:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+หากต้องการปฏิเสธหรือดำเนินการต่อโดยไม่อัปเดตผู้ใช้ ให้ return ค่า no-op ตามที่ action type นั้นรองรับ
+
+### ดึงข้อมูลภายนอก (Fetch external data) \{#fetch-external-data}
+
+ใช้ฟังก์ชัน `fetch` ที่ถูก inject เพื่อเรียก API ภายนอก ตัวอย่างเช่น Post sign-in Action สามารถดึง user profile ได้:
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+Actions จะทำงานในเส้นทางของ authentication request (คำขอการยืนยันตัวตน) ควรทำให้บริการภายนอกเร็วและพร้อมใช้งานสูง และสมมติว่าผู้ใช้อาจพยายามลงชื่อเข้าใช้ซ้ำ Logto จะไม่ retry Action หรือ fallback จาก Logto Cloud remote runner ไปยังการรันแบบ local
+
+### ใช้ environment variables (Use environment variables) \{#use-environment-variables}
+
+ใช้ environment variables สำหรับค่าที่ไม่ควร hardcode ในสคริปต์ เช่น API URLs, tokens และการตั้งค่าฟีเจอร์:
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+Environment variables เป็นส่วนหนึ่งของการกำหนดค่า Action และผู้ดูแลระบบที่อ่านการกำหนดค่านั้นจะเห็นค่าเหล่านี้ จำกัดสิทธิ์การจัดการ Action และอย่าใส่ secrets ในผลลัพธ์ที่ return หรือข้อความ error
+
+## ฟิลด์ที่ Action สามารถอัปเดตผู้ใช้ได้ (Supported user patch) \{#supported-user-patch}
+
+Action สามารถ return เฉพาะฟิลด์ผู้ใช้เหล่านี้เท่านั้น:
+
+| Field          | คำอธิบาย                             |
+| -------------- | ------------------------------------ |
+| `username`     | ชื่อผู้ใช้                           |
+| `primaryEmail` | อีเมลหลัก                            |
+| `primaryPhone` | เบอร์โทรศัพท์หลัก                    |
+| `name`         | ชื่อที่แสดง                          |
+| `avatar`       | URL รูปโปรไฟล์                       |
+| `profile`      | ฟิลด์โปรไฟล์มาตรฐาน OIDC             |
+| `customData`   | ข้อมูล JSON เพิ่มเติมสำหรับแอปของคุณ |
+
+ชนิด patch ที่เกี่ยวข้องคือ:
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+ฟิลด์เช่น user ID, สถานะการระงับ, identities, บทบาท (roles), องค์กร (organizations), การตั้งค่า MFA, password hashes และฟิลด์ภายในอื่น ๆ จะถูกปฏิเสธ
+
+สำหรับการอัปเดต `profile` และ `customData` จะถูก merge แบบตื้น (shallow-merge) กับอ็อบเจกต์เดิม การ return อ็อบเจกต์ซ้อนที่มีคีย์ระดับบนซ้ำจะเป็นการแทนที่ค่าเดิม ไม่ใช่ deep merge การอัปเดต identifier ต้องผ่านการตรวจสอบความไม่ซ้ำของ Logto ด้วย
+
+## Test context และ dry runs \{#test-context-and-dry-runs}
+
+**Test context** คือ JSON ตัวอย่างที่ใช้เฉพาะเมื่อคุณคลิก **Run test** โดยจะถูกบันทึกกับ Action สำหรับการทดสอบในอนาคต แต่การทำงานจริงใน production จะใช้ event การยืนยันตัวตนจริงเสมอ
+
+การ dry run:
+
+- ใช้สคริปต์ที่ยังไม่บันทึก, event ตัวอย่าง และ environment variables ปัจจุบัน
+- รันสคริปต์และแสดงค่าที่ return ดิบ ๆ
+- ไม่บันทึก Action หรือสร้าง / อัปเดตผู้ใช้ Logto
+- ไม่สร้าง audit event หรือ execution metric ของ Action ใน production
+- ไม่ตรวจสอบ event และผลลัพธ์ตาม action type ที่เลือกใน production
+
+:::caution
+การ dry run ที่สำเร็จแสดงว่าสคริปต์รันได้ แต่ไม่ได้รับประกันว่าผลลัพธ์จะถูกยอมรับใน flow การยืนยันตัวตนจริง ทดสอบ flow ทั้งหมดใน tenant ที่ไม่ใช่ production ก่อนเปิดใช้งาน Action ใน production
+
+ผลลัพธ์การทดสอบที่สำเร็จจะแสดงตามที่ return ห้าม return รหัสผ่าน, environment variables, API tokens หรือ secrets อื่น ๆ จากสคริปต์เด็ดขาด
+:::
+
+## จัดการข้อผิดพลาด (Handle errors) \{#handle-errors}
+
+การตั้งค่า **On script error** จะมีผลกับความล้มเหลวของ execution เช่น การ throw exception, promise ที่ reject, การเรียก external request ที่ล้มเหลว หรือ runner failure แต่จะไม่ทำให้ผลลัพธ์ที่ไม่ถูกต้องกลายเป็นถูกต้อง
+
+| Action type                    | `block` (ค่าเริ่มต้น)                  | `allow`                                                                                              |
+| ------------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Post first-factor verification | ปฏิเสธ local credentials ที่ไม่ถูกต้อง | ไม่สามารถตั้งค่าผ่าน Console ได้ แม้ตั้งผ่าน API หาก execution ล้มเหลวก็ยังปฏิเสธ credentials อยู่ดี |
+| Post sign-in                   | ล้มเหลวการลงชื่อเข้าใช้                | ดำเนินการลงชื่อเข้าใช้ต่อโดยไม่อัปเดต Action                                                         |
+
+สำหรับ Post sign-in หาก return value ผิดรูปแบบหรือไม่รองรับ จะล้มเหลวการลงชื่อเข้าใช้เสมอ แม้เลือก `allow` ก็ตาม ตรวจสอบทุกเส้นทางความสำเร็จในสคริปต์ของคุณและ return ผลลัพธ์ที่รองรับหรือ no-op อย่างชัดเจน
+
+## ตรวจสอบการทำงาน (Monitor executions) \{#monitor-executions}
+
+การทำงานใน production จะสร้าง [audit log](/developers/audit-logs) แยกแต่ละเหตุการณ์:
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+บันทึก audit จะรวม metadata การทำงานที่ปลอดภัย เช่น ประเภท Action, ตำแหน่ง runtime, ระยะเวลา, การตัดสินใจ และผลลัพธ์ error-policy รหัสผ่าน, ค่า environment-variable, source สคริปต์ และค่าละเอียดอ่อนอื่น ๆ จะถูกปกปิด
+
+## กำหนดค่า Actions ด้วย Management API (Configure Actions with the Management API) \{#configure-actions-with-the-management-api}
+
+คุณสามารถจัดการ Actions ผ่าน [Logto Management API](/integrate-logto/interact-with-management-api) ได้เช่นกัน:
+
+| Method   | Endpoint                            | วัตถุประสงค์                       |
+| -------- | ----------------------------------- | ---------------------------------- |
+| `GET`    | `/api/configs/actions`              | แสดงรายการ Actions ที่กำหนดค่าไว้  |
+| `GET`    | `/api/configs/actions/{actionType}` | ดู Action หนึ่งรายการ              |
+| `PUT`    | `/api/configs/actions/{actionType}` | สร้างหรือแทนที่ Action             |
+| `PATCH`  | `/api/configs/actions/{actionType}` | อัปเดต Action บางส่วน              |
+| `DELETE` | `/api/configs/actions/{actionType}` | ลบ Action                          |
+| `POST`   | `/api/configs/actions/test`         | dry-run สคริปต์ด้วย event ตัวอย่าง |
+
+ค่าประเภท action จะคง identifier เดิมไว้เพื่อความเข้ากันได้ย้อนหลัง:
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+รูปแบบการกำหนดค่า Action คือ:
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+เมื่อใช้ API ให้ตั้งค่า `enabled: true` อย่างชัดเจนเพื่อให้ Action ทำงาน หากไม่กำหนด `onExecutionError` จะใช้ค่าเริ่มต้นเป็น `block`

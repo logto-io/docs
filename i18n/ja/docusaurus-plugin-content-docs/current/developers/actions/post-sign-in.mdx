@@ -1,0 +1,120 @@
+---
+id: post-sign-in
+title: サインイン後 (Post sign-in)
+sidebar_label: サインイン後 (Post sign-in)
+sidebar_position: 4
+---
+
+# サインイン後 (Post sign-in)
+
+サインイン後 (Post sign-in) アクションは、サインインが成功した後に既存のユーザーを更新します。このアクションは、すべての認証 (Authentication) 要素（必要に応じて多要素認証 (MFA) を含む）が完了した後、Logto が OIDC インタラクションを完了しトークンを発行する前に実行されます。
+
+このアクションは、ユーザーがパスワード、認証コード、ソーシャルコネクター、エンタープライズシングルサインオン (SSO)、パスキー、または他のサポートされている方法で認証 (Authentication) したかどうかに関係なく、`SignIn` インタラクションで実行されます。登録時には実行されません。
+
+## イベントペイロード \{#event-payload}
+
+イベントには、現在のサインインに対する最終的なユーザーコンテキストが含まれます：
+
+```ts
+type PostSignInEvent = {
+  // 機能名が Actions に変更された後も後方互換性のために保持されています。
+  key: 'inlineHook.postSignIn';
+  interactionEvent: 'SignIn';
+  user: PostSignInUserContext;
+};
+```
+
+`event.user` には標準の [ユーザープロファイル](/user-management/user-data#user-profile) に加えて、以下が含まれます：
+
+| フィールド               | 説明                                                        |
+| ------------------------ | ----------------------------------------------------------- |
+| `hasPassword`            | ユーザーがローカルパスワードを持っているかどうか            |
+| `ssoIdentities`          | ユーザーに紐付けられたエンタープライズ SSO アイデンティティ |
+| `mfaVerificationFactors` | ユーザーに設定されている MFA 要素の種類                     |
+| `roles`                  | グローバルロールおよびその API リソーススコープ             |
+| `organizations`          | ユーザーが所属する組織 (Organizations)                      |
+| `organizationRoles`      | ユーザーに割り当てられた組織ロール                          |
+
+このコンテキストには、`applicationId`、`lastSignInAt`、`createdAt`、`updatedAt` などのフィールドも含まれます。プレーンテキストのパスワード、パスワードハッシュ、MFA シークレット、コネクタートークンセットシークレットは含まれません。
+
+## 結果と no-op 動作 \{#result-and-no-op-behavior}
+
+ユーザーを更新するには、次の結果を返します：
+
+```ts
+type PostSignInResult = {
+  action: 'updateUser';
+  user?: ActionUserPatch;
+};
+```
+
+`user` には [サポートされているユーザーパッチフィールド](/developers/actions/configure-and-test-actions#supported-user-patch) のみを含めることができます。
+
+アクションによるユーザー更新を行わずに続行する場合は、`undefined`、`null`、`{}`、または `{ action: 'updateUser' }` を返します。他のアクション名、プリミティブ値、配列、`user: null`、またはサポートされていないユーザーフィールドは無効であり、サインインが失敗します。
+
+:::note
+`allow` スクリプトエラーポリシーは、スクリプトの実行が失敗した場合にのみ適用されます。不正な結果を許可するものではありません。必ずサポートされている更新または no-op 値を返してください。
+:::
+
+## サインイン識別子の更新 \{#updating-sign-in-identifiers}
+
+[最初の要素認証後 (Post first-factor verification)](/developers/actions/post-first-factor-verification) とは異なり、このアクションでは `username`、`primaryEmail`、`primaryPhone` などの識別子フィールドを変更できます。これには、ユーザーが直前にサインインに使用した識別子も含まれます。アクションが実行される時点で認証 (Authentication) はすでに完了しているため、更新は保存されているプロファイルのみに影響し、現在のサインイン判定には影響しません。
+
+計画すべき主な影響は 2 つあります：
+
+- **ユーザーの今後のサインイン識別子が変更される。** `old@example.com` でサインインしたユーザーは、その後そのアドレスを使用できなくなります。ユーザーが利用可能な識別子を保持していることを確認し、新しい値は確認済みとして扱ってください。Logto は追加の確認ステップなしで新しい値をユーザーの主メールアドレスまたは電話番号として保存します。
+- **衝突が発生するとサインインが中断される。** 新しい識別子がすでに他のユーザーに属している場合、Logto は `user.email_already_in_use` などの `422` エラーで更新を拒否し、インタラクションが失敗します。このチェックはスクリプト外で実行されるため、`allow` スクリプトエラーポリシーでは抑制されません。エラーポリシーに頼らず、スクリプト内で競合を解決またはスキップしてください。
+
+信頼できるソース（上流のアイデンティティプロバイダーや公式システムなど）から値を取得した場合のみ、識別子フィールドを返してください。
+
+## エンリッチメント例 \{#enrichment-example}
+
+この例では、外部サービスから現在のプロファイルデータを取得し、選択したフィールドを Logto に保存します：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(
+    `${environmentVariables.PROFILE_API_URL}/users/${encodeURIComponent(event.user.id)}`,
+    {
+      headers: {
+        authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Profile service returned ${response.status}`);
+  }
+
+  const externalProfile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      ...(externalProfile.name && { name: externalProfile.name }),
+      customData: {
+        profileSource: 'external',
+        customerTier: externalProfile.customerTier,
+        profileSyncedAt: new Date().toISOString(),
+      },
+    },
+  };
+};
+```
+
+この更新は、Logto がサインインを完了する前に実行されます。対応する OIDC スコープがリクエストされた場合、ID トークンなどのクレーム (Claims) は、現在のサインインで更新されたユーザー情報を反映できます。
+
+## 順序と失敗時の動作 \{#ordering-and-failure-behavior}
+
+このアクションが実行される前に、Logto はすでに `lastSignInAt`、インタラクション中に行われたプロファイル変更、MFA 状態、SSO アイデンティティ同期、ジャストインタイム組織プロビジョニングなど、通常のサインイン副作用を永続化している場合があります。サインインをブロックしても、これらの変更はロールバックされません。
+
+外部データの役割に応じてエラーポリシーを選択してください：
+
+- 有効なサインインに更新が必須の場合は `block` を使用します（デフォルト）。
+- 古いまたは欠落したエンリッチメントデータが許容される場合は `allow` を使用します。スクリプト実行が失敗した場合、Logto はアクションの更新を適用せずに続行します。
+
+更新は冪等にし、外部依存性は高速に保ってください。サインイン後 (Post sign-in) アクションは、該当するすべてのサインインで実行されます。

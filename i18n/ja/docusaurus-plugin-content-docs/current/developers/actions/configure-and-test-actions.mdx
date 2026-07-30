@@ -1,0 +1,195 @@
+---
+id: configure-and-test-actions
+title: アクションの設定とテスト (Configure and test Actions)
+sidebar_label: アクションの設定とテスト (Configure and test Actions)
+sidebar_position: 2
+---
+
+# アクションの設定とテスト (Configure and test Actions)
+
+## アクションの作成 (Create an Action) \{#create-an-action}
+
+1. <CloudLink to="/actions">コンソール > アクション</CloudLink> に移動します。
+2. **Post first-factor verification** または **Post sign-in** を選択します。
+3. スクリプトエディタで `runAction` 関数を実装します。
+4. **データソース** で、イベントおよび結果タイプを確認し、環境変数を設定し、外部データ取得の例を確認します。
+5. **テストコンテキスト** でサンプルイベントを調整し、スクリプトを実行します。
+6. **設定** でアクションを有効化し、スクリプトエラー時の挙動を選択します。
+7. アクションを保存します。
+
+保存され有効化されたアクションのみが本番環境で実行されます。
+
+## `runAction` の実装 (Implement `runAction`) \{#implement-runaction}
+
+エントリ関数名は `runAction` のままにしてください。この関数は 1 つのペイロードオブジェクトを受け取ります：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  return;
+};
+```
+
+ユーザーの更新なしで拒否または継続する場合は、特定のアクションタイプでサポートされている no-op 値を返します。
+
+### 外部データの取得 (Fetch external data) \{#fetch-external-data}
+
+注入された `fetch` 関数を使って外部 API を呼び出せます。例えば、Post sign-in アクションでユーザープロファイルを取得できます：
+
+```js
+const runAction = async ({ event, environmentVariables = {} }) => {
+  const response = await fetch(environmentVariables.PROFILE_API_URL, {
+    headers: {
+      authorization: `Bearer ${environmentVariables.PROFILE_API_TOKEN}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Profile API returned ${response.status}`);
+  }
+
+  const profile = await response.json();
+
+  return {
+    action: 'updateUser',
+    user: {
+      name: profile.name,
+    },
+  };
+};
+```
+
+アクションは認証リクエスト (Authentication request) パスで実行されます。外部サービスは高速かつ高可用性であることを心がけ、ユーザーがサインインを再試行する可能性があることを想定してください。Logto はアクションの再試行や Logto Cloud のリモートランナーからローカル実行へのフォールバックは行いません。
+
+### 環境変数の利用 (Use environment variables) \{#use-environment-variables}
+
+API の URL やトークン、機能設定など、スクリプト内でハードコーディングすべきでない値には環境変数を使用します：
+
+```js
+const { API_URL, API_TOKEN } = environmentVariables;
+```
+
+環境変数はアクション設定の一部であり、その設定を閲覧できる管理者に公開されます。アクション管理権限を制限し、返却結果やエラーメッセージにシークレットを含めないでください。
+
+## サポートされるユーザーパッチ (Supported user patch) \{#supported-user-patch}
+
+アクションが返せるユーザーフィールドは以下のみです：
+
+| Field          | 説明 (Description)                   |
+| -------------- | ------------------------------------ |
+| `username`     | ユーザー名                           |
+| `primaryEmail` | 主メールアドレス                     |
+| `primaryPhone` | 主電話番号                           |
+| `name`         | 表示名                               |
+| `avatar`       | アバター URL                         |
+| `profile`      | 標準 OIDC プロファイルフィールド     |
+| `customData`   | アプリケーション用の追加 JSON データ |
+
+対応するパッチタイプは次の通りです：
+
+```ts
+type ActionUserPatch = {
+  username?: string | null;
+  primaryEmail?: string | null;
+  primaryPhone?: string | null;
+  name?: string | null;
+  avatar?: string | null;
+  customData?: Record<string, JsonValue>;
+  profile?: {
+    familyName?: string;
+    givenName?: string;
+    middleName?: string;
+    nickname?: string;
+    preferredUsername?: string;
+    profile?: string;
+    website?: string;
+    gender?: string;
+    birthdate?: string;
+    zoneinfo?: string;
+    locale?: string;
+    address?: {
+      formatted?: string;
+      streetAddress?: string;
+      locality?: string;
+      region?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+};
+```
+
+ユーザー ID、停止状態、アイデンティティ、ロール、組織、MFA 設定、パスワードハッシュ、その他の内部フィールドなどは拒否されます。
+
+更新時、`profile` および `customData` は既存オブジェクトとシャロー (浅い) マージされます。既存のトップレベルキーと同じ名前のネストされたオブジェクトを返すと、そのキーの値が置き換えられます（ディープマージではありません）。識別子の更新は Logto の一意性チェックも通過する必要があります。
+
+## テストコンテキストとドライラン (Test context and dry runs) \{#test-context-and-dry-runs}
+
+**テストコンテキスト** は、**テスト実行** をクリックしたときだけ使われるサンプル JSON です。アクションとともに保存され、将来のテストに利用できますが、本番実行では常に実際の認証イベントが使われます。
+
+ドライランでは：
+
+- 現在の未保存スクリプト、サンプルイベント、環境変数を使用します。
+- スクリプトを実行し、その生の返却値を表示します。
+- アクションを保存したり、Logto ユーザーを作成・更新したりしません。
+- 本番アクションの監査イベントや実行メトリクスを発行しません。
+- 選択したアクションタイプの本番イベント・結果バリデーションを適用しません。
+
+:::caution
+ドライランが成功しても、実際の認証フローで結果が受け入れられるとは限りません。本番環境でアクションを有効化する前に、非本番テナントで完全なフローをテストしてください。
+
+テストが成功した場合、返却値がそのまま表示されます。スクリプトからパスワード、環境変数、API トークン、その他のシークレットを絶対に返さないでください。
+:::
+
+## エラーの処理 (Handle errors) \{#handle-errors}
+
+**スクリプトエラー時の挙動 (On script error)** 設定は、例外のスロー、Promise の reject、外部リクエストの失敗、ランナーの障害などの実行失敗に適用されます。無効な結果を有効にするものではありません。
+
+| アクションタイプ (Action type) | `block` (デフォルト)         | `allow`                                                                        |
+| ------------------------------ | ---------------------------- | ------------------------------------------------------------------------------ |
+| Post first-factor verification | 無効なローカル認証情報を拒否 | コンソールでは利用不可。API で設定しても、実行失敗時は認証情報が拒否されます。 |
+| Post sign-in                   | サインインを失敗させる       | アクションの更新を適用せずにサインインを継続します。                           |
+
+Post sign-in では、形式不正またはサポートされていない返却値は、`allow` を選択していても必ずサインインが失敗します。スクリプト内のすべての成功パスをバリデートし、明示的なサポート結果または no-op を返してください。
+
+## 実行の監視 (Monitor executions) \{#monitor-executions}
+
+本番実行では独立した [監査ログ (audit log)](/developers/audit-logs) イベントが作成されます：
+
+- `Action.PostFirstFactorVerification`
+- `Action.PostSignIn`
+
+監査記録には、アクションタイプ、実行場所、所要時間、判定、エラーポリシー結果など、安全な実行メタデータが含まれます。パスワード、環境変数値、スクリプトソース、その他の機密値はマスキングされます。
+
+## Management API でアクションを設定 (Configure Actions with the Management API) \{#configure-actions-with-the-management-api}
+
+[Logto Management API](/integrate-logto/interact-with-management-api) を使ってアクションを管理することもできます：
+
+| メソッド (Method) | エンドポイント (Endpoint)           | 目的 (Purpose)                           |
+| ----------------- | ----------------------------------- | ---------------------------------------- |
+| `GET`             | `/api/configs/actions`              | 設定済みアクションの一覧取得             |
+| `GET`             | `/api/configs/actions/{actionType}` | 単一アクションの取得                     |
+| `PUT`             | `/api/configs/actions/{actionType}` | アクションの作成または置換               |
+| `PATCH`           | `/api/configs/actions/{actionType}` | アクションの部分更新                     |
+| `DELETE`          | `/api/configs/actions/{actionType}` | アクションの削除                         |
+| `POST`            | `/api/configs/actions/test`         | サンプルイベントでスクリプトをドライラン |
+
+アクションタイプ値は後方互換性のため元の識別子を保持しています：
+
+- `inlineHook.postFirstFactorVerification`
+- `inlineHook.postSignIn`
+
+アクション設定の型は次の通りです：
+
+```ts
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+type ActionConfig = {
+  script: string;
+  environmentVariables?: Record<string, string>;
+  contextSample?: JsonValue;
+  enabled?: boolean;
+  onExecutionError?: 'block' | 'allow';
+};
+```
+
+API 利用時は、アクションを実行するには `enabled: true` を明示的に設定してください。`onExecutionError` を省略した場合はデフォルトで `block` になります。

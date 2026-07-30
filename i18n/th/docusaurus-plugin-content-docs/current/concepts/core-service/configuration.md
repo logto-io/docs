@@ -7,42 +7,55 @@
 Logto จัดการตัวแปรสภาพแวดล้อมตามลำดับดังนี้:
 
 - ตัวแปรสภาพแวดล้อมของระบบ
-- ไฟล์ `.env` ที่อยู่ใน root ของโปรเจกต์ ซึ่งเป็นไปตามรูปแบบ [dotenv](https://github.com/motdotla/dotenv#readme)
+- ไฟล์ `.env` ใน root ของโปรเจกต์ ซึ่งเป็นไปตามรูปแบบ [dotenv](https://github.com/motdotla/dotenv#readme)
 
 ดังนั้น ตัวแปรสภาพแวดล้อมของระบบจะมีสิทธิ์แทนที่ค่าที่อยู่ใน `.env`
 
 ### ตัวแปร {#variables}
 
 :::caution
-หากคุณรัน Logto ด้วย `npm start` ที่ root ของโปรเจกต์ `NODE_ENV` จะเป็น `production` เสมอ
+หากคุณรัน Logto ผ่าน `npm start` ใน root ของโปรเจกต์ `NODE_ENV` จะเป็น `production` เสมอ
 :::
 
 ในค่าเริ่มต้น `protocol` จะเป็น `http` หรือ `https` ตามการตั้งค่า HTTPS ของคุณ
 
-| Key                               | ค่าเริ่มต้น                          | ประเภท                                                   | คำอธิบาย                                                                                                                                                                                                                                                         |
-| --------------------------------- | ------------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| NODE_ENV                          | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | ประเภทของสภาพแวดล้อมที่ Logto ทำงานอยู่                                                                                                                                                                                                                          |
-| PORT                              | `3001`                               | `number`                                                 | พอร์ตภายในเครื่องที่ Logto รับฟัง                                                                                                                                                                                                                                |
-| ADMIN_PORT                        | `3002`                               | `number`                                                 | พอร์ตภายในเครื่องที่ Logto Admin Console รับฟัง                                                                                                                                                                                                                  |
-| ADMIN_DISABLE_LOCALHOST           | N/A                                  | <code>string &#124; boolean &#124; number</code>         | ตั้งค่าเป็น `1` หรือ `true` เพื่อปิดพอร์ตสำหรับ Admin Console หาก `ADMIN_ENDPOINT` ไม่ถูกตั้งค่า จะปิด Admin Console ทั้งหมด                                                                                                                                     |
-| DB_URL                            | N/A                                  | `string`                                                 | [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) สำหรับฐานข้อมูล Logto                                                                                                                                                       |
-| DATABASE_STATEMENT_TIMEOUT        | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL `statement_timeout` หน่วยเป็นมิลลิวินาที ใช้ string ตัวเลข (เช่น `5000`) เพื่อกำหนด หรือ `DISABLE_TIMEOUT` เพื่อไม่ใช้ startup parameter (แนะนำสำหรับ PgBouncer/RDS Proxy) หากไม่ตั้งค่าหรือไม่ถูกต้อง ค่าเริ่มต้นของ client คือ 60000 ms  |
-| HTTPS_CERT_PATH                   | `undefined`                          | <code>string &#124; undefined</code>                     | ดูรายละเอียดที่ [การเปิดใช้งาน HTTPS](#enabling-https)                                                                                                                                                                                                           |
-| HTTPS_KEY_PATH                    | `undefined`                          | <code>string &#124; undefined</code>                     | เช่นเดียวกัน                                                                                                                                                                                                                                                     |
-| TRUST_PROXY_HEADER                | `false`                              | `boolean`                                                | เช่นเดียวกัน                                                                                                                                                                                                                                                     |
-| ENDPOINT                          | `'protocol://localhost:$PORT'`       | `string`                                                 | คุณสามารถระบุ URL ที่มีโดเมนของคุณเองสำหรับการทดสอบออนไลน์หรือ production ได้ ค่านี้จะมีผลต่อ [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) ด้วย                                                              |
-| ADMIN_ENDPOINT                    | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | คุณสามารถระบุ URL ที่มีโดเมนของคุณเองสำหรับ production (เช่น `ADMIN_ENDPOINT=https://admin.domain.com`) ค่านี้จะมีผลต่อค่า Admin Console Redirect URIs ด้วย                                                                                                      |
-| CASE_SENSITIVE_USERNAME           | `true`                               | `boolean`                                                | ระบุว่าชื่อผู้ใช้ต้องตรงตามตัวพิมพ์เล็ก/ใหญ่หรือไม่ โปรดระวังเมื่อเปลี่ยนค่านี้; การเปลี่ยนแปลงจะไม่ปรับข้อมูลในฐานข้อมูลที่มีอยู่โดยอัตโนมัติ ต้องจัดการเอง                                                                                                     |
-| SECRET_VAULT_KEK                  | `undefined`                          | `string`                                                 | Key Encryption Key (KEK) ที่ใช้เข้ารหัส Data Encryption Keys (DEK) ใน [Secret Vault](/secret-vault) จำเป็นสำหรับการทำงานของ Secret Vault ต้องเป็น string ที่เข้ารหัส base64 แนะนำให้ใช้ AES-256 (32 bytes) ตัวอย่าง: `crypto.randomBytes(32).toString('base64')` |
-| PRIVATE_KEY_ROTATION_GRACE_PERIOD | `0`                                  | `number`                                                 | ระยะเวลาผ่อนผัน (วินาที) สำหรับการหมุนคีย์ส่วนตัว OIDC แบบ staged เมื่อกำหนดค่ามากกว่า 0 คีย์ใหม่จะถูกสร้างเป็น `Next` ก่อนและจะมีผลหลังจากหมดระยะเวลาผ่อนผัน                                                                                                    |
+| Key                                    | ค่าเริ่มต้น                          | ประเภท                                                   | คำอธิบาย                                                                                                                                                                                                                                                   |
+| -------------------------------------- | ------------------------------------ | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NODE_ENV                               | `undefined`                          | <code>'production' &#124; 'test' &#124; undefined</code> | ประเภทของสภาพแวดล้อมที่ Logto ทำงานอยู่                                                                                                                                                                                                                    |
+| PORT                                   | `3001`                               | `number`                                                 | พอร์ตภายในเครื่องที่ Logto รับฟัง                                                                                                                                                                                                                          |
+| ADMIN_PORT                             | `3002`                               | `number`                                                 | พอร์ตภายในเครื่องที่ Logto Admin Console รับฟัง                                                                                                                                                                                                            |
+| ADMIN_DISABLE_LOCALHOST                | N/A                                  | <code>string &#124; boolean &#124; number</code>         | ตั้งค่าเป็น `1` หรือ `true` เพื่อปิดพอร์ตสำหรับ Admin Console หาก `ADMIN_ENDPOINT` ไม่ถูกตั้งค่า จะปิด Admin Console ทั้งหมด                                                                                                                               |
+| DB_URL                                 | N/A                                  | `string`                                                 | [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6) สำหรับฐานข้อมูล Logto                                                                                                                                                 |
+| DATABASE_STATEMENT_TIMEOUT             | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL `statement_timeout` หน่วยเป็นมิลลิวินาที ใช้สตริงตัวเลข (เช่น `5000`) เพื่อกำหนด หรือ `DISABLE_TIMEOUT` เพื่อข้ามพารามิเตอร์นี้ (แนะนำสำหรับ PgBouncer/RDS Proxy) หากไม่ตั้งค่าหรือไม่ถูกต้อง ค่าเริ่มต้นฝั่ง client คือ 60000 ms    |
+| HTTPS_CERT_PATH                        | `undefined`                          | <code>string &#124; undefined</code>                     | ดูรายละเอียดที่ [การเปิดใช้งาน HTTPS](#enabling-https)                                                                                                                                                                                                     |
+| HTTPS_KEY_PATH                         | `undefined`                          | <code>string &#124; undefined</code>                     | เช่นเดียวกัน                                                                                                                                                                                                                                               |
+| TRUST_PROXY_HEADER                     | `false`                              | `boolean`                                                | เช่นเดียวกัน                                                                                                                                                                                                                                               |
+| ENDPOINT                               | `'protocol://localhost:$PORT'`       | `string`                                                 | คุณสามารถระบุ URL ที่มีโดเมนของคุณเองสำหรับการทดสอบออนไลน์หรือ production ได้ ค่านี้จะมีผลต่อ [OIDC issuer identifier](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) ด้วย                                                        |
+| ADMIN_ENDPOINT                         | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | คุณสามารถระบุ URL ที่มีโดเมนของคุณเองสำหรับ production (เช่น `ADMIN_ENDPOINT=https://admin.domain.com`) ค่านี้จะมีผลต่อค่า Admin Console Redirect URIs ด้วย                                                                                                |
+| CASE_SENSITIVE_USERNAME                | `true`                               | `boolean`                                                | ระบุว่าชื่อผู้ใช้ต้องตรงตามตัวพิมพ์เล็ก/ใหญ่หรือไม่ โปรดระวังเมื่อเปลี่ยนค่านี้; การเปลี่ยนแปลงจะไม่ปรับข้อมูลในฐานข้อมูลที่มีอยู่โดยอัตโนมัติ ต้องจัดการเอง                                                                                               |
+| SECRET_VAULT_KEK                       | `undefined`                          | `string`                                                 | Key Encryption Key (KEK) ที่ใช้เข้ารหัส Data Encryption Keys (DEK) ใน [Secret Vault](/secret-vault) จำเป็นสำหรับการทำงานของ Secret Vault ต้องเป็นสตริง base64-encoded แนะนำให้ใช้ AES-256 (32 bytes) ตัวอย่าง: `crypto.randomBytes(32).toString('base64')` |
+| PRIVATE_KEY_ROTATION_GRACE_PERIOD      | `0`                                  | `number`                                                 | ระยะเวลาผ่อนผัน (วินาที) สำหรับการหมุนคีย์ส่วนตัว OIDC แบบ staged เมื่อกำหนดค่ามากกว่า 0 คีย์ใหม่จะถูกสร้างเป็น `Next` ก่อนและจะมีผลหลังจากหมดระยะเวลาผ่อนผัน                                                                                              |
+| OIDC_PROVIDER_SSRF_PROTECTION_DISABLED | `false`                              | `boolean`                                                | สำหรับ self-hosted เท่านั้น ตั้งค่าเป็น `true` เฉพาะเมื่อ endpoint ของ OIDC relying-party ที่เชื่อถือได้ต้องชี้ไปยัง private network ดู [การป้องกัน SSRF ของ OIDC provider](#oidc-provider-ssrf-protection)                                                |
+
+### การป้องกัน SSRF ของ OIDC provider {#oidc-provider-ssrf-protection}
+
+โดยค่าเริ่มต้น Logto ป้องกันคำขอออกจาก OIDC provider ต่อภายนอกไม่ให้เกิด server-side request forgery (SSRF) โดยจะบล็อกคำขอไปยังที่อยู่พิเศษ เช่น loopback และ private network การป้องกันนี้ครอบคลุม endpoint ของ relying-party เช่น back-channel logout URIs, `jwks_uri` และ `sector_identifier_uri`
+
+หากการติดตั้งแบบ self-hosted ของคุณจำเป็นต้องเข้าถึง endpoint ของ relying-party ที่เชื่อถือได้ใน private network ให้ตั้งค่า `OIDC_PROVIDER_SSRF_PROTECTION_DISABLED=true` และรีสตาร์ท Logto ทุก instance
+
+:::caution
+
+การตั้งค่านี้จะปิดการป้องกัน SSRF สำหรับคำขอออกทั้งหมดของ OIDC provider ไม่ใช่แค่ endpoint เดียว ควรปิดเฉพาะเมื่อ endpoint ทั้งหมดที่ตั้งค่าไว้เชื่อถือได้และระบบเครือข่ายของคุณป้องกันการเข้าถึงบริการภายในที่สำคัญ
+
+:::
 
 ### การเปิดใช้งาน HTTPS {#enabling-https}
 
 #### ใช้งานกับ Node {#using-node}
 
-Node รองรับ HTTPS โดยตรง เพียงระบุ **ทั้ง** `HTTPS_CERT_PATH` และ `HTTPS_KEY_PATH` เพื่อเปิดใช้งาน HTTPS ผ่าน Node
+Node รองรับ HTTPS โดยตรง ให้ระบุ **ทั้ง** `HTTPS_CERT_PATH` และ `HTTPS_KEY_PATH` เพื่อเปิดใช้งาน HTTPS ผ่าน Node
 
-`HTTPS_CERT_PATH` คือ path ไปยังใบรับรอง HTTPS ของคุณ ส่วน `HTTPS_KEY_PATH` คือ path ไปยังคีย์ HTTPS ของคุณ
+`HTTPS_CERT_PATH` คือ path ไปยัง certificate ของคุณ ส่วน `HTTPS_KEY_PATH` คือ path ไปยัง key ของคุณ
 
 #### ใช้งานกับ HTTPS proxy {#using-a-https-proxy}
 
@@ -50,7 +63,7 @@ Node รองรับ HTTPS โดยตรง เพียงระบุ **�
 
 ในกรณีนี้ คุณอาจต้องตั้งค่า `TRUST_PROXY_HEADER` เป็น `true` เพื่อระบุว่าควรเชื่อ header จาก proxy หรือไม่ Logto จะส่งค่าดังกล่าวไปยัง [Koa app settings](https://github.com/koajs/koa/blob/master/docs/api/index.md#settings)
 
-ดู [Trusting TLS offloading proxies](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) เพื่อดูว่าเมื่อใดควรตั้งค่านี้
+ดู [Trusting TLS offloading proxies](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#trusting-tls-offloading-proxies) สำหรับกรณีที่ควรตั้งค่าฟิลด์นี้
 
 ## การตั้งค่าฐานข้อมูล {#database-configs}
 
@@ -58,10 +71,10 @@ Node รองรับ HTTPS โดยตรง เพียงระบุ **�
 
 ตารางนี้เป็น key-value storage แบบง่าย ๆ โดย key ที่ใช้ได้มีดังนี้:
 
-| Key              | ประเภท                | คำอธิบาย                                                                                                                      |
-| ---------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| oidc.cookieKeys  | <code>string[]</code> | อาร์เรย์ string ของ [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys)   |
-| oidc.privateKeys | <code>string[]</code> | อาร์เรย์ string ของเนื้อหาคีย์ส่วนตัวสำหรับ [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing) |
+| Key              | ประเภท                | คำอธิบาย                                                                                                                       |
+| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| oidc.cookieKeys  | <code>string[]</code> | อาร์เรย์ของสตริงสำหรับ [signing cookie keys](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) |
+| oidc.privateKeys | <code>string[]</code> | อาร์เรย์ของสตริงเนื้อหาคีย์ส่วนตัวสำหรับ [OIDC JWT signing](https://openid.net/specs/openid-connect-core-1_0.html#Signing)     |
 
 ### ประเภทคีย์ส่วนตัวที่รองรับ {#supported-private-key-types}
 

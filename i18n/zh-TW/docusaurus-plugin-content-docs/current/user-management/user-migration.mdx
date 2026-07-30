@@ -4,23 +4,32 @@ sidebar_position: 5
 
 # 使用者遷移 (User migration)
 
-Logto 支援從其他平台手動遷移現有使用者。本指南將說明如何透過 Management API 匯入現有使用者，以及遷移前你應考慮的事項。
+Logto 支援從其他身分系統批次或即時（Just-in-Time）遷移現有使用者。本指南說明如何透過 Management API 批次匯入使用者，以及遷移前應注意的事項。
+
+## 選擇遷移策略 \{#choose-a-migration-strategy}
+
+| 策略                              | 適用時機                                                                       | 運作方式                                                                                                                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 批次遷移 (Bulk migration)         | 你可以將使用者紀錄與密碼雜湊匯出為 Logto 支援的格式時。                        | 於切換前透過 Management API 匯入使用者，詳見本指南後續步驟。                                                                                                                                                        |
+| 即時遷移 (Just-in-time migration) | 你需要對現有系統驗證密碼、無法匯出相容的密碼雜湊，或希望逐步遷移活躍使用者時。 | 設定 [首次驗證後動作 (Post first-factor verification Action)](/developers/actions/post-first-factor-verification)。使用者首次密碼登入時，Logto 透過你的 Action 驗證憑證，建立或更新使用者，並儲存新的本地密碼雜湊。 |
+
+即時遷移會讓舊有驗證服務持續參與登入請求流程，直到所有使用者完成遷移。請使用快速且穩定的 HTTPS 端點，並於遷移期間保持其可用。
 
 ## 使用者結構 (User schema) \{#user-schema}
 
-在開始之前，讓我們先看看 Logto 的 [使用者結構](/user-management/user-data/#user-profile)。你需要注意使用者結構的三個部分：
+在開始前，先了解 Logto 的 [使用者結構 (user schema)](/user-management/user-data/#user-profile)。你需注意以下三個部分：
 
-1. **基本資料 (Basic data)**：來自使用者檔案的基本資訊，你可以將現有使用者檔案的資料對應到這裡。
-2. **自訂資料 (Custom data)**：儲存額外的使用者資訊，可用於存放無法對應到基本資料的欄位。
+1. **基本資料 (Basic data)**：來自使用者檔案的基本資訊，可對應你現有的使用者資料。
+2. **自訂資料 (Custom data)**：儲存額外的使用者資訊，可用於存放無法對應至基本資料的欄位。
 3. **社交身分 (Social identities)**：儲存從社交登入取得的使用者資訊。
 
-你可以建立對照表，將現有使用者檔案的資訊對應到 **基本資料 (basic data)** 與 **自訂資料 (custom data)**。若有社交登入，需額外步驟匯入社交身分，請參考 [連結社交身分至使用者 (Link social identity to user)](https://openapi.logto.io/operation/operation-createuseridentity) 的 API。
+你可以建立對應表，將現有使用者資料對應到 **基本資料 (basic data)** 與 **自訂資料 (custom data)**。若有社交登入，需額外步驟匯入社交身分，請參考 [連結社交身分至使用者 (Link social identity to user)](https://openapi.logto.io/operation/operation-createuseridentity) 的 API。
 
 ## 密碼雜湊 (Password hashing) \{#password-hashing}
 
-Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 進行使用者密碼雜湊，並為遷移方便支援其他演算法，如 `MD5`、`SHA1`、`SHA256` 及 `Bcrypt`。這些演算法被認為不安全，對應的密碼雜湊值會在使用者首次成功登入時自動遷移為 Argon2。
+Logto 使用 [Argon2](https://en.wikipedia.org/wiki/Argon2) 進行密碼雜湊，並為遷移方便支援 `MD5`、`SHA1`、`SHA256` 及 `Bcrypt` 等其他演算法。這些演算法被認為不安全，相關密碼雜湊會於使用者首次成功登入時自動遷移為 Argon2。
 
-如果你使用其他雜湊演算法或加鹽，可以將 `passwordAlgorithm` 設為 `Legacy`，這允許你使用 Node.js 支援的任何雜湊演算法。支援的演算法列表可參考 [Node.js crypto 文件](https://nodejs.org/api/crypto.html#cryptogethashes)。此情況下，`passwordDigest` 需為包含雜湊演算法及其他參數的 JSON 字串。
+若你使用其他雜湊演算法或加鹽方式，可將 `passwordAlgorithm` 設為 `Legacy`，這允許你使用 Node.js 支援的任意雜湊演算法。支援演算法列表請參考 [Node.js crypto 文件](https://nodejs.org/api/crypto.html#cryptogethashes)。此情況下，`passwordDigest` 需為包含雜湊演算法及其他參數的 JSON 字串。
 
 ### 一般 Legacy 格式 \{#general-legacy-format}
 
@@ -42,6 +51,7 @@ JSON 字串格式如下：
 
 ```ts
 const hash = crypto.createHash('sha256');
+// 將鹽與密碼組合後雜湊
 hash.update('salt123' + 'password123');
 const expectedHashedValue = hash.digest('hex');
 ```
@@ -58,12 +68,12 @@ Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
 
 參數說明：
 
-- **`salt`**：原始雜湊時使用的鹽值
-- **`iterations`**：迭代次數（如 `"1000"`）
+- **`salt`**：原始雜湊所用的鹽值
+- **`iterations`**：疊代次數（如 `"1000"`）
 - **`keylen`**：導出金鑰長度（位元組，例 `"20"`）
-- **`digest`**：使用的雜湊函式（如 `"sha512"`、`"sha256"`、`"sha1"`）
+- **`digest`**：所用雜湊函式（如 `"sha512"`、`"sha256"`、`"sha1"`）
 - **`@`**：實際密碼值的佔位符
-- **`expected_hashed_value`**：預期的雜湊結果（十六進位字串）
+- **`expected_hashed_value`**：期望的雜湊結果（十六進位字串）
 
 **範例遷移 payload：**
 
@@ -76,10 +86,10 @@ Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
 }
 ```
 
-## 遷移步驟 (Steps to migrate) \{#steps-to-migrate}
+## 遷移步驟 \{#steps-to-migrate}
 
-1.  **準備使用者資料**
-    你應先從現有平台匯出使用者資料，並將資訊對應到 Logto 的使用者結構。我們建議你將對應後的資料整理為 JSON 格式。以下為範例：
+1.  **準備使用者資料**  
+    你應先從現有平台匯出使用者資料，並將其對應到 Logto 使用者結構。我們建議將對應後的資料整理為 JSON 格式。以下為範例：
 
     ```json
     [
@@ -96,12 +106,12 @@ Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
     ]
     ```
 
-2.  **建立 Logto 租戶 (tenant)**
+2.  **建立 Logto 租戶 (tenant)**  
     你需要在 Logto 建立一個租戶。可選擇 Logto Cloud 或 Logto OSS。若尚未建立，請參考 [設定 Logto Cloud](/introduction/set-up-logto-cloud/#create-logto-tenant) 指南。
-3.  **設置 Management API 連線**
-    我們將使用 Management API 匯入使用者資料，請參考 [Management API](/integrate-logto/interact-with-management-api) 了解如何在開發環境設置連線。
-4.  **匯入使用者資料**
-    建議你撰寫腳本逐一匯入使用者資料，將呼叫 [建立使用者 (create user)](https://openapi.logto.io/operation/operation-createuser) API。以下為腳本範例：
+3.  **設定 Management API 連線**  
+    我們將透過 Management API 匯入使用者資料，請參考 [Management API](/integrate-logto/interact-with-management-api) 了解如何於開發環境設定連線。
+4.  **匯入使用者資料**  
+    建議撰寫腳本逐一匯入使用者資料，將呼叫 [建立使用者 (create user)](https://openapi.logto.io/operation/operation-createuser) API。以下為範例腳本：
 
     ```jsx
     const users = require('./users.json');
@@ -117,10 +127,10 @@ Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
             },
             body: JSON.stringify(user),
           });
-          // 為避免觸發速率限制，請暫停一段時間
+          // 暫停一段時間以避免觸發速率限制
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Failed to import user ${user.username}: ${error.message}`);
+          console.error(`匯入使用者 ${user.username} 失敗：${error.message}`);
         }
       }
     };
@@ -128,12 +138,12 @@ Logto 特別支援 [PBKDF2](https://en.wikipedia.org/wiki/PBKDF2)。
     importUsers();
     ```
 
-請注意，API 端點有速率限制，請於每次請求間加入暫停以避免觸發限制。詳情請參閱 [速率限制](/integrate-logto/interact-with-management-api/#rate-limit) 頁面。
+請注意 API 端點有速率限制，應於每次請求間加入暫停以避免觸發限制。詳情請參閱 [速率限制](/integrate-logto/interact-with-management-api/#rate-limit) 頁面。
 
 若你有大量使用者資料（10 萬以上），可[聯絡我們](https://logto.io/contact)以提升速率限制。
 
-## 相關資源 (Related resources) \{#related-resources}
+## 相關資源 \{#related-resources}
 
 <Url href="https://blog.logto.io/general-migration-guide">
-  將現有使用者資料庫遷移至 Logto 的一般指引
+  遷移現有使用者資料庫至 Logto 的一般指引
 </Url>
