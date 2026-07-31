@@ -92,8 +92,59 @@ const normalizeDetailsClosingTags = (content) =>
     )
     .lines.join('\n');
 
+/**
+ * Repair translated inline code followed by a Markdown link when the model swaps their targets.
+ *
+ * Source like:
+ *
+ * `Grant.LimitExceeded` [webhook event](/developers/webhooks/webhooks-events)
+ *
+ * can become:
+ *
+ * [webhook](Grant.LimitExceeded) (/developers/webhooks/webhooks-events)
+ *
+ * A dotted PascalCase identifier is not a valid docs destination, while the following
+ * root-relative path is. Restore the identifier as inline code and attach the real path
+ * to the translated link label.
+ *
+ * @param {string} content
+ * @returns {string}
+ */
+const normalizeMisplacedInlineCodeLinks = (content) =>
+  content
+    .split('\n')
+    .reduce(
+      (state, line) => {
+        if (/^\s*(?:`{3,}|~{3,})/.test(line)) {
+          return {
+            inCodeFence: !state.inCodeFence,
+            lines: [...state.lines, line],
+          };
+        }
+
+        if (state.inCodeFence) {
+          return { ...state, lines: [...state.lines, line] };
+        }
+
+        return {
+          ...state,
+          lines: [
+            ...state.lines,
+            line.replaceAll(
+              /\[(?<label>[^\n\]]+)]\((?<identifier>[A-Z][\dA-Za-z]*(?:\.[A-Z][\dA-Za-z]*)+)\)\s+\((?<destination>\/[^\s)]+)\)/g,
+              '`$<identifier>` [$<label>]($<destination>)'
+            ),
+          ],
+        };
+      },
+      { inCodeFence: false, lines: [] }
+    )
+    .lines.join('\n');
+
 export const normalizeTranslatedMdxAfterAutofix = (content) =>
-  normalizeDetailsClosingTags(normalizeMultilineCustomComponents(content));
+  normalizeMisplacedInlineCodeLinks(
+    normalizeDetailsClosingTags(normalizeMultilineCustomComponents(content))
+  );
 
 /**
  * Split trailing text after closing custom component tags into the next line.
