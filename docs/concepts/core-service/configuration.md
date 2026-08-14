@@ -39,13 +39,15 @@ In default values, `protocol` will be either `http` or `https` according to your
 
 ### OIDC provider SSRF protection {#oidc-provider-ssrf-protection}
 
-Logto protects the OIDC provider's outbound requests against server-side request forgery (SSRF) by default. Requests to special-use addresses, including loopback and private network addresses, are blocked. This protection covers relying-party endpoints such as back-channel logout URIs, `jwks_uri`, and `sector_identifier_uri`.
+Logto protects the OIDC provider's outbound requests against server-side request forgery (SSRF) by default. Requests to special-use addresses, including loopback and private network addresses, are blocked. This protection covers relying-party endpoints such as back-channel logout URIs, `jwks_uri`, and `sector_identifier_uri`, as well as the client ID metadata documents fetched for [dynamic app](/integrate-logto/third-party-applications/dynamic-apps).
 
 If your self-hosted deployment intentionally needs to reach a trusted relying-party endpoint on a private network, set `OIDC_PROVIDER_SSRF_PROTECTION_DISABLED=true` and restart every Logto instance.
 
 :::caution
 
 This setting disables SSRF protection for all OIDC provider outbound requests, not just one endpoint. Only disable it when all configured relying-party endpoints are trusted and your network controls prevent access to sensitive internal services.
+
+[Dynamic app](/integrate-logto/third-party-applications/dynamic-apps) cannot be enabled while this protection is off, since it fetches metadata documents from URLs provided by the clients themselves.
 
 :::
 

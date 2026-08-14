@@ -1,0 +1,99 @@
+---
+description: Let OAuth clients connect to your tenant without pre-registration by using a client ID metadata document URL as their client ID.
+sidebar_label: Dynamic app (CIMD)
+sidebar_position: 3
+---
+
+# Dynamic app (CIMD)
+
+Dynamic app allows OAuth clients to connect to your tenant without pre-registration. Instead of a client ID issued by Logto, the client uses a public HTTPS URL as its `client_id`. The URL serves a JSON document describing the client, called the [client ID metadata document (CIMD)](https://auth.wiki/client-id-metadata-document). Logto fetches the document and treats the client as a [third-party application](/integrate-logto/third-party-applications).
+
+Dynamic app implements the IETF draft [OAuth Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html).
+
+## When to use dynamic app \{#when-to-use-dynamic-app}
+
+Pre-registration works when you know your partners. It does not work when any client may connect, which is common in the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents) ecosystem: a user asks their AI agent to connect to your service, and the agent has never talked to your tenant before.
+
+With dynamic app, the client publishes its own metadata at a URL it owns, and that URL is its identity. Nothing needs to be created in your tenant beforehand.
+
+|               | Registered third-party app | Dynamic app                              |
+| ------------- | -------------------------- | ---------------------------------------- |
+| Client ID     | Issued by Logto            | An HTTPS URL owned by the client         |
+| Registration  | Required                   | Not required                             |
+| Client secret | Supported                  | Not supported                            |
+| Permissions   | Per application            | Shared by all dynamic clients            |
+| Grant types   | Depends on app type        | `authorization_code` and `refresh_token` |
+
+Dynamic clients are public clients, so they always use [PKCE](https://auth.wiki/pkce). You can use both models at the same time. A partner you trust can still have a registered app with its own permissions.
+
+## Enable dynamic app \{#enable-dynamic-app}
+
+1. Go to <CloudLink to="/applications">Console > Applications</CloudLink> and open the **Third-party apps** tab.
+2. Click **Create application** and select the **Dynamic app** card. It enables a tenant-level feature instead of creating an application.
+3. Confirm in the dialog. Once enabled, any OAuth client with a valid public HTTPS client ID URL can start an authorization request for your tenant.
+4. Open the dynamic app from the application list and go to the **Permissions** tab to grant permissions.
+
+The dynamic app has no editable name, redirect URIs, or credentials. Each client provides its own in its metadata document.
+
+:::note
+Dynamic app requires the [OIDC provider SSRF protection](/concepts/core-service/configuration#oidc-provider-ssrf-protection), since Logto fetches metadata documents from the internet. Self-hosted instances that disable it cannot enable dynamic app.
+:::
+
+### Grant permissions \{#grant-permissions}
+
+The **Permissions** tab defines the maximum permissions shared by all dynamic clients. It works like the [permission management](/integrate-logto/third-party-applications/permission-management) of a registered third-party app, with **User** and **Organization** sections.
+
+Permissions outside this set are ignored, both in authorization requests and when refreshing tokens. Users still consent only to permissions they have through their [roles](/authorization/role-based-access-control).
+
+Since every dynamic client shares this set, keep it minimal.
+
+## Publish a client ID metadata document \{#publish-a-client-id-metadata-document}
+
+If you are building a client that connects to Logto, host a metadata document and use its URL as your `client_id`. The URL must use the `https` scheme and contain no fragment, user info, or dot path segments. Logto sends a `GET` request to the URL and expects a JSON object.
+
+For example, Claude Code uses `https://claude.ai/oauth/claude-code-client-metadata`, which serves:
+
+```json
+{
+  "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+  "client_name": "Claude Code",
+  "client_uri": "https://claude.ai",
+  "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+The field names are the same as in [OAuth 2.0 Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591#section-2). Note that:
+
+- `client_id` must be identical to the URL that serves the document.
+- Dynamic clients are public clients. The document must not contain `client_secret`, and `token_endpoint_auth_method` must not be a shared-secret method. Use [PKCE](https://auth.wiki/pkce) instead.
+- Metadata URIs such as `client_uri`, `logo_uri`, `tos_uri`, and `policy_uri` must be absolute `https` URLs. This does not apply to `redirect_uris`, so native clients can still use loopback addresses like the example above.
+- `redirect_uris` are matched as exact strings, except that loopback addresses can be matched with any port. [Wildcard patterns](/integrate-logto/application-data-structure#wildcard-patterns) are also supported.
+- `scope`, `grant_types`, and `response_types` are decided by Logto. If the document declares them, the values are ignored. Dynamic clients can only use the authorization code flow and refresh tokens.
+
+Logto caches the document for up to 24 hours, following the `Cache-Control` and `Expires` headers of your response. Set them according to how often you expect to update the document.
+
+## Consent screen \{#consent-screen}
+
+Dynamic clients are third-party applications, so the [consent screen](/end-user-flows/consent-screen) is always shown.
+
+The consent screen also shows a notice that the client is unregistered. The client name and logo come from the metadata document, so they can imitate any brand. The host of the client ID URL is displayed as well, since it is the only part the client cannot forge.
+
+## Manage authorizations \{#manage-authorizations}
+
+Authorizations granted to dynamic clients are regular third-party [grants](/sessions/grants-management). Users can review and revoke them in account settings, and admins can manage them through the Management API. The client ID URL is used to identify the client.
+
+Disabling the dynamic app stops new authorization requests, while existing grants are kept. Revoking a grant requires the client to get user authorization again, but previously issued access tokens may remain valid until they expire.
+
+## Limitations \{#limitations}
+
+- Only the authorization code flow with PKCE and refresh tokens are supported. Client credentials, device flow, and token exchange are not available.
+- Permissions and branding cannot be configured per client.
+- [App-level access control](/authorization/app-level-access-control) does not apply to dynamic clients, since they have no application record.
+
+## Related resources \{#related-resources}
+
+<Url href="/integrate-logto/third-party-applications">Third-party app (OAuth / OIDC)</Url>
+<Url href="/use-cases/ai/mcp-server-enable-third-party-ai-agent-access">
+  Enable third-party AI agent access to your MCP server
+</Url>
