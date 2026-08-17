@@ -13,38 +13,38 @@ Logto Actions 允许你在认证 (Authentication) 流程的特定节点运行受
 - 调用外部服务，并将其结果应用到 Logto 用户。
 
 :::note
-Actions 可用于 Logto Cloud 企业版计划。
+Actions 仅在 Logto Cloud 企业版计划中提供。
 :::
 
 :::warning
 Action 脚本可以影响认证 (Authentication) 并修改用户数据。只有受信任的管理员才应被允许查看、创建、编辑、测试、启用或删除它们。
 
-在自托管部署中，Action 脚本在 Logto 进程内的虚拟机中运行。应将其视为受信任的服务端代码，而不是不受信任代码的安全边界。
+在自托管部署中，Action 脚本在 Logto 服务器进程内以其权限运行。授予脚本编辑或测试权限等同于授予 Logto 主机上的代码执行权限，因此管理控制台不应与不受信任的用户共享。将脚本视为受信任的服务器端代码；运行时会限制脚本的时间和内存，但这不是针对不受信任代码的安全边界。
 :::
 
-## Actions 在登录流程中的位置 \{#how-actions-fit-into-sign-in}
+## Actions 如何融入登录流程 \{#how-actions-fit-into-sign-in}
 
 Logto 目前提供两种 Action 类型：
 
 ```mermaid
 flowchart LR
-  A["密码登录尝试"] --> B{"本地密码有效吗？"}
+  A["密码登录尝试"] --> B{"本地密码有效？"}
   B -->|"是"| E["继续认证 (Authentication)"]
   B -->|"否"| C["首次因子验证后 Action"]
-  C -->|"凭据被接受"| D["创建或更新用户并保存本地密码"]
-  C -->|"被拒绝或失败"| X["拒绝无效凭据"]
+  C -->|"凭据通过"| D["创建或更新用户并保存本地密码"]
+  C -->|"拒绝或失败"| X["拒绝无效凭据"]
   D --> E
-  E --> F["完成 MFA（如需）"]
+  E --> F["完成多因素认证 (MFA)（如需）"]
   F --> G["登录后 Action"]
   G --> H["完成登录并签发令牌"]
 ```
 
-| Action 类型                                                          | 运行时机                                                                                     | 可执行操作                                                                            |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [首次因子验证后](/developers/actions/post-first-factor-verification) | 在密码登录过程中，仅当 Logto 的本地密码验证失败时运行。本地密码有效时不会运行。              | 针对旧有系统验证提交的凭据，然后创建新的 Logto 用户或更新现有用户，并迁移提交的密码。 |
-| [登录后](/developers/actions/post-sign-in)                           | 用户完成所有认证 (Authentication) 因子（包括需要时的 MFA）后，Logto 完成登录并签发令牌之前。 | 使用最终登录上下文更新和丰富现有 Logto 用户。                                         |
+| Action 类型                                                          | 运行时机                                                                                       | 可执行操作                                                                          |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| [首次因子验证后](/developers/actions/post-first-factor-verification) | 在密码登录过程中，仅当 Logto 的本地密码验证失败时运行。本地密码有效时不会运行。                | 针对旧有系统验证提交的凭据，然后创建新的 Logto 用户或更新现有用户并迁移提交的密码。 |
+| [登录后](/developers/actions/post-sign-in)                           | 用户完成所有认证 (Authentication) 因子（包括需要时的 MFA）后，Logto 完成登录并签发令牌前运行。 | 使用最终登录上下文更新和丰富现有 Logto 用户。                                       |
 
-两种 Action 类型仅在 Experience API 的 `SignIn` 交互中运行。首次因子验证后仅适用于密码登录；登录后与认证 (Authentication) 方法无关。
+两种 Action 类型仅在 Experience API 的 `SignIn` 交互中运行。首次因子验证后仅适用于密码登录；登录后 Action 与认证 (Authentication) 方法无关。
 
 ## 脚本模型 \{#script-model}
 
@@ -59,15 +59,15 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 参数包含：
 
 - `event`：生产环境下的认证 (Authentication) 事件。其结构取决于 Action 类型。
-- `environmentVariables`：为此 Action 配置的字符串值。这些值通过函数参数传递；无法通过 `process.env` 获取。
+- `environmentVariables`：为该 Action 配置的字符串值。这些值通过函数参数传递；无法通过 `process.env` 获取。
 
-编辑器提供类型信息，但保存的脚本以 JavaScript 执行。脚本可以是异步的，并可使用注入的 `fetch` 函数调用外部 HTTPS API。不能导入包，也不能访问如 `require` 或 `process` 等 Node.js 全局对象。
+编辑器提供类型信息，但保存的脚本以 JavaScript 执行。脚本可以是异步的，并可使用注入的 `fetch` 函数调用外部 HTTPS API。不能导入包或访问 Node.js 全局变量，如 `require` 或 `process`。
 
 每种 Action 类型支持的返回结果不同；在启用 Action 前请参阅对应的参考页面。
 
 ## Actions 与 Webhook 的区别 \{#actions-and-webhooks}
 
-Actions 和 [Webhook](/developers/webhooks) 用途不同：
+Actions 与 [Webhook](/developers/webhooks) 用途不同：
 
 |                                        | Actions                            | Webhook                                       |
 | -------------------------------------- | ---------------------------------- | --------------------------------------------- |
@@ -77,7 +77,7 @@ Actions 和 [Webhook](/developers/webhooks) 用途不同：
 | 事件覆盖范围                           | 选定的认证 (Authentication) 节点   | 广泛的交互和数据变更事件                      |
 | 典型用途                               | 凭据迁移、令牌前用户资料丰富       | 通知、下游同步、分析                          |
 
-异步工作应放在 Webhook 中。只有当 Logto 需要在认证 (Authentication) 继续前获得结果时，才使用 Action。
+异步工作应放在 Webhook 中。仅当 Logto 需要结果以继续认证 (Authentication) 时才使用 Action。
 
 ## 下一步 \{#next-steps}
 
