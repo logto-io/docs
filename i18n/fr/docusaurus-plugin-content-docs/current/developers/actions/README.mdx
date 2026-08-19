@@ -19,7 +19,7 @@ Les actions sont disponibles dans les offres Logto Cloud Enterprise.
 :::warning
 Les scripts d'action peuvent affecter l'authentification et modifier les données utilisateur. Seuls les administrateurs de confiance doivent être autorisés à les consulter, créer, modifier, tester, activer ou supprimer.
 
-Dans les déploiements auto-hébergés, les scripts d'action s'exécutent dans une machine virtuelle à l'intérieur du processus Logto. Considérez-les comme du code serveur de confiance, et non comme une frontière de sécurité pour du code non fiable.
+Dans les déploiements auto-hébergés, les scripts d'action s'exécutent dans le processus serveur Logto avec ses privilèges. Accorder l'accès à l'édition ou au test de scripts équivaut à accorder l'exécution de code sur l'hôte Logto, donc la Console d'administration ne doit pas être partagée avec des utilisateurs non fiables. Considérez les scripts comme du code serveur de confiance ; le runtime limite le temps et la mémoire d'un script, mais ce n'est pas une frontière de sécurité pour du code non fiable.
 :::
 
 ## Comment les Actions s’intègrent dans la connexion \{#how-actions-fit-into-sign-in}
@@ -30,21 +30,21 @@ Logto propose actuellement deux types d'actions :
 flowchart LR
   A["Tentative de connexion par mot de passe"] --> B{"Le mot de passe local est-il valide ?"}
   B -->|"Oui"| E["Continuer l'authentification"]
-  B -->|"Non"| C["Action après la vérification du premier facteur"]
+  B -->|"Non"| C["Action après vérification du premier facteur"]
   C -->|"Identifiants acceptés"| D["Créer ou mettre à jour l'utilisateur et enregistrer le mot de passe local"]
   C -->|"Refusé ou échec"| X["Rejeter les identifiants invalides"]
   D --> E
-  E --> F["Compléter la MFA (si nécessaire)"]
+  E --> F["Compléter MFA (si requis)"]
   F --> G["Action après connexion"]
   G --> H["Terminer la connexion et émettre les jetons"]
 ```
 
-| Type d'action                                                                                  | Quand elle s'exécute                                                                                                                                                           | Ce qu'elle peut faire                                                                                                                                                          |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [Après la vérification du premier facteur](/developers/actions/post-first-factor-verification) | Lors d'une connexion par mot de passe, uniquement après l'échec de la vérification du mot de passe local par Logto. Elle ne s'exécute pas si le mot de passe local est valide. | Vérifier les identifiants soumis auprès d'un système hérité, puis créer un nouvel utilisateur Logto ou mettre à jour un utilisateur existant et migrer le mot de passe soumis. |
-| [Après connexion](/developers/actions/post-sign-in)                                            | Après que l'utilisateur a complété tous les facteurs d'authentification, y compris la MFA si nécessaire, et avant que Logto ne termine la connexion et émette les jetons.      | Mettre à jour et enrichir l'utilisateur Logto existant en utilisant le contexte final de connexion.                                                                            |
+| Type d'action                                                                               | Quand elle s'exécute                                                                                                                                                           | Ce qu'elle peut faire                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [Après vérification du premier facteur](/developers/actions/post-first-factor-verification) | Lors d'une connexion par mot de passe, uniquement après l'échec de la vérification du mot de passe local par Logto. Elle ne s'exécute pas si le mot de passe local est valide. | Vérifier les identifiants soumis auprès d'un système hérité, puis créer un nouvel utilisateur Logto ou mettre à jour un utilisateur existant et migrer le mot de passe soumis. |
+| [Après connexion](/developers/actions/post-sign-in)                                         | Après que l'utilisateur a complété tous les facteurs d'authentification, y compris MFA si requis, et avant que Logto ne termine la connexion et n'émette les jetons.           | Mettre à jour et enrichir l'utilisateur Logto existant en utilisant le contexte final de connexion.                                                                            |
 
-Les deux types d'actions ne s'exécutent que pour les interactions `SignIn` dans l’Experience API. L'action après la vérification du premier facteur ne s'applique qu'à la connexion par mot de passe ; l'action après connexion est indépendante de la méthode d'authentification.
+Les deux types d'actions ne s'exécutent que pour les interactions `SignIn` dans l’Experience API. L'action après vérification du premier facteur s'applique uniquement à la connexion par mot de passe ; l'action après connexion est indépendante de la méthode d'authentification.
 
 ## Modèle de script \{#script-model}
 
@@ -57,26 +57,26 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
-Le payload contient :
+La charge utile contient :
 
 - `event` : L'événement d'authentification en production. Sa structure dépend du type d'action.
-- `environmentVariables` : Les valeurs de chaîne configurées pour cette action. Ces valeurs sont transmises via le payload de la fonction ; elles ne sont pas disponibles via `process.env`.
+- `environmentVariables` : Les valeurs de chaîne configurées pour cette action. Ces valeurs sont transmises via la charge utile de la fonction ; elles ne sont pas disponibles via `process.env`.
 
-L'éditeur fournit des informations de type, mais le script enregistré est exécuté en tant que JavaScript. Le script peut être asynchrone et utiliser la fonction `fetch` injectée pour appeler des APIs HTTPS externes. Il ne peut pas importer de packages ni accéder aux objets globaux Node.js tels que `require` ou `process`.
+L'éditeur fournit des informations de type, mais le script enregistré est exécuté en tant que JavaScript. Le script peut être asynchrone et utiliser la fonction `fetch` injectée pour appeler des API HTTPS externes. Il ne peut pas importer de packages ni accéder aux objets globaux Node.js tels que `require` ou `process`.
 
 Le résultat pris en charge est différent pour chaque type d'action ; consultez la page de référence correspondante avant d'activer une Action.
 
 ## Actions et Webhooks \{#actions-and-webhooks}
 
-Les Actions et les [Webhooks](/developers/webhooks) ont des objectifs différents :
+Les actions et les [Webhooks](/developers/webhooks) ont des objectifs différents :
 
-|                                                  | Actions                                                                        | Webhooks                                                                   |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Exécution                                        | Synchrone et en ligne avec l'authentification                                  | Asynchrone et en dehors de la requête d'authentification                   |
-| Peut affecter le flux d'authentification actuel  | Oui                                                                            | Non                                                                        |
-| Peut modifier un utilisateur depuis son résultat | Oui, en utilisant le patch utilisateur pris en charge                          | Pas directement ; le récepteur peut appeler le Management API séparément   |
-| Couverture des événements                        | Points d'authentification sélectionnés                                         | Un large ensemble d'événements d'interaction et de modification de données |
-| Utilisation typique                              | Migration des identifiants, enrichissement du profil avant émission des jetons | Notifications, synchronisation descendante, analytique                     |
+|                                                  | Actions                                                        | Webhooks                                                                   |
+| ------------------------------------------------ | -------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Exécution                                        | Synchrone et en ligne avec l'authentification                  | Asynchrone et en dehors de la requête d'authentification                   |
+| Peut affecter le flux d'authentification actuel  | Oui                                                            | Non                                                                        |
+| Peut modifier un utilisateur depuis son résultat | Oui, via le patch utilisateur pris en charge                   | Pas directement ; le récepteur peut appeler le Management API séparément   |
+| Couverture des événements                        | Points d'authentification sélectionnés                         | Un large ensemble d'événements d'interaction et de modification de données |
+| Utilisation typique                              | Migration d'identifiants, enrichissement de profil avant jeton | Notifications, synchronisation descendante, analytique                     |
 
 Gardez le travail asynchrone dans les Webhooks. Utilisez une Action uniquement lorsque Logto a besoin du résultat avant que l'authentification puisse continuer.
 
