@@ -1,0 +1,99 @@
+---
+description: 允許 OAuth 用戶端透過使用 client ID metadata document URL 作為其 client ID，無需預先註冊即可連接到你的租戶。
+sidebar_label: 動態應用程式 (CIMD)
+sidebar_position: 3
+---
+
+# 動態應用程式 (CIMD)
+
+動態應用程式允許 OAuth 用戶端無需預先註冊即可連接到你的租戶。用戶端不再使用 Logto 發行的 client ID，而是以公開的 HTTPS URL 作為其 `client_id`。該 URL 提供一份描述用戶端的 JSON 文件，稱為 [client ID metadata document (CIMD)](https://auth.wiki/client-id-metadata-document)。Logto 會擷取此文件，並將該用戶端視為 [第三方應用程式](/integrate-logto/third-party-applications)。
+
+動態應用程式實作了 IETF 草案 [OAuth Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html)。
+
+## 什麼時候該使用動態應用程式 \{#when-to-use-dynamic-app}
+
+預先註冊適用於你已知合作夥伴的情境。當任何用戶端都可能連接時（這在 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents) 生態系中很常見）：例如，使用者要求其 AI agent 連接你的服務，而該 agent 之前從未與你的租戶互動。
+
+透過動態應用程式，用戶端在其擁有的 URL 上公開自己的 metadata，該 URL 即為其身分。你的租戶無需事先建立任何內容。
+
+|               | 已註冊第三方應用程式 | 動態應用程式                            |
+| ------------- | -------------------- | --------------------------------------- |
+| Client ID     | 由 Logto 發行        | 用戶端擁有的 HTTPS URL                  |
+| 註冊          | 必須                 | 不需要                                  |
+| Client secret | 支援                 | 不支援                                  |
+| 權限          | 每個應用程式獨立     | 所有動態用戶端共用                      |
+| Grant types   | 依應用程式類型而定   | `authorization_code` 與 `refresh_token` |
+
+動態用戶端屬於公開用戶端，因此一律使用 [PKCE](https://auth.wiki/pkce)。你可以同時使用這兩種模式。你信任的合作夥伴仍可擁有專屬權限的註冊應用程式。
+
+## 啟用動態應用程式 \{#enable-dynamic-app}
+
+1. 前往 <CloudLink to="/applications">主控台 > 應用程式</CloudLink>，並切換到 **第三方應用程式** 分頁。
+2. 點擊 **建立應用程式** 並選擇 **動態應用程式** 卡片。這會啟用租戶層級功能，而非建立一個應用程式。
+3. 在對話框中確認。啟用後，任何擁有有效公開 HTTPS client ID URL 的 OAuth 用戶端都可以開始對你的租戶發起授權請求。
+4. 從應用程式清單中開啟動態應用程式，並前往 **權限** 分頁以授予權限。
+
+動態應用程式沒有可編輯的名稱、redirect URI 或憑證。每個用戶端會在其 metadata document 中提供這些資訊。
+
+:::note
+動態應用程式需要 [OIDC provider SSRF 保護](/concepts/core-service/configuration#oidc-provider-ssrf-protection)，因為 Logto 會從網際網路擷取 metadata document。若自架部署停用此功能，則無法啟用動態應用程式。
+:::
+
+### 授予權限 \{#grant-permissions}
+
+**權限** 分頁定義所有動態用戶端共用的最大權限。其運作方式與已註冊第三方應用程式的 [權限管理](/integrate-logto/third-party-applications/permission-management) 相同，分為 **使用者 (User)** 與 **組織 (Organization)** 區塊。
+
+請求未被授予的使用者權限會導致錯誤，未被授予的 API 資源與組織權限則會被忽略。使用者僅會同意其透過 [角色 (Roles)](/authorization/role-based-access-control) 擁有的權限。
+
+由於所有動態用戶端共用這組權限，請盡量保持精簡。
+
+## 發佈 client ID metadata document \{#publish-a-client-id-metadata-document}
+
+如果你正在開發連接 Logto 的用戶端，請託管一份 metadata document，並將其 URL 作為你的 `client_id`。該 URL 必須使用 `https` 協定，且不得包含 fragment、user info 或點路徑段。Logto 會對該 URL 發送 `GET` 請求，並期望收到 JSON 物件。
+
+例如，Claude Code 使用 `https://claude.ai/oauth/claude-code-client-metadata`，其內容如下：
+
+```json
+{
+  "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+  "client_name": "Claude Code",
+  "client_uri": "https://claude.ai",
+  "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+欄位名稱與 [OAuth 2.0 動態用戶端註冊](https://datatracker.ietf.org/doc/html/rfc7591#section-2) 相同。注意：
+
+- `client_id` 必須與提供該文件的 URL 完全一致。
+- 動態用戶端屬於公開用戶端。文件中不得包含 `client_secret`，且 `token_endpoint_auth_method` 不得為共用密鑰方法。請改用 [PKCE](https://auth.wiki/pkce)。
+- `client_uri`、`logo_uri`、`tos_uri`、`policy_uri` 等 metadata URI 必須為絕對 `https` URL。這不適用於 `redirect_uris`，因此原生用戶端仍可使用如上例的 loopback 位址。
+- `redirect_uris` 需完全比對字串，唯獨 loopback 位址可比對任意 port。[萬用字元模式](/integrate-logto/application-data-structure#wildcard-patterns) 亦支援。
+- `scope`、`grant_types` 與 `response_types` 由 Logto 決定。若文件宣告這些欄位，將被忽略。動態用戶端僅能使用授權碼流程與重新整理權杖。
+
+Logto 最多會根據你的回應 `Cache-Control` 與 `Expires` 標頭快取該文件 24 小時。請根據你預期的更新頻率設定這些標頭。
+
+## 使用者授權頁面 (Consent screen) \{#consent-screen}
+
+動態用戶端屬於第三方應用程式，因此 [使用者授權頁面 (Consent screen)](/end-user-flows/consent-screen) 一定會顯示。
+
+授權頁面同時會顯示該用戶端尚未註冊的提示。用戶端名稱與 logo 來自 metadata document，因此可模仿任何品牌。client ID URL 的主機名稱也會顯示，因為這是用戶端唯一無法偽造的部分。
+
+## 管理授權 (Manage authorizations) \{#manage-authorizations}
+
+授予動態用戶端的授權屬於一般第三方 [授權 (grants)](/sessions/grants-management)。使用者可在帳號設定中檢視與撤銷，管理員則可透過 Management API 管理。client ID URL 用於識別用戶端。
+
+停用動態應用程式會阻止新的授權請求，但現有授權會保留。撤銷授權後，用戶端需再次獲得使用者授權，但先前發出的存取權杖 (Access tokens) 可能會在到期前繼續有效。
+
+## 限制 \{#limitations}
+
+- 僅支援授權碼流程（含 PKCE）與重新整理權杖。不支援 client credentials、裝置流程與權杖交換。
+- 權限與品牌無法針對單一用戶端設定。
+- [應用程式層級存取控制](/authorization/app-level-access-control) 不適用於動態用戶端，因為它們沒有應用程式紀錄。
+
+## 相關資源 \{#related-resources}
+
+<Url href="/integrate-logto/third-party-applications">第三方應用程式（OAuth / OIDC）</Url>
+<Url href="/use-cases/ai/mcp-server-enable-third-party-ai-agent-access">
+  啟用第三方 AI agent 存取你的 MCP 伺服器
+</Url>

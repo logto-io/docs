@@ -1,0 +1,99 @@
+---
+description: 允许 OAuth 客户端通过使用 client ID 元数据文档 URL 作为其 client ID，无需预注册即可连接到你的租户。
+sidebar_label: 动态应用 (CIMD)
+sidebar_position: 3
+---
+
+# 动态应用 (CIMD)
+
+动态应用允许 OAuth 客户端无需预注册即可连接到你的租户。客户端不再使用 Logto 分配的 client ID，而是使用一个公开的 HTTPS URL 作为其 `client_id`。该 URL 提供一个描述客户端的 JSON 文档，称为 [client ID 元数据文档 (CIMD)](https://auth.wiki/client-id-metadata-document)。Logto 会获取该文档，并将该客户端视为[第三方应用](/integrate-logto/third-party-applications)。
+
+动态应用实现了 IETF 草案 [OAuth Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html)。
+
+## 何时使用动态应用 \{#when-to-use-dynamic-app}
+
+当你了解你的合作伙伴时，预注册是可行的。但当任何客户端都可能连接时，预注册就不适用了，这在 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents) 生态系统中很常见：用户让他们的 AI 代理连接到你的服务，而该代理之前从未与你的租户通信过。
+
+通过动态应用，客户端在其拥有的 URL 上发布自己的元数据，该 URL 就是其身份。你的租户中无需提前创建任何内容。
+
+|               | 已注册第三方应用 | 动态应用                                |
+| ------------- | ---------------- | --------------------------------------- |
+| Client ID     | 由 Logto 分配    | 客户端拥有的 HTTPS URL                  |
+| 注册          | 必须             | 不需要                                  |
+| Client secret | 支持             | 不支持                                  |
+| 权限          | 每个应用单独配置 | 所有动态客户端共享                      |
+| 授权类型      | 取决于应用类型   | `authorization_code` 和 `refresh_token` |
+
+动态客户端属于公开客户端，因此始终使用 [PKCE](https://auth.wiki/pkce)。你可以同时使用这两种模式。你信任的合作伙伴仍然可以拥有带有专属权限的注册应用。
+
+## 启用动态应用 \{#enable-dynamic-app}
+
+1. 前往 <CloudLink to="/applications">控制台 > 应用程序</CloudLink> 并打开 **第三方应用** 标签页。
+2. 点击 **创建应用程序** 并选择 **动态应用** 卡片。此操作会启用租户级功能，而不是创建一个应用程序。
+3. 在对话框中确认。启用后，任何拥有有效公开 HTTPS client ID URL 的 OAuth 客户端都可以为你的租户发起授权请求。
+4. 在应用程序列表中打开动态应用，进入 **权限** 标签页进行权限授予。
+
+动态应用没有可编辑的名称、重定向 URI 或凭据。每个客户端会在其元数据文档中提供这些信息。
+
+:::note
+动态应用需要启用 [OIDC 提供方 SSRF 防护](/concepts/core-service/configuration#oidc-provider-ssrf-protection)，因为 Logto 会从互联网获取元数据文档。禁用该防护的自托管实例无法启用动态应用。
+:::
+
+### 授予权限 \{#grant-permissions}
+
+**权限** 标签页定义了所有动态客户端共享的最大权限。其工作方式类似于[注册第三方应用的权限管理](/integrate-logto/third-party-applications/permission-management)，分为 **用户** 和 **组织 (Organization)** 两部分。
+
+请求未被授予的用户权限会导致错误，而未被授予的 API 资源和组织权限会被忽略。用户也只会同意他们通过其[角色](/authorization/role-based-access-control)拥有的权限。
+
+由于所有动态客户端共享这组权限，请保持其最小化。
+
+## 发布 client ID 元数据文档 \{#publish-a-client-id-metadata-document}
+
+如果你正在构建连接到 Logto 的客户端，请托管一个元数据文档，并将其 URL 用作你的 `client_id`。该 URL 必须使用 `https` 协议，且不能包含片段、用户信息或点路径段。Logto 会向该 URL 发送 `GET` 请求，并期望返回一个 JSON 对象。
+
+例如，Claude Code 使用 `https://claude.ai/oauth/claude-code-client-metadata`，其内容如下：
+
+```json
+{
+  "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+  "client_name": "Claude Code",
+  "client_uri": "https://claude.ai",
+  "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+字段名称与 [OAuth 2.0 动态客户端注册](https://datatracker.ietf.org/doc/html/rfc7591#section-2) 中相同。注意：
+
+- `client_id` 必须与提供该文档的 URL 完全一致。
+- 动态客户端属于公开客户端。文档中不得包含 `client_secret`，且 `token_endpoint_auth_method` 不能为共享密钥方式。请改用 [PKCE](https://auth.wiki/pkce)。
+- 元数据 URI，如 `client_uri`、`logo_uri`、`tos_uri` 和 `policy_uri` 必须为绝对的 `https` URL。这一要求不适用于 `redirect_uris`，因此本地客户端仍可使用如上例所示的回环地址。
+- `redirect_uris` 需精确匹配字符串，但回环地址可匹配任意端口。[通配符模式](/integrate-logto/application-data-structure#wildcard-patterns) 也受支持。
+- `scope`、`grant_types` 和 `response_types` 由 Logto 决定。如果文档声明了这些字段，其值会被忽略。动态客户端只能使用授权码流程和刷新令牌。
+
+Logto 最多会缓存该文档 24 小时，遵循你的响应中的 `Cache-Control` 和 `Expires` 头。请根据你期望的文档更新频率设置这些头。
+
+## 用户授权页面 (Consent screen) \{#consent-screen}
+
+动态客户端属于第三方应用，因此始终会显示[用户授权页面](/end-user-flows/consent-screen)。
+
+用户授权页面还会显示一条提示，说明该客户端未注册。客户端名称和 logo 来自元数据文档，因此它们可以模仿任何品牌。client ID URL 的主机名也会显示，因为这是客户端无法伪造的唯一部分。
+
+## 管理授权 (Authorizations) \{#manage-authorizations}
+
+授予动态客户端的授权 (Authorizations) 属于常规第三方[授权 (grants)](/sessions/grants-management)。用户可以在账户设置中查看和撤销它们，管理员可以通过 Management API 进行管理。客户端通过 client ID URL 进行识别。
+
+禁用动态应用会阻止新的授权请求，但现有授权 (grants) 会被保留。撤销授权 (grant) 后，客户端需要重新获得用户授权，但之前签发的访问令牌 (access tokens) 可能会在过期前继续有效。
+
+## 限制 \{#limitations}
+
+- 仅支持带 PKCE 的授权码流程和刷新令牌。不支持客户端凭据、设备流程和令牌交换。
+- 无法为每个客户端单独配置权限和品牌。
+- [应用级访问控制](/authorization/app-level-access-control) 不适用于动态客户端，因为它们没有应用记录。
+
+## 相关资源 \{#related-resources}
+
+<Url href="/integrate-logto/third-party-applications">第三方应用 (OAuth / OIDC)</Url>
+<Url href="/use-cases/ai/mcp-server-enable-third-party-ai-agent-access">
+  启用第三方 AI 代理访问你的 MCP 服务器
+</Url>
