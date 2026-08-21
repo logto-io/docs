@@ -1,0 +1,100 @@
+---
+description: クライアント ID メタデータドキュメントの URL を client ID として使用することで、OAuth クライアントが事前登録なしでテナントに接続できるようにします。
+sidebar_label: 動的アプリ (CIMD)
+sidebar_position: 3
+---
+
+# 動的アプリ (CIMD)
+
+動的アプリを利用すると、OAuth クライアントは事前登録なしでテナントに接続できます。Logto によって発行された client ID の代わりに、クライアントは自身の `client_id` として公開 HTTPS URL を使用します。この URL はクライアントを記述する JSON ドキュメント（[クライアント ID メタデータドキュメント (CIMD)](https://auth.wiki/client-id-metadata-document)）を提供します。Logto はこのドキュメントを取得し、クライアントを [サードパーティアプリケーション](/integrate-logto/third-party-applications) として扱います。
+
+動的アプリは IETF ドラフト [OAuth Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html) を実装しています。
+
+## 動的アプリを使うタイミング \{#when-to-use-dynamic-app}
+
+事前登録はパートナーが分かっている場合に有効ですが、どのクライアントでも接続できる場合（[Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents) エコシステムでよくあります）には機能しません。例えば、ユーザーが自身の AI エージェントにサービスへの接続を依頼し、そのエージェントがこれまでテナントと通信したことがない場合です。
+
+動的アプリでは、クライアントが所有する URL で自身のメタデータを公開し、その URL がアイデンティティとなります。テナント側で事前に何かを作成する必要はありません。
+
+|                          | 登録済みサードパーティアプリ | 動的アプリ                                  |
+| ------------------------ | ---------------------------- | ------------------------------------------- |
+| Client ID                | Logto により発行             | クライアントが所有する HTTPS URL            |
+| 登録                     | 必須                         | 不要                                        |
+| クライアントシークレット | サポートあり                 | サポートなし                                |
+| 権限                     | アプリごと                   | すべての動的クライアントで共有              |
+| グラントタイプ           | アプリタイプによる           | `authorization_code` および `refresh_token` |
+
+動的クライアントは公開クライアントであるため、常に [PKCE](https://auth.wiki/pkce) を使用します。両方のモデルを同時に利用できます。信頼できるパートナーは、独自の権限を持つ登録済みアプリを引き続き持つことができます。
+
+## 動的アプリを有効化する \{#enable-dynamic-app}
+
+1. <CloudLink to="/applications">コンソール > アプリケーション</CloudLink> に移動し、**サードパーティアプリ**
+   タブを開きます。
+2. **アプリケーションの作成** をクリックし、**動的アプリ** カードを選択します。これはアプリケーションを作成するのではなく、テナントレベルの機能を有効化します。
+3. ダイアログで確認します。有効化されると、有効な公開 HTTPS クライアント ID URL を持つ任意の OAuth クライアントがテナントへの認可リクエストを開始できます。
+4. アプリケーションリストから動的アプリを開き、**権限** タブで権限を付与します。
+
+動的アプリには編集可能な名前、リダイレクト URI、認証情報はありません。各クライアントが自身のメタデータドキュメントでそれらを提供します。
+
+:::note
+動的アプリは [OIDC プロバイダー SSRF 保護](/concepts/core-service/configuration#oidc-provider-ssrf-protection) が必要です。Logto がインターネットからメタデータドキュメントを取得するためです。これを無効化しているセルフホスト環境では動的アプリを有効化できません。
+:::
+
+### 権限を付与する \{#grant-permissions}
+
+**権限** タブでは、すべての動的クライアントで共有される最大権限を定義します。これは登録済みサードパーティアプリの [権限管理](/integrate-logto/third-party-applications/permission-management) と同様に動作し、**ユーザー** および **組織** セクションがあります。
+
+付与されていないユーザー権限をリクエストするとエラーとなり、付与されていない API リソースや組織権限は無視されます。ユーザーは自身の [ロール](/authorization/role-based-access-control) を通じて持つ権限のみ同意します。
+
+すべての動的クライアントがこのセットを共有するため、最小限に抑えてください。
+
+## クライアント ID メタデータドキュメントを公開する \{#publish-a-client-id-metadata-document}
+
+Logto に接続するクライアントを構築する場合、メタデータドキュメントをホストし、その URL を `client_id` として使用します。URL は `https` スキームを使用し、フラグメント、ユーザー情報、ドットパスセグメントを含んではいけません。Logto はその URL に `GET` リクエストを送り、JSON オブジェクトを期待します。
+
+例えば、Claude Code は `https://claude.ai/oauth/claude-code-client-metadata` を使用し、次の内容を提供します：
+
+```json
+{
+  "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+  "client_name": "Claude Code",
+  "client_uri": "https://claude.ai",
+  "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+フィールド名は [OAuth 2.0 Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591#section-2) と同じです。注意点：
+
+- `client_id` はドキュメントを提供する URL と完全に一致する必要があります。
+- 動的クライアントは公開クライアントです。ドキュメントに `client_secret` を含めてはいけません。また、`token_endpoint_auth_method` は共有シークレット方式であってはいけません。代わりに [PKCE](https://auth.wiki/pkce) を使用してください。
+- `client_uri`、`logo_uri`、`tos_uri`、`policy_uri` などのメタデータ URI は絶対 `https` URL でなければなりません。これは `redirect_uris` には適用されないため、上記例のようにネイティブクライアントはループバックアドレスも利用できます。
+- `redirect_uris` は完全一致でマッチしますが、ループバックアドレスの場合は任意のポートでマッチします。[ワイルドカードパターン](/integrate-logto/application-data-structure#wildcard-patterns) もサポートされています。
+- `scope`、`grant_types`、`response_types` は Logto によって決定されます。ドキュメントで宣言されていても値は無視されます。動的クライアントは認可コードフローとリフレッシュトークンのみ利用できます。
+
+Logto はドキュメントを最大 24 時間キャッシュし、レスポンスの `Cache-Control` および `Expires` ヘッダーに従います。ドキュメントの更新頻度に応じて設定してください。
+
+## 同意画面 (Consent screen) \{#consent-screen}
+
+動的クライアントはサードパーティアプリケーションであるため、[同意画面](/end-user-flows/consent-screen) が常に表示されます。
+
+同意画面にはクライアントが未登録である旨の注意書きも表示されます。クライアント名やロゴはメタデータドキュメントから取得されるため、任意のブランドを模倣することが可能です。クライアント ID URL のホスト名も表示されます。これはクライアントが偽装できない唯一の部分です。
+
+## 認可の管理 \{#manage-authorizations}
+
+動的クライアントに付与された認可は通常のサードパーティ [グラント](/sessions/grants-management) です。ユーザーはアカウント設定で確認・取り消しができ、管理者は Management API を通じて管理できます。クライアントの識別にはクライアント ID URL が使われます。
+
+動的アプリを無効化すると新規認可リクエストは停止しますが、既存のグラントは保持されます。グラントを取り消すと、クライアントは再度ユーザー認可を取得する必要がありますが、既に発行されたアクセス トークンは有効期限まで利用可能です。
+
+## 制限事項 \{#limitations}
+
+- PKCE を用いた認可コードフローとリフレッシュトークンのみサポートされます。クライアントクレデンシャル、デバイスフロー、トークンエクスチェンジは利用できません。
+- 権限やブランディングはクライアントごとに設定できません。
+- [アプリレベルのアクセス制御](/authorization/app-level-access-control) は動的クライアントには適用されません（アプリケーションレコードが存在しないため）。
+
+## 関連リソース \{#related-resources}
+
+<Url href="/integrate-logto/third-party-applications">サードパーティアプリ (OAuth / OIDC)</Url>
+<Url href="/use-cases/ai/mcp-server-enable-third-party-ai-agent-access">
+  MCP サーバーへのサードパーティ AI エージェントアクセスの有効化
+</Url>

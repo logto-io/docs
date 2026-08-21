@@ -1,0 +1,99 @@
+---
+description: Permettez aux clients OAuth de se connecter à votre tenant sans pré-enregistrement en utilisant une URL de document de métadonnées d’ID client comme leur ID client.
+sidebar_label: Application dynamique (CIMD)
+sidebar_position: 3
+---
+
+# Application dynamique (CIMD)
+
+L’application dynamique permet aux clients OAuth de se connecter à votre tenant sans pré-enregistrement. Au lieu d’un ID client délivré par Logto, le client utilise une URL HTTPS publique comme `client_id`. Cette URL sert un document JSON décrivant le client, appelé [document de métadonnées d’ID client (CIMD)](https://auth.wiki/client-id-metadata-document). Logto récupère ce document et considère le client comme une [application tierce](/integrate-logto/third-party-applications).
+
+L’application dynamique implémente le draft IETF [OAuth Client ID Metadata Document](https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-02.html).
+
+## Quand utiliser l’application dynamique \{#when-to-use-dynamic-app}
+
+Le pré-enregistrement fonctionne lorsque vous connaissez vos partenaires. Il ne fonctionne pas lorsqu’un client quelconque peut se connecter, ce qui est courant dans l’écosystème [Model Context Protocol (MCP)](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization/client-registration#client-id-metadata-documents) : un utilisateur demande à son agent IA de se connecter à votre service, et l’agent n’a jamais communiqué avec votre tenant auparavant.
+
+Avec l’application dynamique, le client publie ses propres métadonnées à une URL qu’il possède, et cette URL est son identité. Rien n’a besoin d’être créé à l’avance dans votre tenant.
+
+|                | Application tierce enregistrée | Application dynamique                     |
+| -------------- | ------------------------------ | ----------------------------------------- |
+| ID client      | Délivré par Logto              | Une URL HTTPS détenue par le client       |
+| Enregistrement | Requis                         | Non requis                                |
+| Secret client  | Pris en charge                 | Non pris en charge                        |
+| Permissions    | Par application                | Partagées par tous les clients dynamiques |
+| Types de flux  | Dépend du type d’application   | `authorization_code` et `refresh_token`   |
+
+Les clients dynamiques sont des clients publics, ils utilisent donc toujours [PKCE](https://auth.wiki/pkce). Vous pouvez utiliser les deux modèles en même temps. Un partenaire de confiance peut toujours avoir une application enregistrée avec ses propres permissions.
+
+## Activer l’application dynamique \{#enable-dynamic-app}
+
+1. Allez dans <CloudLink to="/applications">Console > Applications</CloudLink> et ouvrez l’onglet **Applications tierces**.
+2. Cliquez sur **Créer une application** et sélectionnez la carte **Application dynamique**. Cela active une fonctionnalité au niveau du tenant au lieu de créer une application.
+3. Confirmez dans la boîte de dialogue. Une fois activée, tout client OAuth avec une URL HTTPS publique valide comme ID client peut démarrer une requête d’autorisation pour votre tenant.
+4. Ouvrez l’application dynamique depuis la liste des applications et allez dans l’onglet **Permissions** pour accorder des permissions.
+
+L’application dynamique n’a pas de nom modifiable, d’URI de redirection ou de credentials. Chaque client fournit les siens dans son document de métadonnées.
+
+:::note
+L’application dynamique nécessite la [protection SSRF du fournisseur OIDC](/concepts/core-service/configuration#oidc-provider-ssrf-protection), car Logto récupère les documents de métadonnées depuis Internet. Les instances auto-hébergées qui la désactivent ne peuvent pas activer l’application dynamique.
+:::
+
+### Accorder des permissions \{#grant-permissions}
+
+L’onglet **Permissions** définit les permissions maximales partagées par tous les clients dynamiques. Il fonctionne comme la [gestion des permissions](/integrate-logto/third-party-applications/permission-management) d’une application tierce enregistrée, avec des sections **Utilisateur** et **Organisation**.
+
+Demander une permission utilisateur non accordée entraîne une erreur, tandis que les permissions de ressource API et d’organisation non accordées sont ignorées. Les utilisateurs ne consentent également qu’aux permissions qu’ils possèdent via leurs [rôles](/authorization/role-based-access-control).
+
+Puisque chaque client dynamique partage cet ensemble, gardez-le minimal.
+
+## Publier un document de métadonnées d’ID client \{#publish-a-client-id-metadata-document}
+
+Si vous développez un client qui se connecte à Logto, hébergez un document de métadonnées et utilisez son URL comme votre `client_id`. L’URL doit utiliser le schéma `https` et ne contenir ni fragment, ni informations utilisateur, ni segments de chemin avec point. Logto envoie une requête `GET` à l’URL et attend un objet JSON.
+
+Par exemple, Claude Code utilise `https://claude.ai/oauth/claude-code-client-metadata`, qui sert :
+
+```json
+{
+  "client_id": "https://claude.ai/oauth/claude-code-client-metadata",
+  "client_name": "Claude Code",
+  "client_uri": "https://claude.ai",
+  "redirect_uris": ["http://localhost/callback", "http://127.0.0.1/callback"],
+  "token_endpoint_auth_method": "none"
+}
+```
+
+Les noms de champs sont les mêmes que dans [OAuth 2.0 Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591#section-2). À noter :
+
+- `client_id` doit être identique à l’URL qui sert le document.
+- Les clients dynamiques sont des clients publics. Le document ne doit pas contenir de `client_secret`, et `token_endpoint_auth_method` ne doit pas être une méthode à secret partagé. Utilisez [PKCE](https://auth.wiki/pkce) à la place.
+- Les URI de métadonnées comme `client_uri`, `logo_uri`, `tos_uri` et `policy_uri` doivent être des URLs absolues en `https`. Cela ne s’applique pas à `redirect_uris`, donc les clients natifs peuvent toujours utiliser des adresses loopback comme dans l’exemple ci-dessus.
+- Les `redirect_uris` sont comparées comme des chaînes exactes, sauf que les adresses loopback peuvent être appariées avec n’importe quel port. Les [motifs génériques](/integrate-logto/application-data-structure#wildcard-patterns) sont également pris en charge.
+- `scope`, `grant_types` et `response_types` sont décidés par Logto. Si le document les déclare, les valeurs sont ignorées. Les clients dynamiques ne peuvent utiliser que le flux authorization code et les jetons de rafraîchissement.
+
+Logto met en cache le document jusqu’à 24 heures, en suivant les en-têtes `Cache-Control` et `Expires` de votre réponse. Définissez-les selon la fréquence à laquelle vous prévoyez de mettre à jour le document.
+
+## Écran de consentement \{#consent-screen}
+
+Les clients dynamiques sont des applications tierces, donc l’[écran de consentement](/end-user-flows/consent-screen) est toujours affiché.
+
+L’écran de consentement affiche également un avis indiquant que le client n’est pas enregistré. Le nom et le logo du client proviennent du document de métadonnées, ils peuvent donc imiter n’importe quelle marque. L’hôte de l’URL d’ID client est également affiché, car c’est la seule partie que le client ne peut pas falsifier.
+
+## Gérer les autorisations \{#manage-authorizations}
+
+Les autorisations accordées aux clients dynamiques sont des [grants](/sessions/grants-management) tierces classiques. Les utilisateurs peuvent les consulter et les révoquer dans les paramètres du compte, et les administrateurs peuvent les gérer via la Management API. L’URL d’ID client sert à identifier le client.
+
+Désactiver l’application dynamique arrête les nouvelles requêtes d’autorisation, tandis que les grants existants sont conservés. Révoquer un grant oblige le client à obtenir à nouveau l’autorisation de l’utilisateur, mais les jetons d’accès précédemment délivrés peuvent rester valides jusqu’à leur expiration.
+
+## Limitations \{#limitations}
+
+- Seuls le flux authorization code avec PKCE et les jetons de rafraîchissement sont pris en charge. Les credentials client, device flow et l’échange de jetons ne sont pas disponibles.
+- Les permissions et la personnalisation de marque ne peuvent pas être configurées par client.
+- [Contrôle d’accès au niveau de l’application](/authorization/app-level-access-control) ne s’applique pas aux clients dynamiques, car ils n’ont pas d’enregistrement d’application.
+
+## Ressources associées \{#related-resources}
+
+<Url href="/integrate-logto/third-party-applications">Application tierce (OAuth / OIDC)</Url>
+<Url href="/use-cases/ai/mcp-server-enable-third-party-ai-agent-access">
+  Autoriser l’accès d’agents IA tiers à votre serveur MCP
+</Url>

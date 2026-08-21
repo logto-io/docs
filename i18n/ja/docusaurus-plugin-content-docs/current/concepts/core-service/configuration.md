@@ -11,10 +11,10 @@ Logto は環境変数を次の順序で処理します：
 
 したがって、システム環境変数は `.env` の値を上書きします。
 
-### 変数 {#variables}
+### 変数一覧 {#variables}
 
 :::caution
-プロジェクトルートで `npm start` を使って Logto を実行する場合、`NODE_ENV` は常に `production` になります。
+プロジェクトルートで `npm start` で Logto を実行する場合、`NODE_ENV` は常に `production` になります。
 :::
 
 デフォルト値では、`protocol` は HTTPS 設定に応じて `http` または `https` になります。
@@ -26,7 +26,7 @@ Logto は環境変数を次の順序で処理します：
 | ADMIN_PORT                             | `3002`                               | `number`                                                 | Logto 管理コンソールがリッスンするローカルポート。                                                                                                                                                                                                   |
 | ADMIN_DISABLE_LOCALHOST                | N/A                                  | <code>string &#124; boolean &#124; number</code>         | `1` または `true` に設定すると管理コンソール用ポートを無効化します。`ADMIN_ENDPOINT` が未設定の場合、管理コンソールが完全に無効化されます。                                                                                                          |
 | DB_URL                                 | N/A                                  | `string`                                                 | Logto データベース用の [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。                                                                                                                                        |
-| DATABASE_STATEMENT_TIMEOUT             | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL の `statement_timeout`（ミリ秒単位）。数値文字列（例：`5000`）で設定、または `DISABLE_TIMEOUT` で起動パラメータを省略（PgBouncer / RDS Proxy に推奨）。未設定または無効な場合、クライアントデフォルトは 60000 ms。             |
+| DATABASE_STATEMENT_TIMEOUT             | N/A                                  | `string`                                                 | (v1.36.0+) PostgreSQL の `statement_timeout`（ミリ秒単位）。数値文字列（例：`5000`）で設定、または `DISABLE_TIMEOUT` で起動パラメータを省略（PgBouncer / RDS Proxy 推奨）。未設定または無効の場合、クライアントのデフォルトは 60000 ms。             |
 | HTTPS_CERT_PATH                        | `undefined`                          | <code>string &#124; undefined</code>                     | 詳細は [HTTPS 有効化](#enabling-https) を参照。                                                                                                                                                                                                      |
 | HTTPS_KEY_PATH                         | `undefined`                          | <code>string &#124; undefined</code>                     | 同上。                                                                                                                                                                                                                                               |
 | TRUST_PROXY_HEADER                     | `false`                              | `boolean`                                                | 同上。                                                                                                                                                                                                                                               |
@@ -34,22 +34,24 @@ Logto は環境変数を次の順序で処理します：
 | ADMIN_ENDPOINT                         | `'protocol://localhost:$ADMIN_PORT'` | `string`                                                 | 本番用にカスタムドメインの URL を指定できます（例：`ADMIN_ENDPOINT=https://admin.domain.com`）。これにより管理コンソールのリダイレクト URI の値も影響を受けます。                                                                                    |
 | CASE_SENSITIVE_USERNAME                | `true`                               | `boolean`                                                | ユーザー名の大文字小文字を区別するかどうかを指定します。この値を変更する際は注意してください。既存のデータベースデータは自動的に調整されないため、手動で管理する必要があります。                                                                     |
 | SECRET_VAULT_KEK                       | `undefined`                          | `string`                                                 | [Secret Vault](/secret-vault) でデータ暗号化キー (DEK) を暗号化するためのキー暗号化キー (KEK)。Secret Vault の正常動作に必須。base64 エンコード文字列である必要があります。AES-256（32 バイト）推奨。例：`crypto.randomBytes(32).toString('base64')` |
-| PRIVATE_KEY_ROTATION_GRACE_PERIOD      | `0`                                  | `number`                                                 | 段階的な OIDC 秘密鍵ローテーションの猶予期間（秒単位）。正の値に設定すると、新しい秘密鍵はまず `Next` として作成され、猶予期間後に有効になります。                                                                                                   |
-| OIDC_PROVIDER_SSRF_PROTECTION_DISABLED | `false`                              | `boolean`                                                | セルフホストのみ。信頼できる OIDC リライングパーティエンドポイントがプライベートネットワークアドレスに解決される必要がある場合のみ `true` に設定してください。[OIDC プロバイダー SSRF 保護](#oidc-provider-ssrf-protection) を参照。                 |
+| PRIVATE_KEY_ROTATION_GRACE_PERIOD      | `0`                                  | `number`                                                 | 段階的な OIDC 秘密鍵ローテーションの猶予期間（秒単位）。正の値を設定すると、新しい秘密鍵は最初に `Next` として作成され、猶予期間後に有効になります。                                                                                                 |
+| OIDC_PROVIDER_SSRF_PROTECTION_DISABLED | `false`                              | `boolean`                                                | セルフホストのみ。信頼できる OIDC リライングパーティーエンドポイントがプライベートネットワークアドレスに解決される必要がある場合のみ `true` に設定してください。[OIDC プロバイダー SSRF 保護](#oidc-provider-ssrf-protection) を参照。               |
 
 ### OIDC プロバイダー SSRF 保護 {#oidc-provider-ssrf-protection}
 
-Logto はデフォルトで OIDC プロバイダーの外部リクエストに対してサーバーサイドリクエストフォージェリ (SSRF) から保護します。ループバックやプライベートネットワークアドレスなどの特殊用途アドレスへのリクエストはブロックされます。この保護は、バックチャネルログアウト URI、`jwks_uri`、`sector_identifier_uri` などのリライングパーティエンドポイントをカバーします。
+Logto はデフォルトで OIDC プロバイダーの外部リクエストに対してサーバーサイドリクエストフォージェリ (SSRF) から保護します。ループバックやプライベートネットワークアドレスなどの特殊用途アドレスへのリクエストはブロックされます。この保護は、バックチャネルログアウト URI、`jwks_uri`、`sector_identifier_uri` などのリライングパーティーエンドポイントや、 [ダイナミックアプリ](/integrate-logto/third-party-applications/dynamic-apps) のクライアント ID メタデータドキュメント取得にも適用されます。
 
-セルフホスト環境で、信頼できるリライングパーティエンドポイントにプライベートネットワーク経由でアクセスする必要がある場合は、`OIDC_PROVIDER_SSRF_PROTECTION_DISABLED=true` を設定し、すべての Logto インスタンスを再起動してください。
+セルフホスト環境で、信頼できるリライングパーティーエンドポイントがプライベートネットワーク上にある場合は、`OIDC_PROVIDER_SSRF_PROTECTION_DISABLED=true` を設定し、すべての Logto インスタンスを再起動してください。
 
 :::caution
 
-この設定は、すべての OIDC プロバイダー外部リクエストに対して SSRF 保護を無効化します。特定のエンドポイントだけでなく全体が対象です。すべてのリライングパーティエンドポイントが信頼でき、ネットワーク制御で内部サービスへのアクセスが防止されている場合のみ無効化してください。
+この設定は、すべての OIDC プロバイダー外部リクエストに対して SSRF 保護を無効化します。1 つのエンドポイントだけでなく全体に影響するため、すべてのリライングパーティーエンドポイントが信頼でき、かつネットワーク制御で機密内部サービスへのアクセスが防止されている場合のみ無効化してください。
+
+[ダイナミックアプリ](/integrate-logto/third-party-applications/dynamic-apps) は、この保護が無効な間は有効化できません。なぜなら、クライアント自身が指定した URL からメタデータドキュメントを取得するためです。
 
 :::
 
-### HTTPS 有効化 {#enabling-https}
+### HTTPS の有効化 {#enabling-https}
 
 #### Node を利用する場合 {#using-node}
 
@@ -69,12 +71,12 @@ Node はネイティブで HTTPS をサポートしています。`HTTPS_CERT_PA
 
 環境変数が多すぎると管理が非効率かつ柔軟性に欠けるため、一般的な設定の多くはデータベーステーブル `logto_configs` に保存されています。
 
-このテーブルはシンプルなキー・バリュー型ストレージで、キーは次のように列挙可能です：
+このテーブルはシンプルなキー・バリュー型ストレージであり、キーは次のように列挙可能です：
 
-| Key              | Type                  | 説明                                                                                                                |
-| ---------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| oidc.cookieKeys  | <code>string[]</code> | [署名クッキーキー](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) の文字列配列。 |
-| oidc.privateKeys | <code>string[]</code> | [OIDC JWT 署名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 用の秘密鍵内容の文字列配列。         |
+| Key              | Type                  | 説明                                                                                                                    |
+| ---------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| oidc.cookieKeys  | <code>string[]</code> | [署名付きクッキーキー](https://github.com/panva/node-oidc-provider/blob/main/docs/README.md#cookieskeys) の文字列配列。 |
+| oidc.privateKeys | <code>string[]</code> | [OIDC JWT 署名](https://openid.net/specs/openid-connect-core-1_0.html#Signing) 用の秘密鍵内容の文字列配列。             |
 
 ### サポートされている秘密鍵タイプ {#supported-private-key-types}
 
