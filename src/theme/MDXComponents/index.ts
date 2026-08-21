@@ -4,6 +4,7 @@ import CloudLink from '@site/src/components/CloudLink';
 import MainSiteUrl from '@site/src/components/MainSiteUrl';
 import NavGroup from '@site/src/components/NavGroup';
 import Url from '@site/src/components/Url';
+import YouTubeVideo from '@site/src/components/YouTubeVideo';
 
 import DocCardList from '../DocCardList';
 
@@ -16,6 +17,7 @@ const components = {
   NavGroup,
   Url,
   MainSiteUrl,
+  YouTubeVideo,
   table: Table,
 };
 
