@@ -1,0 +1,150 @@
+---
+sidebar_position: 7
+sidebar_label: Trusted devices
+---
+
+# MFA trusted devices
+
+MFA trusted devices let users skip repeated MFA prompts on a browser they trust. After a user completes an eligible MFA challenge and chooses to trust the browser, Logto stores a time-limited credential in a first-party cookie. On a later sign-in, a valid credential can fulfill the MFA verification step without user interaction.
+
+A trusted device is not a new MFA factor and does not change when Logto requires MFA. It can fulfill only the MFA step in a sign-in flow. It cannot satisfy identity verification, recent verification, account recovery, MFA factor management, or another sensitive account operation.
+
+## How trusted devices work \{#how-trusted-devices-work}
+
+When a sign-in reaches the MFA verification step, Logto:
+
+1. Evaluates the existing MFA policy to decide whether MFA is required.
+2. Checks whether trusted devices are enabled for the tenant and allowed by every organization the user belongs to.
+3. Validates the browser cookie against an active server-side record for the identified user.
+4. Completes MFA automatically when the credential is valid. Otherwise, Logto clears an invalid credential and continues with the conventional MFA flow.
+
+After a successful conventional MFA challenge, the built-in sign-in experience can show an unchecked option to trust the browser for the configured duration. Logto creates the trusted-device record only after the complete interaction succeeds. Trusted-device creation and post-sign-in metadata updates are best effort, so a failure does not fail an otherwise successful sign-in.
+
+Users can create trust after successfully verifying with an authenticator app OTP, passkey (WebAuthn), email verification code, or SMS verification code. Successfully binding an authenticator app or passkey during an MFA setup flow is also eligible. Backup code verification and a sign-in already fulfilled by another trusted device cannot create a new trusted device.
+
+## Configure the trusted-device policy \{#configure-the-trusted-device-policy}
+
+### Global policy \{#global-policy}
+
+Navigate to <CloudLink to="/mfa">Console > Multi-factor authentication</CloudLink> and configure **Trusted devices**:
+
+- Enable or disable trusted devices for the tenant. The policy is disabled by default.
+- Set a whole-number trust duration from 1 through 365 days. The default is 30 days.
+
+The duration is fixed when a trusted device is created. Using the device does not extend its expiration time, and changing the duration affects only devices created afterward.
+
+Disabling the global policy prevents existing trusted devices from fulfilling MFA, but does not delete them. If you enable the policy again, records that have not expired or been removed can become usable again.
+
+### Organization-level restrictions \{#organization-level-restrictions}
+
+An organization can allow or disallow trusted devices for its members. This setting can only tighten the tenant-level policy:
+
+- An organization cannot enable trusted devices when the global policy is disabled.
+- If any organization the user belongs to disallows trusted devices, the user's trusted-device credential cannot fulfill MFA, regardless of whether that organization requires MFA.
+- Organizations do not have a separate trust duration. The global duration applies.
+
+Disallowing trusted devices for an organization suspends their use for affected members. It does not delete their records, and it does not prevent users or administrators from listing or removing them.
+
+## Browser and cookie limitations \{#browser-and-cookie-limitations}
+
+Trusted-device reuse requires the browser context to preserve and return a persistent first-party cookie for the same Logto endpoint. It represents a browser profile, not a physical device.
+
+WebViews, system browsers, custom tabs, privacy modes, cookie-disabled browsers, and other ephemeral contexts can use trusted devices only when their cookie store persists the credential. If the cookie is unavailable on a later sign-in, Logto continues with conventional MFA instead of failing authentication. Different browsers, browser profiles, Logto domains, tenants, and users do not share trusted-device credentials.
+
+:::note
+Logto does not use browser fingerprinting or pre-detect whether a client will persist the cookie. Native apps and custom sign-in flows should treat trusted-device creation as best effort and keep the conventional MFA flow available.
+:::
+
+## Manage trusted devices \{#manage-trusted-devices}
+
+Only active records whose `expiresAt` is in the future are listed. Device names are derived from the latest user agent, while country and city are approximate metadata from the latest available request context. Raw IP addresses are not displayed or returned by the public APIs.
+
+### Administrator management \{#administrator-management}
+
+In <CloudLink to="/user">Console > User management</CloudLink>, open a user to view and remove their trusted devices. Removing a trusted device affects future sign-ins only; it does not terminate the user's active sessions.
+
+You can also use the Management API:
+
+- `GET /api/users/{userId}/trusted-devices` lists all active trusted devices for a user.
+- `DELETE /api/users/{userId}/trusted-devices/{trustedDeviceId}` removes one trusted device owned by the user.
+
+The list response includes `id`, `userAgent`, `country`, `city`, `createdAt`, `lastUsedAt`, and `expiresAt`.
+
+```bash
+curl https://[tenant-id].logto.app/api/users/[user-id]/trusted-devices \
+  -H "Authorization: Bearer [management-api-access-token]"
+
+curl -X DELETE \
+  https://[tenant-id].logto.app/api/users/[user-id]/trusted-devices/[trusted-device-id] \
+  -H "Authorization: Bearer [management-api-access-token]"
+```
+
+Learn how to [authenticate with the Management API](/integrate-logto/interact-with-management-api).
+
+### Account Center self-service management \{#account-center-self-service-management}
+
+In <CloudLink to="/sign-in-experience/account-center">Console > Sign-in & account > Account center</CloudLink>, configure the **Trusted devices** field:
+
+- **Off**: users cannot list or remove trusted devices.
+- **Read-only**: users can list trusted devices but cannot remove them.
+- **Edit**: users can list and remove trusted devices.
+
+The prebuilt Account Center displays active trusted devices on its security page and marks the current browser when its complete cookie credential is valid. Removing the current browser clears its trusted-device cookie but keeps the current login session active. Removing another browser's record cannot clear that browser's cookie immediately; the stale cookie is rejected and cleared when it is next presented.
+
+For a custom account center, request the `urn:logto:scope:trusted_devices` scope and use the Account API with a valid identity verification record:
+
+- `GET /api/my-account/trusted-devices` lists the signed-in user's active trusted devices and adds `isCurrent` to each item.
+- `DELETE /api/my-account/trusted-devices/{trustedDeviceId}` removes one trusted device owned by the signed-in user. Deletion is available only to first-party applications.
+
+```bash
+curl https://[tenant-id].logto.app/api/my-account/trusted-devices \
+  -H "Authorization: Bearer [account-api-access-token]" \
+  -H "logto-verification-id: [verification-record-id]"
+
+curl -X DELETE \
+  https://[tenant-id].logto.app/api/my-account/trusted-devices/[trusted-device-id] \
+  -H "Authorization: Bearer [account-api-access-token]" \
+  -H "logto-verification-id: [verification-record-id]"
+```
+
+See the [Account API reference](https://openapi.logto.io/group/endpoint-account-center) and [security verification guide](/end-user-flows/security-verification) for the authorization and verification flow.
+
+## Security model \{#security-model}
+
+The trusted-device credential is an opaque bearer credential with two parts: a record ID and a cryptographically random 32-byte secret.
+
+- In production, Logto stores it in a host-only cookie with the `__Host-` prefix, `HttpOnly`, `Secure`, `SameSite=Lax`, and `Path=/` attributes. Application JavaScript cannot read it.
+- The server stores only the SHA-256 hash of the secret and compares credentials with a timing-safe check.
+- Every credential lookup is constrained to the tenant and user and requires `expiresAt` to be in the future.
+- Expiration is fixed at creation. Opportunistic cleanup can delete expired rows later, but cleanup timing is never used as a security control.
+- Explicit removal deletes the server-side record immediately. A copied or stale cookie cannot pass validation after the record is removed.
+
+Credential secrets and hashes are never exposed through UI, public APIs, audit logs, or webhooks. The public device ID is not a physical-device identifier and is not sufficient to authenticate. Because the cookie is a bearer credential, copying the complete cookie can replay trust for the same tenant and user until the record expires or is removed; trusted devices do not provide hardware-backed device attestation.
+
+## Audit logs and webhooks \{#audit-logs-and-webhooks}
+
+Trusted-device-specific audit logs include:
+
+- `TrustedDevice.Created`: a trusted-device record and cookie credential were created after a successful interaction.
+- `TrustedDevice.Used`: a trusted-device credential fulfilled MFA and the sign-in completed successfully.
+
+You can subscribe to these data mutation webhooks:
+
+- `TrustedDevice.Created`: a trusted-device record was created.
+- `TrustedDevice.Deleted`: a user or administrator removed a trusted-device record.
+
+The event data contains the trusted-device `id`, `userId`, and `expiresAt`. It excludes the cookie credential, secret hash, and request IP. There is no webhook for successful use to avoid high event volume, and policy changes do not emit trusted-device lifecycle events because they do not mutate records.
+
+Natural expiration has no `TrustedDevice.Expired` webhook. Expiration occurs when time passes rather than when an application mutation runs, and physical cleanup may happen later. Use the `expiresAt` value from `TrustedDevice.Created` if your integration needs to derive the expected expiration time.
+
+Natural expiration also does not create a trusted-device-specific audit log.
+
+See [audit log event types](/developers/audit-logs/event-types#mfa) and [webhook events](/developers/webhooks/webhooks-events) for the event catalogs.
+
+## Lifecycle notes \{#lifecycle-notes}
+
+- Normal sign-out does not remove trusted devices.
+- Adding, removing, or resetting MFA factors does not remove trusted devices.
+- Removing a trusted device does not terminate active sessions.
+- Deleting the user deletes their trusted-device records through the user data lifecycle.
+- There is no trusted-device count limit or automatic eviction.
