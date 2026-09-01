@@ -3,38 +3,35 @@ import Mermaid from '@theme/Mermaid';
 ## Pré-requisitos \{#prerequisites}
 
 - Um tenant do [Logto Cloud](https://cloud.logto.io) (ou auto-hospedado)
-- Ambiente Node.js ou Python
+- Ambiente Node.js >= 20
 
 ### Entendendo a arquitetura \{#understanding-the-architecture}
 
-- **Servidor MCP**: O servidor que expõe ferramentas e recursos para clientes MCP.
-- **Cliente MCP**: Um cliente usado para iniciar o fluxo de autenticação e testar a integração. {<b>{props.isThirdParty ? 'O agente de IA de terceiros será usado como cliente neste guia.' : "Usaremos o MCP Inspector como cliente neste guia."}</b>}
-- **Logto**: Atua como o provedor OpenID Connect (servidor de autorização) e gerencia as identidades dos usuários.
+- **Servidor MCP**: O servidor que expõe ferramentas e recursos para clientes MCP. Seguindo a [especificação MCP mais recente](https://modelcontextprotocol.io/specification/latest/basic/authorization), atua como um servidor de recursos OAuth 2.0 que valida tokens de acesso emitidos pelo Logto.
+- **Cliente MCP**: Um cliente usado para iniciar o fluxo de autenticação e testar a integração. {<b>{props.isThirdParty ? 'O agente de IA de terceiros será usado como cliente neste guia.' : "Usaremos o VS Code (com suporte MCP integrado) como cliente neste guia."}</b>}
+- **Logto**: Atua como o provedor OpenID Connect (servidor de autorização), gerencia identidades de usuários e emite tokens de acesso JWT vinculados ao público para seu servidor MCP.
 
 Um diagrama de sequência não normativo ilustra o fluxo geral do processo:
 
 <Mermaid value={`sequenceDiagram
-    participant Client as Cliente MCP<br/>${props.isThirdParty ? '(agente de IA de terceiros)' : '(MCP Inspector)'}
-    participant Server as Servidor MCP
-    participant Logto
+    participant Client as Cliente MCP<br/>${props.isThirdParty ? '(agente de IA de terceiros)' : '(VS Code)'}
+    participant Server as Servidor MCP<br/>(servidor de recursos)
+    participant Logto as Logto<br/>(servidor de autorização)
 
-    Server->>Logto: Solicitar configuração OpenID Connect
-    Logto->>Server: Retornar configuração
-    Note over Server: Armazene a configuração em cache
-    Client->>Server: Solicitar acesso a uma ferramenta
-    Server->>Client: Não autenticado (401 Não autorizado)
-    Client->>Server: Solicitar Metadados do Servidor de Autorização OAuth 2.0
-    Note over Server: Neste contexto, “configuração OpenID Connect” e<br/>“Metadados do Servidor de Autorização OAuth 2.0”<br/>referem-se à mesma coisa.
-    Server->>Client: Retornar configuração OpenID Connect obtida do Logto
-    Client->>Logto: Redirecionar para o Logto para autenticação
+    Client->>Server: Requisição MCP (sem token)
+    Server->>Client: 401 Não autorizado (WWW-Authenticate)
+    Client->>Server: Buscar metadados de recurso protegido<br/>(/.well-known/oauth-protected-resource)
+    Server->>Client: Retornar metadados com informações do servidor de autorização
+    Client->>Logto: Buscar metadados do servidor de autorização
+    Logto->>Client: Retornar configuração OpenID Connect
+    Client->>Logto: Redirecionar para Logto para autenticação
     Logto->>Logto: Usuário se autentica
-    ${props.isThirdParty ? 'Logto->>Logto: Usuário autoriza (consente) escopos<br/>para o app de terceiros' : ''}
-    Logto->>Client: Redirecionar de volta para o servidor MCP com código de autorização
-    Client->>Logto: Solicitar token de acesso usando o código de autorização
-    Logto->>Client: Retornar token de acesso
-    Client->>Server: Solicitar ferramenta com token de acesso
-    Server->>Logto: Solicitar informações do usuário usando o token de acesso
-    Logto->>Server: Retornar informações do usuário
+    ${props.isThirdParty ? 'Logto->>Logto: Usuário autoriza (consente) escopos<br/>para o agente de IA de terceiros' : ''}
+    Logto->>Client: Redirecionar de volta com código de autorização
+    Client->>Logto: Trocar código por token de acesso<br/>(com o parâmetro resource)
+    Logto->>Client: Retornar token de acesso (JWT, vinculado ao público)
+    Client->>Server: Requisição MCP com token de acesso
+    Server->>Server: Verificar token de acesso contra o JWKS do Logto<br/>(assinatura, emissor, público, expiração)
     Server->>Client: Retornar resposta da ferramenta`}
 
 />
