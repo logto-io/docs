@@ -1,207 +1,135 @@
-import TabItem from '@theme/TabItem';
-import Tabs from '@theme/Tabs';
-
 ## ตั้งค่าเซิร์ฟเวอร์ MCP \{#set-up-the-mcp-server}
 
+เราจะใช้ [MCP official SDK](https://github.com/modelcontextprotocol) v2 และ [mcp-auth](https://mcp-auth.dev) เพื่อสร้างเซิร์ฟเวอร์ MCP พร้อมเครื่องมือ "whoami" ที่ส่งคืนการอ้างสิทธิ์ (claims) ของตัวตนผู้ใช้ปัจจุบัน
+
 ### สร้างโปรเจกต์และติดตั้ง dependencies \{#create-project-and-install-dependencies}
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```bash
-mkdir mcp-server
-cd mcp-server
-uv init # หรือใช้โครงสร้างโปรเจกต์ของคุณเอง
-uv add "mcp[cli]" starlette uvicorn mcpauth # หรือใช้ตัวจัดการแพ็กเกจที่คุณต้องการ
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
 
 ```bash
 mkdir mcp-server
 cd mcp-server
 npm init -y
-npm install @modelcontextprotocol/sdk express mcp-auth # หรือใช้ตัวจัดการแพ็กเกจที่คุณต้องการ
+npm pkg set type="module"
+npm pkg set main="whoami.js"
+npm pkg set scripts.start="node whoami.js"
+npm install @modelcontextprotocol/server @modelcontextprotocol/express @modelcontextprotocol/node express mcp-auth
 ```
 
-</TabItem>
-</Tabs>
+- `@modelcontextprotocol/server` คือ MCP SDK v2 หลัก ซึ่งใช้มาตรฐานเว็บ `Request` / `Response`
+- `@modelcontextprotocol/express` และ `@modelcontextprotocol/node` ใช้สำหรับปรับให้เข้ากับ Express บน Node.js
+- `mcp-auth` ให้ตัวตรวจสอบโทเค็นและข้อมูลเมตา OAuth discovery สำหรับ MCP SDK
 
-### ตั้งค่า MCP auth กับ Logto \{#configure-mcp-auth-with-logto}
+:::note
+MCP SDK v2 และ mcp-auth รองรับเฉพาะ ESM และต้องใช้ Node.js >= 20
+:::
 
-อย่าลืมแทนที่ `<your-logto-issuer-endpoint>` ด้วย issuer endpoint ที่คุณคัดลอกมาก่อนหน้านี้
+### ลงทะเบียนเซิร์ฟเวอร์ MCP เป็นทรัพยากร API \{#register-the-mcp-server-as-an-api-resource}
 
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
+[MCP specification ล่าสุด](https://modelcontextprotocol.io/specification/latest/basic/authorization) กำหนดให้โทเค็นการเข้าถึง (Access tokens) ต้องผูกกับทรัพยากรที่ออกให้ ([RFC 8707](https://datatracker.ietf.org/doc/html/rfc8707)) และ mcp-auth จะบังคับใช้: การอ้างสิทธิ์ `aud` ของโทเค็นต้องตรงกับตัวระบุทรัพยากรของเซิร์ฟเวอร์ MCP ของคุณ ใน Logto จะทำได้โดยการสร้างทรัพยากร API ที่ตัวบ่งชี้ (indicator) ตรงกับ URL ของเซิร์ฟเวอร์ MCP ของคุณ:
 
-**ใน `whoami.py`:**
+1. ลงชื่อเข้าใช้ Logto Console ของคุณ
+2. ไปที่ <CloudLink to="/api-resources">**ทรัพยากร API (API resources)**</CloudLink> → **สร้างทรัพยากร API (Create API resource)**
+3. กรอกรายละเอียด แล้วคลิก **สร้างทรัพยากร API (Create API resource)**:
+   - **ชื่อ API (API name)**: กรอกชื่อ เช่น "Who am I"
+   - **ตัวระบุ API (API identifier)**: กรอก `http://localhost:3001/` ต้องตรงกับตัวระบุทรัพยากรที่เราจะตั้งค่าในเซิร์ฟเวอร์ MCP
 
-```python
-from mcpauth import MCPAuth
-from mcpauth.config import AuthServerType
-from mcpauth.utils import fetch_server_config
+:::note[เครื่องหมาย / ต่อท้ายในตัวบ่งชี้ทรัพยากร]
+ควรใส่เครื่องหมาย / ต่อท้าย (`/`) ในตัวบ่งชี้ทรัพยากรเสมอ เนื่องจากบั๊กปัจจุบันใน MCP SDK อย่างเป็นทางการ ไคลเอนต์ที่ใช้ SDK จะเติม / ต่อท้ายตัวระบุทรัพยากรโดยอัตโนมัติเมื่อเริ่มต้นคำขอ auth หากตัวบ่งชี้ทรัพยากรของคุณไม่มี / ต่อท้าย การตรวจสอบทรัพยากรจะล้มเหลวสำหรับไคลเอนต์เหล่านั้น
+:::
 
-auth_issuer = '<your-logto-issuer-endpoint>'
-auth_server_config = fetch_server_config(auth_issuer, type=AuthServerType.OIDC)
-mcp_auth = MCPAuth(server=auth_server_config)
-```
+### ตั้งค่า MCP Auth กับ Logto \{#configure-mcp-auth-with-logto}
 
-</TabItem>
-<TabItem value="node" label="Node.js">
+ประกาศเซิร์ฟเวอร์ MCP ของคุณเป็นทรัพยากรที่ได้รับการป้องกัน: ตัวระบุทรัพยากรและเซิร์ฟเวอร์การอนุญาตที่เชื่อถือ จำไว้ว่าต้องแทนที่ `<your-logto-issuer-endpoint>` ด้วย endpoint ของผู้ออก (issuer) ที่คุณคัดลอกมาก่อนหน้านี้ (ดูได้ในหน้าแอปพลิเคชันที่ **Endpoints & Credentials** เช่น `https://my-project.logto.app/oidc`)
 
 **ใน `whoami.js`:**
 
 ```js
-import { MCPAuth, fetchServerConfig } from 'mcp-auth';
+import { MCPAuth } from 'mcp-auth';
 
 const authIssuer = '<your-logto-issuer-endpoint>';
+
 const mcpAuth = new MCPAuth({
-  server: await fetchServerConfig(authIssuer, { type: 'oidc' }),
+  protectedResourceMetadata: {
+    // ตัวระบุทรัพยากร; ต้องตรงกับตัวบ่งชี้ทรัพยากร API ที่ลงทะเบียนใน Logto
+    resource: 'http://localhost:3001/',
+    // เซิร์ฟเวอร์การอนุญาตที่เซิร์ฟเวอร์ MCP นี้เชื่อถือ
+    authorizationServer: { issuer: authIssuer, type: 'oidc' },
+  },
 });
 ```
 
-</TabItem>
-</Tabs>
-
-### ดำเนินการตรวจสอบโทเค็น \{#implement-token-verification}
-
-เนื่องจากเราจะตรวจสอบโทเค็นการเข้าถึง (Access token) และดึงข้อมูลผู้ใช้ เราจึงต้องดำเนินการตรวจสอบโทเค็นการเข้าถึงดังนี้:
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```python
-import requests
-from mcpauth.types import AuthInfo
-
-def verify_access_token(token: str) -> AuthInfo:
-    endpoint = auth_server_config.metadata.userinfo_endpoint
-    response = requests.get(
-        endpoint,
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    response.raise_for_status()
-    data = response.json()
-    return AuthInfo(
-        token=token,
-        subject=data.get("sub"),
-        issuer=auth_server_config.metadata.issuer,
-        claims=data,
-    )
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
-
-```js
-const verifyToken = async (token) => {
-  const { userinfoEndpoint, issuer } = mcpAuth.config.server.metadata;
-  const response = await fetch(userinfoEndpoint, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Token verification failed');
-  const userInfo = await response.json();
-  return {
-    token,
-    issuer,
-    subject: userInfo.sub,
-    claims: userInfo,
-  };
-};
-```
-
-</TabItem>
-</Tabs>
+ข้อมูลเมตาของเซิร์ฟเวอร์การอนุญาตจะถูกดึงมาแบบ lazy เมื่อถูกเรียกใช้ครั้งแรกและแคชไว้หลังจากนั้น อินสแตนซ์ `MCPAuth` จะตรวจสอบโทเค็นการเข้าถึง JWT กับ JWKS ของ Logto — ทั้งลายเซ็น, ผู้ออก, ผู้รับ, และวันหมดอายุถูกบังคับใช้ทั้งหมด ไม่ต้องเขียนโค้ดตรวจสอบโทเค็นเอง
 
 ### สร้างเครื่องมือ "whoami" \{#implement-the-whoami-tool}
 
-ต่อไป มาสร้างเครื่องมือ "whoami" ที่จะคืนค่าการอ้างสิทธิ์ (claims) ของตัวตนผู้ใช้ปัจจุบัน โดยร้องขอไปยัง userinfo endpoint พร้อมโทเค็นการเข้าถึงที่ส่งมาจาก client
-
-:::note
-ตัวอย่างนี้ใช้การส่งข้อมูลแบบ SSE เนื่องจาก SDK เวอร์ชันปัจจุบันยังไม่รองรับ Streamable HTTP transport อย่างเป็นทางการ ในทางทฤษฎี คุณสามารถใช้ transport ที่รองรับ HTTP ใดก็ได้
-:::
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```python
-from mcp.server.fastmcp import FastMCP
-from starlette.applications import Starlette
-from starlette.routing import Mount
-from starlette.middleware import Middleware
-
-mcp = FastMCP("WhoAmI")
-
-@mcp.tool()
-def whoami() -> dict:
-    """
-    คืนค่าข้อมูลตัวตนของผู้ใช้ปัจจุบัน
-    """
-    return (
-        mcp_auth.auth_info.claims
-        if mcp_auth.auth_info
-        else {"error": "Not authenticated"}
-    )
-
-bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
-app = Starlette(
-    routes=[
-        mcp_auth.metadata_route(),  # ให้บริการ OIDC metadata สำหรับ discovery
-        Mount('/', app=mcp.sse_app(), middleware=[bearer_auth]),
-    ],
-)
-```
-
-รันเซิร์ฟเวอร์ด้วย:
-
-```bash
-uvicorn whoami:app --host 0.0.0.0 --port 3001
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
+ต่อไป มาสร้างเครื่องมือ "whoami" ที่ส่งคืนการอ้างสิทธิ์ (claims) ของตัวตนผู้ใช้ปัจจุบันจากโทเค็นการเข้าถึงที่ตรวจสอบแล้ว ใช้ `getAuthInfo` เพื่ออ่านข้อมูล auth ที่ mcp-auth ตรวจสอบแล้วจาก context ของ callback เครื่องมือ
 
 ```js
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import express from 'express';
+import { McpServer } from '@modelcontextprotocol/server';
+import { getAuthInfo } from 'mcp-auth';
 
-// สร้าง MCP server และลงทะเบียนเครื่องมือ whoami
-const server = new McpServer({ name: 'WhoAmI', version: '0.0.0' });
-server.tool('whoami', ({ authInfo }) => ({
-  content: [
-    { type: 'text', text: JSON.stringify(authInfo?.claims ?? { error: 'Not authenticated' }) },
-  ],
-}));
+// ฟังก์ชัน factory สำหรับสร้างอินสแตนซ์ MCP server
+// แต่ละคำขอจะได้อินสแตนซ์ server ของตัวเอง เพื่อแยกคำขอออกจากกัน
+const createMcpServer = () => {
+  const mcpServer = new McpServer({
+    name: 'WhoAmI',
+    version: '0.0.0',
+  });
 
-// Express app & MCP Auth middleware
-const app = express();
-app.use(mcpAuth.delegatedRouter());
-app.use(mcpAuth.bearerAuth(verifyToken));
+  // เพิ่มเครื่องมือในเซิร์ฟเวอร์ที่ส่งคืนข้อมูลผู้ใช้ปัจจุบัน
+  mcpServer.registerTool(
+    'whoami',
+    {
+      description: 'รับข้อมูลผู้ใช้ปัจจุบัน',
+    },
+    (context) => {
+      const { claims } = getAuthInfo(context);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(claims) }],
+      };
+    }
+  );
 
-// SSE transport (ตามเอกสาร SDK)
-const transports = {};
-app.get('/sse', async (_req, res) => {
-  const transport = new SSEServerTransport('/messages', res);
-  transports[transport.sessionId] = transport;
-  res.on('close', () => delete transports[transport.sessionId]);
-  await server.connect(transport);
-});
-app.post('/messages', async (req, res) => {
-  const sessionId = String(req.query.sessionId);
-  const transport = transports[sessionId];
-  if (transport) await transport.handlePostMessage(req, res, req.body);
-  else res.status(400).send('No transport found for sessionId');
-});
+  return mcpServer;
+};
+```
 
-app.listen(3001);
+### เชื่อมต่อเซิร์ฟเวอร์ \{#wire-up-the-server}
+
+สุดท้าย ให้บริการ OAuth discovery documents (RFC 9728 / RFC 8414) เพื่อให้ไคลเอนต์ MCP ค้นหาเซิร์ฟเวอร์การอนุญาตของคุณ และปกป้อง endpoint MCP ด้วย Bearer auth middleware ของ SDK
+
+```js
+import {
+  createMcpExpressApp,
+  mcpAuthMetadataRouter,
+  requireBearerAuth,
+} from '@modelcontextprotocol/express';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler } from '@modelcontextprotocol/server';
+
+const PORT = 3001;
+
+// MCP handler ใช้มาตรฐานเว็บ Request / Response; `toNodeHandler` ปรับให้เข้ากับ Express
+const mcpNodeHandler = toNodeHandler(createMcpHandler(createMcpServer));
+
+const app = createMcpExpressApp();
+
+// ให้บริการ OAuth discovery documents (`/.well-known/...`) ซึ่งเป็นสาธารณะโดยออกแบบ
+app.use(mcpAuthMetadataRouter(await mcpAuth.getAuthMetadataOptions()));
+
+app.all(
+  '/',
+  // ต้องการ Bearer token ที่ถูกต้อง; ข้อมูล auth ที่ตรวจสอบแล้วจะถูกส่งต่อไปยัง handler ผ่าน `req.auth`
+  requireBearerAuth(mcpAuth.getBearerAuthOptions()),
+  // `createMcpExpressApp` ใช้ `express.json()` ซึ่งจะดึงข้อมูลจาก request stream ดังนั้น
+  // body ที่แปลงแล้วจะถูกส่งต่ออย่างชัดเจน
+  async (request, response) => mcpNodeHandler(request, response, request.body)
+);
+
+app.listen(PORT);
 ```
 
 รันเซิร์ฟเวอร์ด้วย:
 
 ```bash
-node whoami.js
+npm start
 ```
-
-</TabItem>
-</Tabs>

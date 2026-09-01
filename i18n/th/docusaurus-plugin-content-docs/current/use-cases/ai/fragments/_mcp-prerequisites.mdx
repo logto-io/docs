@@ -2,39 +2,36 @@ import Mermaid from '@theme/Mermaid';
 
 ## ข้อกำหนดเบื้องต้น \{#prerequisites}
 
-- [Logto Cloud](https://cloud.logto.io) (หรือแบบ self-hosted) เทนแนนต์
-- สภาพแวดล้อม Node.js หรือ Python
+- [Logto Cloud](https://cloud.logto.io) (หรือแบบ self-hosted) tenant
+- สภาพแวดล้อม Node.js >= 20
 
 ### ทำความเข้าใจสถาปัตยกรรม \{#understanding-the-architecture}
 
-- **เซิร์ฟเวอร์ MCP**: เซิร์ฟเวอร์ที่เปิดเผยเครื่องมือและทรัพยากรให้กับไคลเอนต์ MCP
-- **ไคลเอนต์ MCP**: ไคลเอนต์ที่ใช้เริ่มต้นโฟลว์การยืนยันตัวตนและทดสอบการเชื่อมต่อ {<b>{props.isThirdParty ? 'AI agent ของบุคคลที่สามจะถูกใช้เป็นไคลเอนต์ในคู่มือนี้' : 'เราจะใช้ MCP Inspector เป็นไคลเอนต์ในคู่มือนี้'}</b>}
-- **Logto**: ทำหน้าที่เป็นผู้ให้บริการ OpenID Connect (authorization server) และจัดการข้อมูลระบุตัวตนของผู้ใช้
+- **เซิร์ฟเวอร์ MCP**: เซิร์ฟเวอร์ที่เปิดเผยเครื่องมือและทรัพยากรให้กับไคลเอนต์ MCP โดยอิงตาม [MCP specification ล่าสุด](https://modelcontextprotocol.io/specification/latest/basic/authorization) จะทำหน้าที่เป็น resource server ของ OAuth 2.0 ที่ตรวจสอบโทเค็นการเข้าถึง (access token) ที่ออกโดย Logto
+- **ไคลเอนต์ MCP**: ไคลเอนต์ที่ใช้เริ่มต้น flow การยืนยันตัวตนและทดสอบการเชื่อมต่อ {<b>{props.isThirdParty ? 'AI agent ของบุคคลที่สามจะถูกใช้เป็นไคลเอนต์ในคู่มือนี้' : "เราจะใช้ VS Code (ซึ่งรองรับ MCP ในตัว) เป็นไคลเอนต์ในคู่มือนี้"}</b>}
+- **Logto**: ทำหน้าที่เป็นผู้ให้บริการ OpenID Connect (authorization server) จัดการข้อมูลระบุตัวตนของผู้ใช้ และออกโทเค็นการเข้าถึง JWT ที่ผูกกับผู้รับ (audience-bound) สำหรับเซิร์ฟเวอร์ MCP ของคุณ
 
-ไดอะแกรมลำดับ (sequence diagram) ที่ไม่เป็นมาตรฐานนี้แสดงภาพรวมของกระบวนการทั้งหมด:
+ไดอะแกรมลำดับ (sequence diagram) ที่ไม่เป็นทางการนี้แสดงภาพรวมของกระบวนการทั้งหมด:
 
 <Mermaid value={`sequenceDiagram
-    participant Client as MCP Client<br/>${props.isThirdParty ? '(AI agent บุคคลที่สาม)' : '(MCP Inspector)'}
-    participant Server as MCP Server
-    participant Logto
+    participant Client as ไคลเอนต์ MCP<br/>${props.isThirdParty ? '(AI agent บุคคลที่สาม)' : '(VS Code)'}
+    participant Server as เซิร์ฟเวอร์ MCP<br/>(resource server)
+    participant Logto as Logto<br/>(authorization server)
 
-    Server->>Logto: ขอรับการกำหนดค่า OpenID Connect
-    Logto->>Server: ส่งคืนการกำหนดค่า
-    Note over Server: แคชการกำหนดค่าไว้
-    Client->>Server: ขอเข้าถึงเครื่องมือ
-    Server->>Client: ยังไม่ได้รับการยืนยันตัวตน (401 Unauthorized)
-    Client->>Server: ขอ OAuth 2.0 Authorization Server Metadata
-    Note over Server: ในบริบทนี้ “การกำหนดค่า OpenID Connect” และ<br/>“OAuth 2.0 Authorization Server Metadata”<br/>หมายถึงสิ่งเดียวกัน
-    Server->>Client: ส่งคืนการกำหนดค่า OpenID Connect ที่ดึงมาจาก Logto
-    Client->>Logto: เปลี่ยนเส้นทางไปยัง Logto เพื่อยืนยันตัวตน
+    Client->>Server: คำขอ MCP (ไม่มีโทเค็น)
+    Server->>Client: 401 ไม่ได้รับอนุญาต (WWW-Authenticate)
+    Client->>Server: ดึง metadata ของทรัพยากรที่ป้องกันไว้<br/>(/.well-known/oauth-protected-resource)
+    Server->>Client: ส่งคืน metadata พร้อมข้อมูล authorization server
+    Client->>Logto: ดึง metadata ของ authorization server
+    Logto->>Client: ส่งคืนการตั้งค่า OpenID Connect
+    Client->>Logto: เปลี่ยนเส้นทางไป Logto เพื่อยืนยันตัวตน
     Logto->>Logto: ผู้ใช้ยืนยันตัวตน
-    ${props.isThirdParty ? 'Logto->>Logto: ผู้ใช้อนุญาต (consent) ขอบเขต<br/>ให้กับแอปบุคคลที่สาม' : ''}
-    Logto->>Client: เปลี่ยนเส้นทางกลับไปยังเซิร์ฟเวอร์ MCP พร้อม authorization code
-    Client->>Logto: ขอ access token โดยใช้ authorization code
-    Logto->>Client: ส่งคืน access token
-    Client->>Server: ขอใช้เครื่องมือพร้อม access token
-    Server->>Logto: ขอข้อมูลผู้ใช้โดยใช้ access token
-    Logto->>Server: ส่งคืนข้อมูลผู้ใช้
+    ${props.isThirdParty ? 'Logto->>Logto: ผู้ใช้อนุญาต (consent) ขอบเขต<br/>ให้กับ AI agent บุคคลที่สาม' : ''}
+    Logto->>Client: เปลี่ยนเส้นทางกลับพร้อม authorization code
+    Client->>Logto: แลก code เป็น access token<br/>(พร้อม resource parameter)
+    Logto->>Client: ส่งคืน access token (JWT, audience-bound)
+    Client->>Server: คำขอ MCP พร้อม access token
+    Server->>Server: ตรวจสอบ access token กับ JWKS ของ Logto<br/>(ลายเซ็น, ผู้ออก, ผู้รับ, วันหมดอายุ)
     Server->>Client: ส่งคืนผลลัพธ์ของเครื่องมือ`}
 
 />

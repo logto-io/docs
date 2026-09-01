@@ -3,42 +3,39 @@ import Mermaid from '@theme/Mermaid';
 ## 前提条件 \{#prerequisites}
 
 - [Logto Cloud](https://cloud.logto.io) （またはセルフホスト型）テナント
-- Node.js または Python 環境
+- Node.js >= 20 の環境
 
 ### アーキテクチャの理解 \{#understanding-the-architecture}
 
-- **MCP サーバー**：MCP クライアントにツールやリソースを提供するサーバー。
-- **MCP クライアント**：認証 (Authentication) フローを開始し、統合をテストするために使用されるクライアント。{<b>{props.isThirdParty ? 'このガイドではサードパーティ AI エージェントをクライアントとして使用します。' : "このガイドでは MCP Inspector をクライアントとして使用します。"}</b>}
-- **Logto**：OpenID Connect プロバイダー（認可 (Authorization) サーバー）として機能し、ユーザーアイデンティティを管理します。
+- **MCP サーバー**：MCP クライアントにツールやリソースを提供するサーバーです。[最新の MCP 仕様](https://modelcontextprotocol.io/specification/latest/basic/authorization) に従い、Logto が発行するアクセス トークン (Access token) を検証する OAuth 2.0 リソースサーバーとして動作します。
+- **MCP クライアント**：認証 (Authentication) フローを開始し、統合をテストするためのクライアントです。{<b>{props.isThirdParty ? 'このガイドではサードパーティの AI エージェントをクライアントとして使用します。' : "このガイドでは VS Code（MCP サポート内蔵）をクライアントとして使用します。"} </b>}
+- **Logto**：OpenID Connect プロバイダー（認可 (Authorization) サーバー）として機能し、ユーザーアイデンティティを管理し、MCP サーバー向けにオーディエンスバウンドの JWT アクセス トークン (Access token) を発行します。
 
-規範的でないシーケンス図でプロセス全体の流れを示します：
+規範的でないシーケンス図で全体の流れを示します：
 
 <Mermaid value={`sequenceDiagram
-    participant Client as MCP クライアント<br/>${props.isThirdParty ? '(サードパーティ AI エージェント)' : '(MCP Inspector)'}
-    participant Server as MCP サーバー
-    participant Logto
+    participant Client as MCP クライアント<br/>${props.isThirdParty ? '(サードパーティ AI エージェント)' : '(VS Code)'}
+    participant Server as MCP サーバー<br/>(リソースサーバー)
+    participant Logto as Logto<br/>(認可サーバー)
 
-    Server->>Logto: OpenID Connect 設定をリクエスト
-    Logto->>Server: 設定を返す
-    Note over Server: 設定をキャッシュ
-    Client->>Server: ツールへのアクセスをリクエスト
-    Server->>Client: 未認証 (401 Unauthorized)
-    Client->>Server: OAuth 2.0 認可 (Authorization) サーバーメタデータをリクエスト
-    Note over Server: この文脈では「OpenID Connect 設定」と<br/>「OAuth 2.0 認可 (Authorization) サーバーメタデータ」<br/>は同じものを指します。
-    Server->>Client: Logto から取得した OpenID Connect 設定を返す
-    Client->>Logto: 認証 (Authentication) のため Logto へリダイレクト
+    Client->>Server: MCP リクエスト（トークンなし）
+    Server->>Client: 401 未認可 (WWW-Authenticate)
+    Client->>Server: 保護されたリソースメタデータの取得<br/>(/.well-known/oauth-protected-resource)
+    Server->>Client: 認可サーバー情報付きメタデータを返す
+    Client->>Logto: 認可サーバーメタデータの取得
+    Logto->>Client: OpenID Connect 構成を返す
+    Client->>Logto: Logto へリダイレクトして認証 (Authentication)
     Logto->>Logto: ユーザーが認証 (Authentication)
-    ${props.isThirdParty ? 'Logto->>Logto: ユーザーがサードパーティアプリに<br/>スコープの認可 (Authorization)（同意）を行う' : ''}
-    Logto->>Client: 認可コードとともに MCP サーバーへリダイレクト
-    Client->>Logto: 認可コードを使ってアクセス トークンをリクエスト
-    Logto->>Client: アクセス トークンを返す
-    Client->>Server: アクセス トークンでツールをリクエスト
-    Server->>Logto: アクセス トークンでユーザー情報をリクエスト
-    Logto->>Server: ユーザー情報を返す
+    ${props.isThirdParty ? 'Logto->>Logto: ユーザーがスコープへの同意をサードパーティ AI エージェントに与える' : ''}
+    Logto->>Client: 認可コード付きでリダイレクトバック
+    Client->>Logto: コードをアクセス トークン (Access token) と交換<br/>(resource パラメーター付き)
+    Logto->>Client: アクセス トークン (JWT, オーディエンスバウンド) を返す
+    Client->>Server: アクセス トークン付きで MCP リクエスト
+    Server->>Server: Logto の JWKS でアクセス トークンを検証<br/>(署名、発行者、オーディエンス、有効期限)
     Server->>Client: ツールのレスポンスを返す`}
 
 />
 
 :::note
-MCP は急速に進化しているため、上記の図は最新の状態ではない場合があります。最新情報は [mcp-auth](https://mcp-auth.dev) ドキュメントを参照してください。
+MCP は急速に進化しているため、上記の図は最新でない場合があります。最新情報は [mcp-auth](https://mcp-auth.dev) ドキュメントを参照してください。
 :::

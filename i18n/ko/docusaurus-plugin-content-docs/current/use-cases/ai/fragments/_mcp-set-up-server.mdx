@@ -1,207 +1,135 @@
-import TabItem from '@theme/TabItem';
-import Tabs from '@theme/Tabs';
-
 ## MCP 서버 설정하기 \{#set-up-the-mcp-server}
 
+[MCP 공식 SDK](https://github.com/modelcontextprotocol) v2와 [mcp-auth](https://mcp-auth.dev)를 사용하여, 현재 사용자의 아이덴티티 클레임을 반환하는 "whoami" 도구가 포함된 MCP 서버를 만들어보겠습니다.
+
 ### 프로젝트 생성 및 의존성 설치 \{#create-project-and-install-dependencies}
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```bash
-mkdir mcp-server
-cd mcp-server
-uv init # 또는 원하는 프로젝트 구조를 사용하세요
-uv add "mcp[cli]" starlette uvicorn mcpauth # 또는 원하는 패키지 매니저를 사용하세요
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
 
 ```bash
 mkdir mcp-server
 cd mcp-server
 npm init -y
-npm install @modelcontextprotocol/sdk express mcp-auth # 또는 원하는 패키지 매니저를 사용하세요
+npm pkg set type="module"
+npm pkg set main="whoami.js"
+npm pkg set scripts.start="node whoami.js"
+npm install @modelcontextprotocol/server @modelcontextprotocol/express @modelcontextprotocol/node express mcp-auth
 ```
 
-</TabItem>
-</Tabs>
+- `@modelcontextprotocol/server`는 웹 표준 `Request` / `Response`를 사용하는 MCP SDK v2의 핵심입니다.
+- `@modelcontextprotocol/express`와 `@modelcontextprotocol/node`는 이를 Node.js의 Express에 맞게 변환해줍니다.
+- `mcp-auth`는 MCP SDK를 위한 토큰 검증기와 OAuth 디스커버리 메타데이터를 제공합니다.
 
-### Logto로 MCP 인증 구성하기 \{#configure-mcp-auth-with-logto}
+:::note
+MCP SDK v2와 mcp-auth는 ESM 전용이며 Node.js >= 20이 필요합니다.
+:::
 
-앞서 복사한 발급자 (Issuer) 엔드포인트를 `<your-logto-issuer-endpoint>`로 교체하세요.
+### MCP 서버를 API 리소스로 등록하기 \{#register-the-mcp-server-as-an-api-resource}
 
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
+[최신 MCP 명세](https://modelcontextprotocol.io/specification/latest/basic/authorization)는 액세스 토큰이 발급된 리소스에 바인딩되어야 함을 요구합니다 ([RFC 8707](https://datatracker.ietf.org/doc/html/rfc8707)), 그리고 mcp-auth는 이를 강제합니다: 토큰의 `aud` 클레임이 MCP 서버의 리소스 식별자와 일치해야 합니다. Logto에서는 MCP 서버의 URL과 일치하는 리소스 지표를 가진 API 리소스를 생성하여 이를 수행합니다:
 
-**`whoami.py`에서:**
+1. Logto 콘솔에 로그인하세요.
+2. <CloudLink to="/api-resources">**API 리소스**</CloudLink> → **API 리소스 생성**으로 이동하세요.
+3. 세부 정보를 입력한 후 **API 리소스 생성**을 클릭하세요:
+   - **API 이름**: 예시로 "Who am I"와 같이 입력하세요.
+   - **API 식별자**: `http://localhost:3001/`을 입력하세요. 이는 MCP 서버에서 설정할 리소스 식별자와 일치해야 합니다.
 
-```python
-from mcpauth import MCPAuth
-from mcpauth.config import AuthServerType
-from mcpauth.utils import fetch_server_config
+:::note[리소스 지표의 슬래시]
+항상 리소스 지표 끝에 슬래시(`/`)를 포함하세요. MCP 공식 SDK의 현재 버그로 인해, SDK를 사용하는 클라이언트는 인증 요청을 시작할 때 리소스 식별자에 자동으로 슬래시를 추가합니다. 리소스 지표에 슬래시가 없으면 해당 클라이언트에서 리소스 검증이 실패합니다.
+:::
 
-auth_issuer = '<your-logto-issuer-endpoint>'
-auth_server_config = fetch_server_config(auth_issuer, type=AuthServerType.OIDC)
-mcp_auth = MCPAuth(server=auth_server_config)
-```
+### Logto와 함께 MCP Auth 구성하기 \{#configure-mcp-auth-with-logto}
 
-</TabItem>
-<TabItem value="node" label="Node.js">
+MCP 서버를 보호된 리소스로 선언하세요: 리소스 식별자와 신뢰하는 인가 서버를 지정합니다. `<your-logto-issuer-endpoint>`는 이전에 복사한 발급자 엔드포인트(애플리케이션 상세 페이지의 **엔드포인트 & 자격 증명**에서 확인, 예: `https://my-project.logto.app/oidc`)로 교체하세요.
 
 **`whoami.js`에서:**
 
 ```js
-import { MCPAuth, fetchServerConfig } from 'mcp-auth';
+import { MCPAuth } from 'mcp-auth';
 
 const authIssuer = '<your-logto-issuer-endpoint>';
+
 const mcpAuth = new MCPAuth({
-  server: await fetchServerConfig(authIssuer, { type: 'oidc' }),
+  protectedResourceMetadata: {
+    // 리소스 식별자; Logto에 등록한 API 리소스 지표와 일치해야 함
+    resource: 'http://localhost:3001/',
+    // 이 MCP 서버가 신뢰하는 인가 서버
+    authorizationServer: { issuer: authIssuer, type: 'oidc' },
+  },
 });
 ```
 
-</TabItem>
-</Tabs>
-
-### 토큰 검증 구현하기 \{#implement-token-verification}
-
-액세스 토큰 (Access token)을 검증하고 사용자 정보를 가져오기 위해, 다음과 같이 액세스 토큰 검증을 구현해야 합니다:
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```python
-import requests
-from mcpauth.types import AuthInfo
-
-def verify_access_token(token: str) -> AuthInfo:
-    endpoint = auth_server_config.metadata.userinfo_endpoint
-    response = requests.get(
-        endpoint,
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    response.raise_for_status()
-    data = response.json()
-    return AuthInfo(
-        token=token,
-        subject=data.get("sub"),
-        issuer=auth_server_config.metadata.issuer,
-        claims=data,
-    )
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
-
-```js
-const verifyToken = async (token) => {
-  const { userinfoEndpoint, issuer } = mcpAuth.config.server.metadata;
-  const response = await fetch(userinfoEndpoint, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!response.ok) throw new Error('Token verification failed');
-  const userInfo = await response.json();
-  return {
-    token,
-    issuer,
-    subject: userInfo.sub,
-    claims: userInfo,
-  };
-};
-```
-
-</TabItem>
-</Tabs>
+인가 서버 메타데이터는 처음 필요할 때 지연 로딩되어 이후 캐시됩니다. `MCPAuth` 인스턴스는 Logto의 JWKS를 통해 JWT 액세스 토큰을 검증합니다 — 서명, 발급자, 대상, 만료 모두 강제됩니다. 별도의 토큰 검증 코드를 작성할 필요가 없습니다.
 
 ### "whoami" 도구 구현하기 \{#implement-the-whoami-tool}
 
-이제, 클라이언트가 보낸 액세스 토큰 (Access token)으로 userinfo 엔드포인트를 요청하여 현재 사용자의 아이덴티티 클레임 (Claims)을 반환하는 "whoami" 도구를 구현해봅시다.
-
-:::note
-현재 SDK 버전에서 Streamable HTTP 트랜스포트에 대한 공식 지원이 없으므로 예제에서는 SSE 트랜스포트를 사용합니다. 이론적으로는 HTTP 호환 트랜스포트라면 어떤 것이든 사용할 수 있습니다.
-:::
-
-<Tabs groupId="sdk">
-<TabItem value="python" label="Python">
-
-```python
-from mcp.server.fastmcp import FastMCP
-from starlette.applications import Starlette
-from starlette.routing import Mount
-from starlette.middleware import Middleware
-
-mcp = FastMCP("WhoAmI")
-
-@mcp.tool()
-def whoami() -> dict:
-    """
-    현재 사용자의 아이덴티티 정보를 반환합니다.
-    """
-    return (
-        mcp_auth.auth_info.claims
-        if mcp_auth.auth_info
-        else {"error": "Not authenticated"}
-    )
-
-bearer_auth = Middleware(mcp_auth.bearer_auth_middleware(verify_access_token))
-app = Starlette(
-    routes=[
-        mcp_auth.metadata_route(),  # OIDC 메타데이터를 디스커버리용으로 제공
-        Mount('/', app=mcp.sse_app(), middleware=[bearer_auth]),
-    ],
-)
-```
-
-서버 실행:
-
-```bash
-uvicorn whoami:app --host 0.0.0.0 --port 3001
-```
-
-</TabItem>
-<TabItem value="node" label="Node.js">
+이제, 검증된 액세스 토큰에서 현재 사용자의 아이덴티티 클레임을 반환하는 "whoami" 도구를 구현해봅시다. mcp-auth가 검증한 인증 정보를 툴의 콜백 컨텍스트에서 `getAuthInfo`로 읽어옵니다.
 
 ```js
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import express from 'express';
+import { McpServer } from '@modelcontextprotocol/server';
+import { getAuthInfo } from 'mcp-auth';
 
-// MCP 서버 생성 및 whoami 도구 등록
-const server = new McpServer({ name: 'WhoAmI', version: '0.0.0' });
-server.tool('whoami', ({ authInfo }) => ({
-  content: [
-    { type: 'text', text: JSON.stringify(authInfo?.claims ?? { error: 'Not authenticated' }) },
-  ],
-}));
+// MCP 서버 인스턴스를 생성하는 팩토리 함수
+// 각 요청마다 별도의 서버 인스턴스를 생성하여 요청을 격리함
+const createMcpServer = () => {
+  const mcpServer = new McpServer({
+    name: 'WhoAmI',
+    version: '0.0.0',
+  });
 
-// Express 앱 & MCP Auth 미들웨어
-const app = express();
-app.use(mcpAuth.delegatedRouter());
-app.use(mcpAuth.bearerAuth(verifyToken));
+  // 현재 사용자 정보를 반환하는 도구를 서버에 추가
+  mcpServer.registerTool(
+    'whoami',
+    {
+      description: '현재 사용자 정보 가져오기',
+    },
+    (context) => {
+      const { claims } = getAuthInfo(context);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(claims) }],
+      };
+    }
+  );
 
-// SSE 트랜스포트 (SDK 문서 참고)
-const transports = {};
-app.get('/sse', async (_req, res) => {
-  const transport = new SSEServerTransport('/messages', res);
-  transports[transport.sessionId] = transport;
-  res.on('close', () => delete transports[transport.sessionId]);
-  await server.connect(transport);
-});
-app.post('/messages', async (req, res) => {
-  const sessionId = String(req.query.sessionId);
-  const transport = transports[sessionId];
-  if (transport) await transport.handlePostMessage(req, res, req.body);
-  else res.status(400).send('No transport found for sessionId');
-});
-
-app.listen(3001);
+  return mcpServer;
+};
 ```
 
-서버 실행:
+### 서버 연결하기 \{#wire-up-the-server}
+
+마지막으로, MCP 클라이언트가 인가 서버를 찾을 수 있도록 OAuth 디스커버리 문서(RFC 9728 / RFC 8414)를 제공하고, SDK의 Bearer 인증 미들웨어로 MCP 엔드포인트를 보호하세요.
+
+```js
+import {
+  createMcpExpressApp,
+  mcpAuthMetadataRouter,
+  requireBearerAuth,
+} from '@modelcontextprotocol/express';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler } from '@modelcontextprotocol/server';
+
+const PORT = 3001;
+
+// MCP 핸들러는 웹 표준 Request / Response를 사용하며, `toNodeHandler`가 이를 Express에 맞게 변환합니다
+const mcpNodeHandler = toNodeHandler(createMcpHandler(createMcpServer));
+
+const app = createMcpExpressApp();
+
+// OAuth 디스커버리 문서(`/.well-known/...`)를 제공하며, 기본적으로 공개되어 있습니다
+app.use(mcpAuthMetadataRouter(await mcpAuth.getAuthMetadataOptions()));
+
+app.all(
+  '/',
+  // 유효한 Bearer 토큰이 필요합니다; 검증된 인증 정보는 `req.auth`를 통해 핸들러로 전달됩니다
+  requireBearerAuth(mcpAuth.getBearerAuthOptions()),
+  // `createMcpExpressApp`은 `express.json()`을 적용하여 요청 스트림을 소진하므로,
+  // 파싱된 body를 명시적으로 전달합니다
+  async (request, response) => mcpNodeHandler(request, response, request.body)
+);
+
+app.listen(PORT);
+```
+
+서버를 실행하려면:
 
 ```bash
-node whoami.js
+npm start
 ```
-
-</TabItem>
-</Tabs>
