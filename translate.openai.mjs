@@ -45,13 +45,12 @@ const buildInstructions = (locale, asIsTerms, terms, patterns) => {
     locale.startsWith('zh') && 'Prefer "你" over "您" when translating into Chinese.',
     isCJK &&
       'Ensure there is a space between CJK characters and non-CJK characters in the translated content.',
-    'Add spaces around the `/` character in the translated content.',
+    'Add spaces around `/` only in prose, never inside URLs, file paths, code, or JSX tags.',
     isCJK &&
       'Include spaces around links and email addresses in the translated content, e.g., `访问 [Logto](https://logto.io) 网站`.',
     "Respond with only the translated content, don't wrap it in any other text or code blocks.",
     'Irregular whitespaces are not allowed in the translated content. E.g. `\u00A0`.',
-    locale.startsWith('ja') &&
-      'Do not violating the "end-tag-mismatch" lint rule in translated MDX. When a line starts with custom component tags like `<CloudLink>`, remember to wrap any content after the ending tag `</CloudLink>` into the next line. E.g. `<CloudLink to="path">\n  some text\n</CloudLink> some other text.` should be `<CloudLink to="path">\n  some text\n</CloudLink>\nsome other text.`.',
+    'Preserve MDX block and inline structure in every locale. Keep an inline custom component, its text, and its closing tag on the same line when followed by prose. Never put trailing prose after the closing tag of a multiline block component.',
     'Do not translate programming language code identifiers in fenced code blocks. E.g. ```go title="_init.go"\nfunc (e *AuthorizationError) Error() string { return e.Message }```. Only translate comments and output messages.',
   ].filter(Boolean);
 };

@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 import { Listr } from 'listr2';
 import picocolors from 'picocolors';
 
-import { normalizeTranslatedMdx } from './translate.normalize.mjs';
+import { prepareTranslatedMdx } from './translate.validate.mjs';
 import { log, OpenAiTranslate } from './translate.openai.mjs';
 import { sampleTranslations } from './translate.samples.mjs';
 import {
@@ -180,8 +180,8 @@ const translate = async (locale, files) => {
         task.title = `Translating ${file}...`;
         const content = await fs.readFile(file, 'utf8');
         const translated = await openAiTranslate.translate(content, locale, task);
-        const normalized = normalizeTranslatedMdx(translated);
         const targetFile = file.replace(docsBaseDir, path.join(i18nBaseDir, locale, translateDir));
+        const normalized = await prepareTranslatedMdx(translated, targetFile);
         await fs.mkdir(path.dirname(targetFile), { recursive: true });
         await fs.writeFile(targetFile, normalized, 'utf8');
         // eslint-disable-next-line @silverhand/fp/no-mutation
