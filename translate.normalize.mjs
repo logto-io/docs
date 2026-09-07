@@ -1,5 +1,55 @@
+/** Keep fenced examples opaque while repairing prose across the whole document. */
+const outsideCodeFences = (content, normalize) => {
+  const protectedBlocks = [];
+  const lines = [];
+  let fence;
+  let block = [];
+  let prefix = '<!-- logto-protected-code';
+
+  while (content.includes(prefix)) prefix += '-';
+
+  const protectBlock = () => {
+    const placeholder = `${prefix}-${protectedBlocks.length} -->`;
+    protectedBlocks.push({ placeholder, content: block.join('\n') });
+    lines.push(placeholder);
+    block = [];
+  };
+
+  for (const line of content.split('\n')) {
+    const marker =
+      /^[\t ]*(?:>[\t ]*)*(?:(?:[-+*]|\d+[.)])[\t ]+)?(?<marker>`{3,}|~{3,})(?<info>.*)$/.exec(
+        line
+      )?.groups;
+
+    if (fence) {
+      block.push(line);
+      if (
+        marker &&
+        marker.marker[0] === fence[0] &&
+        marker.marker.length >= fence.length &&
+        !marker.info.trim()
+      ) {
+        protectBlock();
+        fence = undefined;
+      }
+    } else if (marker && !(marker.marker[0] === '`' && marker.info.includes('`'))) {
+      block.push(line);
+      fence = marker.marker;
+    } else {
+      lines.push(line);
+    }
+  }
+
+  if (block.length > 0) protectBlock();
+
+  return protectedBlocks.reduce(
+    (result, block) => result.replace(block.placeholder, () => block.content),
+    normalize(lines.join('\n'))
+  );
+};
+
 /**
- * Collapse a simple multiline custom component used inside a Markdown list item.
+ * Collapse a simple multiline custom component used in a paragraph or Markdown list item.
  *
  * MDX treats the opening tag as part of the list-item paragraph, so translated output like:
  *
@@ -14,7 +64,7 @@
  */
 const normalizeMultilineCustomComponents = (content) =>
   content.replaceAll(
-    /^(?<indent>[\t ]*)(?<listPrefix>(?:[*+-]|\d+\.)\s+)(?<openingTag><(?<tagName>[A-Z][\dA-Za-z]*)\b[^\n>]*>)\n[\t ]+(?<childText>[^\n<]+)\n[\t ]*<\/\k<tagName>>(?<trailingText>[\t ]+\S[^\n]*)$/gm,
+    /^(?<indent>[\t ]*)(?<listPrefix>(?:(?:[*+-]|\d+\.)\s+)?)(?<openingTag><(?<tagName>[A-Z][\dA-Za-z]*)\b[^\n>]*>)\n[\t ]+(?<childText>[^\n<]+)\n[\t ]*<\/\k<tagName>>(?<trailingText>[\t ]+\S[^\n]*)$/gm,
     (...arguments_) => {
       const { indent, listPrefix, openingTag, tagName, childText, trailingText } =
         arguments_.at(-1);
@@ -40,18 +90,6 @@ const normalizeDetailsClosingTags = (content) =>
     .split('\n')
     .reduce(
       (state, line) => {
-        if (/^\s*(?:`{3,}|~{3,})/.test(line)) {
-          return {
-            ...state,
-            inCodeFence: !state.inCodeFence,
-            lines: [...state.lines, line],
-          };
-        }
-
-        if (state.inCodeFence) {
-          return { ...state, lines: [...state.lines, line] };
-        }
-
         const match = /^(?<indent>\s*)<(?<closing>\/?)(?<tagName>details|summary)>$/.exec(line);
 
         if (!match?.groups) {
@@ -88,7 +126,7 @@ const normalizeDetailsClosingTags = (content) =>
 
         return { ...state, lines: [...state.lines, line] };
       },
-      { inCodeFence: false, lines: [], openTags: [] }
+      { lines: [], openTags: [] }
     )
     .lines.join('\n');
 
@@ -111,40 +149,18 @@ const normalizeDetailsClosingTags = (content) =>
  * @returns {string}
  */
 const normalizeMisplacedInlineCodeLinks = (content) =>
-  content
-    .split('\n')
-    .reduce(
-      (state, line) => {
-        if (/^\s*(?:`{3,}|~{3,})/.test(line)) {
-          return {
-            inCodeFence: !state.inCodeFence,
-            lines: [...state.lines, line],
-          };
-        }
+  content.replaceAll(
+    /\[(?<label>[^\n\]]+)]\((?<identifier>[A-Z][\dA-Za-z]*(?:\.[A-Z][\dA-Za-z]*)+)\)[\t ]+\((?<destination>\/[^\s)]+)\)/g,
+    '`$<identifier>` [$<label>]($<destination>)'
+  );
 
-        if (state.inCodeFence) {
-          return { ...state, lines: [...state.lines, line] };
-        }
-
-        return {
-          ...state,
-          lines: [
-            ...state.lines,
-            line.replaceAll(
-              /\[(?<label>[^\n\]]+)]\((?<identifier>[A-Z][\dA-Za-z]*(?:\.[A-Z][\dA-Za-z]*)+)\)\s+\((?<destination>\/[^\s)]+)\)/g,
-              '`$<identifier>` [$<label>]($<destination>)'
-            ),
-          ],
-        };
-      },
-      { inCodeFence: false, lines: [] }
-    )
-    .lines.join('\n');
-
-export const normalizeTranslatedMdxAfterAutofix = (content) =>
+const normalizeStructure = (content) =>
   normalizeMisplacedInlineCodeLinks(
     normalizeDetailsClosingTags(normalizeMultilineCustomComponents(content))
   );
+
+export const normalizeTranslatedMdxAfterAutofix = (content) =>
+  outsideCodeFences(content, normalizeStructure);
 
 /**
  * Split trailing text after closing custom component tags into the next line.
@@ -157,8 +173,8 @@ export const normalizeTranslatedMdxAfterAutofix = (content) =>
  * @param {string} content
  * @returns {string}
  */
-export const normalizeTranslatedMdx = (content) =>
-  normalizeTranslatedMdxAfterAutofix(
+const normalizeProse = (content) =>
+  normalizeStructure(
     content
       // Normalize irregular whitespace that may slip in from model output, e.g. French `U+202F`.
       .replaceAll(/[\u00A0\u2002-\u200A\u202F]/g, ' ')
@@ -190,3 +206,5 @@ export const normalizeTranslatedMdx = (content) =>
       return [`${indent}${listPrefix}${closingTag}`, `${trailingIndent}${trailingText}`];
     })
     .join('\n');
+
+export const normalizeTranslatedMdx = (content) => outsideCodeFences(content, normalizeProse);
