@@ -1,6 +1,6 @@
 ```ts title="app/app.config.ts"
 import { type ApplicationConfig } from '@angular/core';
-import { provideLogto } from '@logto/angular';
+import { provideLogto, UserScope } from '@logto/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -8,7 +8,7 @@ export const appConfig: ApplicationConfig = {
       endpoint: '<your-logto-endpoint>',
       appId: '<your-app-id>',
       // highlight-start
-      resources: ['https://shopping.your-app.com/api', 'https://store.your-app.com/api'],
+      scopes: [UserScope.Organizations],
       // highlight-end
     }),
     // ...other providers
