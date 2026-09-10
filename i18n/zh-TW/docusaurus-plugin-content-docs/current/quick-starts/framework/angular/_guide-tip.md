@@ -1,6 +1,6 @@
 :::tip
 
-- 以下示範基於 Angular 18.0.0 和 [angular-auth-oidc-client](https://github.com/damienbod/angular-auth-oidc-client)。
-- 範例專案可在 [GitHub 儲存庫](https://github.com/logto-io/js/tree/master/packages/angular-sample) 中找到。
+- 本指南使用第一方 `@logto/angular` v2 SDK，支援 Angular 20，並提供相依性注入與 Signals。
+- 範例專案可在我們的 [SDK 儲存庫](https://github.com/logto-io/js/tree/master/packages/angular-sample) 找到。
 
 :::

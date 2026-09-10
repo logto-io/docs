@@ -5,130 +5,106 @@ import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
 import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
 import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
 
-一旦用户成功登录，Logto 将签发一个包含用户信息声明的 [ID 令牌](https://openid.net/specs/openid-connect-core-1_0.html#IDToken)。ID 令牌是一个 JSON Web Token (JWT)。
-
-需要注意的是，可以检索的用户信息声明取决于用户在登录时使用的权限，并且考虑到性能和数据大小，ID 令牌可能不包含所有用户声明，某些用户声明仅在 [userinfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) 中可用（请参阅下面的相关列表）。
-
-如果配置中没有提供 `resource`，`buildAngularAuthConfig()` 工具将启用 `autoUserInfo` 和 `renewUserInfoAfterTokenRenew`。这意味着 Logto 将在用户登录后自动获取用户信息，并在令牌更新后更新用户信息。
-
-:::info
-要了解有关配置 `angular-auth-oidc-client` 库的更多信息，请参阅 [官方文档](https://angular-auth-oidc-client.com/)。
-:::
-
 ### 显示用户信息 \{#display-user-information}
 
-`OidcSecurityService` 提供了一种方便的方法来订阅认证状态以及用户信息：
+要显示用户的信息，可以使用 `getIdTokenClaims()` 从 ID 令牌 (ID token) 中读取声明 (Claims)，无需额外的网络请求。在你的 `AppComponent` 中添加一个 `effect`，当 `isAuthenticated()` 变为 true 时加载声明 (Claims)，包括恢复现有会话时。导入 `JsonPipe` 以显示结果：
 
 ```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { decodeIdToken, type IdTokenClaims } from '@logto/js';
+import { JsonPipe } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService, type IdTokenClaims } from '@logto/angular';
 
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  idTokenClaims?: IdTokenClaims;
-  accessToken?: string;
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [JsonPipe, RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+  readonly user = signal<IdTokenClaims | undefined>(undefined);
 
-  constructor(public oidcSecurityService: OidcSecurityService) {}
+  constructor() {
+    effect(() => {
+      if (!this.logto.isAuthenticated()) {
+        this.user.set(undefined);
+        return;
+      }
 
-  ngOnInit() {
-    this.oidcSecurityService.checkAuth().subscribe(({ isAuthenticated, idToken, accessToken }) => {
-      console.log('app authenticated', isAuthenticated, idToken);
-      this.isAuthenticated = isAuthenticated;
-      this.idTokenClaims = decodeIdToken(idToken);
-      this.accessToken = accessToken;
+      void this.logto
+        .getIdTokenClaims()
+        .then((claims) => {
+          this.user.set(claims);
+        })
+        .catch(() => {
+          // SDK 会通过 logto.error() 向模板暴露错误。
+        });
     });
   }
 
-  // ...other methods
+  // ...保留上一步的 signIn() 和 signOut() 方法
 }
 ```
 
-并在模板中使用它：
+在你的模板的 `logto.isAuthenticated()` 分支内添加以下内容：
 
 ```html title="app/app.component.html"
-<button *ngIf="!isAuthenticated" (click)="signIn()">Sign in</button>
-<ng-container *ngIf="isAuthenticated">
-  <pre>{{ idTokenClaims | json }}</pre>
-  <p>Access token: {{ accessToken }}</p>
-  <!-- ... -->
-  <button (click)="signOut()">Sign out</button>
-</ng-container>
+@if (user(); as claims) {
+<pre>{{ claims | json }}</pre>
+}
 ```
 
-### 请求额外的声明 \{#request-additional-claims}
+### 请求额外声明 (Claims) \{#request-additional-claims}
 
-<FindUserInfoMissing method="idToken" />
+<FindUserInfoMissing method="getIdTokenClaims()" />
 
 <ScopesAndClaimsIntroduction />
 
-要请求额外的权限，你可以配置认证提供者配置：
+在你的 `provideLogto` 配置中添加 scopes：
 
-```tsx title="app/app.config.ts"
-import { UserScope, buildAngularAuthConfig } from '@logto/js';
+```ts title="app/app.config.ts"
+import { type ApplicationConfig } from '@angular/core';
+import { provideLogto, UserScope } from '@logto/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other configs
-        // highlight-start
-        scopes: [
-          UserScope.Email,
-          UserScope.Phone,
-          UserScope.CustomData,
-          UserScope.Identities,
-          UserScope.Organizations,
-        ],
-        // highlight-end
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
+      scopes: [
+        UserScope.Email,
+        UserScope.Phone,
+        UserScope.CustomData,
+        UserScope.Identities,
+        UserScope.Organizations,
+      ],
     }),
-    // ...other providers
+    // ...其他 providers
   ],
 };
 ```
 
-然后你可以在 `idToken` 的返回值中访问额外的声明。
+更改 scopes 后请重新登录。额外的 ID 令牌 (ID token) 声明 (Claims)，如 `email` 和 `phone_number`，将可通过 `getIdTokenClaims()` 获取，并由上面的示例显示。
 
-{/* eslint-disable prettier/prettier */}
 <ClaimsNeedNetworkRequest
-  type="option"
-  configOption="userData"
-  value="userData"
+  type="method"
+  method="fetchUserInfo()"
   codeSnippet={
-    <CodeBlock language="ts" title="app/app.component.ts">{`import { OidcSecurityService } from 'angular-auth-oidc-client';
-// highlight-next-line
-import { type UserInfoResponse } from '@logto/js';
-
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  // highlight-next-line
-  userData?: UserInfoResponse;
-  accessToken?: string;
-
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  ngOnInit() {
-    this.oidcSecurityService
-      .checkAuth()
-      // highlight-next-line
-      .subscribe(({ isAuthenticated, userData, accessToken }) => {
-        console.log('app authenticated', isAuthenticated, idToken);
-        this.isAuthenticated = isAuthenticated;
-        // highlight-next-line
-        this.userData = userData;
-        this.accessToken = accessToken;
-      });
+    <CodeBlock
+      language="ts"
+      title="app/app.component.ts"
+    >{`// 将此方法添加到 AppComponent 并在登录后调用。
+async loadUserInfo() {
+  const userInfo = await this.logto.fetchUserInfo();
+  // 现在你可以访问 userInfo.custom_data、userInfo.identities 等。
+  return userInfo;
+}`}</CodeBlock>
   }
-
-  // ...other methods
-}
-
-// Now you can access the claim \`userData.custom_data\``}</CodeBlock>
-}
 />
-{/* eslint-enable prettier/prettier */}
 
-### 权限和声明 \{#scopes-and-claims}
+`fetchUserInfo()` 可以与 API 资源 (API resource) 访问令牌 (Access token) 一起使用。配置 `resources` 并不会阻止 SDK 请求用户信息。
+
+### 权限 (Scopes) 与声明 (Claims) \{#scopes-and-claims}
 
 <ScopesAndClaims />

@@ -5,130 +5,106 @@ import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
 import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
 import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
 
-사용자가 성공적으로 로그인하면, Logto는 사용자 정보 클레임을 포함하는 [ID 토큰](https://openid.net/specs/openid-connect-core-1_0.html#IDToken)을 발급합니다. ID 토큰은 JSON Web Token (JWT)입니다.
+### 사용자 정보 표시하기 \{#display-user-information}
 
-사용자 정보 클레임은 사용자가 로그인할 때 사용한 스코프에 따라 검색할 수 있으며, 성능과 데이터 크기를 고려하여 ID 토큰에 모든 사용자 클레임이 포함되지 않을 수 있습니다. 일부 사용자 클레임은 [userinfo 엔드포인트](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo)에서만 사용할 수 있습니다 (아래 관련 목록 참조).
-
-`buildAngularAuthConfig()` 유틸리티는 구성에 `resource`가 제공되지 않은 경우 `autoUserInfo` 및 `renewUserInfoAfterTokenRenew`를 활성화합니다. 이는 Logto가 사용자가 로그인한 후 자동으로 사용자 정보를 가져오고 토큰이 갱신된 후 사용자 정보를 갱신한다는 것을 의미합니다.
-
-:::info
-`angular-auth-oidc-client` 라이브러리 구성에 대해 더 알아보려면 [공식 문서](https://angular-auth-oidc-client.com/)를 참조하세요.
-:::
-
-### 사용자 정보 표시 \{#display-user-information}
-
-`OidcSecurityService`는 인증 상태와 사용자 정보에 구독할 수 있는 편리한 방법을 제공합니다:
+사용자 정보를 표시하려면, 추가 네트워크 요청 없이 ID 토큰에서 클레임 (Claim)을 읽기 위해 `getIdTokenClaims()`를 사용하세요. 기존 세션이 복원될 때를 포함하여 `isAuthenticated()`가 true가 될 때 클레임을 로드하도록 `AppComponent`에 `effect`를 추가하세요. 결과를 표시하려면 `JsonPipe`를 import 하세요:
 
 ```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { decodeIdToken, type IdTokenClaims } from '@logto/js';
+import { JsonPipe } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService, type IdTokenClaims } from '@logto/angular';
 
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  idTokenClaims?: IdTokenClaims;
-  accessToken?: string;
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [JsonPipe, RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+  readonly user = signal<IdTokenClaims | undefined>(undefined);
 
-  constructor(public oidcSecurityService: OidcSecurityService) {}
+  constructor() {
+    effect(() => {
+      if (!this.logto.isAuthenticated()) {
+        this.user.set(undefined);
+        return;
+      }
 
-  ngOnInit() {
-    this.oidcSecurityService.checkAuth().subscribe(({ isAuthenticated, idToken, accessToken }) => {
-      console.log('app authenticated', isAuthenticated, idToken);
-      this.isAuthenticated = isAuthenticated;
-      this.idTokenClaims = decodeIdToken(idToken);
-      this.accessToken = accessToken;
+      void this.logto
+        .getIdTokenClaims()
+        .then((claims) => {
+          this.user.set(claims);
+        })
+        .catch(() => {
+          // SDK는 템플릿에서 logto.error()를 통해 에러를 노출합니다.
+        });
     });
   }
 
-  // ...other methods
+  // ...이전 단계의 signIn() 및 signOut() 메서드를 유지하세요
 }
 ```
 
-그리고 템플릿에서 사용하세요:
+템플릿의 `logto.isAuthenticated()` 분기 내에 다음을 추가하세요:
 
 ```html title="app/app.component.html"
-<button *ngIf="!isAuthenticated" (click)="signIn()">Sign in</button>
-<ng-container *ngIf="isAuthenticated">
-  <pre>{{ idTokenClaims | json }}</pre>
-  <p>Access token: {{ accessToken }}</p>
-  <!-- ... -->
-  <button (click)="signOut()">Sign out</button>
-</ng-container>
+@if (user(); as claims) {
+<pre>{{ claims | json }}</pre>
+}
 ```
 
-### 추가 클레임 요청 \{#request-additional-claims}
+### 추가 클레임 (Claim) 요청하기 \{#request-additional-claims}
 
-<FindUserInfoMissing method="idToken" />
+<FindUserInfoMissing method="getIdTokenClaims()" />
 
 <ScopesAndClaimsIntroduction />
 
-추가 스코프를 요청하려면 인증 제공자 구성을 설정할 수 있습니다:
+스코프 (Scope)를 `provideLogto` 설정에 추가하세요:
 
-```tsx title="app/app.config.ts"
-import { UserScope, buildAngularAuthConfig } from '@logto/js';
+```ts title="app/app.config.ts"
+import { type ApplicationConfig } from '@angular/core';
+import { provideLogto, UserScope } from '@logto/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other configs
-        // highlight-start
-        scopes: [
-          UserScope.Email,
-          UserScope.Phone,
-          UserScope.CustomData,
-          UserScope.Identities,
-          UserScope.Organizations,
-        ],
-        // highlight-end
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
+      scopes: [
+        UserScope.Email,
+        UserScope.Phone,
+        UserScope.CustomData,
+        UserScope.Identities,
+        UserScope.Organizations,
+      ],
     }),
-    // ...other providers
+    // ...다른 providers
   ],
 };
 ```
 
-그런 다음 `idToken`의 반환 값에서 추가 클레임에 접근할 수 있습니다.
+스코프를 변경한 후 다시 로그인하세요. `email` 및 `phone_number`와 같은 추가 ID 토큰 클레임 (Claim)은 `getIdTokenClaims()`에서 사용할 수 있으며, 위 예시에서 표시됩니다.
 
-{/* eslint-disable prettier/prettier */}
 <ClaimsNeedNetworkRequest
-  type="option"
-  configOption="userData"
-  value="userData"
+  type="method"
+  method="fetchUserInfo()"
   codeSnippet={
-    <CodeBlock language="ts" title="app/app.component.ts">{`import { OidcSecurityService } from 'angular-auth-oidc-client';
-// highlight-next-line
-import { type UserInfoResponse } from '@logto/js';
-
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  // highlight-next-line
-  userData?: UserInfoResponse;
-  accessToken?: string;
-
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  ngOnInit() {
-    this.oidcSecurityService
-      .checkAuth()
-      // highlight-next-line
-      .subscribe(({ isAuthenticated, userData, accessToken }) => {
-        console.log('app authenticated', isAuthenticated, idToken);
-        this.isAuthenticated = isAuthenticated;
-        // highlight-next-line
-        this.userData = userData;
-        this.accessToken = accessToken;
-      });
+    <CodeBlock
+      language="ts"
+      title="app/app.component.ts"
+    >{`// 이 메서드를 AppComponent에 추가하고 로그인 후 호출하세요.
+async loadUserInfo() {
+  const userInfo = await this.logto.fetchUserInfo();
+  // 이제 userInfo.custom_data, userInfo.identities 등에도 접근할 수 있습니다.
+  return userInfo;
+}`}</CodeBlock>
   }
-
-  // ...other methods
-}
-
-// 이제 \`userData.custom_data\` 클레임에 접근할 수 있습니다.`}</CodeBlock>
-}
 />
-{/* eslint-enable prettier/prettier */}
 
-### 스코프와 클레임 \{#scopes-and-claims}
+`fetchUserInfo()`는 API 리소스 액세스 토큰과 함께 사용할 수 있습니다. `resources`를 설정해도 SDK가 사용자 정보를 요청하는 것을 막지 않습니다.
+
+### 스코프 (Scope)와 클레임 (Claim) \{#scopes-and-claims}
 
 <ScopesAndClaims />

@@ -1,34 +1,40 @@
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
 import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
 import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 import SignOutNote from '../../fragments/_web-sign-out-note.md';
 
-### กำหนดค่าแอปพลิเคชัน \{#configure-application}
+### เริ่มต้น Logto provider \{#init-logto-provider}
 
-ในโปรเจกต์ Angular ของคุณ ให้เพิ่ม auth provider ใน `app.config.ts`:
+ในโปรเจกต์ Angular ของคุณ ให้ลงทะเบียน `provideLogto` และเส้นทางของแอปพลิเคชันใน `app.config.ts`:
 
 ```ts title="app/app.config.ts"
-import { buildAngularAuthConfig } from '@logto/js';
-import { provideAuth } from 'angular-auth-oidc-client';
+import { type ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLogto } from '@logto/angular';
+
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        endpoint: '<your-logto-endpoint>',
-        appId: '<your-app-id>',
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
     }),
+    provideRouter(routes),
     // ...other providers
   ],
 };
 ```
 
-### กำหนดค่า redirect URI \{#configure-redirect-uris}
+`provideLogto` จะกู้คืนสถานะการยืนยันตัวตนโดยอัตโนมัติหลังจากเรนเดอร์เบราว์เซอร์ครั้งแรก คุณไม่จำเป็นต้องเรียกเมธอดเริ่มต้นในคอมโพเนนต์ของคุณ
+
+:::note
+เมื่อใช้ server-side rendering (SSR) สถานะการยืนยันตัวตนและโทเค็นจะมีเฉพาะในเบราว์เซอร์เท่านั้น ใช้ `isLoading()` เพื่อแสดงสถานะกำลังโหลดจนกว่าการเริ่มต้นจะเสร็จสิ้น หากคุณต้องการข้อมูลที่ผ่านการยืนยันตัวตนระหว่างการเรนเดอร์ฝั่งเซิร์ฟเวอร์ ให้ใช้ SDK สำหรับฝั่งเซิร์ฟเวอร์หรือ BFF
+:::
+
+### กำหนดค่า redirect URIs \{#configure-redirect-uris}
 
 <SignInFlowSummary />
 
@@ -38,54 +44,112 @@ export const appConfig: ApplicationConfig = {
 
 ### จัดการ redirect \{#handle-redirect}
 
-เนื่องจากเราใช้ `http://localhost:3000/callback` เป็น redirect URI ตอนนี้เราต้องจัดการให้ถูกต้อง ไลบรารี `angular-auth-oidc-client` มีฟีเจอร์ในตัวสำหรับจัดการ redirect นี้ คุณเพียงแค่กำหนดค่า config ของ auth provider ให้ถูกต้อง ไลบรารีจะจัดการส่วนที่เหลือให้เอง
+สร้างคอมโพเนนต์ callback เพื่อดำเนินการลงชื่อเข้าใช้ให้สมบูรณ์หลังจาก Logto เปลี่ยนเส้นทางผู้ใช้กลับมายังแอปของคุณ ใช้ `afterNextRender` เพื่อให้การจัดการ callback ทำงานเฉพาะในเบราว์เซอร์:
 
-```ts title="app/app.config.ts"
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other config
-        // highlight-start
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-        // highlight-end
-      }),
-    }),
-    // ...other providers
-  ],
-};
-```
+```ts title="app/callback.component.ts"
+import { afterNextRender, Component, inject } from '@angular/core';
+import { LogtoService } from '@logto/angular';
 
-### สร้างฟังก์ชัน sign-in และ sign-out \{#implement-sign-in-and-sign-out}
+@Component({
+  selector: 'app-callback',
+  standalone: true,
+  template: `
+    @if (logto.error(); as error) {
+      <p role="alert">{{ error.message }}</p>
+    } @else {
+      <p>กำลังดำเนินการลงชื่อเข้าใช้...</p>
+    }
+  `,
+})
+export class CallbackComponent {
+  readonly logto = inject(LogtoService);
 
-ในคอมโพเนนต์ที่คุณต้องการเพิ่มฟังก์ชัน sign-in และ sign-out (เช่น `app.component.ts`) ให้ inject `OidcSecurityService` และใช้สำหรับ sign in และ sign out
+  constructor() {
+    afterNextRender(() => {
+      void (async () => {
+        const callbackUri = window.location.href;
 
-```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+        if (!(await this.logto.isSignInRedirected(callbackUri))) {
+          window.location.replace(window.location.origin);
+          return;
+        }
 
-export class AppComponent implements OnInit {
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  signIn() {
-    this.oidcSecurityService.authorize();
-  }
-
-  signOut() {
-    this.oidcSecurityService.logoff().subscribe((result) => {
-      console.log('app sign-out', result);
+        await this.logto.handleSignInCallback(callbackUri);
+      })().catch(() => {
+        // SDK จะส่งข้อผิดพลาด callback ผ่าน logto.error() สำหรับใช้ใน template
+      });
     });
   }
 }
 ```
 
-จากนั้นใน template ให้เพิ่มปุ่มสำหรับ sign in และ sign out:
+`isSignInRedirected()` จะตรวจสอบว่า URL ตรงกับเซสชันการลงชื่อเข้าใช้ที่กำลังดำเนินการอยู่หรือไม่ หากมีผู้เข้าชมเส้นทาง callback โดยไม่มีเซสชันนี้ ตัวอย่างนี้จะนำผู้ใช้งานกลับไปยังหน้าแรกของแอปพลิเคชันแทนที่จะพยายามดำเนินการลงชื่อเข้าใช้ให้สมบูรณ์
+
+ลงทะเบียนเส้นทาง callback ใน `app.routes.ts` โดยต้องตรงกับ path ของ redirect URI และต้องไม่ต้องการการยืนยันตัวตน ตัวอย่างเช่น ใช้ `callback` สำหรับ redirect URI ที่ลงท้ายด้วย `/callback`:
+
+```ts title="app/app.routes.ts"
+import { type Routes } from '@angular/router';
+
+import { CallbackComponent } from './callback.component';
+
+export const routes: Routes = [
+  { path: 'callback', component: CallbackComponent },
+  // ...other routes
+];
+```
+
+คอมโพเนนต์ root ต้องมี `<router-outlet />` เพื่อเรนเดอร์เส้นทางนี้ ดังที่แสดงในขั้นตอนถัดไป
+
+### สร้างฟังก์ชันลงชื่อเข้าใช้และออกจากระบบ \{#implement-sign-in-and-sign-out}
+
+inject `LogtoService` เพื่อเริ่มต้นการลงชื่อเข้าใช้และออกจากระบบ ส่ง redirect URIs ที่ลงทะเบียนไว้ไปยังเมธอดเหล่านี้ `postRedirectUri` จะบอก SDK ว่าควรนำทางไปที่ใดหลังจากจัดการ callback การลงชื่อเข้าใช้สำเร็จ:
+
+<SignInNote calling="signIn()" />
+
+```ts title="app/app.component.ts"
+import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService } from '@logto/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+
+  async signIn() {
+    await this.logto.signIn({
+      redirectUri: 'http://localhost:3000/callback',
+      postRedirectUri: window.location.origin,
+    });
+  }
+
+  async signOut() {
+    await this.logto.signOut('http://localhost:3000/');
+  }
+}
+```
+
+อ่านค่า `isLoading()`, `isAuthenticated()`, และ `error()` Signals ได้โดยตรงใน template:
 
 ```html title="app/app.component.html"
-<button (click)="signIn()">Sign in</button>
-<br />
-<button (click)="signOut()">Sign out</button>
+@if (logto.error(); as error) {
+<p role="alert">{{ error.message }}</p>
+} @if (logto.isLoading()) {
+<p>กำลังโหลด...</p>
+} @else if (logto.isAuthenticated()) {
+<button type="button" (click)="signOut()">ออกจากระบบ</button>
+} @else {
+<button type="button" (click)="signIn()">ลงชื่อเข้าใช้</button>
+}
+
+<router-outlet />
 ```
+
+ให้คง `<router-outlet />` ไว้นอกเงื่อนไขการยืนยันตัวตน เพื่อให้ callback สามารถเรนเดอร์ได้ก่อนที่ผู้ใช้จะลงชื่อเข้าใช้
 
 <SignOutNote />
 

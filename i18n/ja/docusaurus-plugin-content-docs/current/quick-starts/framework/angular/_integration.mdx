@@ -1,32 +1,38 @@
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
 import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
 import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 import SignOutNote from '../../fragments/_web-sign-out-note.md';
 
-### アプリケーションの設定 \{#configure-application}
+### Logto プロバイダーの初期化 \{#init-logto-provider}
 
-Angular プロジェクトで、`app.config.ts` に認証プロバイダーを追加します：
+Angular プロジェクトで、`app.config.ts` に `provideLogto` とアプリケーションのルートを登録します：
 
 ```ts title="app/app.config.ts"
-import { buildAngularAuthConfig } from '@logto/js';
-import { provideAuth } from 'angular-auth-oidc-client';
+import { type ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLogto } from '@logto/angular';
+
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        endpoint: '<your-logto-endpoint>',
-        appId: '<your-app-id>',
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
     }),
-    // ...他のプロバイダー
+    provideRouter(routes),
+    // ...other providers
   ],
 };
 ```
+
+`provideLogto` は、最初のブラウザレンダリング後に認証 (Authentication) 状態を自動的に復元します。コンポーネントで初期化メソッドを呼び出す必要はありません。
+
+:::note
+サーバーサイドレンダリング (SSR) を使用する場合、認証 (Authentication) 状態とトークンはブラウザでのみ利用可能です。初期化が完了するまで `isLoading()` を使ってローディング状態を表示してください。サーバーレンダリング中に認証済みデータが必要な場合は、サーバーまたは BFF SDK を利用してください。
+:::
 
 ### リダイレクト URI の設定 \{#configure-redirect-uris}
 
@@ -38,54 +44,112 @@ export const appConfig: ApplicationConfig = {
 
 ### リダイレクトの処理 \{#handle-redirect}
 
-`http://localhost:3000/callback` をリダイレクト URI として使用するため、適切に処理する必要があります。`angular-auth-oidc-client` ライブラリはリダイレクトの処理をサポートしています。認証プロバイダーの設定を適切に行うだけで、ライブラリが残りを処理します。
+Logto がユーザーをアプリケーションにリダイレクトした後、サインインを完了するためのコールバックコンポーネントを作成します。`afterNextRender` を使用して、コールバック処理がブラウザでのみ実行されるようにします：
 
-```ts title="app/app.config.ts"
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...他の設定
-        // highlight-start
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-        // highlight-end
-      }),
-    }),
-    // ...他のプロバイダー
-  ],
-};
-```
+```ts title="app/callback.component.ts"
+import { afterNextRender, Component, inject } from '@angular/core';
+import { LogtoService } from '@logto/angular';
 
-### サインインとサインアウトの実装 \{#implement-sign-in-and-sign-out}
+@Component({
+  selector: 'app-callback',
+  standalone: true,
+  template: `
+    @if (logto.error(); as error) {
+      <p role="alert">{{ error.message }}</p>
+    } @else {
+      <p>サインインを完了しています...</p>
+    }
+  `,
+})
+export class CallbackComponent {
+  readonly logto = inject(LogtoService);
 
-サインインとサインアウトを実装したいコンポーネント（例えば、`app.component.ts`）で、`OidcSecurityService` をインジェクトし、それを使用してサインインとサインアウトを行います。
+  constructor() {
+    afterNextRender(() => {
+      void (async () => {
+        const callbackUri = window.location.href;
 
-```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+        if (!(await this.logto.isSignInRedirected(callbackUri))) {
+          window.location.replace(window.location.origin);
+          return;
+        }
 
-export class AppComponent implements OnInit {
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  signIn() {
-    this.oidcSecurityService.authorize();
-  }
-
-  signOut() {
-    this.oidcSecurityService.logoff().subscribe((result) => {
-      console.log('app sign-out', result);
+        await this.logto.handleSignInCallback(callbackUri);
+      })().catch(() => {
+        // SDK はコールバックエラーを logto.error() 経由でテンプレートに公開します。
+      });
     });
   }
 }
 ```
 
-次に、テンプレートにサインインとサインアウトのボタンを追加します：
+`isSignInRedirected()` は、URL がアクティブなサインインセッションと一致するかどうかを確認します。誰かがセッションなしでコールバックルートにアクセスした場合、この例ではサインインを試みる代わりにアプリケーションのホームページへ戻します。
+
+`app.routes.ts` でコールバックルートを登録します。これはリダイレクト URI のパスと一致し、認証 (Authentication) を必要としない必要があります。たとえば、リダイレクト URI が `/callback` で終わる場合は `callback` を使用します：
+
+```ts title="app/app.routes.ts"
+import { type Routes } from '@angular/router';
+
+import { CallbackComponent } from './callback.component';
+
+export const routes: Routes = [
+  { path: 'callback', component: CallbackComponent },
+  // ...other routes
+];
+```
+
+ルートコンポーネントには、このルートをレンダリングするために `<router-outlet />` が必要です（次のステップで説明します）。
+
+### サインインとサインアウトの実装 \{#implement-sign-in-and-sign-out}
+
+`LogtoService` をインジェクトしてサインインとサインアウトを開始します。これらのメソッドには登録済みのリダイレクト URI を渡します。`postRedirectUri` は、サインインコールバックの処理が正常に完了した後に SDK が遷移する場所を指定します：
+
+<SignInNote calling="signIn()" />
+
+```ts title="app/app.component.ts"
+import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService } from '@logto/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+
+  async signIn() {
+    await this.logto.signIn({
+      redirectUri: 'http://localhost:3000/callback',
+      postRedirectUri: window.location.origin,
+    });
+  }
+
+  async signOut() {
+    await this.logto.signOut('http://localhost:3000/');
+  }
+}
+```
+
+テンプレート内で `isLoading()`、`isAuthenticated()`、`error()` シグナルを直接参照できます：
 
 ```html title="app/app.component.html"
-<button (click)="signIn()">Sign in</button>
-<br />
-<button (click)="signOut()">Sign out</button>
+@if (logto.error(); as error) {
+<p role="alert">{{ error.message }}</p>
+} @if (logto.isLoading()) {
+<p>読み込み中...</p>
+} @else if (logto.isAuthenticated()) {
+<button type="button" (click)="signOut()">サインアウト</button>
+} @else {
+<button type="button" (click)="signIn()">サインイン</button>
+}
+
+<router-outlet />
 ```
+
+コールバックがサインイン前にレンダリングできるよう、`<router-outlet />` は認証 (Authentication) 条件の外側に配置してください。
 
 <SignOutNote />
 

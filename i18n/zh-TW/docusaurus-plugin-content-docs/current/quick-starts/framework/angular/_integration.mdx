@@ -1,34 +1,40 @@
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
 import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
 import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 import SignOutNote from '../../fragments/_web-sign-out-note.md';
 
-### 配置應用程式 \{#configure-application}
+### 初始化 Logto provider \{#init-logto-provider}
 
-在你的 Angular 專案中，於 `app.config.ts` 中新增驗證提供者：
+在你的 Angular 專案中，於 `app.config.ts` 註冊 `provideLogto` 以及你的應用程式路由：
 
 ```ts title="app/app.config.ts"
-import { buildAngularAuthConfig } from '@logto/js';
-import { provideAuth } from 'angular-auth-oidc-client';
+import { type ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLogto } from '@logto/angular';
+
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        endpoint: '<your-logto-endpoint>',
-        appId: '<your-app-id>',
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
     }),
-    // ...其他提供者
+    provideRouter(routes),
+    // ...other providers
   ],
 };
 ```
 
-### 配置重定向 URI \{#configure-redirect-uris}
+`provideLogto` 會在瀏覽器首次渲染後自動還原驗證 (Authentication) 狀態。你不需要在元件中呼叫初始化方法。
+
+:::note
+當使用伺服器端渲染（SSR, Server-side Rendering）時，驗證 (Authentication) 狀態與權杖僅在瀏覽器中可用。請使用 `isLoading()` 顯示載入狀態直到初始化完成。如果你需要在伺服器渲染期間取得已驗證資料，請使用伺服器或 BFF SDK。
+:::
+
+### 設定 redirect URI \{#configure-redirect-uris}
 
 <SignInFlowSummary />
 
@@ -36,56 +42,114 @@ export const appConfig: ApplicationConfig = {
 
 <WebConfigureRedirectUris />
 
-### 處理重定向 \{#handle-redirect}
+### 處理 redirect \{#handle-redirect}
 
-由於我們使用 `http://localhost:3000/callback` 作為重定向 URI，現在需要妥善處理它。`angular-auth-oidc-client` 函式庫提供了內建的重定向處理支援。你只需正確配置驗證提供者的設定，函式庫會處理其餘部分。
+建立 callback 元件，讓 Logto 將使用者導回你的應用程式後完成登入。使用 `afterNextRender` 確保 callback 處理僅在瀏覽器端執行：
 
-```ts title="app/app.config.ts"
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...其他設定
-        // highlight-start
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-        // highlight-end
-      }),
-    }),
-    // ...其他提供者
-  ],
-};
-```
+```ts title="app/callback.component.ts"
+import { afterNextRender, Component, inject } from '@angular/core';
+import { LogtoService } from '@logto/angular';
 
-### 實作登入與登出 \{#implement-sign-in-and-sign-out}
+@Component({
+  selector: 'app-callback',
+  standalone: true,
+  template: `
+    @if (logto.error(); as error) {
+      <p role="alert">{{ error.message }}</p>
+    } @else {
+      <p>正在完成登入...</p>
+    }
+  `,
+})
+export class CallbackComponent {
+  readonly logto = inject(LogtoService);
 
-在你想要實作登入與登出的元件中（例如 `app.component.ts`），注入 `OidcSecurityService` 並使用它來進行登入與登出。
+  constructor() {
+    afterNextRender(() => {
+      void (async () => {
+        const callbackUri = window.location.href;
 
-```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+        if (!(await this.logto.isSignInRedirected(callbackUri))) {
+          window.location.replace(window.location.origin);
+          return;
+        }
 
-export class AppComponent implements OnInit {
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  signIn() {
-    this.oidcSecurityService.authorize();
-  }
-
-  signOut() {
-    this.oidcSecurityService.logoff().subscribe((result) => {
-      console.log('app sign-out', result);
+        await this.logto.handleSignInCallback(callbackUri);
+      })().catch(() => {
+        // SDK 會透過 logto.error() 將 callback 錯誤暴露給模板。
+      });
     });
   }
 }
 ```
 
-然後，在模板中新增登入與登出按鈕：
+`isSignInRedirected()` 用來檢查 URL 是否符合有效的登入階段。如果有人在沒有登入階段的情況下訪問 callback 路由，此範例會將他們導回應用程式首頁，而不是嘗試完成登入。
+
+在 `app.routes.ts` 註冊 callback 路由。它必須與你的 redirect URI 路徑一致，且不能要求驗證。例如，若 redirect URI 以 `/callback` 結尾，則使用 `callback`：
+
+```ts title="app/app.routes.ts"
+import { type Routes } from '@angular/router';
+
+import { CallbackComponent } from './callback.component';
+
+export const routes: Routes = [
+  { path: 'callback', component: CallbackComponent },
+  // ...other routes
+];
+```
+
+根元件需要 `<router-outlet />` 來渲染此路由，詳見下一步。
+
+### 實作登入與登出 \{#implement-sign-in-and-sign-out}
+
+注入 `LogtoService` 以啟動登入與登出。將註冊過的 redirect URI 傳給這些方法。`postRedirectUri` 告訴 SDK 在成功處理登入 callback 後要導向哪裡：
+
+<SignInNote calling="signIn()" />
+
+```ts title="app/app.component.ts"
+import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService } from '@logto/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+
+  async signIn() {
+    await this.logto.signIn({
+      redirectUri: 'http://localhost:3000/callback',
+      postRedirectUri: window.location.origin,
+    });
+  }
+
+  async signOut() {
+    await this.logto.signOut('http://localhost:3000/');
+  }
+}
+```
+
+直接在模板中讀取 `isLoading()`、`isAuthenticated()` 與 `error()` Signals：
 
 ```html title="app/app.component.html"
-<button (click)="signIn()">登入</button>
-<br />
-<button (click)="signOut()">登出</button>
+@if (logto.error(); as error) {
+<p role="alert">{{ error.message }}</p>
+} @if (logto.isLoading()) {
+<p>載入中...</p>
+} @else if (logto.isAuthenticated()) {
+<button type="button" (click)="signOut()">登出</button>
+} @else {
+<button type="button" (click)="signIn()">登入</button>
+}
+
+<router-outlet />
 ```
+
+請將 `<router-outlet />` 放在驗證 (Authentication) 條件判斷之外，這樣 callback 可以在使用者登入前正確渲染。
 
 <SignOutNote />
 

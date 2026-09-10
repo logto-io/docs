@@ -1,6 +1,6 @@
 :::tip
 
-- ตัวอย่างสาธิตต่อไปนี้สร้างขึ้นบน Angular 18.0.0 และ [angular-auth-oidc-client](https://github.com/damienbod/angular-auth-oidc-client)
-- โปรเจกต์ตัวอย่างสามารถดูได้ใน [GitHub repository](https://github.com/logto-io/js/tree/master/packages/angular-sample)
+- คู่มือนี้ใช้ SDK `@logto/angular` v2 ของ Logto โดยตรง ซึ่งรองรับ Angular 20 และมีระบบ dependency injection และ Signals
+- โปรเจกต์ตัวอย่างสามารถดูได้ที่ [SDK repository](https://github.com/logto-io/js/tree/master/packages/angular-sample) ของเรา
 
 :::

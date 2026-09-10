@@ -1,34 +1,40 @@
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
 import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
 import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 import SignOutNote from '../../fragments/_web-sign-out-note.md';
 
-### Configurer l'application \{#configure-application}
+### Initialiser le fournisseur Logto \{#init-logto-provider}
 
-Dans votre projet Angular, ajoutez le fournisseur d'authentification dans votre `app.config.ts` :
+Dans votre projet Angular, enregistrez `provideLogto` et vos routes d'application dans `app.config.ts` :
 
 ```ts title="app/app.config.ts"
-import { buildAngularAuthConfig } from '@logto/js';
-import { provideAuth } from 'angular-auth-oidc-client';
+import { type ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLogto } from '@logto/angular';
+
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        endpoint: '<your-logto-endpoint>',
-        appId: '<your-app-id>',
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
     }),
-    // ...other providers
+    provideRouter(routes),
+    // ...autres providers
   ],
 };
 ```
 
-### Configurer les URIs de redirection \{#configure-redirect-uris}
+`provideLogto` restaure automatiquement l'état d'authentification après le premier rendu du navigateur. Vous n'avez pas besoin d'appeler une méthode d'initialisation dans vos composants.
+
+:::note
+Lorsque vous utilisez le rendu côté serveur (SSR), l'état d'authentification et les jetons sont disponibles uniquement dans le navigateur. Utilisez `isLoading()` pour afficher un état de chargement jusqu'à la fin de l'initialisation. Si vous avez besoin de données authentifiées lors du rendu serveur, utilisez un SDK serveur ou BFF.
+:::
+
+### Configurer les URI de redirection \{#configure-redirect-uris}
 
 <SignInFlowSummary />
 
@@ -38,54 +44,112 @@ export const appConfig: ApplicationConfig = {
 
 ### Gérer la redirection \{#handle-redirect}
 
-Puisque nous utilisons `http://localhost:3000/callback` comme URI de redirection, nous devons maintenant la gérer correctement. La bibliothèque `angular-auth-oidc-client` fournit un support intégré pour gérer la redirection. Vous pouvez simplement configurer correctement les configurations du fournisseur d'authentification et la bibliothèque s'occupera du reste.
+Créez un composant de rappel pour terminer la connexion après que Logto ait redirigé l'utilisateur vers votre application. Utilisez `afterNextRender` pour que le traitement du callback ne s'exécute que dans le navigateur :
 
-```ts title="app/app.config.ts"
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other config
-        // highlight-start
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-        // highlight-end
-      }),
-    }),
-    // ...other providers
-  ],
-};
-```
+```ts title="app/callback.component.ts"
+import { afterNextRender, Component, inject } from '@angular/core';
+import { LogtoService } from '@logto/angular';
 
-### Implémenter la connexion et la déconnexion \{#implement-sign-in-and-sign-out}
+@Component({
+  selector: 'app-callback',
+  standalone: true,
+  template: `
+    @if (logto.error(); as error) {
+      <p role="alert">{{ error.message }}</p>
+    } @else {
+      <p>Finalisation de la connexion...</p>
+    }
+  `,
+})
+export class CallbackComponent {
+  readonly logto = inject(LogtoService);
 
-Dans le composant où vous souhaitez implémenter la connexion et la déconnexion (par exemple, `app.component.ts`), injectez le `OidcSecurityService` et utilisez-le pour vous connecter et vous déconnecter.
+  constructor() {
+    afterNextRender(() => {
+      void (async () => {
+        const callbackUri = window.location.href;
 
-```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+        if (!(await this.logto.isSignInRedirected(callbackUri))) {
+          window.location.replace(window.location.origin);
+          return;
+        }
 
-export class AppComponent implements OnInit {
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  signIn() {
-    this.oidcSecurityService.authorize();
-  }
-
-  signOut() {
-    this.oidcSecurityService.logoff().subscribe((result) => {
-      console.log('app sign-out', result);
+        await this.logto.handleSignInCallback(callbackUri);
+      })().catch(() => {
+        // Le SDK expose les erreurs de callback via logto.error() pour le template.
+      });
     });
   }
 }
 ```
 
-Ensuite, dans le modèle, ajoutez des boutons pour se connecter et se déconnecter :
+`isSignInRedirected()` vérifie si l'URL correspond à une session de connexion active. Si quelqu'un visite la route de callback sans session, cet exemple le renvoie à la page d'accueil de l'application au lieu de tenter de finaliser la connexion.
+
+Enregistrez la route de callback dans `app.routes.ts`. Elle doit correspondre au chemin de votre URI de redirection et ne doit pas nécessiter d'authentification. Par exemple, utilisez `callback` pour une URI de redirection se terminant par `/callback` :
+
+```ts title="app/app.routes.ts"
+import { type Routes } from '@angular/router';
+
+import { CallbackComponent } from './callback.component';
+
+export const routes: Routes = [
+  { path: 'callback', component: CallbackComponent },
+  // ...autres routes
+];
+```
+
+Le composant racine doit contenir un `<router-outlet />` pour afficher cette route, comme montré à l'étape suivante.
+
+### Implémenter la connexion et la déconnexion \{#implement-sign-in-and-sign-out}
+
+Injectez `LogtoService` pour démarrer la connexion et la déconnexion. Passez les URI de redirection enregistrées à ces méthodes. Le `postRedirectUri` indique au SDK où naviguer après avoir traité avec succès le callback de connexion :
+
+<SignInNote calling="signIn()" />
+
+```ts title="app/app.component.ts"
+import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService } from '@logto/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+
+  async signIn() {
+    await this.logto.signIn({
+      redirectUri: 'http://localhost:3000/callback',
+      postRedirectUri: window.location.origin,
+    });
+  }
+
+  async signOut() {
+    await this.logto.signOut('http://localhost:3000/');
+  }
+}
+```
+
+Lisez les signaux `isLoading()`, `isAuthenticated()` et `error()` directement dans le template :
 
 ```html title="app/app.component.html"
-<button (click)="signIn()">Se connecter</button>
-<br />
-<button (click)="signOut()">Se déconnecter</button>
+@if (logto.error(); as error) {
+<p role="alert">{{ error.message }}</p>
+} @if (logto.isLoading()) {
+<p>Chargement…</p>
+} @else if (logto.isAuthenticated()) {
+<button type="button" (click)="signOut()">Déconnexion</button>
+} @else {
+<button type="button" (click)="signIn()">Connexion</button>
+}
+
+<router-outlet />
 ```
+
+Gardez `<router-outlet />` en dehors des conditions d'authentification afin que le callback puisse s'afficher avant que l'utilisateur ne soit connecté.
 
 <SignOutNote />
 
