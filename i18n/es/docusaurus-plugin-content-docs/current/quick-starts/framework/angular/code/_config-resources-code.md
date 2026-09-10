@@ -1,16 +1,17 @@
-```ts title="/app/app.config.ts"
+```ts title="app/app.config.ts"
+import { type ApplicationConfig } from '@angular/core';
+import { provideLogto } from '@logto/angular';
+
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other config
-        // highlight-start
-        resource: 'https://your-api-resource.com',
-        // highlight-end
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
+      // highlight-start
+      resources: ['https://shopping.your-app.com/api', 'https://store.your-app.com/api'],
+      // highlight-end
     }),
-    // ...other providers
+    // ...otros proveedores
   ],
 };
 ```

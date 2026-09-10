@@ -5,129 +5,105 @@ import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
 import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
 import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
 
-Uma vez que o usuário tenha feito login com sucesso, o Logto emitirá um [Token de ID (ID token)](https://openid.net/specs/openid-connect-core-1_0.html#IDToken) que contém as reivindicações de informações do usuário. O Token de ID é um JSON Web Token (JWT).
-
-É importante notar que as reivindicações de informações do usuário que podem ser recuperadas dependem dos escopos usados pelo usuário durante o login, e considerando o desempenho e o tamanho dos dados, o Token de ID pode não conter todas as reivindicações do usuário; algumas reivindicações do usuário estão disponíveis apenas no [endpoint userinfo](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) (veja a lista relacionada abaixo).
-
-A utilidade `buildAngularAuthConfig()` habilitará `autoUserInfo` e `renewUserInfoAfterTokenRenew` se não houver `resource` fornecido na configuração. Isso significa que o Logto buscará automaticamente as informações do usuário após o login e renovará as informações do usuário após a renovação do token.
-
-:::info
-Para saber mais sobre como configurar a biblioteca `angular-auth-oidc-client`, veja a [documentação oficial](https://angular-auth-oidc-client.com/).
-:::
-
 ### Exibir informações do usuário \{#display-user-information}
 
-O `OidcSecurityService` fornece uma maneira conveniente de se inscrever no estado de autenticação, bem como nas informações do usuário:
+Para exibir as informações do usuário, use `getIdTokenClaims()` para ler as reivindicações (Claims) do token de ID sem uma solicitação de rede adicional. Adicione um `effect` ao seu `AppComponent` para carregar as reivindicações quando `isAuthenticated()` se tornar verdadeiro, inclusive quando uma sessão existente for restaurada. Importe `JsonPipe` para exibir o resultado:
 
 ```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { decodeIdToken, type IdTokenClaims } from '@logto/js';
+import { JsonPipe } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService, type IdTokenClaims } from '@logto/angular';
 
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  idTokenClaims?: IdTokenClaims;
-  accessToken?: string;
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [JsonPipe, RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+  readonly user = signal<IdTokenClaims | undefined>(undefined);
 
-  constructor(public oidcSecurityService: OidcSecurityService) {}
+  constructor() {
+    effect(() => {
+      if (!this.logto.isAuthenticated()) {
+        this.user.set(undefined);
+        return;
+      }
 
-  ngOnInit() {
-    this.oidcSecurityService.checkAuth().subscribe(({ isAuthenticated, idToken, accessToken }) => {
-      console.log('app authenticated', isAuthenticated, idToken);
-      this.isAuthenticated = isAuthenticated;
-      this.idTokenClaims = decodeIdToken(idToken);
-      this.accessToken = accessToken;
+      void this.logto
+        .getIdTokenClaims()
+        .then((claims) => {
+          this.user.set(claims);
+        })
+        .catch(() => {
+          // O SDK expõe o erro através de logto.error() para o template.
+        });
     });
   }
 
-  // ...outros métodos
+  // ...mantenha os métodos signIn() e signOut() do passo anterior
 }
 ```
 
-E use-o no template:
+Adicione o seguinte dentro do ramo `logto.isAuthenticated()` do seu template:
 
 ```html title="app/app.component.html"
-<button *ngIf="!isAuthenticated" (click)="signIn()">Sign in</button>
-<ng-container *ngIf="isAuthenticated">
-  <pre>{{ idTokenClaims | json }}</pre>
-  <p>Access token: {{ accessToken }}</p>
-  <!-- ... -->
-  <button (click)="signOut()">Sign out</button>
-</ng-container>
+@if (user(); as claims) {
+<pre>{{ claims | json }}</pre>
+}
 ```
 
 ### Solicitar reivindicações adicionais \{#request-additional-claims}
 
-<FindUserInfoMissing method="idToken" />
+<FindUserInfoMissing method="getIdTokenClaims()" />
 
 <ScopesAndClaimsIntroduction />
 
-Para solicitar escopos adicionais, você pode configurar as configurações do provedor de autenticação:
+Adicione os escopos (scopes) à sua configuração `provideLogto`:
 
-```tsx title="app/app.config.ts"
-import { UserScope, buildAngularAuthConfig } from '@logto/js';
+```ts title="app/app.config.ts"
+import { type ApplicationConfig } from '@angular/core';
+import { provideLogto, UserScope } from '@logto/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...outras configurações
-        // highlight-start
-        scopes: [
-          UserScope.Email,
-          UserScope.Phone,
-          UserScope.CustomData,
-          UserScope.Identities,
-          UserScope.Organizations,
-        ],
-        // highlight-end
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
+      scopes: [
+        UserScope.Email,
+        UserScope.Phone,
+        UserScope.CustomData,
+        UserScope.Identities,
+        UserScope.Organizations,
+      ],
     }),
-    // ...outros provedores
+    // ...outros providers
   ],
 };
 ```
 
-Então você pode acessar as reivindicações adicionais no valor de retorno de `idToken`.
+Faça login novamente após alterar os escopos. As reivindicações adicionais do token de ID, como `email` e `phone_number`, estarão disponíveis a partir de `getIdTokenClaims()` e serão exibidas pelo exemplo acima.
 
-{/* eslint-disable prettier/prettier */}
 <ClaimsNeedNetworkRequest
-  type="option"
-  configOption="userData"
-  value="userData"
+  type="method"
+  method="fetchUserInfo()"
   codeSnippet={
-    <CodeBlock language="ts" title="app/app.component.ts">{`import { OidcSecurityService } from 'angular-auth-oidc-client';
-// highlight-next-line
-import { type UserInfoResponse } from '@logto/js';
-
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  // highlight-next-line
-  userData?: UserInfoResponse;
-  accessToken?: string;
-
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  ngOnInit() {
-    this.oidcSecurityService
-      .checkAuth()
-      // highlight-next-line
-      .subscribe(({ isAuthenticated, userData, accessToken }) => {
-        console.log('app authenticated', isAuthenticated, idToken);
-        this.isAuthenticated = isAuthenticated;
-        // highlight-next-line
-        this.userData = userData;
-        this.accessToken = accessToken;
-      });
+    <CodeBlock
+      language="ts"
+      title="app/app.component.ts"
+    >{`// Adicione este método ao AppComponent e chame-o após o login.
+async loadUserInfo() {
+  const userInfo = await this.logto.fetchUserInfo();
+  // Agora você pode acessar userInfo.custom_data, userInfo.identities, etc.
+  return userInfo;
+}`}</CodeBlock>
   }
-
-  // ...outros métodos
-}
-
-// Agora você pode acessar a reivindicação \`userData.custom_data\``}</CodeBlock>
-}
 />
-{/* eslint-enable prettier/prettier */}
+
+`fetchUserInfo()` pode ser usado juntamente com tokens de acesso de recursos de API. Configurar `resources` não impede que o SDK solicite informações do usuário.
 
 ### Escopos e reivindicações \{#scopes-and-claims}
 

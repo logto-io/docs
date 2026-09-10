@@ -1,32 +1,39 @@
 import Checkpoint from '../../fragments/_checkpoint-test-your-application.md';
+import SignInNote from '../../fragments/_sign-in-note.mdx';
 import AssumingUrl from '../../fragments/_web-assuming-url.mdx';
 import WebConfigureRedirectUris from '../../fragments/_web-configure-redirect-uris.mdx';
 import SignInFlowSummary from '../../fragments/_web-sign-in-flow-summary.mdx';
 import SignOutNote from '../../fragments/_web-sign-out-note.md';
 
-### 애플리케이션 구성 \{#configure-application}
+### Logto 프로바이더 초기화 \{#init-logto-provider}
 
-Angular 프로젝트에서 `app.config.ts`에 인증 제공자를 추가하세요:
+Angular 프로젝트에서 `app.config.ts`에 `provideLogto`와 애플리케이션 라우트를 등록하세요:
 
 ```ts title="app/app.config.ts"
-import { buildAngularAuthConfig } from '@logto/js';
-import { provideAuth } from 'angular-auth-oidc-client';
+import { type ApplicationConfig } from '@angular/core';
+import { provideRouter } from '@angular/router';
+import { provideLogto } from '@logto/angular';
+
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        endpoint: '<your-logto-endpoint>',
-        appId: '<your-app-id>',
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
     }),
+    provideRouter(routes),
     // ...other providers
   ],
 };
 ```
+
+`provideLogto`는 브라우저가 처음 렌더링된 후 인증 (Authentication) 상태를 자동으로 복원합니다. 컴포넌트에서 초기화 메서드를 호출할 필요가 없습니다.
+
+:::note
+서버 사이드 렌더링 (SSR)을 사용할 때, 인증 상태와 토큰은 브라우저에서만 사용할 수 있습니다.
+초기화가 완료될 때까지 `isLoading()`을 사용하여 로딩 상태를 표시하세요. 서버 렌더링 중 인증된 데이터가 필요하다면 서버 또는 BFF SDK를 사용하세요.
+:::
 
 ### 리디렉션 URI 구성 \{#configure-redirect-uris}
 
@@ -38,54 +45,112 @@ export const appConfig: ApplicationConfig = {
 
 ### 리디렉션 처리 \{#handle-redirect}
 
-`http://localhost:3000/callback`을 리디렉션 URI로 사용하므로, 이를 적절히 처리해야 합니다. `angular-auth-oidc-client` 라이브러리는 리디렉션 처리를 위한 내장 지원을 제공합니다. 인증 제공자 구성을 적절히 설정하면 라이브러리가 나머지를 처리합니다.
+Logto가 사용자를 애플리케이션으로 다시 리디렉션한 후 로그인을 완료하기 위해 콜백 컴포넌트를 만드세요. 콜백 처리가 브라우저에서만 실행되도록 `afterNextRender`를 사용합니다:
 
-```ts title="app/app.config.ts"
-export const appConfig: ApplicationConfig = {
-  providers: [
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other config
-        // highlight-start
-        redirectUri: 'http://localhost:3000/callback',
-        postLogoutRedirectUri: 'http://localhost:3000/',
-        // highlight-end
-      }),
-    }),
-    // ...other providers
-  ],
-};
-```
+```ts title="app/callback.component.ts"
+import { afterNextRender, Component, inject } from '@angular/core';
+import { LogtoService } from '@logto/angular';
 
-### 로그인 및 로그아웃 구현 \{#implement-sign-in-and-sign-out}
+@Component({
+  selector: 'app-callback',
+  standalone: true,
+  template: `
+    @if (logto.error(); as error) {
+      <p role="alert">{{ error.message }}</p>
+    } @else {
+      <p>로그인 완료 중...</p>
+    }
+  `,
+})
+export class CallbackComponent {
+  readonly logto = inject(LogtoService);
 
-로그인 및 로그아웃을 구현하려는 컴포넌트 (예: `app.component.ts`)에서 `OidcSecurityService`를 주입하고 이를 사용하여 로그인 및 로그아웃을 수행하세요.
+  constructor() {
+    afterNextRender(() => {
+      void (async () => {
+        const callbackUri = window.location.href;
 
-```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
+        if (!(await this.logto.isSignInRedirected(callbackUri))) {
+          window.location.replace(window.location.origin);
+          return;
+        }
 
-export class AppComponent implements OnInit {
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  signIn() {
-    this.oidcSecurityService.authorize();
-  }
-
-  signOut() {
-    this.oidcSecurityService.logoff().subscribe((result) => {
-      console.log('app sign-out', result);
+        await this.logto.handleSignInCallback(callbackUri);
+      })().catch(() => {
+        // SDK는 콜백 오류를 템플릿에서 logto.error()로 노출합니다.
+      });
     });
   }
 }
 ```
 
-그런 다음, 템플릿에 로그인 및 로그아웃 버튼을 추가하세요:
+`isSignInRedirected()`는 URL이 활성 로그인 세션과 일치하는지 확인합니다. 누군가 세션 없이 콜백 라우트를 방문하면, 이 예제는 로그인 완료를 시도하는 대신 애플리케이션 홈 페이지로 돌려보냅니다.
+
+`app.routes.ts`에 콜백 라우트를 등록하세요. 이 경로는 리디렉션 URI의 경로와 일치해야 하며, 인증이 필요하지 않아야 합니다. 예를 들어, 리디렉션 URI가 `/callback`으로 끝난다면 `callback`을 사용하세요:
+
+```ts title="app/app.routes.ts"
+import { type Routes } from '@angular/router';
+
+import { CallbackComponent } from './callback.component';
+
+export const routes: Routes = [
+  { path: 'callback', component: CallbackComponent },
+  // ...other routes
+];
+```
+
+루트 컴포넌트에는 다음 단계에서 보여주는 것처럼 이 라우트를 렌더링하기 위해 `<router-outlet />`이 필요합니다.
+
+### 로그인 및 로그아웃 구현 \{#implement-sign-in-and-sign-out}
+
+로그인 및 로그아웃을 시작하려면 `LogtoService`를 주입하세요. 등록한 리디렉션 URI를 이 메서드에 전달합니다. `postRedirectUri`는 로그인 콜백 처리 후 SDK가 이동할 위치를 지정합니다:
+
+<SignInNote calling="signIn()" />
+
+```ts title="app/app.component.ts"
+import { Component, inject } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService } from '@logto/angular';
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+
+  async signIn() {
+    await this.logto.signIn({
+      redirectUri: 'http://localhost:3000/callback',
+      postRedirectUri: window.location.origin,
+    });
+  }
+
+  async signOut() {
+    await this.logto.signOut('http://localhost:3000/');
+  }
+}
+```
+
+템플릿에서 `isLoading()`, `isAuthenticated()`, `error()` 시그널을 직접 읽을 수 있습니다:
 
 ```html title="app/app.component.html"
-<button (click)="signIn()">Sign in</button>
-<br />
-<button (click)="signOut()">Sign out</button>
+@if (logto.error(); as error) {
+<p role="alert">{{ error.message }}</p>
+} @if (logto.isLoading()) {
+<p>로딩 중...</p>
+} @else if (logto.isAuthenticated()) {
+<button type="button" (click)="signOut()">로그아웃</button>
+} @else {
+<button type="button" (click)="signIn()">로그인</button>
+}
+
+<router-outlet />
 ```
+
+콜백이 사용자가 로그인되기 전에 렌더링될 수 있도록 `<router-outlet />`은 인증 조건문 바깥에 두세요.
 
 <SignOutNote />
 
