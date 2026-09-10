@@ -5,132 +5,105 @@ import FindUserInfoMissing from '../../fragments/_find-user-info-missing.mdx';
 import ScopesAndClaims from '../../fragments/_scopes-and-claims.mdx';
 import ScopesAndClaimsIntroduction from '../../fragments/_scopes-claims-introduction.md';
 
-Once the user has successfully signed in, Logto will issue an [ID token](https://openid.net/specs/openid-connect-core-1_0.html#IDToken) that contains the user information claims. The ID token is a JSON Web Token (JWT).
-
-It's important to note that the user information claims that can be retrieved depending on the
-scopes used by the user during signing-in, and considering performance and data size, the ID token
-may not contain all user claims, some user claims are only available in the [userinfo endpoint](https://openid.net/specs/openid-connect-core-1_0.html#UserInfo) (see
-the related list below).
-
-The `buildAngularAuthConfig()` utility will enable `autoUserInfo` and `renewUserInfoAfterTokenRenew` if there's no `resource` provided in the config. This means that Logto will automatically fetch the user information after the user signs in and renew the user information after the token is renewed.
-
-:::info
-To learn more about configuring the `angular-auth-oidc-client` library, see the [official documentation](https://angular-auth-oidc-client.com/).
-:::
-
 ### Display user information \{#display-user-information}
 
-The `OidcSecurityService` provides a convenient way to subscribe to the authentication state as well as user information:
+To display the user's information, use `getIdTokenClaims()` to read claims from the ID token without an additional network request. Add an `effect` to your `AppComponent` to load the claims when `isAuthenticated()` becomes true, including when an existing session is restored. Import `JsonPipe` to display the result:
 
 ```ts title="app/app.component.ts"
-import { OidcSecurityService } from 'angular-auth-oidc-client';
-import { decodeIdToken, type IdTokenClaims } from '@logto/js';
+import { JsonPipe } from '@angular/common';
+import { Component, effect, inject, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { LogtoService, type IdTokenClaims } from '@logto/angular';
 
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  idTokenClaims?: IdTokenClaims;
-  accessToken?: string;
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [JsonPipe, RouterOutlet],
+  templateUrl: './app.component.html',
+})
+export class AppComponent {
+  readonly logto = inject(LogtoService);
+  readonly user = signal<IdTokenClaims | undefined>(undefined);
 
-  constructor(public oidcSecurityService: OidcSecurityService) {}
+  constructor() {
+    effect(() => {
+      if (!this.logto.isAuthenticated()) {
+        this.user.set(undefined);
+        return;
+      }
 
-  ngOnInit() {
-    this.oidcSecurityService.checkAuth().subscribe(({ isAuthenticated, idToken, accessToken }) => {
-      console.log('app authenticated', isAuthenticated, idToken);
-      this.isAuthenticated = isAuthenticated;
-      this.idTokenClaims = decodeIdToken(idToken);
-      this.accessToken = accessToken;
+      void this.logto
+        .getIdTokenClaims()
+        .then((claims) => {
+          this.user.set(claims);
+        })
+        .catch(() => {
+          // The SDK exposes the error through logto.error() for the template.
+        });
     });
   }
 
-  // ...other methods
+  // ...keep the signIn() and signOut() methods from the previous step
 }
 ```
 
-And use it in the template:
+Add the following inside the `logto.isAuthenticated()` branch of your template:
 
 ```html title="app/app.component.html"
-<button *ngIf="!isAuthenticated" (click)="signIn()">Sign in</button>
-<ng-container *ngIf="isAuthenticated">
-  <pre>{{ idTokenClaims | json }}</pre>
-  <p>Access token: {{ accessToken }}</p>
-  <!-- ... -->
-  <button (click)="signOut()">Sign out</button>
-</ng-container>
+@if (user(); as claims) {
+<pre>{{ claims | json }}</pre>
+}
 ```
 
 ### Request additional claims \{#request-additional-claims}
 
-<FindUserInfoMissing method="idToken" />
+<FindUserInfoMissing method="getIdTokenClaims()" />
 
 <ScopesAndClaimsIntroduction />
 
-To request additional scopes, you can configure the auth provider configs:
+Add the scopes to your `provideLogto` configuration:
 
-```tsx title="app/app.config.ts"
-import { UserScope, buildAngularAuthConfig } from '@logto/js';
+```ts title="app/app.config.ts"
+import { type ApplicationConfig } from '@angular/core';
+import { provideLogto, UserScope } from '@logto/angular';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(withFetch()),
-    provideAuth({
-      config: buildAngularAuthConfig({
-        // ...other configs
-        // highlight-start
-        scopes: [
-          UserScope.Email,
-          UserScope.Phone,
-          UserScope.CustomData,
-          UserScope.Identities,
-          UserScope.Organizations,
-        ],
-        // highlight-end
-      }),
+    provideLogto({
+      endpoint: '<your-logto-endpoint>',
+      appId: '<your-app-id>',
+      scopes: [
+        UserScope.Email,
+        UserScope.Phone,
+        UserScope.CustomData,
+        UserScope.Identities,
+        UserScope.Organizations,
+      ],
     }),
     // ...other providers
   ],
 };
 ```
 
-Then you can access the additional claims in the return value of `idToken`.
+Sign in again after changing the scopes. The additional ID token claims, such as `email` and `phone_number`, will be available from `getIdTokenClaims()` and displayed by the example above.
 
-{/* eslint-disable prettier/prettier */}
 <ClaimsNeedNetworkRequest
-  type="option"
-  configOption="userData"
-  value="userData"
+  type="method"
+  method="fetchUserInfo()"
   codeSnippet={
-    <CodeBlock language="ts" title="app/app.component.ts">{`import { OidcSecurityService } from 'angular-auth-oidc-client';
-// highlight-next-line
-import { type UserInfoResponse } from '@logto/js';
-
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-  // highlight-next-line
-  userData?: UserInfoResponse;
-  accessToken?: string;
-
-  constructor(public oidcSecurityService: OidcSecurityService) {}
-
-  ngOnInit() {
-    this.oidcSecurityService
-      .checkAuth()
-      // highlight-next-line
-      .subscribe(({ isAuthenticated, userData, accessToken }) => {
-        console.log('app authenticated', isAuthenticated, idToken);
-        this.isAuthenticated = isAuthenticated;
-        // highlight-next-line
-        this.userData = userData;
-        this.accessToken = accessToken;
-      });
+    <CodeBlock
+      language="ts"
+      title="app/app.component.ts"
+    >{`// Add this method to AppComponent and call it after sign-in.
+async loadUserInfo() {
+  const userInfo = await this.logto.fetchUserInfo();
+  // Now you can access userInfo.custom_data, userInfo.identities, etc.
+  return userInfo;
+}`}</CodeBlock>
   }
-
-  // ...other methods
-}
-
-// Now you can access the claim \`userData.custom_data\``}</CodeBlock>
-}
 />
-{/* eslint-enable prettier/prettier */}
+
+`fetchUserInfo()` can be used alongside API resource access tokens. Configuring `resources` does not prevent the SDK from requesting user information.
 
 ### Scopes and claims \{#scopes-and-claims}
 
