@@ -1,0 +1,186 @@
+---
+id: subscribe-tenant-to-pro
+title: Subscribe a tenant to the Pro plan
+sidebar_position: 8.1
+---
+
+# Subscribe a tenant to the Pro plan
+
+You can put a tenant on the Pro plan with one Logto Cloud API call, without opening Console. Together with [tenant creation](/logto-cloud/automate-tenant-creation), this lets your automation create a production tenant and subscribe it in two calls.
+
+The call charges the first invoice to the card saved on your billing account. No one is present to confirm the payment, so the call either succeeds completely or leaves nothing behind: a failed payment never creates a subscription.
+
+## Before you start \{#before-you-start}
+
+You need:
+
+- A **Logto Cloud Personal Access Token (PAT)** with access to this API. Contact us to get one.
+- The **Admin** role on the tenant. The user who creates a tenant is its Admin.
+- A **billing account with a saved card**. Your Logto Cloud account gets one the first time you subscribe any tenant to the Pro plan in <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink>. The API charges that card.
+- A **production** tenant on the Free plan. Development tenants and tenants covered by an enterprise contract are not supported.
+
+| Variable             | Description                                                                  |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | The Logto Cloud API endpoint. For Logto Cloud, use `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | A PAT for your Logto Cloud account.                                          |
+| `TENANT_ID`          | The ID of the tenant to subscribe.                                           |
+
+## Subscribe the tenant \{#subscribe-the-tenant}
+
+Call `POST /api/tenants/{tenantId}/subscription` with an `Idempotency-Key` header:
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`: REQUIRED. A unique string of 1 to 255 characters that identifies this attempt. Generate one per attempt, store it, and send the same value when you retry the attempt.
+2. `skuId`: REQUIRED. The plan to subscribe to. Use `pro-202509` for the Pro plan.
+
+The response status tells you what happened:
+
+- `201`: the subscription was created and the tenant is on the Pro plan.
+- `200`: this key already created the subscription. Nothing was charged again.
+
+Example response:
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## Retry safely \{#retry-safely}
+
+A network timeout does not tell you whether the card was charged. The `Idempotency-Key` is what makes a retry safe: Logto performs the charge at most once per key, so **retrying with the same key is always safe**.
+
+1. **When the outcome is unknown, retry with the same key.** That covers a client timeout or dropped connection, a `5xx` response, and `409` `attempt_in_progress` (an earlier request with this key may still be running, so wait a few seconds first).
+2. **The retry settles the attempt.** It answers `201` or `200` once the subscription exists, or the error that ended the attempt.
+3. **Start a new attempt with a new key only when the attempt has ended in an error.** A same-key retry then answers with a message that the attempt already failed. Fix the cause first, for example by updating the card.
+4. **Stop and contact us when the message asks you to.** Include `error.requestId` when the response has one.
+
+:::note
+While an attempt is open, the tenant is reserved for it: a request with a different key gets `409` `attempt_in_progress` until the open attempt ends. Retry the open attempt with its own key rather than starting a new one. Keys are scoped to your account.
+
+Retry within 23 hours. After that, Logto can no longer guarantee a single charge and holds the attempt instead: the same-key retry answers `409` `attempt_in_progress` with a message to contact support, and we resolve it by hand.
+:::
+
+## Errors \{#errors}
+
+Errors use the HTTP status and a JSON body with a `message` and, for most errors, an `error.code`:
+
+```json
+{
+  "message": "The card was declined.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| Status | `error.code`                                                                           | Meaning and what to do                                                                                                                         |
+| ------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | (none)                                                                                 | The `Idempotency-Key` header is missing or longer than 255 characters, or the body has no `skuId`.                                             |
+| `400`  | `invalid_sku`                                                                          | The `skuId` cannot be bought through the API.                                                                                                  |
+| `400`  | `idempotency_key_mismatch`                                                             | The key was already used for another tenant or plan. Use a new key, unless the message asks you to contact support.                            |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | The card could not be charged. `declineCode` is included when the card issuer shares it. Update the card in Console, then start a new attempt. |
+| `402`  | `processing_error`                                                                     | The card could not be processed this time. Start a new attempt shortly.                                                                        |
+| `402`  | `authentication_required`                                                              | The card issuer requires the cardholder to confirm the payment, which an API call cannot do. Subscribe this tenant in Console instead.         |
+| `403`  | `insufficient_role`                                                                    | You are a member of the tenant but not an Admin.                                                                                               |
+| `403`  | (none)                                                                                 | The token lacks access to this API, or the tenant is covered by an enterprise contract or is in a private region.                              |
+| `404`  | (none)                                                                                 | The tenant does not exist, or you are not a member of it.                                                                                      |
+| `409`  | `subscription_exists`                                                                  | The tenant already has a subscription.                                                                                                         |
+| `409`  | `attempt_in_progress`                                                                  | An attempt for this tenant is open, or this attempt is held. See [Retry safely](#retry-safely).                                                |
+| `409`  | `no_customer`, `no_payment_method`                                                     | Your account has no billing account, or it has no saved card. Subscribe a tenant in Console once, or add a card there.                         |
+| `409`  | `tax_location_invalid`                                                                 | The billing address cannot be used to calculate tax. Update it in Console.                                                                     |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | The tenant's billing account could not be verified as yours, or it needs our help. Contact us.                                                 |
+| `422`  | `dev_tenant_not_supported`                                                             | Development tenants cannot be subscribed through the API. Convert the tenant in Console.                                                       |
+| `422`  | `subscription_status_exception`                                                        | The tenant's latest subscription needs attention first. Contact us.                                                                            |
+| `500`  | `internal_error` or none                                                               | Something went wrong on our side. Retry with the same key, and contact us if it repeats.                                                       |
+| `502`  | `stripe_error`                                                                         | Our payment provider refused or failed the request. Retry with the same key, and contact us if it repeats.                                     |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | The outcome is unknown, or the payment succeeded and the setup is still to finish. Retry with the same key.                                    |
+
+You can update the card and the billing address in <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink> of any tenant that uses the same billing account.
+
+## Create and subscribe in one script \{#create-and-subscribe-in-one-script}
+
+Tenant creation has no idempotency key. If `POST /api/tenants` times out, list your tenants with `GET /api/tenants` before creating again, so a retry does not create a second tenant.
+
+```js
+import { randomUUID } from 'node:crypto';
+
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`Tenant creation failed: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// Store the key with the tenant, so a later run can retry the same attempt.
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // Safe: the same key never charges twice.
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Subscription refused: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(`Still unknown. Retry later with the same key: ${idempotencyKey}`);
+}
+```
+
+## Related resources \{#related-resources}
+
+- [Automate tenant management](/logto-cloud/automate-tenant-creation)
+- [Billing and pricing](/logto-cloud/billing-and-pricing)
