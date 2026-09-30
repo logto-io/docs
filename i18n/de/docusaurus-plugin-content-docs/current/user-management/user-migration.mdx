@@ -4,7 +4,7 @@ sidebar_position: 5
 
 # Benutzermigration
 
-Logto unterstützt sowohl die Massenmigration als auch die Just-in-Time-Migration bestehender Benutzer aus einem anderen Identitätssystem. In dieser Anleitung wird erklärt, wie du Benutzer in großen Mengen über die Management API importierst und worauf du vor der Migration achten solltest.
+Logto unterstützt sowohl die Massenmigration als auch die Just-in-Time-Migration bestehender Benutzer aus einem anderen Identitätssystem. Diese Anleitung erklärt, wie du Benutzer in großen Mengen über die Management API importierst und was du vor der Migration beachten solltest.
 
 ## Wähle eine Migrationsstrategie \{#choose-a-migration-strategy}
 
@@ -13,23 +13,42 @@ Logto unterstützt sowohl die Massenmigration als auch die Just-in-Time-Migratio
 | Massenmigration        | Du kannst die Benutzerdatensätze und Passwort-Hashes in einem von Logto unterstützten Format exportieren.                                                                | Importiere die Benutzer vor dem Wechsel über die Management API, wie im weiteren Verlauf dieser Anleitung beschrieben.                                                                                                                                                                               |
 | Just-in-Time-Migration | Du musst Passwörter gegen das bestehende System verifizieren, kannst keine kompatiblen Passwort-Hashes exportieren oder möchtest aktive Benutzer schrittweise migrieren. | Konfiguriere eine [Post First-Factor Verification Action](/developers/actions/post-first-factor-verification). Beim ersten Passwort-Login des Benutzers überprüft Logto die Zugangsdaten über deine Action, erstellt oder aktualisiert den Benutzer und speichert einen neuen lokalen Passwort-Hash. |
 
-Die Just-in-Time-Migration hält den Legacy-Authentifizierungsdienst im Anmeldeprozess, bis die Benutzer migriert sind. Verwende einen schnellen, zuverlässigen HTTPS-Endpunkt und halte ihn während des Migrationszeitraums verfügbar.
+Die Just-in-Time-Migration hält den alten Authentifizierungsdienst im Anmeldeprozess, bis die Benutzer migriert sind. Verwende einen schnellen, zuverlässigen HTTPS-Endpunkt und halte ihn während der Migrationsphase verfügbar.
 
 ## Benutzerschema \{#user-schema}
 
 Bevor wir beginnen, werfen wir einen Blick auf das [Benutzerschema](/user-management/user-data/#user-profile) in Logto. Es gibt 3 Teile des Benutzerschemas, die du kennen solltest:
 
-1. **Basisdaten**: Dies sind die Basisinformationen aus dem Benutzerprofil, du kannst die Daten aus deinem bestehenden Benutzerprofil zuordnen.
-2. **Benutzerdefinierte Daten**: Speichert zusätzliche Benutzerinformationen, du kannst dies verwenden, um Felder zu speichern, die nicht den Basisdaten zugeordnet werden können.
-3. **Soziale Identitäten**: Speichert die Benutzerinformationen, die durch Social Sign-In abgerufen wurden.
+1. **Basisdaten**: sind die Basisinformationen aus dem Benutzerprofil, du kannst die Daten aus deinem bestehenden Benutzerprofil zuordnen.
+2. **Benutzerdefinierte Daten**: speichern zusätzliche Benutzerinformationen, du kannst dies verwenden, um Felder zu speichern, die nicht den Basisdaten zugeordnet werden können.
+3. **Soziale Identitäten**: speichern die Benutzerinformationen, die durch Social Sign-In abgerufen wurden.
 
 Du kannst eine Zuordnung erstellen, um die Benutzerinformationen aus deinem bestehenden Benutzerprofil den **Basisdaten** und **benutzerdefinierten Daten** zuzuordnen. Für Social Sign-In sind zusätzliche Schritte erforderlich, um die sozialen Identitäten zu importieren. Siehe dazu die API von [Soziale Identität mit Benutzer verknüpfen](https://openapi.logto.io/operation/operation-createuseridentity).
 
+## Vorhandene Benutzer-IDs beibehalten \{#keep-existing-user-ids}
+
+Standardmäßig generiert Logto für jeden über die Management API erstellten Benutzer eine zufällige ID. Wenn deine Anwendung bereits Benutzer-IDs vom vorherigen Identitätsanbieter speichert, kannst du diese beibehalten, indem du eine optionale `id` im [create user](https://openapi.logto.io/operation/operation-createuser)-Request-Body übergibst. So vermeidest du eine Zuordnungstabelle zwischen alten und neuen IDs.
+
+Die ID muss zwischen 1 und 128 Zeichen lang sein und darf Buchstaben, Zahlen sowie `_ - . @ : + = |` enthalten. Dies deckt gängige Formate wie `auth0|5f7c8ec7c33c6c004bbafe82`, `google-oauth2|103547991597142817347`, UUIDs, `user_01H8MZ2QK3V4X5Y6Z7` und E-Mail-Adressen ab. Zeichen, die in URL-Pfaden nicht zulässig sind (Leerzeichen, `/`, `?`, `#`, `%`, `\`), werden mit `400` abgelehnt, da die ID in `/api/users/{userId}` verwendet wird. Ist die ID bereits vergeben, schlägt die Anfrage mit `422 user.id_already_in_use` fehl.
+
+```json
+{
+  "id": "auth0|5f7c8ec7c33c6c004bbafe82",
+  "primaryEmail": "john.doe@example.com",
+  "passwordAlgorithm": "Bcrypt",
+  "passwordDigest": "$2b$10$..."
+}
+```
+
+:::note
+Benutzerdefinierte Benutzer-IDs werden nur in selbst gehostetem Logto unterstützt. Logto Cloud lehnt Anfragen, die `id` enthalten, mit `501 request.feature_not_supported` ab, da Benutzer-IDs mandantenübergreifend geteilt werden.
+:::
+
 ## Passwort-Hashing \{#password-hashing}
 
-Logto verwendet [Argon2](https://de.wikipedia.org/wiki/Argon2) zum Hashen des Benutzerpassworts und unterstützt außerdem andere Algorithmen wie `MD5`, `SHA1`, `SHA256` und `Bcrypt` zur Erleichterung der Migration. Diese Algorithmen gelten als unsicher, die entsprechenden Passwort-Hashes werden beim ersten erfolgreichen Login des Benutzers auf Argon2 migriert.
+Logto verwendet [Argon2](https://de.wikipedia.org/wiki/Argon2) zum Hashen des Benutzerpassworts und unterstützt zur Erleichterung der Migration auch andere Algorithmen wie `MD5`, `SHA1`, `SHA256` und `Bcrypt`. Diese Algorithmen gelten als unsicher, die entsprechenden Passwort-Hashes werden beim ersten erfolgreichen Login des Benutzers auf Argon2 migriert.
 
-Wenn du andere Hashing-Algorithmen oder Salt verwendest, kannst du `passwordAlgorithm` auf `Legacy` setzen. Dadurch kannst du jeden von Node.js unterstützten Hash-Algorithmus verwenden. Die Liste der unterstützten Algorithmen findest du in der [Node.js Crypto-Dokumentation](https://nodejs.org/api/crypto.html#cryptogethashes). In diesem Fall ist das `passwordDigest` ein JSON-String, der den Hash-Algorithmus und andere algorithmenspezifische Parameter enthält.
+Wenn du andere Hashing-Algorithmen oder Salt verwendest, kannst du `passwordAlgorithm` auf `Legacy` setzen. Dadurch kannst du jeden von Node.js unterstützten Hash-Algorithmus verwenden. Die Liste der unterstützten Algorithmen findest du in der [Node.js Crypto-Dokumentation](https://nodejs.org/api/crypto.html#cryptogethashes). In diesem Fall ist das `passwordDigest` ein JSON-String, der den Hash-Algorithmus und weitere algorithmusspezifische Parameter enthält.
 
 ### Allgemeines Legacy-Format \{#general-legacy-format}
 
@@ -39,9 +58,9 @@ Das Format des JSON-Strings ist wie folgt:
 ["hash_algorithm", ["argument1", "argument2", ...], "expected_hashed_value"]
 ```
 
-Du kannst `@` als Platzhalter für den tatsächlichen Passwortwert in den Argumenten verwenden.
+Und du kannst `@` als Platzhalter für den tatsächlichen Passwortwert in den Argumenten verwenden.
 
-Wenn du zum Beispiel SHA256 mit einem Salt verwendest, kannst du das Passwort im folgenden Format speichern:
+Wenn du beispielsweise SHA256 mit Salt verwendest, kannst du das Passwort im folgenden Format speichern:
 
 ```json
 ["sha256", ["salt123", "@"], "c465f66c6ac481a7a17e9ed5b4e2e7e7288d892f12bf1c95c140901e9a70436e"]
@@ -89,7 +108,7 @@ Die Parameter sind:
 ## Schritte zur Migration \{#steps-to-migrate}
 
 1.  **Benutzerdaten vorbereiten**  
-    Du solltest zuerst die Benutzerdaten aus deiner bestehenden Plattform exportieren und dann die Benutzerinformationen dem Logto-Benutzerschema zuordnen. Wir empfehlen, die zugeordneten Daten im JSON-Format vorzubereiten. Hier ist ein Beispiel für die Benutzerdaten:
+    Du solltest zunächst die Benutzerdaten aus deiner bestehenden Plattform exportieren und dann die Benutzerinformationen auf das Logto-Benutzerschema abbilden. Wir empfehlen, die abgebildeten Daten im JSON-Format vorzubereiten. Hier ein Beispiel für die Benutzerdaten:
 
     ```json
     [
@@ -111,7 +130,7 @@ Die Parameter sind:
 3.  **Verbindung zur Management API einrichten**  
     Wir verwenden die Management API, um die Benutzerdaten zu importieren. Siehe [Management API](/integrate-logto/interact-with-management-api), um zu erfahren, wie du die Verbindung in deiner Entwicklungsumgebung einrichtest.
 4.  **Benutzerdaten importieren**  
-    Es wird empfohlen, ein Skript vorzubereiten, um die Benutzerdaten einzeln zu importieren. Wir rufen die [create user](https://openapi.logto.io/operation/operation-createuser) API auf, um die Benutzerdaten zu importieren. Hier ist ein Beispiel für das Skript:
+    Es wird empfohlen, ein Skript zu erstellen, das die Benutzerdaten einzeln importiert. Wir rufen die [create user](https://openapi.logto.io/operation/operation-createuser)-API auf, um die Benutzerdaten zu importieren. Hier ein Beispiel für das Skript:
 
     ```jsx
     const users = require('./users.json');
@@ -130,7 +149,7 @@ Die Parameter sind:
           // Kurze Pause, um das Rate Limit nicht zu überschreiten
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Benutzerimport für ${user.username} fehlgeschlagen: ${error.message}`);
+          console.error(`Fehler beim Importieren des Benutzers ${user.username}: ${error.message}`);
         }
       }
     };
@@ -138,12 +157,12 @@ Die Parameter sind:
     importUsers();
     ```
 
-Bitte beachte, dass der API-Endpunkt einer Rate-Limitierung unterliegt. Du solltest zwischen den einzelnen Anfragen eine Pause einbauen, um das Rate Limit nicht zu überschreiten. Siehe unsere Seite zu [Rate Limits](/integrate-logto/interact-with-management-api/#rate-limit) für Details.
+Beachte, dass der API-Endpunkt einer Rate-Limitierung unterliegt. Du solltest zwischen den Anfragen eine Pause einbauen, um das Rate Limit nicht zu überschreiten. Siehe unsere Seite zu [Rate Limits](/integrate-logto/interact-with-management-api/#rate-limit) für Details.
 
-Wenn du eine große Menge an Benutzerdaten hast (100.000+ Benutzer), kannst du [uns kontaktieren](https://logto.io/contact), um das Rate Limit zu erhöhen.
+Wenn du eine große Menge an Benutzerdaten (100k+ Benutzer) hast, kannst du [uns kontaktieren](https://logto.io/contact), um das Rate Limit zu erhöhen.
 
 ## Verwandte Ressourcen \{#related-resources}
 
 <Url href="https://blog.logto.io/general-migration-guide">
-  Allgemeine Richtlinien zur Migration deiner bestehenden Benutzerdatenbank zu Logto
+  Eine allgemeine Anleitung zur Migration deiner bestehenden Benutzerdatenbank zu Logto
 </Url>
