@@ -1,0 +1,252 @@
+---
+id: subscribe-tenant-to-pro
+title: 테넌트를 Pro 요금제로 구독하기 (Subscribe a tenant to the Pro plan)
+sidebar_position: 8.1
+---
+
+# 테넌트를 Pro 요금제로 구독하기 (Subscribe a tenant to the Pro plan)
+
+Console을 열지 않고도 Logto Cloud API 호출 한 번으로 테넌트를 Pro 요금제로 전환할 수 있습니다. [테넌트 생성](/logto-cloud/automate-tenant-creation)과 함께 사용하면, 자동화가 프로덕션 테넌트를 만들고 두 번의 호출로 구독까지 완료할 수 있습니다.
+
+이 호출은 결제 계정에 저장된 카드로 첫 번째 인보이스를 청구합니다. 결제 확인을 위한 사람이 없으므로, 호출은 완전히 성공하거나 아무것도 남기지 않습니다: 결제 실패 시 구독이 생성되지 않습니다.
+
+## 시작하기 전에 \{#before-you-start}
+
+필요한 것:
+
+- 이 API에 접근할 수 있는 **Logto Cloud Personal Access Token (PAT)**. 발급을 원하시면 저희에게 문의하세요.
+- 테넌트의 **Admin** 역할. 테넌트를 생성한 사용자가 Admin입니다.
+- **카드가 저장된 결제 계정**. Logto Cloud 계정은 <CloudLink to="/tenant-settings/subscription">Console > 설정 > 요금제 및 결제</CloudLink>에서 처음으로 어떤 테넌트를 Pro 요금제로 구독할 때 결제 계정이 생성됩니다. API는 기본 결제 계정의 카드로 청구합니다. 단, 테넌트가 이전에 유료 요금제에 있었거나 [다른 계정을 선택](#choose-the-billing-account)한 경우는 예외입니다.
+- Free 요금제의 **프로덕션** 테넌트. 개발 테넌트 및 엔터프라이즈 계약이 적용된 테넌트는 지원하지 않습니다.
+
+| Variable             | Description                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API 엔드포인트. Logto Cloud의 경우 `https://cloud.logto.io`를 사용하세요. |
+| `LOGTO_CLOUD_PAT`    | Logto Cloud 계정의 PAT.                                                               |
+| `TENANT_ID`          | 구독할 테넌트의 ID.                                                                   |
+
+## 테넌트 구독하기 \{#subscribe-the-tenant}
+
+`Idempotency-Key` 헤더와 함께 `POST /api/tenants/{tenantId}/subscription`을 호출하세요:
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`: 필수. 이 시도를 식별하는 1~255자의 고유 문자열입니다. 시도마다 하나씩 생성하여 저장하고, 재시도 시 동일한 값을 보내세요.
+2. `skuId`: 필수. 구독할 요금제입니다. Pro 요금제는 `pro-202509`를 사용하세요.
+3. `customerId`: 선택. 결제 계정이 여러 개일 때 청구할 계정입니다. 생략하면, 이전에 유료 요금제에 있었던 테넌트는 이전 결제 계정으로, 그 외에는 기본 결제 계정으로 청구됩니다. [결제 계정 선택](#choose-the-billing-account) 참고.
+
+응답 상태로 결과를 알 수 있습니다:
+
+- `201`: 구독이 생성되었고 테넌트가 Pro 요금제가 되었습니다.
+- `200`: 이 키로 이미 구독이 생성되었습니다. 추가 청구는 없습니다.
+
+응답 예시:
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## 결제 계정 선택하기 \{#choose-the-billing-account}
+
+Logto Cloud 계정은 여러 개의 결제 계정을 가질 수 있으며, 각각 카드와 결제 주소가 다를 수 있습니다. 예를 들어, 회사별로 하나씩 둘 수 있습니다. 이 중 하나가 기본값이며, API는 별도로 지정하지 않으면 기본 계정에 청구합니다.
+
+`GET /api/me/stripe-customers`로 결제 계정 목록을 확인하세요:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name`과 `email`은 결제 계정에 저장된 값이며, `null`일 수 있습니다. 더 이상 존재하지 않는 결제 계정은 목록에 나타나지 않습니다.
+
+특정 결제 계정으로 한 번만 청구하려면, 본문의 `customerId`를 보내세요:
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+API와 Console 모두에서 기본 결제 계정을 변경하려면 (단, 이전에 유료 요금제에 있었던 테넌트는 이동되지 않습니다. 아래 참고):
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+호출이 성공하면 `204`, 결제 계정이 본인 소유가 아니면 `404`, 더 이상 존재하지 않으면 `422` `customer_unavailable`을 반환합니다.
+
+:::note
+이전에 유료 요금제에 있었던 테넌트는, 구독이 취소된 이후에도 해당 결제 계정에 남아 있습니다. 이런 테넌트는 항상 그 결제 계정으로 청구되며, 기본값과 무관합니다. `customerId`를 생략하세요: 결제 계정을 지정하면 `422` `customer_fixed`가 반환됩니다. 테넌트를 다른 결제 계정으로 옮기려면 저희에게 문의하세요.
+
+동일한 `Idempotency-Key`로 재시도할 때는 처음 요청과 동일한 결제 계정을 지정하거나 생략해야 합니다. 다른 계정을 지정하면 `400` `idempotency_key_mismatch`가 반환됩니다.
+:::
+
+## 안전하게 재시도하기 \{#retry-safely}
+
+네트워크 타임아웃이 발생하면 카드가 청구되었는지 알 수 없습니다. `Idempotency-Key`가 재시도를 안전하게 만듭니다: Logto는 키당 한 번만 청구하므로, **동일한 키로 재시도하는 것은 항상 안전합니다**.
+
+1. **결과를 알 수 없을 때는 동일한 키로 재시도하세요.** 클라이언트 타임아웃, 연결 끊김, `5xx` 응답, `409` `attempt_in_progress`(이 키로 보낸 이전 요청이 아직 진행 중일 수 있으니 몇 초 기다렸다가 재시도) 모두 해당됩니다.
+2. **재시도가 시도를 확정합니다.** 구독이 존재하면 `201` 또는 `200`을 반환하거나, 시도를 종료시킨 오류를 반환합니다.
+3. **오류로 시도가 끝난 경우에만 새 키로 새 시도를 시작하세요.** 동일한 키로 재시도하면 이미 실패했다는 메시지가 반환됩니다. 원인을 먼저 해결하세요(예: 카드 갱신).
+4. **메시지에서 문의하라고 하면 중단하고 저희에게 연락하세요.** 응답에 `error.requestId`가 있으면 함께 보내주세요.
+
+:::note
+시도가 열려 있는 동안, 해당 테넌트는 예약됩니다: 다른 키로 요청하면 시도가 끝날 때까지 `409` `attempt_in_progress`가 반환됩니다. 새 시도를 시작하지 말고, 해당 키로 재시도하세요. 키는 계정 단위로 범위가 지정됩니다.
+
+23시간 이내에 재시도하세요. 그 이후에는 Logto가 단일 청구를 보장할 수 없으며 시도를 보류합니다: 동일한 키로 재시도하면 `409` `attempt_in_progress`와 함께 지원팀에 문의하라는 메시지가 반환되며, 저희가 직접 해결합니다.
+:::
+
+## 오류 \{#errors}
+
+오류는 HTTP 상태와 `message`, 대부분의 경우 `error.code`가 포함된 JSON 본문을 사용합니다:
+
+```json
+{
+  "message": "카드가 거절되었습니다.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| Status | `error.code`                                                                           | 의미 및 조치                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `400`  | (없음)                                                                                 | `Idempotency-Key` 헤더가 없거나 255자를 초과했거나, 본문에 `skuId`가 없습니다.                                                 |
+| `400`  | `invalid_sku`                                                                          | 해당 `skuId`는 API로 구매할 수 없습니다.                                                                                       |
+| `400`  | `idempotency_key_mismatch`                                                             | 이 키가 이미 다른 테넌트, 요금제, 결제 계정에 사용되었습니다. 메시지에서 지원팀 문의를 요청하지 않는 한 새 키를 사용하세요.    |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | 카드 청구에 실패했습니다. 카드 발급사가 사유를 공유하면 `declineCode`가 포함됩니다. Console에서 카드 갱신 후 새 시도를 하세요. |
+| `402`  | `processing_error`                                                                     | 이번에 카드 처리에 실패했습니다. 곧 새 시도를 하세요.                                                                          |
+| `402`  | `authentication_required`                                                              | 카드 발급사가 결제 확인을 요구합니다. API로는 불가하므로 Console에서 구독하세요.                                               |
+| `403`  | `insufficient_role`                                                                    | 테넌트의 멤버이지만 Admin이 아닙니다.                                                                                          |
+| `403`  | (없음)                                                                                 | 토큰에 이 API 접근 권한이 없거나, 테넌트가 엔터프라이즈 계약 적용 또는 프라이빗 리전에 있습니다.                               |
+| `404`  | (없음)                                                                                 | 테넌트가 존재하지 않거나, 멤버가 아닙니다.                                                                                     |
+| `404`  | `customer_not_found`                                                                   | `customerId`가 본인 결제 계정이 아닙니다. `GET /api/me/stripe-customers`로 목록을 확인하세요.                                  |
+| `409`  | `subscription_exists`                                                                  | 테넌트에 이미 구독이 있습니다.                                                                                                 |
+| `409`  | `attempt_in_progress`                                                                  | 이 테넌트에 대한 시도가 열려 있거나, 시도가 보류 중입니다. [안전하게 재시도하기](#retry-safely) 참고.                          |
+| `409`  | `no_customer`, `no_payment_method`                                                     | 계정에 결제 계정이 없거나, 카드가 저장되어 있지 않습니다. Console에서 한 번 구독하거나, 카드를 추가하세요.                     |
+| `409`  | `tax_location_invalid`                                                                 | 결제 주소로 세금 계산이 불가합니다. Console에서 주소를 갱신하세요.                                                             |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | 테넌트의 결제 계정이 본인 소유로 확인되지 않거나, 지원이 필요합니다. 저희에게 문의하세요.                                      |
+| `422`  | `customer_fixed`                                                                       | 테넌트는 이전에 결제한 계정에 남아 있습니다. `customerId`를 생략하거나, 이동을 원하면 저희에게 문의하세요.                     |
+| `422`  | `dev_tenant_not_supported`                                                             | 개발 테넌트는 API로 구독할 수 없습니다. Console에서 변환하세요.                                                                |
+| `422`  | `subscription_status_exception`                                                        | 테넌트의 최신 구독 상태를 먼저 확인해야 합니다. 저희에게 문의하세요.                                                           |
+| `500`  | `internal_error` 또는 없음                                                             | 내부 오류가 발생했습니다. 동일한 키로 재시도하고, 반복되면 저희에게 문의하세요.                                                |
+| `502`  | `stripe_error`                                                                         | 결제 제공자가 요청을 거부하거나 실패했습니다. 동일한 키로 재시도하고, 반복되면 저희에게 문의하세요.                            |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | 결과를 알 수 없거나, 결제는 성공했으나 설정이 아직 완료되지 않았습니다. 동일한 키로 재시도하세요.                              |
+
+동일 결제 계정을 사용하는 테넌트의 <CloudLink to="/tenant-settings/subscription">Console > 설정 > 요금제 및 결제</CloudLink>에서 카드와 결제 주소를 갱신할 수 있습니다.
+
+## 한 스크립트로 생성 및 구독하기 \{#create-and-subscribe-in-one-script}
+
+테넌트 생성에는 idempotency key가 없습니다. `POST /api/tenants`가 타임아웃되면, 다시 생성하기 전에 `GET /api/tenants`로 테넌트 목록을 확인하여 중복 생성을 방지하세요.
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// 환경 변수에서 엔드포인트와 헤더 설정
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+// 테넌트 생성
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`테넌트 생성 실패: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// 나중에 재시도할 수 있도록 키를 테넌트와 함께 저장
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // 안전: 동일한 키로는 두 번 청구되지 않음
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`구독 거부: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(
+    `여전히 결과를 알 수 없습니다. 동일한 키로 나중에 재시도하세요: ${idempotencyKey}`
+  );
+}
+```
+
+## 관련 리소스 \{#related-resources}
+
+- [테넌트 관리 자동화](/logto-cloud/automate-tenant-creation)
+- [결제 및 가격 정책](/logto-cloud/billing-and-pricing)

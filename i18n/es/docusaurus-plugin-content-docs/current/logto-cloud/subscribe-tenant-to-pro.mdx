@@ -1,0 +1,251 @@
+---
+id: subscribe-tenant-to-pro
+title: Suscribir un tenant al plan Pro
+sidebar_position: 8.1
+---
+
+# Suscribir un tenant al plan Pro
+
+Puedes poner un tenant en el plan Pro con una sola llamada a la API de Logto Cloud, sin abrir la Consola. Junto con la [creación de tenants](/logto-cloud/automate-tenant-creation), esto permite que tu automatización cree un tenant de producción y lo suscriba en dos llamadas.
+
+La llamada cobra la primera factura a la tarjeta guardada en tu cuenta de facturación. Nadie está presente para confirmar el pago, por lo que la llamada o bien tiene éxito completamente o no deja nada: un pago fallido nunca crea una suscripción.
+
+## Antes de empezar \{#before-you-start}
+
+Necesitas:
+
+- Un **Logto Cloud Personal Access Token (PAT)** con acceso a esta API. Contáctanos para obtener uno.
+- El **Rol de Admin** en el tenant. El usuario que crea un tenant es su Admin.
+- Una **cuenta de facturación con una tarjeta guardada**. Tu cuenta de Logto Cloud obtiene una la primera vez que suscribes cualquier tenant al plan Pro en <CloudLink to="/tenant-settings/subscription">Consola > Configuración > Plan y Facturación</CloudLink>. La API cobra la tarjeta de tu cuenta de facturación predeterminada, a menos que el tenant haya estado antes en un plan de pago o [elijas otra](#choose-the-billing-account).
+- Un tenant de **producción** en el plan Free. Los tenants de desarrollo y los tenants cubiertos por un contrato empresarial no son compatibles.
+
+| Variable             | Descripción                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | El endpoint de la API de Logto Cloud. Para Logto Cloud, usa `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | Un PAT para tu cuenta de Logto Cloud.                                                 |
+| `TENANT_ID`          | El ID del tenant a suscribir.                                                         |
+
+## Suscribir el tenant \{#subscribe-the-tenant}
+
+Llama a `POST /api/tenants/{tenantId}/subscription` con un encabezado `Idempotency-Key`:
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`: OBLIGATORIO. Una cadena única de 1 a 255 caracteres que identifica este intento. Genera una por intento, guárdala y envía el mismo valor si vuelves a intentar el intento.
+2. `skuId`: OBLIGATORIO. El plan al que suscribirse. Usa `pro-202509` para el plan Pro.
+3. `customerId`: OPCIONAL. La cuenta de facturación a la que cobrar, cuando tienes más de una. Si se omite, un tenant que haya estado antes en un plan de pago se cobra a su cuenta de facturación anterior; cualquier otro tenant se cobra a tu cuenta de facturación predeterminada. Consulta [Elegir la cuenta de facturación](#choose-the-billing-account).
+
+El estado de la respuesta te indica lo que ocurrió:
+
+- `201`: la suscripción fue creada y el tenant está en el plan Pro.
+- `200`: esta clave ya creó la suscripción. No se volvió a cobrar nada.
+
+Ejemplo de respuesta:
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## Elegir la cuenta de facturación \{#choose-the-billing-account}
+
+Tu cuenta de Logto Cloud puede tener más de una cuenta de facturación, cada una con su propia tarjeta y dirección de facturación; por ejemplo, una por cada empresa para la que pagas. Una de ellas es la predeterminada, y la API la cobra a menos que nombres otra.
+
+Lista tus cuentas de facturación con `GET /api/me/stripe-customers`:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` y `email` son los guardados en la cuenta de facturación y pueden ser `null`. Las cuentas de facturación que ya no existen no aparecen.
+
+Para cobrar una cuenta de facturación específica para una suscripción, envía su `customerId` en el cuerpo:
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+Para cambiar qué cuenta de facturación se cobra por defecto, tanto para la API como para la Consola (esto no mueve un tenant que haya estado antes en un plan de pago, ver la nota abajo):
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+La llamada responde `204` en caso de éxito, `404` cuando la cuenta de facturación no es tuya, y `422` `customer_unavailable` cuando ya no existe.
+
+:::note
+Un tenant que haya estado antes en un plan de pago, incluso si esa suscripción fue cancelada después, permanece en la cuenta de facturación que lo pagó. Dicho tenant siempre se cobra a esa cuenta de facturación, sea cual sea tu predeterminada. Deja fuera `customerId`: nombrar una cuenta de facturación responde `422` `customer_fixed`. Contáctanos para mover un tenant a otra cuenta de facturación.
+
+Un reintento con la misma `Idempotency-Key` debe nombrar la misma cuenta de facturación que la primera solicitud, o ninguna; otra responde `400` `idempotency_key_mismatch`.
+:::
+
+## Reintentar de forma segura \{#retry-safely}
+
+Un tiempo de espera de red no te dice si la tarjeta fue cobrada. La `Idempotency-Key` es lo que hace seguro un reintento: Logto realiza el cobro como máximo una vez por clave, así que **reintentar con la misma clave siempre es seguro**.
+
+1. **Cuando el resultado es desconocido, reintenta con la misma clave.** Esto cubre un tiempo de espera del cliente o una conexión caída, una respuesta `5xx` y `409` `attempt_in_progress` (una solicitud anterior con esta clave puede seguir en curso, así que espera unos segundos primero).
+2. **El reintento resuelve el intento.** Responde `201` o `200` una vez que la suscripción existe, o el error que terminó el intento.
+3. **Inicia un nuevo intento con una nueva clave solo cuando el intento haya terminado en error.** Un reintento con la misma clave entonces responde con un mensaje de que el intento ya falló. Soluciona la causa primero, por ejemplo actualizando la tarjeta.
+4. **Detente y contáctanos cuando el mensaje te lo pida.** Incluye `error.requestId` cuando la respuesta tenga uno.
+
+:::note
+Mientras un intento está abierto, el tenant está reservado para él: una solicitud con una clave diferente recibe `409` `attempt_in_progress` hasta que el intento abierto termine. Reintenta el intento abierto con su propia clave en lugar de iniciar uno nuevo. Las claves están asociadas a tu cuenta.
+
+Reintenta dentro de las 23 horas. Después de eso, Logto ya no puede garantizar un solo cobro y retiene el intento: el reintento con la misma clave responde `409` `attempt_in_progress` con un mensaje para contactar soporte, y lo resolvemos manualmente.
+:::
+
+## Errores \{#errors}
+
+Los errores usan el estado HTTP y un cuerpo JSON con un `message` y, para la mayoría de errores, un `error.code`:
+
+```json
+{
+  "message": "La tarjeta fue rechazada.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| Estado | `error.code`                                                                           | Significado y qué hacer                                                                                                                                                |
+| ------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | (ninguno)                                                                              | Falta el encabezado `Idempotency-Key` o tiene más de 255 caracteres, o el cuerpo no tiene `skuId`.                                                                     |
+| `400`  | `invalid_sku`                                                                          | El `skuId` no se puede comprar a través de la API.                                                                                                                     |
+| `400`  | `idempotency_key_mismatch`                                                             | La clave ya fue usada para otro tenant, plan o cuenta de facturación. Usa una nueva clave, a menos que el mensaje te pida contactar soporte.                           |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | No se pudo cobrar la tarjeta. `declineCode` se incluye cuando el emisor de la tarjeta lo comparte. Actualiza la tarjeta en la Consola y luego inicia un nuevo intento. |
+| `402`  | `processing_error`                                                                     | No se pudo procesar la tarjeta esta vez. Inicia un nuevo intento en breve.                                                                                             |
+| `402`  | `authentication_required`                                                              | El emisor de la tarjeta requiere que el titular confirme el pago, lo cual no puede hacer una llamada a la API. Suscribe este tenant en la Consola.                     |
+| `403`  | `insufficient_role`                                                                    | Eres miembro del tenant pero no Admin.                                                                                                                                 |
+| `403`  | (ninguno)                                                                              | El token no tiene acceso a esta API, o el tenant está cubierto por un contrato empresarial o está en una región privada.                                               |
+| `404`  | (ninguno)                                                                              | El tenant no existe, o no eres miembro de él.                                                                                                                          |
+| `404`  | `customer_not_found`                                                                   | El `customerId` no es una de tus cuentas de facturación. Listalas con `GET /api/me/stripe-customers`.                                                                  |
+| `409`  | `subscription_exists`                                                                  | El tenant ya tiene una suscripción.                                                                                                                                    |
+| `409`  | `attempt_in_progress`                                                                  | Hay un intento abierto para este tenant, o este intento está retenido. Consulta [Reintentar de forma segura](#retry-safely).                                           |
+| `409`  | `no_customer`, `no_payment_method`                                                     | Tu cuenta no tiene cuenta de facturación, o no tiene tarjeta guardada. Suscribe un tenant en la Consola una vez, o añade una tarjeta allí.                             |
+| `409`  | `tax_location_invalid`                                                                 | La dirección de facturación no se puede usar para calcular impuestos. Actualízala en la Consola.                                                                       |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | No se pudo verificar que la cuenta de facturación del tenant sea tuya, o necesita nuestra ayuda. Contáctanos.                                                          |
+| `422`  | `customer_fixed`                                                                       | El tenant permanece en la cuenta de facturación que lo pagó antes. Deja fuera `customerId`, o contáctanos para mover el tenant.                                        |
+| `422`  | `dev_tenant_not_supported`                                                             | Los tenants de desarrollo no pueden suscribirse a través de la API. Convierte el tenant en la Consola.                                                                 |
+| `422`  | `subscription_status_exception`                                                        | La última suscripción del tenant necesita atención primero. Contáctanos.                                                                                               |
+| `500`  | `internal_error` o ninguno                                                             | Algo salió mal de nuestro lado. Reintenta con la misma clave y contáctanos si se repite.                                                                               |
+| `502`  | `stripe_error`                                                                         | Nuestro proveedor de pagos rechazó o falló la solicitud. Reintenta con la misma clave y contáctanos si se repite.                                                      |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | El resultado es desconocido, o el pago tuvo éxito y la configuración aún debe finalizar. Reintenta con la misma clave.                                                 |
+
+Puedes actualizar la tarjeta y la dirección de facturación en <CloudLink to="/tenant-settings/subscription">Consola > Configuración > Plan y Facturación</CloudLink> de cualquier tenant que use la misma cuenta de facturación.
+
+## Crear y suscribir en un solo script \{#create-and-subscribe-in-one-script}
+
+La creación de tenants no tiene clave de idempotencia. Si `POST /api/tenants` se agota, lista tus tenants con `GET /api/tenants` antes de crear de nuevo, para que un reintento no cree un segundo tenant.
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// Mensaje de ejemplo traducido en los comentarios
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'Mi tenant automatizado', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`La creación del tenant falló: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// Guarda la clave con el tenant, para que una ejecución posterior pueda reintentar el mismo intento.
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // Seguro: la misma clave nunca cobra dos veces.
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Suscripción rechazada: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(
+    `Sigue siendo desconocido. Reintenta más tarde con la misma clave: ${idempotencyKey}`
+  );
+}
+```
+
+## Recursos relacionados \{#related-resources}
+
+- [Automatiza la gestión de tenants](/logto-cloud/automate-tenant-creation)
+- [Facturación y precios](/logto-cloud/billing-and-pricing)
