@@ -16,7 +16,7 @@ You need:
 
 - A **Logto Cloud Personal Access Token (PAT)** with access to this API. Contact us to get one.
 - The **Admin** role on the tenant. The user who creates a tenant is its Admin.
-- A **billing account with a saved card**. Your Logto Cloud account gets one the first time you subscribe any tenant to the Pro plan in <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink>. The API charges that card.
+- A **billing account with a saved card**. Your Logto Cloud account gets one the first time you subscribe any tenant to the Pro plan in <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink>. The API charges the card of your default billing account, unless the tenant has been on a paid plan before or you [choose another one](#choose-the-billing-account).
 - A **production** tenant on the Free plan. Development tenants and tenants covered by an enterprise contract are not supported.
 
 | Variable             | Description                                                                  |
@@ -41,6 +41,7 @@ curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
 
 1. `Idempotency-Key`: REQUIRED. A unique string of 1 to 255 characters that identifies this attempt. Generate one per attempt, store it, and send the same value when you retry the attempt.
 2. `skuId`: REQUIRED. The plan to subscribe to. Use `pro-202509` for the Pro plan.
+3. `customerId`: OPTIONAL. The billing account to charge, when you have more than one. When omitted, a tenant that has been on a paid plan before is charged to its previous billing account; any other tenant is charged to your default billing account. See [Choose the billing account](#choose-the-billing-account).
 
 The response status tells you what happened:
 
@@ -68,6 +69,65 @@ Example response:
   }
 }
 ```
+
+## Choose the billing account \{#choose-the-billing-account}
+
+Your Logto Cloud account can hold more than one billing account, each with its own card and billing address; for example, one per company you pay for. One of them is the default, and the API charges it unless you name another one.
+
+List your billing accounts with `GET /api/me/stripe-customers`:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` and `email` are the ones saved on the billing account and can be `null`. Billing accounts that no longer exist are left out.
+
+To charge a specific billing account for one subscription, send its `customerId` in the body:
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+To change which billing account is charged by default, for the API and for Console alike (this does not move a tenant that has been on a paid plan before, see the note below):
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+The call answers `204` on success, `404` when the billing account is not one of yours, and `422` `customer_unavailable` when it no longer exists.
+
+:::note
+A tenant that has been on a paid plan before, even if that subscription was cancelled since, stays on the billing account that paid for it. Such a tenant is always charged to that billing account, whatever your default is. Leave `customerId` out: naming a billing account answers `422` `customer_fixed`. Contact us to move a tenant to another billing account.
+
+A retry with the same `Idempotency-Key` must name the same billing account as the first request, or none; another one answers `400` `idempotency_key_mismatch`.
+:::
 
 ## Retry safely \{#retry-safely}
 
@@ -99,18 +159,20 @@ Errors use the HTTP status and a JSON body with a `message` and, for most errors
 | ------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `400`  | (none)                                                                                 | The `Idempotency-Key` header is missing or longer than 255 characters, or the body has no `skuId`.                                             |
 | `400`  | `invalid_sku`                                                                          | The `skuId` cannot be bought through the API.                                                                                                  |
-| `400`  | `idempotency_key_mismatch`                                                             | The key was already used for another tenant or plan. Use a new key, unless the message asks you to contact support.                            |
+| `400`  | `idempotency_key_mismatch`                                                             | The key was already used for another tenant, plan or billing account. Use a new key, unless the message asks you to contact support.           |
 | `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | The card could not be charged. `declineCode` is included when the card issuer shares it. Update the card in Console, then start a new attempt. |
 | `402`  | `processing_error`                                                                     | The card could not be processed this time. Start a new attempt shortly.                                                                        |
 | `402`  | `authentication_required`                                                              | The card issuer requires the cardholder to confirm the payment, which an API call cannot do. Subscribe this tenant in Console instead.         |
 | `403`  | `insufficient_role`                                                                    | You are a member of the tenant but not an Admin.                                                                                               |
 | `403`  | (none)                                                                                 | The token lacks access to this API, or the tenant is covered by an enterprise contract or is in a private region.                              |
 | `404`  | (none)                                                                                 | The tenant does not exist, or you are not a member of it.                                                                                      |
+| `404`  | `customer_not_found`                                                                   | The `customerId` is not one of your billing accounts. List them with `GET /api/me/stripe-customers`.                                           |
 | `409`  | `subscription_exists`                                                                  | The tenant already has a subscription.                                                                                                         |
 | `409`  | `attempt_in_progress`                                                                  | An attempt for this tenant is open, or this attempt is held. See [Retry safely](#retry-safely).                                                |
 | `409`  | `no_customer`, `no_payment_method`                                                     | Your account has no billing account, or it has no saved card. Subscribe a tenant in Console once, or add a card there.                         |
 | `409`  | `tax_location_invalid`                                                                 | The billing address cannot be used to calculate tax. Update it in Console.                                                                     |
 | `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | The tenant's billing account could not be verified as yours, or it needs our help. Contact us.                                                 |
+| `422`  | `customer_fixed`                                                                       | The tenant stays on the billing account that paid for it before. Leave `customerId` out, or contact us to move the tenant.                     |
 | `422`  | `dev_tenant_not_supported`                                                             | Development tenants cannot be subscribed through the API. Convert the tenant in Console.                                                       |
 | `422`  | `subscription_status_exception`                                                        | The tenant's latest subscription needs attention first. Contact us.                                                                            |
 | `500`  | `internal_error` or none                                                               | Something went wrong on our side. Retry with the same key, and contact us if it repeats.                                                       |
