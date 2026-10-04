@@ -1,0 +1,250 @@
+---
+id: subscribe-tenant-to-pro
+title: สมัครสมาชิก Pro plan ให้กับ tenant
+sidebar_position: 8.1
+---
+
+# สมัครสมาชิก Pro plan ให้กับ tenant
+
+คุณสามารถนำ tenant ไปอยู่บน Pro plan ได้ด้วยการเรียก Logto Cloud API เพียงครั้งเดียว โดยไม่ต้องเปิด Console เมื่อใช้ร่วมกับ [การสร้าง tenant อัตโนมัติ](/logto-cloud/automate-tenant-creation) จะช่วยให้ระบบอัตโนมัติของคุณสร้าง production tenant และสมัครสมาชิกได้ในสองคำสั่ง
+
+การเรียกนี้จะเรียกเก็บเงินใบแจ้งหนี้แรกกับบัตรที่บันทึกไว้ในบัญชีเรียกเก็บเงินของคุณ ไม่มีใครอยู่เพื่อยืนยันการชำระเงิน ดังนั้นการเรียกนี้จะสำเร็จสมบูรณ์หรือไม่ทิ้งอะไรไว้เลย: หากชำระเงินไม่สำเร็จจะไม่มีการสร้างการสมัครสมาชิก
+
+## ก่อนเริ่มต้น \{#before-you-start}
+
+คุณต้องมี:
+
+- **Logto Cloud Personal Access Token (PAT)** ที่มีสิทธิ์เข้าถึง API นี้ ติดต่อเราเพื่อขอรับ
+- **บทบาท Admin** ใน tenant ผู้ที่สร้าง tenant จะเป็น Admin โดยอัตโนมัติ
+- **บัญชีเรียกเก็บเงินที่มีบัตรบันทึกไว้** บัญชี Logto Cloud ของคุณจะได้รับบัญชีนี้เมื่อคุณสมัครสมาชิก Pro plan ให้ tenant ใด ๆ ครั้งแรกใน <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink> API จะเรียกเก็บเงินกับบัตรของบัญชีเรียกเก็บเงินเริ่มต้นของคุณ เว้นแต่ tenant เคยอยู่บนแผนชำระเงินมาก่อน หรือคุณ [เลือกบัญชีอื่น](#choose-the-billing-account)
+- **tenant ประเภท production** ที่อยู่บน Free plan ไม่รองรับ development tenant และ tenant ที่อยู่ภายใต้สัญญาองค์กร
+
+| ตัวแปร               | คำอธิบาย                                                                    |
+| -------------------- | --------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | จุดปลาย API ของ Logto Cloud สำหรับ Logto Cloud ใช้ `https://cloud.logto.io` |
+| `LOGTO_CLOUD_PAT`    | PAT สำหรับบัญชี Logto Cloud ของคุณ                                          |
+| `TENANT_ID`          | รหัสของ tenant ที่จะสมัครสมาชิก                                             |
+
+## สมัครสมาชิกให้ tenant \{#subscribe-the-tenant}
+
+เรียก `POST /api/tenants/{tenantId}/subscription` พร้อม header `Idempotency-Key`:
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`: จำเป็นต้องมี สตริงที่ไม่ซ้ำกัน 1 ถึง 255 ตัวอักษรเพื่อระบุความพยายามนี้ สร้างใหม่ทุกครั้ง เก็บไว้ และส่งค่าเดิมเมื่อ retry
+2. `skuId`: จำเป็นต้องมี แผนที่ต้องการสมัครสมาชิก ใช้ `pro-202509` สำหรับ Pro plan
+3. `customerId`: ไม่จำเป็น บัญชีเรียกเก็บเงินที่จะถูกเรียกเก็บเงิน เมื่อคุณมีมากกว่าหนึ่งบัญชี หากไม่ระบุ tenant ที่เคยอยู่บนแผนชำระเงินมาก่อนจะถูกเรียกเก็บกับบัญชีเดิม tenant อื่นจะถูกเรียกเก็บกับบัญชีเริ่มต้นของคุณ ดู [เลือกบัญชีเรียกเก็บเงิน](#choose-the-billing-account)
+
+สถานะการตอบกลับจะบอกสิ่งที่เกิดขึ้น:
+
+- `201`: สร้างการสมัครสมาชิกสำเร็จ tenant อยู่บน Pro plan แล้ว
+- `200`: คีย์นี้เคยสร้างการสมัครสมาชิกแล้ว ไม่มีการเรียกเก็บเงินซ้ำ
+
+ตัวอย่างการตอบกลับ:
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## เลือกบัญชีเรียกเก็บเงิน \{#choose-the-billing-account}
+
+บัญชี Logto Cloud ของคุณสามารถมีบัญชีเรียกเก็บเงินได้มากกว่าหนึ่งบัญชี แต่ละบัญชีมีบัตรและที่อยู่เรียกเก็บเงินของตัวเอง เช่น หนึ่งบัญชีต่อบริษัทที่คุณชำระเงิน หนึ่งในนั้นเป็นบัญชีเริ่มต้น และ API จะเรียกเก็บเงินกับบัญชีนี้ เว้นแต่คุณจะระบุบัญชีอื่น
+
+แสดงรายการบัญชีเรียกเก็บเงินของคุณด้วย `GET /api/me/stripe-customers`:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` และ `email` คือค่าที่บันทึกไว้ในบัญชีเรียกเก็บเงินและอาจเป็น `null` ได้ บัญชีเรียกเก็บเงินที่ไม่มีอยู่แล้วจะไม่แสดง
+
+หากต้องการเรียกเก็บเงินกับบัญชีเฉพาะสำหรับการสมัครสมาชิกหนึ่งครั้ง ให้ส่ง `customerId` ใน body:
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+หากต้องการเปลี่ยนบัญชีเรียกเก็บเงินเริ่มต้นสำหรับ API และ Console (การเปลี่ยนนี้จะไม่ย้าย tenant ที่เคยอยู่บนแผนชำระเงินมาก่อน ดูหมายเหตุด้านล่าง):
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+การเรียกนี้จะตอบกลับ `204` เมื่อสำเร็จ, `404` เมื่อบัญชีเรียกเก็บเงินไม่ใช่ของคุณ, และ `422` `customer_unavailable` เมื่อบัญชีไม่มีอยู่แล้ว
+
+:::note
+tenant ที่เคยอยู่บนแผนชำระเงินมาก่อน แม้ว่าการสมัครสมาชิกนั้นจะถูกยกเลิกไปแล้ว จะยังคงอยู่กับบัญชีเรียกเก็บเงินเดิมที่เคยชำระเงินให้ tenant ดังกล่าวจะถูกเรียกเก็บเงินกับบัญชีเดิมเสมอ ไม่ว่าบัญชีเริ่มต้นของคุณจะเป็นอะไร กรณีนี้ให้เว้น `customerId` ไว้: หากระบุบัญชีจะได้ `422` `customer_fixed` ติดต่อเราเพื่อย้าย tenant ไปบัญชีเรียกเก็บเงินอื่น
+
+การ retry ด้วย `Idempotency-Key` เดิมต้องใช้บัญชีเรียกเก็บเงินเดียวกับคำขอแรก หรือไม่ระบุเลย หากระบุบัญชีอื่นจะได้ `400` `idempotency_key_mismatch`
+:::
+
+## retry อย่างปลอดภัย \{#retry-safely}
+
+timeout ของเครือข่ายไม่สามารถบอกได้ว่าบัตรถูกเรียกเก็บเงินหรือไม่ `Idempotency-Key` คือสิ่งที่ทำให้ retry ปลอดภัย: Logto จะเรียกเก็บเงินสูงสุดหนึ่งครั้งต่อคีย์ ดังนั้น **retry ด้วยคีย์เดิมจึงปลอดภัยเสมอ**
+
+1. **เมื่อไม่ทราบผลลัพธ์ ให้ retry ด้วยคีย์เดิม** เช่น timeout ฝั่ง client, การเชื่อมต่อหลุด, ตอบกลับ `5xx` และ `409` `attempt_in_progress` (คำขอก่อนหน้าด้วยคีย์นี้อาจยังทำงานอยู่ ให้รอสักครู่)
+2. **retry จะสรุปผลลัพธ์ของความพยายาม** จะตอบกลับ `201` หรือ `200` เมื่อมีการสมัครสมาชิกแล้ว หรือ error ที่จบความพยายามนั้น
+3. **เริ่มความพยายามใหม่ด้วยคีย์ใหม่เมื่อความพยายามก่อนหน้าจบด้วย error เท่านั้น** retry ด้วยคีย์เดิมจะตอบกลับว่าความพยายามนั้นล้มเหลวแล้ว ให้แก้ไขสาเหตุก่อน เช่น อัปเดตบัตร
+4. **หยุดและติดต่อเราหากข้อความแจ้งให้ทำ** แนบ `error.requestId` หาก response มี
+
+:::note
+ขณะที่ความพยายามยังเปิดอยู่ tenant จะถูกจองไว้: คำขอด้วยคีย์อื่นจะได้ `409` `attempt_in_progress` จนกว่าความพยายามจะจบ ให้ retry ด้วยคีย์เดิมแทนที่จะเริ่มใหม่ คีย์จะถูกผูกกับบัญชีของคุณ
+
+retry ได้ภายใน 23 ชั่วโมง หลังจากนั้น Logto ไม่สามารถรับประกันการเรียกเก็บเงินเดียวได้และจะถือความพยายามไว้: retry ด้วยคีย์เดิมจะได้ `409` `attempt_in_progress` พร้อมข้อความให้ติดต่อ support และเราจะช่วยแก้ไขให้
+:::
+
+## ข้อผิดพลาด \{#errors}
+
+ข้อผิดพลาดจะใช้ HTTP status และ body JSON ที่มี `message` และสำหรับข้อผิดพลาดส่วนใหญ่จะมี `error.code`:
+
+```json
+{
+  "message": "The card was declined.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| สถานะ | `error.code`                                                                           | ความหมายและวิธีแก้ไข                                                                                                     |
+| ----- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `400` | (none)                                                                                 | ไม่มี header `Idempotency-Key` หรือยาวเกิน 255 ตัวอักษร หรือ body ไม่มี `skuId`                                          |
+| `400` | `invalid_sku`                                                                          | `skuId` ไม่สามารถซื้อผ่าน API ได้                                                                                        |
+| `400` | `idempotency_key_mismatch`                                                             | คีย์นี้ถูกใช้กับ tenant, plan หรือบัญชีเรียกเก็บเงินอื่นแล้ว ใช้คีย์ใหม่ เว้นแต่ข้อความแจ้งให้ติดต่อ support             |
+| `402` | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | ไม่สามารถเรียกเก็บเงินบัตรได้ `declineCode` จะมีเมื่อผู้ออกบัตรแจ้งมา อัปเดตบัตรใน Console แล้วเริ่มใหม่                 |
+| `402` | `processing_error`                                                                     | ไม่สามารถประมวลผลบัตรได้ในครั้งนี้ เริ่มใหม่อีกครั้งในไม่ช้า                                                             |
+| `402` | `authentication_required`                                                              | ผู้ออกบัตรต้องการให้เจ้าของบัตรยืนยันการชำระเงิน ซึ่ง API ไม่สามารถทำได้ สมัครสมาชิก tenant นี้ใน Console แทน            |
+| `403` | `insufficient_role`                                                                    | คุณเป็นสมาชิก tenant แต่ไม่ใช่ Admin                                                                                     |
+| `403` | (none)                                                                                 | token ไม่มีสิทธิ์เข้าถึง API นี้ หรือ tenant อยู่ภายใต้สัญญาองค์กรหรืออยู่ใน region ส่วนตัว                              |
+| `404` | (none)                                                                                 | tenant ไม่มีอยู่ หรือคุณไม่ใช่สมาชิก                                                                                     |
+| `404` | `customer_not_found`                                                                   | `customerId` ไม่ใช่บัญชีเรียกเก็บเงินของคุณ แสดงรายการด้วย `GET /api/me/stripe-customers`                                |
+| `409` | `subscription_exists`                                                                  | tenant มีการสมัครสมาชิกอยู่แล้ว                                                                                          |
+| `409` | `attempt_in_progress`                                                                  | มีความพยายามสำหรับ tenant นี้เปิดอยู่ หรือความพยายามนี้ถูกถือไว้ ดู [retry อย่างปลอดภัย](#retry-safely)                  |
+| `409` | `no_customer`, `no_payment_method`                                                     | บัญชีของคุณไม่มีบัญชีเรียกเก็บเงิน หรือไม่มีบัตรที่บันทึกไว้ สมัครสมาชิก tenant ใน Console สักครั้ง หรือเพิ่มบัตรที่นั่น |
+| `409` | `tax_location_invalid`                                                                 | ที่อยู่เรียกเก็บเงินไม่สามารถใช้คำนวณภาษีได้ อัปเดตใน Console                                                            |
+| `409` | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | ไม่สามารถยืนยันบัญชีเรียกเก็บเงินของ tenant ว่าเป็นของคุณ หรือจำเป็นต้องให้เราช่วย ติดต่อเรา                             |
+| `422` | `customer_fixed`                                                                       | tenant จะอยู่กับบัญชีเรียกเก็บเงินเดิมที่เคยชำระเงินให้ เว้น `customerId` ไว้ หรือ ติดต่อเราเพื่อย้าย tenant             |
+| `422` | `dev_tenant_not_supported`                                                             | ไม่สามารถสมัครสมาชิก development tenant ผ่าน API ได้ แปลง tenant ใน Console                                              |
+| `422` | `subscription_status_exception`                                                        | การสมัครสมาชิกล่าสุดของ tenant ต้องได้รับการดูแลก่อน ติดต่อเรา                                                           |
+| `500` | `internal_error` หรือไม่มี                                                             | มีบางอย่างผิดพลาดฝั่งเรา retry ด้วยคีย์เดิม และติดต่อเราหากเกิดซ้ำ                                                       |
+| `502` | `stripe_error`                                                                         | ผู้ให้บริการชำระเงินของเราปฏิเสธหรือดำเนินการไม่สำเร็จ retry ด้วยคีย์เดิม และติดต่อเราหากเกิดซ้ำ                         |
+| `503` | `stripe_unavailable`, `provisioning_failed`                                            | ไม่ทราบผลลัพธ์ หรือชำระเงินสำเร็จแต่ยังตั้งค่าไม่เสร็จ retry ด้วยคีย์เดิม                                                |
+
+คุณสามารถอัปเดตบัตรและที่อยู่เรียกเก็บเงินได้ใน <CloudLink to="/tenant-settings/subscription">Console > Settings > Plan and Billing</CloudLink> ของ tenant ใด ๆ ที่ใช้บัญชีเรียกเก็บเงินเดียวกัน
+
+## สร้างและสมัครสมาชิกในสคริปต์เดียว \{#create-and-subscribe-in-one-script}
+
+การสร้าง tenant ไม่มี idempotency key หาก `POST /api/tenants` timeout ให้แสดงรายการ tenant ของคุณด้วย `GET /api/tenants` ก่อนสร้างใหม่ เพื่อป้องกันการ retry ที่สร้าง tenant ซ้ำ
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// หมายเหตุ: ตัวแปรและโค้ดไม่ต้องแปล
+
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`Tenant creation failed: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// Store the key with the tenant, so a later run can retry the same attempt.
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // Safe: the same key never charges twice.
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Subscription refused: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(`Still unknown. Retry later with the same key: ${idempotencyKey}`);
+}
+```
+
+## แหล่งข้อมูลที่เกี่ยวข้อง \{#related-resources}
+
+- [จัดการ tenant อัตโนมัติ](/logto-cloud/automate-tenant-creation)
+- [การเรียกเก็บเงินและราคา](/logto-cloud/billing-and-pricing)

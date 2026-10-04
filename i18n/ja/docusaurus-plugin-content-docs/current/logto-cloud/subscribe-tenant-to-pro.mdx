@@ -1,0 +1,250 @@
+---
+id: subscribe-tenant-to-pro
+title: テナントを Pro プランに登録する
+sidebar_position: 8.1
+---
+
+# テナントを Pro プランに登録する
+
+Logto Cloud API を 1 回呼び出すだけで、テナントを Pro プランに登録できます。Console を開く必要はありません。[テナント作成](/logto-cloud/automate-tenant-creation) と組み合わせることで、自動化スクリプトから本番テナントの作成と登録を 2 回の呼び出しで実現できます。
+
+この呼び出しでは、請求アカウントに保存されているカードに最初の請求が行われます。支払いの確認者は存在しないため、呼び出しは完全に成功するか、何も残しません：支払いに失敗した場合、サブスクリプションは作成されません。
+
+## 始める前に \{#before-you-start}
+
+必要なもの：
+
+- この API へのアクセス権を持つ **Logto Cloud パーソナルアクセストークン (PAT)**。取得方法はお問い合わせください。
+- テナントの **Admin** ロール。テナントを作成したユーザーが Admin です。
+- **保存済みカード付きの請求アカウント**。Logto Cloud アカウントは、<CloudLink to="/tenant-settings/subscription">Console > 設定 > プランと請求</CloudLink> で初めて任意のテナントを Pro プランに登録した際に作成されます。API は、テナントが以前に有料プランだった場合や [別のアカウントを選択](#choose-the-billing-account) しない限り、デフォルトの請求アカウントのカードに請求します。
+- Free プランの **本番** テナント。開発用テナントやエンタープライズ契約対象のテナントはサポートされていません。
+
+| Variable             | Description                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API エンドポイント。Logto Cloud の場合は `https://cloud.logto.io` を使用します。 |
+| `LOGTO_CLOUD_PAT`    | Logto Cloud アカウント用の PAT。                                                             |
+| `TENANT_ID`          | 登録するテナントの ID。                                                                      |
+
+## テナントを登録する \{#subscribe-the-tenant}
+
+`Idempotency-Key` ヘッダー付きで `POST /api/tenants/{tenantId}/subscription` を呼び出します：
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`：必須。この試行を識別する 1 ～ 255 文字の一意な文字列。試行ごとに生成し、保存し、再試行時も同じ値を送信してください。
+2. `skuId`：必須。登録するプラン。Pro プランの場合は `pro-202509` を使用します。
+3. `customerId`：任意。請求先アカウントが複数ある場合に請求するアカウント。省略した場合、以前に有料プランだったテナントは以前の請求アカウントに、それ以外はデフォルトの請求アカウントに請求されます。[請求アカウントの選択](#choose-the-billing-account) を参照してください。
+
+レスポンスステータスで結果が分かります：
+
+- `201`：サブスクリプションが作成され、テナントが Pro プランになりました。
+- `200`：このキーですでにサブスクリプションが作成されています。再度請求はされません。
+
+レスポンス例：
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## 請求アカウントの選択 \{#choose-the-billing-account}
+
+Logto Cloud アカウントは、複数の請求アカウント（それぞれカードと請求先住所を持つ）を保持できます。例えば、会社ごとに 1 つずつ持つことができます。そのうち 1 つがデフォルトで、API は特に指定しない限りそれに請求します。
+
+`GET /api/me/stripe-customers` で請求アカウントを一覧できます：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` と `email` は請求アカウントに保存されているもので、`null` の場合もあります。既に存在しない請求アカウントは表示されません。
+
+特定の請求アカウントで 1 件のサブスクリプションに請求するには、リクエストボディにその `customerId` を指定します：
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+API や Console でデフォルトで請求されるアカウントを変更するには（以前に有料プランだったテナントは移動しません。下記注意参照）：
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+成功時は `204`、請求アカウントが自分のものでない場合は `404`、既に存在しない場合は `422` `customer_unavailable` が返されます。
+
+:::note
+以前に有料プランだったテナントは、その支払いを行った請求アカウントに紐づいたままです。たとえサブスクリプションがキャンセルされていても、そのテナントは常にその請求アカウントに請求されます。`customerId` を指定せずにリクエストしてください。請求アカウントを指定すると `422` `customer_fixed` が返されます。別の請求アカウントに移動したい場合はお問い合わせください。
+
+同じ `Idempotency-Key` で再試行する場合、最初のリクエストと同じ請求アカウント、または指定なしでなければなりません。異なるアカウントを指定すると `400` `idempotency_key_mismatch` となります。
+:::
+
+## 安全なリトライ方法 \{#retry-safely}
+
+ネットワークタイムアウトではカードが請求されたかどうか分かりません。`Idempotency-Key` によりリトライが安全になります：Logto はキーごとに 1 回だけ請求するため、**同じキーでの再試行は常に安全です**。
+
+1. **結果が不明な場合は、同じキーで再試行してください。** これはクライアントタイムアウトや接続切断、`5xx` 応答、`409` `attempt_in_progress`（このキーの以前のリクエストがまだ実行中の場合は数秒待ってから）に対応します。
+2. **リトライで試行が確定します。** サブスクリプションが存在すれば `201` または `200`、または試行を終了させたエラーが返されます。
+3. **エラーで試行が終了した場合のみ、新しいキーで新しい試行を開始してください。** 同じキーでの再試行は「既に失敗した」と返されます。まず原因を修正してください（例：カード情報の更新）。
+4. **メッセージで問い合わせを求められた場合は、指示に従いご連絡ください。** レスポンスに `error.requestId` が含まれている場合はそれも添えてください。
+
+:::note
+試行がオープンな間は、そのテナントは予約状態です：異なるキーでリクエストすると、オープンな試行が終了するまで `409` `attempt_in_progress` となります。新しい試行を始めるのではなく、そのキーでリトライしてください。キーはアカウント単位でスコープされます。
+
+23 時間以内にリトライしてください。それ以降は Logto 側で単一請求の保証ができなくなり、試行が保留されます：同じキーでのリトライは `409` `attempt_in_progress` とサポートへの連絡を促すメッセージを返し、手動で対応します。
+:::
+
+## エラー \{#errors}
+
+エラーは HTTP ステータスと、`message` および多くの場合 `error.code` を含む JSON ボディで返されます：
+
+```json
+{
+  "message": "The card was declined.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| Status | `error.code`                                                                           | 意味と対応方法                                                                                                                                           |
+| ------ | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | (なし)                                                                                 | `Idempotency-Key` ヘッダーがない、または 255 文字を超えている、またはボディに `skuId` がない場合。                                                       |
+| `400`  | `invalid_sku`                                                                          | `skuId` は API 経由で購入できません。                                                                                                                    |
+| `400`  | `idempotency_key_mismatch`                                                             | このキーは他のテナント、プラン、請求アカウントで既に使用されています。メッセージでサポートへの連絡を求められない限り新しいキーを使ってください。         |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | カードへの請求に失敗しました。`declineCode` がカード発行会社から共有されている場合は含まれます。Console でカードを更新し、新しい試行を開始してください。 |
+| `402`  | `processing_error`                                                                     | 今回はカードの処理に失敗しました。しばらくしてから新しい試行を開始してください。                                                                         |
+| `402`  | `authentication_required`                                                              | カード発行会社がカード所有者による支払い確認を要求しています。API では対応できません。Console で登録してください。                                       |
+| `403`  | `insufficient_role`                                                                    | テナントのメンバーですが Admin ではありません。                                                                                                          |
+| `403`  | (なし)                                                                                 | トークンにこの API へのアクセス権がない、またはテナントがエンタープライズ契約対象またはプライベートリージョンにある場合。                                |
+| `404`  | (なし)                                                                                 | テナントが存在しない、またはメンバーでない場合。                                                                                                         |
+| `404`  | `customer_not_found`                                                                   | `customerId` が自分の請求アカウントではありません。`GET /api/me/stripe-customers` で一覧を取得してください。                                             |
+| `409`  | `subscription_exists`                                                                  | テナントには既にサブスクリプションがあります。                                                                                                           |
+| `409`  | `attempt_in_progress`                                                                  | このテナントの試行がオープン、または保留状態です。[安全なリトライ方法](#retry-safely) を参照してください。                                               |
+| `409`  | `no_customer`, `no_payment_method`                                                     | アカウントに請求アカウントがない、またはカードが保存されていません。Console で一度登録するか、カードを追加してください。                                 |
+| `409`  | `tax_location_invalid`                                                                 | 請求先住所で税計算ができません。Console で更新してください。                                                                                             |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | テナントの請求アカウントが自分のものと確認できない、またはサポートが必要な場合。お問い合わせください。                                                   |
+| `422`  | `customer_fixed`                                                                       | テナントは以前に支払いを行った請求アカウントに紐づいたままです。`customerId` を省略するか、移動したい場合はお問い合わせください。                        |
+| `422`  | `dev_tenant_not_supported`                                                             | 開発用テナントは API で登録できません。Console で変換してください。                                                                                      |
+| `422`  | `subscription_status_exception`                                                        | テナントの最新サブスクリプションに先に対応が必要です。お問い合わせください。                                                                             |
+| `500`  | `internal_error` またはなし                                                            | サーバー側で問題が発生しました。同じキーでリトライし、繰り返す場合はお問い合わせください。                                                               |
+| `502`  | `stripe_error`                                                                         | 決済プロバイダーがリクエストを拒否または失敗しました。同じキーでリトライし、繰り返す場合はお問い合わせください。                                         |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | 結果が不明、または支払いは成功しセットアップが未完了です。同じキーでリトライしてください。                                                               |
+
+同じ請求アカウントを利用する任意のテナントの <CloudLink to="/tenant-settings/subscription">Console > 設定 > プランと請求</CloudLink> でカードや請求先住所を更新できます。
+
+## 1 つのスクリプトで作成と登録を実行 \{#create-and-subscribe-in-one-script}
+
+テナント作成には冪等性キーがありません。`POST /api/tenants` がタイムアウトした場合、再作成前に `GET /api/tenants` でテナント一覧を取得し、リトライで重複作成しないようにしてください。
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// API エンドポイントとヘッダーの設定
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+// テナント作成
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`Tenant creation failed: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// キーをテナントと一緒に保存し、後で同じ試行をリトライできるようにします
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // 安全：同じキーで二重請求されることはありません
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Subscription refused: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(`Still unknown. Retry later with the same key: ${idempotencyKey}`);
+}
+```
+
+## 関連リソース \{#related-resources}
+
+- [テナント管理の自動化](/logto-cloud/automate-tenant-creation)
+- [請求と価格](/logto-cloud/billing-and-pricing)
