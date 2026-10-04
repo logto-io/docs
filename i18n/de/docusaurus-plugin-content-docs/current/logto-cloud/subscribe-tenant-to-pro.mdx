@@ -1,0 +1,252 @@
+---
+id: subscribe-tenant-to-pro
+title: Einen Tenant auf den Pro-Plan abonnieren
+sidebar_position: 8.1
+---
+
+# Einen Tenant auf den Pro-Plan abonnieren
+
+Du kannst einen Tenant mit nur einem Logto Cloud API-Aufruf auf den Pro-Plan setzen, ohne die Console zu öffnen. Zusammen mit der [Tenant-Erstellung](/logto-cloud/automate-tenant-creation) kann deine Automatisierung so einen Produktionstenant erstellen und ihn in zwei Aufrufen abonnieren.
+
+Der Aufruf belastet die erste Rechnung auf die gespeicherte Karte deines Abrechnungskontos. Niemand ist anwesend, um die Zahlung zu bestätigen, daher ist der Aufruf entweder komplett erfolgreich oder hinterlässt nichts: Eine fehlgeschlagene Zahlung erstellt niemals ein Abonnement.
+
+## Bevor du beginnst \{#before-you-start}
+
+Du benötigst:
+
+- Ein **Logto Cloud Personal Access Token (PAT)** mit Zugriff auf diese API. Kontaktiere uns, um eines zu erhalten.
+- Die **Admin**-Rolle auf dem Tenant. Der Benutzer, der einen Tenant erstellt, ist dessen Admin.
+- Ein **Abrechnungskonto mit gespeicherter Karte**. Dein Logto Cloud-Konto erhält eines, wenn du zum ersten Mal einen Tenant im Pro-Plan in <CloudLink to="/tenant-settings/subscription">Console > Einstellungen > Plan und Abrechnung</CloudLink> abonnierst. Die API belastet die Karte deines Standard-Abrechnungskontos, es sei denn, der Tenant war zuvor schon auf einem kostenpflichtigen Plan oder du [wählst ein anderes aus](#choose-the-billing-account).
+- Einen **Produktions**-Tenant im Free-Plan. Entwicklungstenants und Tenants, die durch einen Enterprise-Vertrag abgedeckt sind, werden nicht unterstützt.
+
+| Variable             | Beschreibung                                                                     |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Der Logto Cloud API-Endpunkt. Für Logto Cloud verwende `https://cloud.logto.io`. |
+| `LOGTO_CLOUD_PAT`    | Ein PAT für dein Logto Cloud-Konto.                                              |
+| `TENANT_ID`          | Die ID des zu abonnierenden Tenants.                                             |
+
+## Den Tenant abonnieren \{#subscribe-the-tenant}
+
+Rufe `POST /api/tenants/{tenantId}/subscription` mit einem `Idempotency-Key`-Header auf:
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`: ERFORDERLICH. Eine eindeutige Zeichenkette von 1 bis 255 Zeichen, die diesen Versuch identifiziert. Generiere einen pro Versuch, speichere ihn und sende beim erneuten Versuch denselben Wert.
+2. `skuId`: ERFORDERLICH. Der Plan, auf den abonniert werden soll. Verwende `pro-202509` für den Pro-Plan.
+3. `customerId`: OPTIONAL. Das zu belastende Abrechnungskonto, wenn du mehr als eines hast. Wird es weggelassen, wird ein Tenant, der zuvor schon auf einem kostenpflichtigen Plan war, auf sein vorheriges Abrechnungskonto belastet; jeder andere Tenant wird auf dein Standard-Abrechnungskonto belastet. Siehe [Abrechnungskonto auswählen](#choose-the-billing-account).
+
+Der Antwortstatus zeigt dir, was passiert ist:
+
+- `201`: Das Abonnement wurde erstellt und der Tenant ist auf dem Pro-Plan.
+- `200`: Dieser Schlüssel hat das Abonnement bereits erstellt. Es wurde nichts erneut belastet.
+
+Beispielantwort:
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## Abrechnungskonto auswählen \{#choose-the-billing-account}
+
+Dein Logto Cloud-Konto kann mehr als ein Abrechnungskonto enthalten, jedes mit eigener Karte und Rechnungsadresse; zum Beispiel eines pro Firma, für die du zahlst. Eines davon ist das Standardkonto, und die API belastet es, sofern du kein anderes angibst.
+
+Liste deine Abrechnungskonten mit `GET /api/me/stripe-customers` auf:
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` und `email` sind die auf dem Abrechnungskonto gespeicherten Werte und können `null` sein. Abrechnungskonten, die nicht mehr existieren, werden ausgelassen.
+
+Um ein bestimmtes Abrechnungskonto für ein Abonnement zu belasten, sende dessen `customerId` im Body:
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+Um zu ändern, welches Abrechnungskonto standardmäßig belastet wird, sowohl für die API als auch für die Console (dies verschiebt keinen Tenant, der zuvor schon auf einem kostenpflichtigen Plan war, siehe Hinweis unten):
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+Der Aufruf antwortet mit `204` bei Erfolg, mit `404`, wenn das Abrechnungskonto nicht zu deinen gehört, und mit `422` `customer_unavailable`, wenn es nicht mehr existiert.
+
+:::note
+Ein Tenant, der zuvor schon auf einem kostenpflichtigen Plan war, bleibt auf dem Abrechnungskonto, das ihn bezahlt hat – auch wenn das Abonnement inzwischen gekündigt wurde. Ein solcher Tenant wird immer auf dieses Abrechnungskonto belastet, unabhängig von deinem Standardkonto. Lasse `customerId` weg: Die Angabe eines Abrechnungskontos antwortet mit `422` `customer_fixed`. Kontaktiere uns, um einen Tenant auf ein anderes Abrechnungskonto zu verschieben.
+
+Ein erneuter Versuch mit demselben `Idempotency-Key` muss dasselbe Abrechnungskonto wie die erste Anfrage angeben – oder keines; ein anderes antwortet mit `400` `idempotency_key_mismatch`.
+:::
+
+## Sicher wiederholen \{#retry-safely}
+
+Ein Netzwerk-Timeout sagt dir nicht, ob die Karte belastet wurde. Der `Idempotency-Key` macht einen erneuten Versuch sicher: Logto belastet pro Schlüssel höchstens einmal, daher ist **ein erneuter Versuch mit demselben Schlüssel immer sicher**.
+
+1. **Wenn das Ergebnis unbekannt ist, wiederhole mit demselben Schlüssel.** Das gilt für einen Client-Timeout oder eine unterbrochene Verbindung, eine `5xx`-Antwort und `409` `attempt_in_progress` (eine frühere Anfrage mit diesem Schlüssel läuft möglicherweise noch, also warte erst ein paar Sekunden).
+2. **Der erneute Versuch entscheidet über den Versuch.** Er antwortet mit `201` oder `200`, sobald das Abonnement existiert, oder mit dem Fehler, der den Versuch beendet hat.
+3. **Starte einen neuen Versuch mit einem neuen Schlüssel nur, wenn der Versuch mit einem Fehler beendet wurde.** Ein erneuter Versuch mit demselben Schlüssel antwortet dann mit einer Nachricht, dass der Versuch bereits fehlgeschlagen ist. Behebe zuerst die Ursache, zum Beispiel durch Aktualisierung der Karte.
+4. **Stoppe und kontaktiere uns, wenn die Nachricht dich dazu auffordert.** Füge `error.requestId` bei, wenn die Antwort eine enthält.
+
+:::note
+Solange ein Versuch offen ist, ist der Tenant dafür reserviert: Eine Anfrage mit einem anderen Schlüssel erhält `409` `attempt_in_progress`, bis der offene Versuch beendet ist. Wiederhole den offenen Versuch mit seinem eigenen Schlüssel, statt einen neuen zu starten. Schlüssel sind auf dein Konto beschränkt.
+
+Wiederhole innerhalb von 23 Stunden. Danach kann Logto keine einmalige Belastung mehr garantieren und hält den Versuch zurück: Der erneute Versuch mit demselben Schlüssel antwortet mit `409` `attempt_in_progress` und einer Nachricht, den Support zu kontaktieren – wir lösen das dann manuell.
+:::
+
+## Fehler \{#errors}
+
+Fehler verwenden den HTTP-Status und einen JSON-Body mit einer `message` und, bei den meisten Fehlern, einem `error.code`:
+
+```json
+{
+  "message": "Die Karte wurde abgelehnt.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| Status | `error.code`                                                                           | Bedeutung und was zu tun ist                                                                                                                                                                               |
+| ------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | (keiner)                                                                               | Der `Idempotency-Key`-Header fehlt oder ist länger als 255 Zeichen, oder der Body enthält kein `skuId`.                                                                                                    |
+| `400`  | `invalid_sku`                                                                          | Das `skuId` kann nicht über die API gekauft werden.                                                                                                                                                        |
+| `400`  | `idempotency_key_mismatch`                                                             | Der Schlüssel wurde bereits für einen anderen Tenant, Plan oder ein anderes Abrechnungskonto verwendet. Verwende einen neuen Schlüssel, außer die Nachricht fordert dich auf, den Support zu kontaktieren. |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | Die Karte konnte nicht belastet werden. `declineCode` ist enthalten, wenn der Kartenaussteller ihn mitteilt. Aktualisiere die Karte in der Console und starte einen neuen Versuch.                         |
+| `402`  | `processing_error`                                                                     | Die Karte konnte diesmal nicht verarbeitet werden. Starte bald einen neuen Versuch.                                                                                                                        |
+| `402`  | `authentication_required`                                                              | Der Kartenaussteller verlangt eine Bestätigung der Zahlung durch den Karteninhaber, was ein API-Aufruf nicht leisten kann. Abonniere diesen Tenant stattdessen in der Console.                             |
+| `403`  | `insufficient_role`                                                                    | Du bist Mitglied des Tenants, aber kein Admin.                                                                                                                                                             |
+| `403`  | (keiner)                                                                               | Das Token hat keinen Zugriff auf diese API, oder der Tenant ist durch einen Enterprise-Vertrag abgedeckt oder befindet sich in einer privaten Region.                                                      |
+| `404`  | (keiner)                                                                               | Der Tenant existiert nicht oder du bist kein Mitglied davon.                                                                                                                                               |
+| `404`  | `customer_not_found`                                                                   | Die `customerId` ist nicht eines deiner Abrechnungskonten. Liste sie mit `GET /api/me/stripe-customers` auf.                                                                                               |
+| `409`  | `subscription_exists`                                                                  | Der Tenant hat bereits ein Abonnement.                                                                                                                                                                     |
+| `409`  | `attempt_in_progress`                                                                  | Ein Versuch für diesen Tenant ist offen oder dieser Versuch wird gehalten. Siehe [Sicher wiederholen](#retry-safely).                                                                                      |
+| `409`  | `no_customer`, `no_payment_method`                                                     | Dein Konto hat kein Abrechnungskonto oder keine gespeicherte Karte. Abonniere einmal einen Tenant in der Console oder füge dort eine Karte hinzu.                                                          |
+| `409`  | `tax_location_invalid`                                                                 | Die Rechnungsadresse kann nicht zur Steuerberechnung verwendet werden. Aktualisiere sie in der Console.                                                                                                    |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | Das Abrechnungskonto des Tenants konnte nicht als deines verifiziert werden oder benötigt unsere Hilfe. Kontaktiere uns.                                                                                   |
+| `422`  | `customer_fixed`                                                                       | Der Tenant bleibt auf dem Abrechnungskonto, das ihn zuvor bezahlt hat. Lasse `customerId` weg oder kontaktiere uns, um den Tenant zu verschieben.                                                          |
+| `422`  | `dev_tenant_not_supported`                                                             | Entwicklungstenants können nicht über die API abonniert werden. Konvertiere den Tenant in der Console.                                                                                                     |
+| `422`  | `subscription_status_exception`                                                        | Das letzte Abonnement des Tenants benötigt zuerst Aufmerksamkeit. Kontaktiere uns.                                                                                                                         |
+| `500`  | `internal_error` oder keiner                                                           | Auf unserer Seite ist etwas schiefgelaufen. Wiederhole mit demselben Schlüssel und kontaktiere uns, falls es erneut passiert.                                                                              |
+| `502`  | `stripe_error`                                                                         | Unser Zahlungsanbieter hat die Anfrage abgelehnt oder konnte sie nicht ausführen. Wiederhole mit demselben Schlüssel und kontaktiere uns, falls es erneut passiert.                                        |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | Das Ergebnis ist unbekannt oder die Zahlung war erfolgreich und die Einrichtung steht noch aus. Wiederhole mit demselben Schlüssel.                                                                        |
+
+Du kannst die Karte und die Rechnungsadresse in <CloudLink to="/tenant-settings/subscription">Console > Einstellungen > Plan und Abrechnung</CloudLink> jedes Tenants aktualisieren, der dasselbe Abrechnungskonto verwendet.
+
+## Erstellen und abonnieren in einem Skript \{#create-and-subscribe-in-one-script}
+
+Die Tenant-Erstellung hat keinen Idempotency-Key. Wenn `POST /api/tenants` ein Timeout erhält, liste deine Tenants mit `GET /api/tenants` auf, bevor du erneut erstellst, damit ein erneuter Versuch keinen zweiten Tenant erstellt.
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// Kommentare und Variablennamen bleiben unverändert, nur Ausgaben und Kommentare übersetzen
+
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`Tenant-Erstellung fehlgeschlagen: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// Speichere den Schlüssel mit dem Tenant, damit ein späterer Lauf denselben Versuch wiederholen kann.
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // Sicher: derselbe Schlüssel belastet niemals zweimal.
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Abonnement abgelehnt: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(
+    `Immer noch unbekannt. Wiederhole später mit demselben Schlüssel: ${idempotencyKey}`
+  );
+}
+```
+
+## Verwandte Ressourcen \{#related-resources}
+
+- [Tenant-Management automatisieren](/logto-cloud/automate-tenant-creation)
+- [Abrechnung und Preise](/logto-cloud/billing-and-pricing)

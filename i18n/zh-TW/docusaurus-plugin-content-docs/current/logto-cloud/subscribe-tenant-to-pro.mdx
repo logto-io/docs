@@ -1,0 +1,250 @@
+---
+id: subscribe-tenant-to-pro
+title: 訂閱租戶至 Pro 方案
+sidebar_position: 8.1
+---
+
+# 訂閱租戶至 Pro 方案
+
+你可以透過一個 Logto Cloud API 呼叫，將租戶升級至 Pro 方案，無需開啟 Console。結合[租戶建立自動化](/logto-cloud/automate-tenant-creation)，你的自動化流程只需兩個呼叫即可建立生產用租戶並完成訂閱。
+
+此呼叫會將第一張發票收費至你帳戶中已儲存的信用卡。由於無人確認付款，呼叫要麼完全成功，要麼完全不會留下任何紀錄：付款失敗時不會建立訂閱。
+
+## 開始前準備 \{#before-you-start}
+
+你需要：
+
+- 一組**Logto Cloud Personal Access Token (PAT)**，需有存取此 API 的權限。請聯絡我們取得。
+- 在該租戶上的 **Admin 角色 (Admin)**。建立租戶的使用者即為其 Admin。
+- 一個**已儲存信用卡的帳單帳戶**。你的 Logto Cloud 帳戶在首次於 <CloudLink to="/tenant-settings/subscription">Console > 設定 > 方案與帳單</CloudLink> 訂閱任一租戶至 Pro 方案時會自動建立。API 會收費至你的預設帳單帳戶，除非該租戶曾經訂閱過付費方案或你[選擇其他帳戶](#choose-the-billing-account)。
+- 一個**Free 方案下的生產用租戶**。不支援開發用租戶與企業合約涵蓋的租戶。
+
+| 變數                 | 說明                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API 端點。Logto Cloud 請用 `https://cloud.logto.io`。 |
+| `LOGTO_CLOUD_PAT`    | 你的 Logto Cloud 帳戶 PAT。                                       |
+| `TENANT_ID`          | 要訂閱的租戶 ID。                                                 |
+
+## 訂閱租戶 \{#subscribe-the-tenant}
+
+呼叫 `POST /api/tenants/{tenantId}/subscription`，並加上 `Idempotency-Key` 標頭：
+
+```bash
+export IDEMPOTENCY_KEY="$(uuidgen)"
+
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509" }'
+```
+
+1. `Idempotency-Key`：必填。1 至 255 字元的唯一字串，用於識別本次嘗試。每次嘗試產生一組，儲存後重試時使用相同值。
+2. `skuId`：必填。要訂閱的方案。Pro 方案請用 `pro-202509`。
+3. `customerId`：選填。指定要收費的帳單帳戶（當你有多個帳戶時）。若未填，曾訂閱過付費方案的租戶會收費至其原帳戶，其餘則收費至你的預設帳戶。詳見[選擇帳單帳戶](#choose-the-billing-account)。
+
+回應狀態碼說明結果：
+
+- `201`：已建立訂閱，租戶已升級至 Pro 方案。
+- `200`：此 key 已建立過訂閱，未再次收費。
+
+範例回應：
+
+```json
+{
+  "subscription": {
+    "id": "sub_1Qabc...",
+    "planId": "pro-202509",
+    "status": "active",
+    "currentPeriodStart": "2026-09-20T06:00:00.000Z",
+    "currentPeriodEnd": "2026-10-20T06:00:00.000Z",
+    "isEnterprisePlan": false,
+    "isDevPlan": false,
+    "quotaScope": "dedicated"
+  },
+  "tenant": {
+    "id": "abc123",
+    "tag": "production",
+    "planId": "pro-202509"
+  }
+}
+```
+
+## 選擇帳單帳戶 \{#choose-the-billing-account}
+
+你的 Logto Cloud 帳戶可擁有多個帳單帳戶，每個帳戶有獨立的信用卡與帳單地址，例如為不同公司分開管理。其中一個為預設帳戶，API 會優先收費至預設帳戶，除非你指定其他帳戶。
+
+用 `GET /api/me/stripe-customers` 列出你的帳單帳戶：
+
+```bash
+curl "$CLOUD_API_ENDPOINT/api/me/stripe-customers" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
+```
+
+```json
+[
+  {
+    "customerId": "cus_Rabc...",
+    "isDefault": true,
+    "name": "Acme Inc.",
+    "email": "billing@acme.example",
+    "createdAt": "2026-03-02T09:12:45.000Z"
+  },
+  {
+    "customerId": "cus_Rdef...",
+    "isDefault": false,
+    "name": null,
+    "email": "finance@other.example",
+    "createdAt": "2026-08-14T15:30:00.000Z"
+  }
+]
+```
+
+`name` 與 `email` 為帳單帳戶上儲存的資訊，可能為 `null`。已不存在的帳戶不會出現在清單中。
+
+若要指定某個帳戶收費，請在請求內容中帶入其 `customerId`：
+
+```bash
+curl -X POST "$CLOUD_API_ENDPOINT/api/tenants/$TENANT_ID/subscription" \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Idempotency-Key: $IDEMPOTENCY_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "skuId": "pro-202509", "customerId": "cus_Rdef..." }'
+```
+
+若要更改預設收費帳戶（API 與 Console 均適用，注意：曾訂閱過付費方案的租戶不會因此移動，詳見下方備註）：
+
+```bash
+curl -X PATCH "$CLOUD_API_ENDPOINT/api/me/stripe-customers/cus_Rdef..." \
+  -H "Authorization: Bearer $LOGTO_CLOUD_PAT" \
+  -H "Content-Type: application/json" \
+  -d '{ "isDefault": true }'
+```
+
+成功回應 `204`，若帳戶不存在則回應 `404`，若帳戶已失效則回應 `422` `customer_unavailable`。
+
+:::note
+曾訂閱過付費方案的租戶，即使訂閱已取消，仍會綁定原付款帳戶。此類租戶始終收費至該帳戶，無論預設帳戶為何。請勿帶入 `customerId`，否則會回應 `422` `customer_fixed`。如需移動租戶至其他帳戶，請聯絡我們。
+
+同一 `Idempotency-Key` 重試時必須指定與首次請求相同的帳戶，否則回應 `400` `idempotency_key_mismatch`。
+:::
+
+## 安全重試 \{#retry-safely}
+
+網路逾時時無法得知是否已收費。`Idempotency-Key` 可確保重試安全：Logto 每個 key 最多只會收費一次，因此**用相同 key 重試永遠安全**。
+
+1. **結果未知時，請用相同 key 重試。** 包含客戶端逾時、連線中斷、`5xx` 回應，以及 `409` `attempt_in_progress`（此 key 的前次請求可能仍在處理，請先等幾秒）。
+2. **重試會結束本次嘗試。** 訂閱建立後會回應 `201` 或 `200`，或回傳導致失敗的錯誤。
+3. **僅在嘗試已失敗時，才用新 key 開始新嘗試。** 若用相同 key 重試，會收到已失敗的訊息。請先排除原因，例如更新信用卡。
+4. **如訊息要求，請停止並聯絡我們。** 若回應有 `error.requestId`，請一併提供。
+
+:::note
+嘗試進行中時，該租戶會被保留：用不同 key 請求會收到 `409` `attempt_in_progress`，直到該嘗試結束。請用原 key 重試，不要啟動新嘗試。key 以你的帳戶為範圍。
+
+請於 23 小時內重試。超過後 Logto 無法保證只收費一次，會暫停該嘗試：同 key 重試會收到 `409` `attempt_in_progress` 並提示聯絡客服，我們會人工協助處理。
+:::
+
+## 錯誤說明 \{#errors}
+
+錯誤會以 HTTP 狀態碼與 JSON 內容回應，包含 `message` 及多數情況下的 `error.code`：
+
+```json
+{
+  "message": "The card was declined.",
+  "error": { "code": "card_declined", "declineCode": "insufficient_funds" }
+}
+```
+
+| 狀態碼 | `error.code`                                                                           | 意義與處理方式                                                                          |
+| ------ | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `400`  | (無)                                                                                   | 缺少 `Idempotency-Key` 標頭、長度超過 255 字元，或內容缺少 `skuId`。                    |
+| `400`  | `invalid_sku`                                                                          | 此 `skuId` 無法透過 API 購買。                                                          |
+| `400`  | `idempotency_key_mismatch`                                                             | 此 key 已用於其他租戶、方案或帳戶。請用新 key，除非訊息要求聯絡客服。                   |
+| `402`  | `card_declined`, `expired_card`, `incorrect_cvc`, `incorrect_number`                   | 信用卡無法收費。若發卡行有提供，會有 `declineCode`。請於 Console 更新信用卡後重新嘗試。 |
+| `402`  | `processing_error`                                                                     | 此次無法處理信用卡。稍後重新嘗試。                                                      |
+| `402`  | `authentication_required`                                                              | 發卡行要求持卡人確認付款，API 無法完成。請於 Console 訂閱此租戶。                       |
+| `403`  | `insufficient_role`                                                                    | 你是租戶成員但非 Admin。                                                                |
+| `403`  | (無)                                                                                   | 權杖無法存取此 API，或租戶受企業合約涵蓋、或位於私人區域。                              |
+| `404`  | (無)                                                                                   | 租戶不存在，或你非其成員。                                                              |
+| `404`  | `customer_not_found`                                                                   | `customerId` 非你的帳單帳戶。請用 `GET /api/me/stripe-customers` 查詢。                 |
+| `409`  | `subscription_exists`                                                                  | 租戶已有訂閱。                                                                          |
+| `409`  | `attempt_in_progress`                                                                  | 此租戶有進行中的嘗試，或本次嘗試被保留。詳見[安全重試](#retry-safely)。                 |
+| `409`  | `no_customer`, `no_payment_method`                                                     | 你的帳戶沒有帳單帳戶，或帳戶未儲存信用卡。請先於 Console 訂閱一次租戶，或新增信用卡。   |
+| `409`  | `tax_location_invalid`                                                                 | 帳單地址無法計算稅金。請於 Console 更新。                                               |
+| `409`  | `customer_not_owned`, `customer_unavailable`, `currency_mismatch`, `attempt_abandoned` | 租戶的帳單帳戶無法驗證為你的，或需我們協助。請聯絡我們。                                |
+| `422`  | `customer_fixed`                                                                       | 租戶仍綁定原付款帳戶。請勿帶入 `customerId`，或聯絡我們協助移動租戶。                   |
+| `422`  | `dev_tenant_not_supported`                                                             | 開發用租戶無法透過 API 訂閱。請於 Console 轉換租戶。                                    |
+| `422`  | `subscription_status_exception`                                                        | 租戶最新訂閱需先處理。請聯絡我們。                                                      |
+| `500`  | `internal_error` 或無                                                                  | 伺服器端發生錯誤。請用相同 key 重試，若持續發生請聯絡我們。                             |
+| `502`  | `stripe_error`                                                                         | 金流服務商拒絕或處理失敗。請用相同 key 重試，若持續發生請聯絡我們。                     |
+| `503`  | `stripe_unavailable`, `provisioning_failed`                                            | 結果未知，或付款成功但尚未完成設定。請用相同 key 重試。                                 |
+
+你可於任何使用相同帳單帳戶的租戶 <CloudLink to="/tenant-settings/subscription">Console > 設定 > 方案與帳單</CloudLink> 更新信用卡與帳單地址。
+
+## 一次腳本建立並訂閱租戶 \{#create-and-subscribe-in-one-script}
+
+租戶建立不支援 idempotency key。若 `POST /api/tenants` 逾時，請先用 `GET /api/tenants` 查詢租戶清單，避免重試時建立重複租戶。
+
+```js
+import { randomUUID } from 'node:crypto';
+
+// 設定 API 端點與標頭
+const cloudApiEndpoint = process.env.CLOUD_API_ENDPOINT ?? 'https://cloud.logto.io';
+const headers = {
+  authorization: `Bearer ${process.env.LOGTO_CLOUD_PAT}`,
+  'content-type': 'application/json',
+};
+
+// 建立租戶
+const created = await fetch(`${cloudApiEndpoint}/api/tenants`, {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ name: 'My automated tenant', tag: 'production', regionName: 'EU' }),
+});
+
+if (!created.ok) {
+  throw new Error(`Tenant creation failed: ${await created.text()}`);
+}
+
+const tenant = await created.json();
+
+// 將 key 與租戶一同儲存，方便後續重試
+const idempotencyKey = randomUUID();
+
+const subscribe = async () =>
+  fetch(`${cloudApiEndpoint}/api/tenants/${tenant.id}/subscription`, {
+    method: 'POST',
+    headers: { ...headers, 'idempotency-key': idempotencyKey },
+    body: JSON.stringify({ skuId: 'pro-202509' }),
+  });
+
+const isOutcomeUnknown = async (response) =>
+  !response ||
+  response.status >= 500 ||
+  (response.status === 409 &&
+    (await response.clone().json()).error?.code === 'attempt_in_progress');
+
+let subscription;
+
+for (let attempt = 0; attempt < 5 && !subscription; attempt += 1) {
+  const response = await subscribe().catch(() => undefined);
+
+  if (response?.ok) {
+    subscription = await response.json();
+  } else if (await isOutcomeUnknown(response)) {
+    // 安全：相同 key 不會重複收費
+    await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
+  } else {
+    throw new Error(`Subscription refused: ${await response.text()}`);
+  }
+}
+
+if (!subscription) {
+  throw new Error(`Still unknown. Retry later with the same key: ${idempotencyKey}`);
+}
+```
+
+## 相關資源 \{#related-resources}
+
+- [自動化租戶管理](/logto-cloud/automate-tenant-creation)
+- [帳單與定價](/logto-cloud/billing-and-pricing)
