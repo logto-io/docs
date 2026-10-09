@@ -106,14 +106,7 @@ The parameters are:
 
 ### Firebase scrypt support \{#firebase-scrypt-support}
 
-Logto specifically supports the [modified scrypt algorithm](https://github.com/firebase/scrypt) used by Firebase Authentication, so you can import Firebase password hashes directly without asking users to reset their passwords. This requires Logto v1.38.0 or later for self-hosted deployments.
-
-You need two things from Firebase:
-
-1. **The user records**, exported with the Firebase CLI: `firebase auth:export users.json --format=json --project <project-id>`. Each user with a password has a `passwordHash` and a `salt` field.
-2. **The project's password hash parameters**, found in the Firebase console under **Authentication** > **Users** > the **⋮** menu > **Password hash parameters**. They include `base64_signer_key`, `base64_salt_separator`, `rounds`, and `mem_cost`.
-
-To migrate passwords hashed with Firebase scrypt, set the `passwordAlgorithm` to `Legacy` and format the `passwordDigest` as follows:
+Logto also supports the [modified scrypt algorithm](https://github.com/firebase/scrypt) used by Firebase Authentication. Set `passwordAlgorithm` to `Legacy` and format the `passwordDigest` as follows:
 
 ```json
 [
@@ -125,58 +118,21 @@ To migrate passwords hashed with Firebase scrypt, set the `passwordAlgorithm` to
 
 The parameters are:
 
-- **`salt`**: The user's `salt` from the export (base64)
-- **`signer_key`**: The project's `base64_signer_key`
-- **`salt_separator`**: The project's `base64_salt_separator`
-- **`rounds`**: The project's `rounds` (e.g., `"8"`)
-- **`mem_cost`**: The project's `mem_cost` (e.g., `"14"`)
+- **`salt`**: The user's `salt` from `firebase auth:export`
+- **`signer_key`**, **`salt_separator`**, **`rounds`**, **`mem_cost`**: Your project's password hash parameters, found in the Firebase console under **Authentication** > **Users** > **⋮** > **Password hash parameters**
 - **`@`**: Placeholder for the actual password value
-- **`expected_hashed_value`**: The user's `passwordHash` from the export (base64)
-
-The `signer_key`, `salt_separator`, `rounds`, and `mem_cost` values are the same for every user in a Firebase project. Only `salt` and `expected_hashed_value` change per user.
+- **`expected_hashed_value`**: The user's `passwordHash` from the export, in standard base64. If you read users with the Firebase Admin SDK, convert its URL-safe base64 (`-`, `_`) to standard base64 (`+`, `/`) first.
 
 **Example migration payload:**
 
 ```json
 {
+  "username": "john_doe",
   "primaryEmail": "john.doe@example.com",
   "passwordAlgorithm": "Legacy",
-  "passwordDigest": "[\"firebase-scrypt\",[\"42xEC+ixf3L2lw==\",\"jxspr8Ki0RYycVU8zykbdLGjFQ3McFUH0uiiTvC8pVMXAn210wjLNmdZJzxUECKbm0QsEmYUSDzZvpjeJ9WmXA==\",\"Bw==\",\"8\",\"14\",\"@\"],\"lSrfV15cpx95/sZS2W9c9Kp6i/LVgQNDNC/qzrCnh1SAyZvqmZqAjTdn3aoItz+VHjoZilo78198JAdRuid5lQ==\"]"
+  "passwordDigest": "[\"firebase-scrypt\", [\"42xEC+ixf3L2lw==\", \"jxspr8Ki0RYycVU8zykbdLGjFQ3McFUH0uiiTvC8pVMXAn210wjLNmdZJzxUECKbm0QsEmYUSDzZvpjeJ9WmXA==\", \"Bw==\", \"8\", \"14\", \"@\"], \"lSrfV15cpx95/sZS2W9c9Kp6i/LVgQNDNC/qzrCnh1SAyZvqmZqAjTdn3aoItz+VHjoZilo78198JAdRuid5lQ==\"]"
 }
 ```
-
-The following script maps a Firebase CLI export to the create user request bodies:
-
-```ts
-const { users } = require('./users.json');
-
-// From Firebase console > Authentication > Users > Password hash parameters
-const signerKey =
-  'jxspr8Ki0RYycVU8zykbdLGjFQ3McFUH0uiiTvC8pVMXAn210wjLNmdZJzxUECKbm0QsEmYUSDzZvpjeJ9WmXA==';
-const saltSeparator = 'Bw==';
-const rounds = '8';
-const memCost = '14';
-
-const logtoUsers = users
-  .filter((user) => user.passwordHash && user.salt)
-  .map((user) => ({
-    primaryEmail: user.email,
-    passwordAlgorithm: 'Legacy',
-    passwordDigest: JSON.stringify([
-      'firebase-scrypt',
-      [user.salt, signerKey, saltSeparator, rounds, memCost, '@'],
-      user.passwordHash,
-    ]),
-  }));
-```
-
-:::note
-
-- The `passwordDigest` string is limited to 256 characters. A Firebase scrypt digest is close to that limit, so build it with `JSON.stringify` (no extra spaces) as shown above.
-- Logto compares the computed hash with `expected_hashed_value` as a standard base64 string (`+` and `/`, with `=` padding), which is what the Firebase CLI exports. If you read users with the Firebase Admin SDK instead, `passwordHash` is URL-safe base64 (`-` and `_`), so convert it to standard base64 before importing. The `salt`, `signer_key`, and `salt_separator` values are accepted in either encoding.
-- Like other legacy hashes, a Firebase scrypt hash is replaced with an Argon2 hash after the user's first successful sign-in.
-
-:::
 
 ## Steps to migrate \{#steps-to-migrate}
 
