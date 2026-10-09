@@ -1,0 +1,137 @@
+---
+description: Install and manage a Logto self-hosted license to unlock paid features on your own Logto OSS instance.
+sidebar_position: 6.5
+---
+
+# Self-hosted license
+
+A self-hosted license is a signed key that unlocks the paid features of a [Logto self-hosted plan](https://logto.io/self-hosted-plans) on your own Logto OSS instance. Without a license, Logto OSS behaves exactly as before.
+
+:::note
+Licenses are for self-hosted Logto OSS only. On Logto Cloud, features are part of your [tenant's plan](/logto-cloud/billing-and-pricing) and license endpoints are not available.
+:::
+
+## What a license unlocks \{#what-a-license-unlocks}
+
+A Self-hosted Pro license unlocks the following on your instance:
+
+| Feature                                                                    | Without a license                   | With a license                                                                       |
+| -------------------------------------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------ |
+| [Hide Logto branding](/customization/match-your-brand#hide-logto-branding) | "Powered by Logto" is always shown. | You can hide it.                                                                     |
+| [Bring your UI](/customization/bring-your-ui) and custom CSP sources       | Not available.                      | Upload your own sign-in UI to [your own storage](#set-up-storage-for-bring-your-ui). |
+| Console members and invitations                                            | Not available.                      | Invite members to Console and manage their roles in **Tenant Settings > Members**.   |
+| Mandatory MFA for Console                                                  | Optional MFA only.                  | Require every Console member to set up MFA, in **Tenant Settings > Settings**.       |
+| [SAML apps](/integrate-logto/saml-app)                                     | Up to 3 SAML apps.                  | No limit on the number of SAML apps.                                                 |
+
+Features that are not in this list are not affected by a license.
+
+## Get a license \{#get-a-license}
+
+Request a license through the [self-hosted plans page](https://logto.io/self-hosted-plans). Logto will then provide you with two keys for the same license:
+
+- **Production key**: for your production deployment.
+- **Non-production key**: for development, testing, and staging deployments.
+
+Both keys unlock the same features. The key you install tells Logto which kind of deployment it is. Logto does not verify this technically, so install the key that matches the deployment. See the [Self-hosted Subscription Terms](https://logto.io/terms/self-hosted) for what each license covers.
+
+## Install a license \{#install-a-license}
+
+You can install a license in Console or through the Management API. Either way, Logto verifies the signature on your instance before saving the key, and rejects a key that is invalid, tampered with, or already expired.
+
+### In Console \{#in-console}
+
+1. Go to **Console > Tenant Settings > License**.
+2. Paste your license key and click **Install license**.
+
+Once installed, the page shows the details of your license. To switch to another key, for example from a non-production key to a production key, or to a freshly issued key, click **Replace license**.
+
+### Using the Management API \{#using-the-management-api}
+
+Send the key to `PUT /api/systems/license` with an access token for the [Logto Management API](/integrate-logto/interact-with-management-api):
+
+```bash
+curl -X PUT 'https://your-logto-endpoint/api/systems/license' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "license": "<your_license_key>" }'
+```
+
+A successful request returns `204 No Content`. The request fails with:
+
+- `400` and `license.invalid_key` if the key is not signed by Logto or has been modified.
+- `400` and `license.expired_key` if the key is past its expiration. Get a fresh key and install it again.
+- `501` if your Logto is running on Logto Cloud.
+
+To check what is installed, send `GET /api/systems/license`. It returns the plan, environment, entitlements, expiration, and refresh status of the license. It never returns the key itself, and returns `404` when no license is installed. See the [Management API reference](https://openapi.logto.io) for the full request and response schema.
+
+### Multiple instances \{#multiple-instances}
+
+The license is stored in your Logto database, so you only install it once for all Logto instances that share the same database.
+
+## What the license page shows \{#what-the-license-page-shows}
+
+| Field                | Description                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Plan                 | The plan of the license, such as Self-hosted Pro.                                                                         |
+| Environment          | **Production** or **Non-production**, according to the installed key.                                                     |
+| Expires on           | The end of the period the installed key covers. See [License expiration](#license-expiration).                            |
+| Installed on         | When the key was installed on this instance.                                                                              |
+| Last refreshed on    | The last time the license was successfully checked with Logto. See [Refresh and grace period](#refresh-and-grace-period). |
+| Grace period ends on | The date the license stops unlocking features if it cannot be refreshed. It is 30 days after the last refresh.            |
+
+When the license needs attention, a banner appears above these fields. It tells you whether the key has expired or the refresh was refused (and why), and when features will be turned off.
+
+## Refresh and grace period \{#refresh-and-grace-period}
+
+Logto verifies the license signature locally, so signing in to your applications never depends on a connection to Logto, and a failed refresh never blocks sign-in traffic.
+
+To pick up renewals and cancellations, your instance checks in with Logto Cloud:
+
+- **Weekly check-in.** When the last successful refresh is more than 7 days old, Logto refreshes the license in the background, as part of handling a request. If an attempt fails, it is retried later, at most once per hour. A license that has just been installed is refreshed right away.
+- **30 days of grace.** If refreshes fail, for example because your instance cannot reach the internet, your features keep working for 30 days after the last successful refresh. After that, your instance reverts to the OSS defaults.
+- **A refused refresh.** If Logto refuses to refresh the license, for example because the subscription was canceled, the license page shows the reason. The grace period still counts from the last successful refresh.
+
+The refresh is an outbound HTTPS request from your instance to `https://cloud.logto.io`. If your instance runs behind a firewall, allow this destination.
+
+### What your instance sends \{#what-your-instance-sends}
+
+A refresh request contains only:
+
+- Your license key, which identifies the license by its `licenseId`.
+- A `deploymentId`: a random identifier generated when you first install a license. It is stored in your database, shared by every instance using that database, and never changes, including when you replace the license.
+- The Logto version.
+
+Logto does not collect user counts, hostnames, domains, or configuration. This data is kept for reference, for example when you renew, and it is not shown or evaluated in the product. The behavior is open source, see [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts).
+
+## License expiration \{#license-expiration}
+
+A license covers a yearly period, and the **Expires on** date is the end of that period.
+
+- **When you renew**, nothing needs to be done on your instance. The next refresh after the renewal replaces the installed key with a new one that expires a year later. It is normal for the page to show a date that has just passed for a few days while the renewal is picked up, and features stay available during this time.
+- **When you do not renew**, the refresh is refused after the period ends. Features keep working until the end of the 30-day grace period, then your instance reverts to the OSS defaults, as if no license was installed. The license page shows a banner explaining this and the date it will happen.
+- **If you reach the end of the grace period**, install a fresh key to unlock the features again. Contact Logto through the channel you used to get your license if you need one.
+
+### What happens when features are turned off \{#what-happens-when-features-are-turned-off}
+
+Reverting to the OSS defaults does not delete anything you created with a license:
+
+- **Hide Logto branding**: the "Powered by Logto" mark is shown again. Your setting is saved, and applies again if a license is installed later.
+- **SAML apps**: apps beyond the first 3 stay in place, but you cannot create new ones until you are under the limit.
+- **Mandatory MFA**: you can always turn it off. You cannot turn it on again without a license.
+- **Bring your UI, custom CSP, and Console invitations**: you cannot make new changes that need the feature, and your existing data is kept.
+
+## Set up storage for Bring your UI \{#set-up-storage-for-bring-your-ui}
+
+On Logto Cloud, Bring your UI assets are hosted by Logto. On your own instance, they are stored in an object storage that you configure. Logto unzips your upload and stores the files there, and serves them from there.
+
+Set the `experienceBlobsProvider` system config with the same JSON structure as the [file storage provider](/logto-oss/file-storage-provider), for example, for an S3-compatible storage:
+
+```bash
+pnpm logto db system set experienceBlobsProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","accessSecretKey":"my-secret-access-key","bucket":"logto-sie","endpoint":"https://s3.us-east-2.amazonaws.com"}'
+```
+
+Restart Logto after changing the config. Then follow [Bring your UI](/customization/bring-your-ui#upload-your-custom-ui-assets) to upload your assets in Console.
+
+## Invitation emails for Console members \{#invitation-emails-for-console-members}
+
+Console invitations are sent by email through the email connector of your default tenant. Make sure you have [set up an email connector](/connectors/email-connectors) before inviting members.
