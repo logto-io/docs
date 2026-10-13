@@ -1,0 +1,126 @@
+---
+description: 安装和管理 Logto 自托管许可证，在你自己的 Logto OSS 实例上解锁付费功能。
+sidebar_position: 6.5
+---
+
+# 自托管许可证
+
+自托管许可证是一种签名密钥，可以在你自己的 Logto OSS 实例上解锁 [Logto 自托管计划](https://logto.io/self-hosted-plans) 的付费功能。没有许可证时，Logto OSS 的行为与之前完全一致。
+
+:::note
+许可证仅适用于自托管 Logto OSS。在 Logto Cloud 上，功能属于你的 [租户计划](/logto-cloud/billing-and-pricing)，并且没有许可证相关接口。
+:::
+
+## 许可证解锁的功能 \{#what-a-license-unlocks}
+
+Self-hosted Pro 许可证可在你的实例上解锁以下功能：
+
+| 功能                                                                   | 没有许可证时                 | 有许可证时                                                                  |
+| ---------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
+| [隐藏 Logto 品牌](/customization/match-your-brand#hide-logto-branding) | 始终显示“Powered by Logto”。 | 你可以隐藏它。                                                              |
+| [自定义 UI](/customization/bring-your-ui) 和自定义 CSP 来源            | 不可用。                     | 上传你自己的登录 UI 到 [你自己的存储] (#set-up-storage-for-bring-your-ui)。 |
+| Console 成员和邀请                                                     | 不可用。                     | 邀请成员加入 Console，并在 **租户设置 > 成员** 中管理他们的角色。           |
+| Console 强制 MFA                                                       | 仅可选 MFA。                 | 要求每个 Console 成员都设置 MFA，在 **租户设置 > 设置** 中配置。            |
+| [SAML 应用](/integrate-logto/saml-app)                                 | 最多 3 个 SAML 应用。        | SAML 应用数量无限制。                                                       |
+
+未在此列表中的功能不受许可证影响。
+
+## 获取许可证 \{#get-a-license}
+
+通过 [自托管计划页面](https://logto.io/self-hosted-plans)申请许可证。Logto 会为你提供同一许可证的两个密钥：
+
+- **生产密钥**：用于你的订阅所覆盖的生产部署。除非订单表另有说明，每个订阅仅覆盖一个生产部署。
+- **非生产密钥**：用于支持同一生产部署的开发、测试和预发布环境。这些部署不得承载生产流量。
+
+两个密钥解锁相同的功能和配额。拥有两个密钥并不意味着可以运行两个生产部署。你的许可使用受 [自托管订阅条款](https://logto.io/terms/self-hosted) 和你的订单表约束。
+
+你安装的密钥会告诉 Logto 这是哪种部署类型。Logto 不会在技术上验证这一点，因此请安装与你的部署类型相符的密钥。
+
+## 安装许可证 \{#install-a-license}
+
+你可以在 Console 或通过 Management API 安装许可证。无论哪种方式，Logto 都会在保存密钥前在你的实例上验证签名，并拒绝无效、被篡改或已过期的密钥。
+
+### 在 Console 中 \{#in-console}
+
+1. 进入 **Console > 租户设置 > 许可证**。
+2. 粘贴你的许可证密钥并点击 **安装许可证**。
+
+安装后，页面会显示你的许可证详情。若需切换密钥（例如从非生产密钥切换到生产密钥，或更换新签发的密钥），点击 **更换许可证**。
+
+### 使用 Management API \{#using-the-management-api}
+
+将密钥发送到 `PUT /api/systems/license`，并携带 [Logto Management API](/integrate-logto/interact-with-management-api) 的访问令牌：
+
+```bash
+curl -X PUT 'https://your-logto-endpoint/api/systems/license' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "license": "<your_license_key>" }'
+```
+
+请求成功时返回 `204 No Content`。请求失败时：
+
+- 若密钥未被 Logto 签名或已被修改，返回 `400` 和 `license.invalid_key`。
+- 若密钥已过期，返回 `400` 和 `license.expired_key`。请获取新密钥并重新安装。
+- 若你的 Logto 运行在 Logto Cloud 上，返回 `501`。
+
+要检查已安装的许可证，发送 `GET /api/systems/license`。它会返回许可证的计划、环境、权益、到期时间和刷新状态。不会返回密钥本身，若未安装许可证则返回 `404`。完整请求和响应结构见 [Management API 参考](https://openapi.logto.io)。
+
+### 多实例部署 \{#multiple-instances}
+
+许可证存储在你的 Logto 数据库中，因此对于所有共享同一数据库的 Logto 实例，只需安装一次。
+
+## 刷新与宽限期 \{#refresh-and-grace-period}
+
+Logto 会在本地验证许可证签名，因此登录你的应用永远不依赖于与 Logto 的连接，刷新失败也不会阻塞登录流量。
+
+为获取续订和取消信息，你的实例会与 Logto Cloud 通信：
+
+- **每周检查**。当上次成功刷新已超过 7 天时，Logto 会在处理请求时后台刷新许可证。若尝试失败，会在稍后重试，最多每小时一次。新安装的许可证会立即刷新。
+- **30 天宽限期**。若刷新失败（如实例无法访问互联网），你的功能会在上次成功刷新后继续工作 30 天。之后，实例会恢复为 OSS 默认状态。
+- **被拒绝的刷新**。若 Logto 拒绝刷新许可证（如订阅被取消），许可证页面会显示原因。宽限期仍从上次成功刷新开始计算。
+
+刷新是你的实例向 `https://cloud.logto.io` 发起的出站 HTTPS 请求。如果你的实例在防火墙后，请允许访问该地址。
+
+### 实例发送的内容 \{#what-your-instance-sends}
+
+刷新请求仅包含：
+
+- 你的许可证密钥，用于通过其 `licenseId` 标识许可证。
+- 一个 `deploymentId`：首次安装许可证时生成的随机标识符。它存储在你的数据库中，所有使用该数据库的实例共享，并且不会更改，即使更换许可证也不变。
+- Logto 版本号。
+
+Logto 不会收集用户数量、主机名、域名或配置信息。这些数据仅用于参考，例如续订时，并不会在产品中显示或被评估。行为是开源的，详见 [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts)。
+
+## 许可证到期 \{#license-expiration}
+
+许可证覆盖一年期，**到期日**为该周期结束日期。
+
+- **续订时**，你的实例无需任何操作。续订后的下次刷新会用新密钥替换已安装密钥，新密钥到期时间为一年后。页面显示的日期可能会在续订被检测到的几天内略有延迟，这期间功能仍可用。
+- **未续订时**，周期结束后刷新会被拒绝。功能会持续到 30 天宽限期结束，然后实例恢复为 OSS 默认状态，仿佛未安装许可证。许可证页面会显示相关说明和具体日期。
+- **若宽限期结束**，请安装新密钥以重新解锁功能。如需新密钥，请通过获取许可证时的渠道联系 Logto。
+
+### 功能关闭时会发生什么 \{#what-happens-when-features-are-turned-off}
+
+恢复为 OSS 默认状态不会删除你通过许可证创建的任何内容：
+
+- **隐藏 Logto 品牌**：会重新显示“Powered by Logto”标识。你的设置会被保留，后续安装许可证后会再次生效。
+- **SAML 应用**：超出前 3 个的应用会保留，但你无法新建，直到数量低于限制。
+- **强制 MFA**：你始终可以关闭它。没有许可证时无法再次开启。
+- **自定义 UI、自定义 CSP 和 Console 邀请**：无法进行需要这些功能的新更改，已有数据会被保留。
+
+## 配置自定义 UI 存储 \{#set-up-storage-for-bring-your-ui}
+
+在 Logto Cloud 上，自定义 UI 资源由 Logto 托管。在你自己的实例上，这些资源存储在你配置的对象存储中。Logto 会解压你的上传并将文件存储于此，并从该处提供服务。
+
+请使用与 [文件存储提供者](/logto-oss/file-storage-provider) 相同的 JSON 结构设置 `experienceBlobsProvider` 系统配置，例如，针对兼容 S3 的存储：
+
+```bash
+pnpm logto db system set experienceBlobsProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","accessSecretKey":"my-secret-access-key","bucket":"logto-sie","endpoint":"https://s3.us-east-2.amazonaws.com"}'
+```
+
+更改配置后请重启 Logto。然后按照 [自定义 UI 上传](/customization/bring-your-ui#upload-your-custom-ui-assets) 在 Console 上传你的资源。
+
+## Console 成员邀请邮件 \{#invitation-emails-for-console-members}
+
+Console 邀请通过你默认租户的邮件连接器发送邮件。请确保你已 [配置邮件连接器](/connectors/email-connectors) 后再邀请成员。

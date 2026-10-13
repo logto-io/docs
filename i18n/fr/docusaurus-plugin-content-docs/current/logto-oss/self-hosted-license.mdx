@@ -1,0 +1,126 @@
+---
+description: Installer et gérer une licence Logto auto-hébergée pour débloquer les fonctionnalités payantes sur votre propre instance Logto OSS.
+sidebar_position: 6.5
+---
+
+# Licence auto-hébergée
+
+Une licence auto-hébergée est une clé signée qui débloque les fonctionnalités payantes d’un [plan Logto auto-hébergé](https://logto.io/self-hosted-plans) sur votre propre instance Logto OSS. Sans licence, Logto OSS fonctionne exactement comme avant.
+
+:::note
+Les licences sont uniquement pour Logto OSS auto-hébergé. Sur Logto Cloud, les fonctionnalités font partie du [plan de votre tenant](/logto-cloud/billing-and-pricing) et les points de terminaison de licence ne sont pas disponibles.
+:::
+
+## Ce qu’une licence débloque \{#what-a-license-unlocks}
+
+Une licence Self-hosted Pro débloque les éléments suivants sur votre instance :
+
+| Fonctionnalité                                                                  | Sans licence                             | Avec licence                                                                                                     |
+| ------------------------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| [Masquer la marque Logto](/customization/match-your-brand#hide-logto-branding)  | "Powered by Logto" est toujours affiché. | Vous pouvez la masquer.                                                                                          |
+| [Apportez votre UI](/customization/bring-your-ui) et sources CSP personnalisées | Non disponible.                          | Téléchargez votre propre interface de connexion vers [votre propre stockage](#set-up-storage-for-bring-your-ui). |
+| Membres Console et invitations                                                  | Non disponible.                          | Invitez des membres à la Console et gérez leurs rôles dans **Paramètres du tenant > Membres**.                   |
+| MFA obligatoire pour la Console                                                 | MFA optionnel uniquement.                | Exigez que chaque membre de la Console configure la MFA, dans **Paramètres du tenant > Paramètres**.             |
+| [Applications SAML](/integrate-logto/saml-app)                                  | Jusqu’à 3 applications SAML.             | Aucun plafond sur le nombre d’applications SAML.                                                                 |
+
+Les fonctionnalités qui ne figurent pas dans cette liste ne sont pas affectées par une licence.
+
+## Obtenir une licence \{#get-a-license}
+
+Demandez une licence via la [page des plans auto-hébergés](https://logto.io/self-hosted-plans). Logto vous fournira alors deux clés pour la même licence :
+
+- **Clé de production** : Utilisez-la pour le déploiement de production couvert par votre abonnement. Sauf indication contraire sur votre bon de commande, chaque abonnement couvre un déploiement de production.
+- **Clé hors production** : Utilisez-la pour les déploiements de développement, de test et de préproduction qui prennent en charge le même déploiement de production. Ces déploiements ne doivent pas servir de trafic de production.
+
+Les deux clés débloquent les mêmes fonctionnalités et quotas. Avoir deux clés ne donne pas le droit d’exécuter deux déploiements de production. Votre utilisation autorisée est régie par les [Conditions d’abonnement auto-hébergé](https://logto.io/terms/self-hosted) et votre bon de commande.
+
+La clé que vous installez indique à Logto de quel type de déploiement il s’agit. Logto ne le vérifie pas techniquement, alors installez la clé qui correspond au déploiement.
+
+## Installer une licence \{#install-a-license}
+
+Vous pouvez installer une licence dans la Console ou via l’API de gestion (Management API). Dans les deux cas, Logto vérifie la signature sur votre instance avant d’enregistrer la clé, et rejette une clé invalide, altérée ou déjà expirée.
+
+### Dans la Console \{#in-console}
+
+1. Allez dans **Console > Paramètres du tenant > Licence**.
+2. Collez votre clé de licence et cliquez sur **Installer la licence**.
+
+Une fois installée, la page affiche les détails de votre licence. Pour passer à une autre clé, par exemple d’une clé hors production à une clé de production, ou à une clé nouvellement émise, cliquez sur **Remplacer la licence**.
+
+### Via l’API de gestion \{#using-the-management-api}
+
+Envoyez la clé à `PUT /api/systems/license` avec un jeton d’accès pour la [Logto Management API](/integrate-logto/interact-with-management-api) :
+
+```bash
+curl -X PUT 'https://your-logto-endpoint/api/systems/license' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "license": "<your_license_key>" }'
+```
+
+Une requête réussie retourne `204 No Content`. La requête échoue avec :
+
+- `400` et `license.invalid_key` si la clé n’est pas signée par Logto ou a été modifiée.
+- `400` et `license.expired_key` si la clé est expirée. Obtenez une nouvelle clé et installez-la à nouveau.
+- `501` si votre Logto fonctionne sur Logto Cloud.
+
+Pour vérifier ce qui est installé, envoyez `GET /api/systems/license`. Cela retourne le plan, l’environnement, les droits, l’expiration et le statut de rafraîchissement de la licence. La clé elle-même n’est jamais retournée, et `404` est retourné lorsqu’aucune licence n’est installée. Consultez la [référence Management API](https://openapi.logto.io) pour le schéma complet des requêtes et réponses.
+
+### Instances multiples \{#multiple-instances}
+
+La licence est stockée dans votre base de données Logto, donc vous ne l’installez qu’une seule fois pour toutes les instances Logto qui partagent la même base de données.
+
+## Rafraîchissement et période de grâce \{#refresh-and-grace-period}
+
+Logto vérifie la signature de la licence localement, donc la connexion à vos applications ne dépend jamais d’une connexion à Logto, et un échec de rafraîchissement ne bloque jamais le trafic de connexion.
+
+Pour prendre en compte les renouvellements et annulations, votre instance effectue une vérification auprès de Logto Cloud :
+
+- **Vérification hebdomadaire.** Lorsque le dernier rafraîchissement réussi date de plus de 7 jours, Logto rafraîchit la licence en arrière-plan, dans le cadre du traitement d’une requête. Si une tentative échoue, elle est réessayée plus tard, au maximum une fois par heure. Une licence nouvellement installée est rafraîchie immédiatement.
+- **30 jours de grâce.** Si les rafraîchissements échouent, par exemple parce que votre instance ne peut pas accéder à Internet, vos fonctionnalités continuent de fonctionner pendant 30 jours après le dernier rafraîchissement réussi. Après cela, votre instance revient aux paramètres par défaut OSS.
+- **Un rafraîchissement refusé.** Si Logto refuse de rafraîchir la licence, par exemple parce que l’abonnement a été annulé, la page de licence affiche la raison. La période de grâce commence toujours à la date du dernier rafraîchissement réussi.
+
+Le rafraîchissement est une requête HTTPS sortante de votre instance vers `https://cloud.logto.io`. Si votre instance fonctionne derrière un pare-feu, autorisez cette destination.
+
+### Ce que votre instance envoie \{#what-your-instance-sends}
+
+Une requête de rafraîchissement contient uniquement :
+
+- Votre clé de licence, qui identifie la licence par son `licenseId`.
+- Un `deploymentId` : un identifiant aléatoire généré lors de la première installation d’une licence. Il est stocké dans votre base de données, partagé par chaque instance utilisant cette base, et ne change jamais, même lorsque vous remplacez la licence.
+- La version de Logto.
+
+Logto ne collecte pas le nombre d’utilisateurs, les noms d’hôtes, les domaines ou la configuration. Ces données sont conservées à titre de référence, par exemple lors d’un renouvellement, et ne sont ni affichées ni évaluées dans le produit. Le comportement est open source, voir [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts).
+
+## Expiration de la licence \{#license-expiration}
+
+Une licence couvre une période annuelle, et la date **Expire le** correspond à la fin de cette période.
+
+- **Lorsque vous renouvelez**, rien n’est à faire sur votre instance. Le prochain rafraîchissement après le renouvellement remplace la clé installée par une nouvelle qui expire un an plus tard. Il est normal que la page affiche une date tout juste dépassée pendant quelques jours le temps que le renouvellement soit pris en compte, et les fonctionnalités restent disponibles pendant cette période.
+- **Si vous ne renouvelez pas**, le rafraîchissement est refusé à la fin de la période. Les fonctionnalités continuent de fonctionner jusqu’à la fin de la période de grâce de 30 jours, puis votre instance revient aux paramètres par défaut OSS, comme si aucune licence n’était installée. La page de licence affiche une bannière expliquant cela et la date à laquelle cela se produira.
+- **Si vous atteignez la fin de la période de grâce**, installez une nouvelle clé pour débloquer à nouveau les fonctionnalités. Contactez Logto via le canal utilisé pour obtenir votre licence si vous en avez besoin.
+
+### Que se passe-t-il lorsque les fonctionnalités sont désactivées \{#what-happens-when-features-are-turned-off}
+
+Revenir aux paramètres par défaut OSS ne supprime rien de ce que vous avez créé avec une licence :
+
+- **Masquer la marque Logto** : la mention "Powered by Logto" est à nouveau affichée. Votre paramètre est conservé et s’appliquera à nouveau si une licence est installée ultérieurement.
+- **Applications SAML** : les applications au-delà des 3 premières restent en place, mais vous ne pouvez pas en créer de nouvelles tant que vous n’êtes pas sous la limite.
+- **MFA obligatoire** : vous pouvez toujours la désactiver. Vous ne pouvez pas la réactiver sans licence.
+- **Apportez votre UI, CSP personnalisée et invitations Console** : vous ne pouvez pas effectuer de nouveaux changements nécessitant la fonctionnalité, et vos données existantes sont conservées.
+
+## Configurer le stockage pour Apportez votre UI \{#set-up-storage-for-bring-your-ui}
+
+Sur Logto Cloud, les ressources Apportez votre UI sont hébergées par Logto. Sur votre propre instance, elles sont stockées dans un stockage objet que vous configurez. Logto décompresse votre archive et stocke les fichiers à cet endroit, puis les sert à partir de là.
+
+Définissez la configuration système `experienceBlobsProvider` avec la même structure JSON que le [fournisseur de stockage de fichiers](/logto-oss/file-storage-provider), par exemple, pour un stockage compatible S3 :
+
+```bash
+pnpm logto db system set experienceBlobsProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","accessSecretKey":"my-secret-access-key","bucket":"logto-sie","endpoint":"https://s3.us-east-2.amazonaws.com"}'
+```
+
+Redémarrez Logto après avoir modifié la configuration. Suivez ensuite [Apportez votre UI](/customization/bring-your-ui#upload-your-custom-ui-assets) pour téléverser vos ressources dans la Console.
+
+## E-mails d’invitation pour les membres Console \{#invitation-emails-for-console-members}
+
+Les invitations Console sont envoyées par e-mail via le connecteur e-mail de votre tenant par défaut. Assurez-vous d’avoir [configuré un connecteur e-mail](/connectors/email-connectors) avant d’inviter des membres.
