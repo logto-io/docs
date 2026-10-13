@@ -1,0 +1,126 @@
+---
+description: Instala y gestiona una licencia autoalojada de Logto para desbloquear funciones de pago en tu propia instancia de Logto OSS.
+sidebar_position: 6.5
+---
+
+# Licencia autoalojada
+
+Una licencia autoalojada es una clave firmada que desbloquea las funciones de pago de un [plan autoalojado de Logto](https://logto.io/self-hosted-plans) en tu propia instancia de Logto OSS. Sin una licencia, Logto OSS se comporta exactamente como antes.
+
+:::note
+Las licencias son solo para Logto OSS autoalojado. En Logto Cloud, las funciones forman parte del [plan de tu tenant](/logto-cloud/billing-and-pricing) y los endpoints de licencia no están disponibles.
+:::
+
+## Qué desbloquea una licencia \{#what-a-license-unlocks}
+
+Una licencia Self-hosted Pro desbloquea lo siguiente en tu instancia:
+
+| Función                                                                        | Sin licencia                           | Con licencia                                                                                           |
+| ------------------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [Ocultar la marca Logto](/customization/match-your-brand#hide-logto-branding)  | "Powered by Logto" siempre se muestra. | Puedes ocultarlo.                                                                                      |
+| [Trae tu propia UI](/customization/bring-your-ui) y fuentes CSP personalizadas | No disponible.                         | Sube tu propia UI de inicio de sesión a [tu propio almacenamiento](#set-up-storage-for-bring-your-ui). |
+| Miembros de Console e invitaciones                                             | No disponible.                         | Invita miembros a Console y gestiona sus roles en **Configuración del tenant > Miembros**.             |
+| MFA obligatoria para Console                                                   | Solo MFA opcional.                     | Requiere que cada miembro de Console configure MFA, en **Configuración del tenant > Configuración**.   |
+| [Aplicaciones SAML](/integrate-logto/saml-app)                                 | Hasta 3 aplicaciones SAML.             | Sin límite en el número de aplicaciones SAML.                                                          |
+
+Las funciones que no están en esta lista no se ven afectadas por una licencia.
+
+## Obtener una licencia \{#get-a-license}
+
+Solicita una licencia a través de la [página de planes autoalojados](https://logto.io/self-hosted-plans). Logto te proporcionará dos claves para la misma licencia:
+
+- **Clave de producción**: Úsala para el despliegue de producción cubierto por tu suscripción. A menos que tu formulario de pedido indique lo contrario, cada suscripción cubre un despliegue de producción.
+- **Clave de no producción**: Úsala para despliegues de desarrollo, pruebas y staging que soportan el mismo despliegue de producción. Estos despliegues no deben servir tráfico de producción.
+
+Ambas claves desbloquean las mismas funciones y cuotas. Tener dos claves no otorga permiso para ejecutar dos despliegues de producción. Tu uso permitido está regido por los [Términos de suscripción autoalojada](https://logto.io/terms/self-hosted) y tu formulario de pedido.
+
+La clave que instales le indica a Logto qué tipo de despliegue es. Logto no lo verifica técnicamente, así que instala la clave que corresponda al despliegue.
+
+## Instalar una licencia \{#install-a-license}
+
+Puedes instalar una licencia en Console o a través de la Management API. En ambos casos, Logto verifica la firma en tu instancia antes de guardar la clave y rechaza una clave que sea inválida, manipulada o ya expirada.
+
+### En Console \{#in-console}
+
+1. Ve a **Console > Configuración del tenant > Licencia**.
+2. Pega tu clave de licencia y haz clic en **Instalar licencia**.
+
+Una vez instalada, la página muestra los detalles de tu licencia. Para cambiar a otra clave, por ejemplo de una clave de no producción a una de producción, o a una clave recién emitida, haz clic en **Reemplazar licencia**.
+
+### Usando la Management API \{#using-the-management-api}
+
+Envía la clave a `PUT /api/systems/license` con un token de acceso para la [Logto Management API](/integrate-logto/interact-with-management-api):
+
+```bash
+curl -X PUT 'https://your-logto-endpoint/api/systems/license' \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "license": "<your_license_key>" }'
+```
+
+Una solicitud exitosa devuelve `204 No Content`. La solicitud falla con:
+
+- `400` y `license.invalid_key` si la clave no está firmada por Logto o ha sido modificada.
+- `400` y `license.expired_key` si la clave ha pasado su fecha de expiración. Obtén una clave nueva e instálala de nuevo.
+- `501` si tu Logto está ejecutándose en Logto Cloud.
+
+Para comprobar qué está instalado, envía `GET /api/systems/license`. Devuelve el plan, entorno, derechos, expiración y estado de actualización de la licencia. Nunca devuelve la clave en sí, y devuelve `404` cuando no hay licencia instalada. Consulta la [referencia de la Management API](https://openapi.logto.io) para el esquema completo de solicitud y respuesta.
+
+### Múltiples instancias \{#multiple-instances}
+
+La licencia se almacena en tu base de datos de Logto, por lo que solo necesitas instalarla una vez para todas las instancias de Logto que compartan la misma base de datos.
+
+## Actualización y período de gracia \{#refresh-and-grace-period}
+
+Logto verifica la firma de la licencia localmente, por lo que iniciar sesión en tus aplicaciones nunca depende de una conexión con Logto, y un fallo en la actualización nunca bloquea el tráfico de inicio de sesión.
+
+Para recoger renovaciones y cancelaciones, tu instancia se comunica con Logto Cloud:
+
+- **Comprobación semanal.** Cuando la última actualización exitosa tiene más de 7 días, Logto actualiza la licencia en segundo plano, como parte de la gestión de una solicitud. Si un intento falla, se reintenta más tarde, como máximo una vez por hora. Una licencia recién instalada se actualiza de inmediato.
+- **30 días de gracia.** Si las actualizaciones fallan, por ejemplo porque tu instancia no puede acceder a internet, tus funciones siguen funcionando durante 30 días después de la última actualización exitosa. Después de eso, tu instancia vuelve a los valores predeterminados de OSS.
+- **Una actualización rechazada.** Si Logto rechaza la actualización de la licencia, por ejemplo porque la suscripción fue cancelada, la página de licencia muestra el motivo. El período de gracia sigue contando desde la última actualización exitosa.
+
+La actualización es una solicitud HTTPS saliente desde tu instancia a `https://cloud.logto.io`. Si tu instancia está detrás de un firewall, permite este destino.
+
+### Qué envía tu instancia \{#what-your-instance-sends}
+
+Una solicitud de actualización contiene solo:
+
+- Tu clave de licencia, que identifica la licencia por su `licenseId`.
+- Un `deploymentId`: un identificador aleatorio generado cuando instalas una licencia por primera vez. Se almacena en tu base de datos, lo comparten todas las instancias que usan esa base de datos y nunca cambia, incluso cuando reemplazas la licencia.
+- La versión de Logto.
+
+Logto no recopila recuentos de usuarios, nombres de host, dominios ni configuración. Estos datos se guardan solo como referencia, por ejemplo cuando renuevas, y no se muestran ni evalúan en el producto. El comportamiento es de código abierto, consulta [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts).
+
+## Expiración de la licencia \{#license-expiration}
+
+Una licencia cubre un período anual, y la fecha de **Expira el** es el final de ese período.
+
+- **Cuando renuevas**, no necesitas hacer nada en tu instancia. La siguiente actualización después de la renovación reemplaza la clave instalada por una nueva que expira un año después. Es normal que la página muestre una fecha que acaba de pasar durante unos días mientras se recoge la renovación, y las funciones permanecen disponibles durante este tiempo.
+- **Cuando no renuevas**, la actualización se rechaza después de que finaliza el período. Las funciones siguen funcionando hasta el final del período de gracia de 30 días, luego tu instancia vuelve a los valores predeterminados de OSS, como si no hubiera licencia instalada. La página de licencia muestra un banner explicando esto y la fecha en que ocurrirá.
+- **Si llegas al final del período de gracia**, instala una clave nueva para desbloquear las funciones de nuevo. Contacta con Logto a través del canal que usaste para obtener tu licencia si necesitas una.
+
+### Qué sucede cuando se desactivan las funciones \{#what-happens-when-features-are-turned-off}
+
+Volver a los valores predeterminados de OSS no elimina nada de lo que creaste con una licencia:
+
+- **Ocultar la marca Logto**: la marca "Powered by Logto" se muestra de nuevo. Tu configuración se guarda y se aplica de nuevo si se instala una licencia más adelante.
+- **Aplicaciones SAML**: las aplicaciones más allá de las primeras 3 permanecen, pero no puedes crear nuevas hasta estar por debajo del límite.
+- **MFA obligatoria**: siempre puedes desactivarla. No puedes volver a activarla sin una licencia.
+- **Trae tu propia UI, CSP personalizada e invitaciones de Console**: no puedes hacer nuevos cambios que requieran la función, y tus datos existentes se conservan.
+
+## Configurar almacenamiento para Trae tu propia UI \{#set-up-storage-for-bring-your-ui}
+
+En Logto Cloud, los recursos de Trae tu propia UI son alojados por Logto. En tu propia instancia, se almacenan en un almacenamiento de objetos que configuras. Logto descomprime tu carga y almacena los archivos allí, y los sirve desde allí.
+
+Configura el sistema `experienceBlobsProvider` con la misma estructura JSON que el [proveedor de almacenamiento de archivos](/logto-oss/file-storage-provider), por ejemplo, para un almacenamiento compatible con S3:
+
+```bash
+pnpm logto db system set experienceBlobsProvider '{"provider":"S3Storage","accessKeyId":"my-access-key-id","accessSecretKey":"my-secret-access-key","bucket":"logto-sie","endpoint":"https://s3.us-east-2.amazonaws.com"}'
+```
+
+Reinicia Logto después de cambiar la configuración. Luego sigue [Trae tu propia UI](/customization/bring-your-ui#upload-your-custom-ui-assets) para subir tus recursos en Console.
+
+## Correos de invitación para miembros de Console \{#invitation-emails-for-console-members}
+
+Las invitaciones de Console se envían por correo electrónico a través del conector de correo electrónico de tu tenant predeterminado. Asegúrate de haber [configurado un conector de correo electrónico](/connectors/email-connectors) antes de invitar miembros.
