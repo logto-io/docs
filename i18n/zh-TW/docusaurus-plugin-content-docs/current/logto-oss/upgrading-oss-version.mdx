@@ -5,24 +5,300 @@ sidebar_position: 8
 
 # 升級你的 OSS 版本
 
-Logto 遵循 [semver](https://semver.org/)，因此如果我們在變更日誌中未提及，你可以放心升級 Logto 而無需更改程式碼或資料庫結構。你可以在 [Github Release](https://github.com/logto-io/logto/releases) 中找到發行列表。
+Logto 遵循 [semver](https://semver.org/)。你可以在 [GitHub Releases](https://github.com/logto-io/logto/releases) 找到每個版本及其變更。本指南說明升級的運作方式、如何升級各種常見部署方式，以及遇到問題時的解決方法。
 
-## 步驟 1：更新至新版本 \{#step-1-update-to-the-new-version}
+## 升級的運作方式 \{#how-an-upgrade-works}
 
-要更新，請根據你的部署方式選擇適當的方法：
+升級包含兩個部分：
 
-- **Docker Image**：拉取最新的映像。
-- **NPM Package**：升級至最新版本。
-- **Tar File**：從發行頁面下載最新的 `.tar` 文件。
+1. **Logto 程式碼**：你執行的 Docker 映像檔或發行版壓縮檔。
+2. **資料庫結構**：版本間的結構變更會以資料庫變更（alteration）形式隨附，你需使用 [Logto CLI](/logto-oss/using-cli/database-alteration) 來部署。你的資料庫會記錄已部署的變更。
 
-## 步驟 2：應用資料庫更改 \{#step-2-apply-database-alterations}
+當 Logto 啟動時，會檢查資料庫。如果本版本包含的任何變更尚未部署，Logto 將拒絕啟動：
 
-使用 [Logto CLI](/logto-oss/using-cli/database-alteration/) 執行必要的資料庫更改。為了順利升級，無需停止生產應用程式。Logto 確保新的資料庫結構與現有程式碼相容，因此生產環境將繼續順利運行而不會中斷。
+```text
+Found undeployed database alterations, you must deploy them first by npm run alteration deploy command.
+...
+Error: Undeployed database alterations found.
+```
 
-## 步驟 3：重新啟動應用程式 \{#step-3-restart-the-application}
+變更設計上與前一版本相容，因此仍在執行前一版本的實例在變更部署後可繼續運作。這帶來以下順序，避免停機：
 
-在更新程式碼並應用資料庫更改後，重新啟動你的應用程式以應用更改。確保新版本運行順利，且所有組件均按預期運作。
+1. 使用**新**版本的 Logto 部署變更。
+2. 用新版本取代正在執行的實例。
 
-**提示**：為實現零停機升級，考慮使用「交換」策略，逐步將流量從舊實例轉移到新實例。這樣，使用者在升級過程中不會受到干擾。
+建議在開始前備份資料庫。
 
-你的升級現已完成！
+:::info
+
+務必使用你要升級到的新版本所附的 CLI 來部署變更，例如新的 Docker 映像檔或新的發行版壓縮檔。變更腳本與 CLI 綁定，舊版 CLI 無法部署新版 Logto 的變更。
+
+:::
+
+你可以一次跨多個版本升級。部署目標版本的變更時，會依序部署所有中間版本的變更。
+
+## 升級前的準備 \{#before-you-upgrade}
+
+- **閱讀所有版本的發行說明**，從你目前的版本到目標版本。
+- **備份你的資料庫（建議）**，例如使用 `pg_dump` 或資料庫供應商的快照功能。雖然變更可回滾，但備份是最可靠的還原方式。
+- **鎖定目標版本。** 請使用明確版本號（如 `ghcr.io/logto-io/logto:1.45.0`），不要用 `latest`。若用 `latest`，重啟或拉取新映像檔時可能在變更尚未部署前就升級，導致 Logto 無法啟動。
+- **檢查 Node.js 需求**，如果你直接用 Node.js 執行 Logto。每個發行版會在 `package.json` 的 `engines` 欄位聲明需求。例如 Logto 1.45.0 需要 Node.js `^22.14.0`。
+- **檢查你的自訂連接器**（如有）。詳見 [升級後自訂連接器被略過](#custom-connectors-are-skipped-after-upgrading)。
+- **先升級測試環境**，如果你有獨立資料庫的測試環境。若測試環境與正式環境共用資料庫，從測試環境部署變更也會改動正式資料庫。因為變更與前一版本相容，正式環境的舊版實例仍可運作。
+
+## 升級步驟 \{#upgrade-steps}
+
+以下範例中，`1.45.0` 為目標版本。請依實際情況替換版本號與資料庫 URL。
+
+### Docker \{#docker}
+
+1. 拉取新映像檔：
+
+   ```bash
+   docker pull ghcr.io/logto-io/logto:1.45.0
+   ```
+
+2. 用新映像檔部署變更。這步驟期間你現有的 Logto container 會持續運作：
+
+   ```bash
+   docker run --rm \
+     -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+     ghcr.io/logto-io/logto:1.45.0 \
+     alteration deploy 1.45.0
+   ```
+
+   你會看到類似以下的輸出。變更的數量與名稱取決於你跨越的版本：
+
+   ```text
+   info Deploy target 1.45.0
+   info Found 1 alteration to deploy
+   info Run alteration 1.45.0-1791531333-add-tenant-viewer-role.js `up()` function succeeded
+   ```
+
+   :::note
+
+   映像檔的 entrypoint 是 `npm run`，所以映像檔名稱後的參數會傳給 `npm run`。請寫 `alteration deploy 1.45.0`，不要寫 `npm run alteration deploy 1.45.0`。
+
+   :::
+
+3. 用新映像檔取代正在執行的 container。其他設定（port、環境變數等）保持不變：
+
+   ```bash
+   docker stop logto && docker rm logto
+   docker run -d --name logto \
+     -p 3001:3001 \
+     -p 3002:3002 \
+     -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+     ghcr.io/logto-io/logto:1.45.0
+   ```
+
+### Docker Compose \{#docker-compose}
+
+1. 在 Compose 檔案中更新 Logto 服務的映像標籤，然後拉取：
+
+   ```yaml
+   services:
+     logto:
+       image: ghcr.io/logto-io/logto:1.45.0
+   ```
+
+   ```bash
+   docker compose pull logto
+   ```
+
+2. 用新映像檔在 one-off container 中部署變更：
+
+   ```bash
+   docker compose run --rm --entrypoint sh logto -c "npm run alteration deploy 1.45.0"
+   ```
+
+   若 Compose 檔案中的 Logto 服務名稱不是 `logto`，請替換成實際名稱（demo `docker-compose.yml` 取名為 `app`）。覆寫 entrypoint 可確保即使服務自訂了 entrypoint 也能執行（如 demo 檔案）。
+
+3. 用新映像檔重建 Logto container：
+
+   ```bash
+   docker compose up -d logto
+   ```
+
+:::tip
+
+如果你只執行單一 Logto 實例，可以讓 container 每次啟動時自動初始化新資料庫並部署變更：
+
+```yaml
+services:
+  logto:
+    image: ghcr.io/logto-io/logto:1.45.0
+    entrypoint:
+      ['sh', '-c', 'npm run cli db seed -- --swe && npm run alteration deploy latest && npm start']
+```
+
+這裡的 `latest` 代表映像檔內含的最新版本，因此變更總是與你執行的映像檔一致。多實例時請勿用此方式。原因請見 [Kubernetes](#kubernetes)。
+
+:::
+
+:::warning
+
+如果你的架構基於 demo `docker-compose.yml`，其 Postgres container 資料存於匿名 volume。`docker compose down` 後匿名 volume 不會再掛載，下一次 `docker compose up` 會是全新資料庫。請在執行 `docker compose down` 前將資料移至具名 volume 或外部資料庫。
+
+:::
+
+### Kubernetes \{#kubernetes}
+
+先用 Job 部署變更，再 rollout 新映像檔。
+
+1. 建立一個 Job，用新映像檔執行變更：
+
+   ```yaml
+   apiVersion: batch/v1
+   kind: Job
+   metadata:
+     name: logto-alteration-1-45-0
+   spec:
+     backoffLimit: 0
+     template:
+       spec:
+         restartPolicy: Never
+         containers:
+           - name: alteration
+             image: ghcr.io/logto-io/logto:1.45.0
+             command: ['/bin/sh', '-c', 'npm run alteration deploy 1.45.0']
+             env:
+               - name: DB_URL
+                 valueFrom:
+                   secretKeyRef:
+                     name: logto
+                     key: db-url
+   ```
+
+   套用並等待完成：
+
+   ```bash
+   kubectl apply -f logto-alteration-job.yaml
+   kubectl wait --for=condition=complete job/logto-alteration-1-45-0 --timeout=10m
+   kubectl logs job/logto-alteration-1-45-0
+   ```
+
+2. 更新 Logto Deployment 的映像檔並等待 rollout。如果 Deployment 有使用 Logto 映像檔的 init container（如 [共用連接器資料夾](/logto-oss/deployment-and-configuration#shared-connectors-folder) 範例），也要一併更新：
+
+   ```bash
+   kubectl set image deployment/logto logto=ghcr.io/logto-io/logto:1.45.0
+   kubectl rollout status deployment/logto
+   ```
+
+若你用 Helm 或 GitOps 工具部署，請在 Deployment 更新前先執行 Job，例如作為 Helm 的 `pre-upgrade` hook 或 Argo CD 的 `PreSync` hook。
+
+:::warning
+
+請只從一個地方部署變更。CLI 部署變更時不會鎖定資料庫，因此不要在每個 replica 的啟動指令中部署變更。
+
+:::
+
+### Node.js \{#nodejs}
+
+如果你用 `npm init @logto` 或發行版壓縮檔安裝 Logto，請將新版本安裝在現有版本旁邊。升級完成前保留舊目錄，以便快速切換回去。
+
+1. 確認你的 Node.js 版本符合新版本需求。
+
+2. 下載並解壓新發行版：
+
+   ```bash
+   curl -fL -o logto-1.45.0.tar.gz https://github.com/logto-io/logto/releases/download/v1.45.0/logto.tar.gz
+   mkdir logto-1.45.0
+   tar -xzf logto-1.45.0.tar.gz -C logto-1.45.0 --strip-components=1
+   ```
+
+   若要取得最新版，也可執行 `npm init @logto@latest -- --path ./logto-new --skip-seed`。因為資料庫已存在，必須加上 `--skip-seed`。
+
+3. 從現有安裝（預設 `~/logto`）複製設定檔：
+
+   ```bash
+   cp ~/logto/.env logto-1.45.0/.env
+   ```
+
+4. 官方連接器已包含於發行版。如有自訂連接器，請再次加入新目錄，例如：
+
+   ```bash
+   cd logto-1.45.0
+   npm run cli connector add <connector-package-name>
+   ```
+
+5. 從新目錄部署變更。CLI 會從 `.env` 讀取 `DB_URL`：
+
+   ```bash
+   npm run alteration deploy 1.45.0
+   ```
+
+6. 停止現有 Logto 程序，從新目錄啟動新版本：
+
+   ```bash
+   npm start
+   ```
+
+   若你用 systemd 或 pm2 等程序管理工具，請將工作目錄改為新目錄。
+
+### Hosting providers \{#hosting-providers}
+
+如果你用 hosting provider 的一鍵部署模板安裝 Logto，請將 Logto 映像標籤改為目標版本。在新版本啟動前，使用 provider 的 one-off 指令或 shell 功能，搭配新映像檔執行 `npm run alteration deploy 1.45.0` 部署變更。單一實例時，也可用 [Docker Compose tip](#docker-compose) 的啟動指令。模板由 provider 維護，詳情請參閱其文件。
+
+## 回滾 \{#roll-back}
+
+若新版本運作不如預期：
+
+- **切回前一版本。** 因為變更與前一版本相容，通常可直接執行前一版本而不需動資料庫。僅適用於目標版本的前一版。若一次跨多個版本升級，需一併回滾變更。
+- **回滾變更。** 請用**新**版本執行回滾，因為舊版沒有新版的變更腳本。然後再啟動前一版本。例如 Docker：
+
+  ```bash
+  docker run --rm \
+    -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+    ghcr.io/logto-io/logto:1.45.0 \
+    alteration rollback 1.44.0
+  ```
+
+  回滾後，未重新部署變更前新版本將無法啟動。詳見 [回滾變更](/logto-oss/using-cli/database-alteration#rollback-alterations)。
+
+- **還原備份**（如有）。這是最可靠的方式，但備份後寫入的資料會遺失。
+
+## 疑難排解 \{#troubleshooting}
+
+### 升級後 Logto 無法啟動 \{#logto-does-not-start-after-upgrading}
+
+若日誌顯示 `Undeployed database alterations found`，請依 [升級步驟](#upgrade-steps) 部署變更。
+
+若已部署變更仍出現此錯誤，可能是用舊版 CLI 部署（如全域安裝的 `logto` 指令或解析到舊版的 `npx @logto/cli`）。此時 CLI 會顯示 `Found 0 alteration to deploy`，因為它不認得新版變更。請用新版本 CLI（新 Docker 映像檔、新發行目錄，或 `npx @logto/cli@1.45.0 db alteration deploy 1.45.0`）重新部署。
+
+### 重啟後 Logto 無法啟動 \{#logto-fails-to-start-after-a-restart}
+
+若你用 `latest` 標籤，重啟或拉取新映像檔時可能在未部署變更前就升級。請用你正在執行的映像檔部署變更，並改用明確版本避免意外升級。
+
+### `Error: Missing target version` \{#error-missing-target-version}
+
+無互動終端機時，CLI 無法詢問要部署哪個版本。請明確傳入目標版本（如 `alteration deploy 1.45.0`），或用 `alteration deploy latest` 部署至 CLI 內含的最新版本。
+
+### `npm error Missing script: "npm"` \{#npm-error-missing-script-npm}
+
+你在 `docker run` 的映像檔名稱後寫了 `npm run alteration ...`。映像檔的 entrypoint 已是 `npm run`，請直接寫 `alteration deploy 1.45.0`。
+
+### 變更失敗 \{#an-alteration-fails}
+
+每個變更都在交易中執行，失敗時不會留下部分變更。請修正原因後重試。已部署的變更會自動略過。常見原因：
+
+- **語句逾時（Statement timeout）。** 大型資料表的變更可能超過預設 60 秒逾時。請為變更指令設 `DATABASE_STATEMENT_TIMEOUT`（毫秒），或設為 `DISABLE_TIMEOUT`。
+- **資料庫權限。** 請用與初始化資料庫時相同權限的資料庫使用者執行變更。
+
+少數變更包含非交易步驟。若錯誤訊息提及非交易步驟可能已執行，請在重試前檢查資料庫狀態。
+
+### 升級後自訂連接器被略過 \{#custom-connectors-are-skipped-after-upgrading}
+
+Logto 會檢查每個連接器是否支援 Logto 內建的 `@logto/connector-kit` 版本。不支援時會略過並記錄：
+
+```text
+[load-connector] skip <connector-name> due to error: Connector requires @logto/connector-kit to be <range>, but the version here is <version>.
+```
+
+請更新連接器以支援新版 `@logto/connector-kit`。設 `IGNORE_CONNECTOR_VERSION_CHECK=1` 可略過檢查，但強烈不建議在正式環境使用。
+
+這也可能發生在 [共用連接器資料夾](/logto-oss/deployment-and-configuration#shared-connectors-folder) 的官方連接器：`npm run cli connector add -- --official` 會從 npm 下載最新版連接器，可能需要新版 Logto。此時請升級 Logto，或改用 Docker 映像檔內建的官方連接器。
+
+### `npm init @logto` 移除了新目錄 \{#npm-init-logto-removes-the-new-directory}
+
+若你在已存在的資料庫上執行 `npm init @logto` 且未加 `--skip-seed`，因資料庫已存在導致初始化失敗，CLI 會移除剛建立的目錄。資料庫不會被改動。請加上 `--skip-seed` 重新執行。
