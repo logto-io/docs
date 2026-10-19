@@ -3,26 +3,302 @@ sidebar_label: Upgrade
 sidebar_position: 8
 ---
 
-# Upgrade deiner OSS-Version
+# Deine OSS-Version aktualisieren
 
-Logto folgt [semver](https://semver.org/), daher kannst du, wenn wir es nicht im Changelog erwähnen, Logto problemlos upgraden, ohne deinen Code oder das Datenbankschema ändern zu müssen. Du findest die Liste der Veröffentlichungen in [Github Release](https://github.com/logto-io/logto/releases).
+Logto folgt [semver](https://semver.org/). Du findest jede Veröffentlichung und ihre Änderungen in den [GitHub Releases](https://github.com/logto-io/logto/releases). Diese Anleitung erklärt, wie ein Upgrade funktioniert, wie du die gängigsten Bereitstellungstypen aktualisierst und wie du Probleme behebst, auf die du stoßen könntest.
 
-## Schritt 1: Auf die neue Version aktualisieren \{#step-1-update-to-the-new-version}
+## Wie ein Upgrade funktioniert \{#how-an-upgrade-works}
 
-Um zu aktualisieren, folge der entsprechenden Methode basierend auf deiner Bereitstellung:
+Ein Upgrade besteht aus zwei Teilen:
 
-- **Docker-Image**: Ziehe das neueste Image.
-- **NPM-Paket**: Aktualisiere auf die neueste Version.
-- **Tar-Datei**: Lade die neueste `.tar`-Datei von der Release-Seite herunter.
+1. **Der Logto-Code**: das Docker-Image oder das Release-Tarball, das du ausführst.
+2. **Das Datenbankschema**: Schemaänderungen zwischen Versionen werden als Datenbankänderungen ausgeliefert und du setzt sie mit der [Logto CLI](/logto-oss/using-cli/database-alteration) um. Deine Datenbank zeichnet auf, welche Änderungen bereits angewendet wurden.
 
-## Schritt 2: Datenbankänderungen anwenden \{#step-2-apply-database-alterations}
+Wenn Logto startet, prüft es die Datenbank. Falls eine Änderung, die in dieser Version von Logto enthalten ist, noch nicht angewendet wurde, verweigert Logto den Start:
 
-Verwende die [Logto CLI](/logto-oss/using-cli/database-alteration/), um die notwendigen Datenbankänderungen durchzuführen. Für ein nahtloses Upgrade ist es nicht erforderlich, die Produktionsanwendung zu stoppen. Logto stellt sicher, dass das neue Datenbankschema mit dem vorhandenen Code kompatibel bleibt, sodass die Produktion reibungslos ohne Unterbrechungen weiterläuft.
+```text
+Found undeployed database alterations, you must deploy them first by npm run alteration deploy command.
+...
+Error: Undeployed database alterations found.
+```
 
-## Schritt 3: Anwendung neu starten \{#step-3-restart-the-application}
+Änderungen sind so gestaltet, dass sie mit der vorherigen Version von Logto kompatibel sind, sodass Instanzen, die noch die vorherige Version ausführen, nach dem Anwenden der Änderungen weiterhin funktionieren. Daraus ergibt sich folgende Reihenfolge, die Ausfallzeiten vermeidet:
 
-Nach dem Aktualisieren des Codes und Anwenden der Datenbankänderungen starte deine Anwendung neu, um die Änderungen zu übernehmen. Stelle sicher, dass die neue Version reibungslos läuft und alle Komponenten wie erwartet funktionieren.
+1. Setze die Änderungen mit der **neuen** Version von Logto um.
+2. Ersetze die laufenden Instanzen durch die neue Version.
 
-**Tipp**: Um ein Upgrade ohne Ausfallzeiten zu erreichen, erwäge die Verwendung einer „Swap“-Strategie, bei der du den Datenverkehr schrittweise von der alten Instanz zur neuen verschiebst. Auf diese Weise erleben die Benutzer keine Unterbrechung während des Upgrades.
+Wir empfehlen, vor Beginn ein Backup der Datenbank zu erstellen.
 
-Dein Upgrade ist nun abgeschlossen!
+:::info
+
+Setze Änderungen immer mit der CLI um, die mit der Version geliefert wird, auf die du aktualisierst, also mit dem neuen Docker-Image oder dem neuen Release-Tarball. Änderungsskripte sind mit der CLI gebündelt, daher kann eine ältere CLI die Änderungen einer neueren Logto-Version nicht anwenden.
+
+:::
+
+Du kannst auch mehrere Versionen auf einmal überspringen. Das Anwenden der Änderungen auf die Zielversion setzt alle dazwischenliegenden Änderungen in der richtigen Reihenfolge um.
+
+## Vor dem Upgrade \{#before-you-upgrade}
+
+- **Lies die Release Notes** jeder Version zwischen deiner aktuellen Version und der Zielversion.
+- **Sichere deine Datenbank (empfohlen)**, zum Beispiel mit `pg_dump` oder einem Snapshot deines Datenbankanbieters. Änderungen können zurückgesetzt werden, aber ein Backup ist der zuverlässigste Weg zurück.
+- **Fixiere die Zielversion.** Verwende eine exakte Version wie `ghcr.io/logto-io/logto:1.45.0` statt `latest`. Mit `latest` kann ein Neustart oder ein neuer Pull Logto aktualisieren, bevor die Änderungen angewendet wurden, und Logto startet dann nicht.
+- **Prüfe die Node.js-Anforderung**, falls du Logto direkt mit Node.js betreibst. Jede Veröffentlichung gibt dies im Feld `engines` ihrer `package.json` an. Zum Beispiel benötigt Logto 1.45.0 Node.js `^22.14.0`.
+- **Prüfe deine eigenen Connectoren**, falls du welche hast. Siehe [Custom connectors are skipped after upgrading](#custom-connectors-are-skipped-after-upgrading).
+- **Upgrade zuerst die Staging-Umgebung**, falls du eine Staging-Umgebung mit eigener Datenbank hast. Wenn deine Staging-Umgebung die Datenbank mit der Produktion teilt, ändern die Änderungen aus dem Staging auch die Produktionsdatenbank. Produktionsinstanzen mit der vorherigen Version funktionieren weiterhin, da die Änderungen kompatibel sind.
+
+## Upgrade-Schritte \{#upgrade-steps}
+
+In den folgenden Beispielen ist `1.45.0` die Zielversion. Ersetze sie und die Datenbank-URL durch deine eigenen Werte.
+
+### Docker \{#docker}
+
+1. Ziehe das neue Image:
+
+   ```bash
+   docker pull ghcr.io/logto-io/logto:1.45.0
+   ```
+
+2. Setze die Änderungen mit dem neuen Image um. Dein aktueller Logto-Container läuft während dieses Schritts weiter:
+
+   ```bash
+   docker run --rm \
+     -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+     ghcr.io/logto-io/logto:1.45.0 \
+     alteration deploy 1.45.0
+   ```
+
+   Du solltest eine Ausgabe wie diese sehen. Die Anzahl und Namen der Änderungen hängen von den Versionen ab, die du überspringst:
+
+   ```text
+   info Deploy target 1.45.0
+   info Found 1 alteration to deploy
+   info Run alteration 1.45.0-1791531333-add-tenant-viewer-role.js `up()` function succeeded
+   ```
+
+   :::note
+
+   Der Entrypoint des Images ist `npm run`, daher werden die Argumente nach dem Image-Namen an `npm run` übergeben. Schreibe `alteration deploy 1.45.0`, nicht `npm run alteration deploy 1.45.0`.
+
+   :::
+
+3. Ersetze den laufenden Container durch einen, der das neue Image verwendet. Behalte die gleichen Ports, Umgebungsvariablen und andere Optionen wie zuvor bei:
+
+   ```bash
+   docker stop logto && docker rm logto
+   docker run -d --name logto \
+     -p 3001:3001 \
+     -p 3002:3002 \
+     -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+     ghcr.io/logto-io/logto:1.45.0
+   ```
+
+### Docker Compose \{#docker-compose}
+
+1. Aktualisiere das Image-Tag des Logto-Services in deiner Compose-Datei und ziehe es dann:
+
+   ```yaml
+   services:
+     logto:
+       image: ghcr.io/logto-io/logto:1.45.0
+   ```
+
+   ```bash
+   docker compose pull logto
+   ```
+
+2. Setze die Änderungen in einem Einweg-Container des neuen Images um:
+
+   ```bash
+   docker compose run --rm --entrypoint sh logto -c "npm run alteration deploy 1.45.0"
+   ```
+
+   Ersetze `logto` durch den Namen des Logto-Services in deiner Compose-Datei (die Demo-`docker-compose.yml` nennt ihn `app`). Das Überschreiben des Entrypoints sorgt dafür, dass der Befehl auch funktioniert, wenn der Service einen eigenen `entrypoint` definiert, wie es die Demo-Datei tut.
+
+3. Erstelle den Logto-Container mit dem neuen Image neu:
+
+   ```bash
+   docker compose up -d logto
+   ```
+
+:::tip
+
+Wenn du eine einzelne Logto-Instanz betreibst, kannst du den Container so konfigurieren, dass er bei jedem Start eine neue Datenbank befüllt und Änderungen anwendet:
+
+```yaml
+services:
+  logto:
+    image: ghcr.io/logto-io/logto:1.45.0
+    entrypoint:
+      ['sh', '-c', 'npm run cli db seed -- --swe && npm run alteration deploy latest && npm start']
+```
+
+Hier bedeutet `latest` die neueste Version, die im Image enthalten ist, sodass die Änderungen immer zum Image passen, das du ausführst. Verwende diesen Ansatz nicht mit mehreren Instanzen. Siehe [Kubernetes](#kubernetes) für den Grund.
+
+:::
+
+:::warning
+
+Wenn dein Setup auf der Demo-`docker-compose.yml` basiert, speichert der Postgres-Container Daten in einem anonymen Volume. Anonyme Volumes werden nach `docker compose down` nicht erneut eingebunden, sodass der nächste `docker compose up` mit einer leeren Datenbank startet. Bevor du `docker compose down` ausführst, verschiebe die Daten in ein benanntes Volume oder eine externe Datenbank.
+
+:::
+
+### Kubernetes \{#kubernetes}
+
+Setze die Änderungen einmalig mit einem Job um und rolle dann das neue Image aus.
+
+1. Erstelle einen Job, der die Änderungen mit dem neuen Image ausführt:
+
+   ```yaml
+   apiVersion: batch/v1
+   kind: Job
+   metadata:
+     name: logto-alteration-1-45-0
+   spec:
+     backoffLimit: 0
+     template:
+       spec:
+         restartPolicy: Never
+         containers:
+           - name: alteration
+             image: ghcr.io/logto-io/logto:1.45.0
+             command: ['/bin/sh', '-c', 'npm run alteration deploy 1.45.0']
+             env:
+               - name: DB_URL
+                 valueFrom:
+                   secretKeyRef:
+                     name: logto
+                     key: db-url
+   ```
+
+   Wende ihn an und warte, bis er abgeschlossen ist:
+
+   ```bash
+   kubectl apply -f logto-alteration-job.yaml
+   kubectl wait --for=condition=complete job/logto-alteration-1-45-0 --timeout=10m
+   kubectl logs job/logto-alteration-1-45-0
+   ```
+
+2. Aktualisiere das Image des Logto-Deployments und warte auf das Rollout. Falls dein Deployment einen Init-Container verwendet, der das Logto-Image nutzt, wie im Beispiel des [shared connectors folder](/logto-oss/deployment-and-configuration#shared-connectors-folder), aktualisiere diesen ebenfalls:
+
+   ```bash
+   kubectl set image deployment/logto logto=ghcr.io/logto-io/logto:1.45.0
+   kubectl rollout status deployment/logto
+   ```
+
+Wenn du mit Helm oder einem GitOps-Tool bereitstellst, führe den Job vor dem Update des Deployments aus, zum Beispiel als Helm-`pre-upgrade`-Hook oder Argo CD-`PreSync`-Hook.
+
+:::warning
+
+Setze Änderungen immer nur von einem Ort aus um. Die CLI sperrt die Datenbank beim Anwenden der Änderungen nicht, daher solltest du sie nicht vom Startbefehl jeder Replik aus anwenden.
+
+:::
+
+### Node.js \{#nodejs}
+
+Wenn du Logto mit `npm init @logto` oder aus einem Release-Tarball installiert hast, installiere die neue Version neben der aktuellen. Behalte das aktuelle Verzeichnis, bis das Upgrade abgeschlossen ist, damit du schnell zurückwechseln kannst.
+
+1. Stelle sicher, dass deine Node.js-Version die Anforderung der neuen Version erfüllt.
+
+2. Lade das neue Release herunter und entpacke es:
+
+   ```bash
+   curl -fL -o logto-1.45.0.tar.gz https://github.com/logto-io/logto/releases/download/v1.45.0/logto.tar.gz
+   mkdir logto-1.45.0
+   tar -xzf logto-1.45.0.tar.gz -C logto-1.45.0 --strip-components=1
+   ```
+
+   Um das neueste Release zu erhalten, kannst du auch `npm init @logto@latest -- --path ./logto-new --skip-seed` ausführen. Die Option `--skip-seed` ist erforderlich, da deine Datenbank bereits existiert.
+
+3. Kopiere deine Konfiguration aus der aktuellen Installation (standardmäßig `~/logto`):
+
+   ```bash
+   cp ~/logto/.env logto-1.45.0/.env
+   ```
+
+4. Die offiziellen Connectoren sind im Release enthalten. Falls du weitere Connectoren hinzugefügt hast, füge sie erneut in das neue Verzeichnis ein, zum Beispiel:
+
+   ```bash
+   cd logto-1.45.0
+   npm run cli connector add <connector-package-name>
+   ```
+
+5. Setze die Änderungen aus dem neuen Verzeichnis um. Die CLI liest `DB_URL` aus der `.env`-Datei:
+
+   ```bash
+   npm run alteration deploy 1.45.0
+   ```
+
+6. Stoppe den aktuellen Logto-Prozess und starte den neuen aus dem neuen Verzeichnis:
+
+   ```bash
+   npm start
+   ```
+
+   Falls du einen Prozessmanager wie systemd oder pm2 verwendest, aktualisiere dessen Arbeitsverzeichnis auf das neue Verzeichnis.
+
+### Hosting-Anbieter \{#hosting-providers}
+
+Wenn du Logto mit einer One-Click-Vorlage eines Hosting-Anbieters bereitgestellt hast, ändere das Logto-Image-Tag auf die Zielversion. Bevor die neue Version startet, setze die Änderungen mit dem neuen Image über den Einmal-Befehl oder die Shell-Funktion des Anbieters um, indem du `npm run alteration deploy 1.45.0` ausführst. Für eine einzelne Instanz kannst du auch den Startbefehl aus dem [Docker Compose Tipp](#docker-compose) verwenden. Die Vorlagen werden von den Anbietern gepflegt, daher lies deren Dokumentation für Details.
+
+## Rollback \{#roll-back}
+
+Falls die neue Version nicht wie erwartet funktioniert:
+
+- **Wechsle zurück zur vorherigen Version.** Da Änderungen mit der vorherigen Version von Logto kompatibel sind, kannst du in der Regel die vorherige Version erneut ausführen, ohne die Datenbank anzufassen. Dies gilt nur für die Version direkt vor der Zielversion. Wenn du mehrere Versionen übersprungen hast, setze auch die Änderungen zurück.
+- **Setze die Änderungen zurück.** Führe das Rollback mit der **neuen** Version durch, da die vorherige Version die neueren Änderungsskripte nicht enthält. Starte dann die vorherige Version. Zum Beispiel mit Docker:
+
+  ```bash
+  docker run --rm \
+    -e DB_URL=postgres://username:password@your_postgres_url:port/db_name \
+    ghcr.io/logto-io/logto:1.45.0 \
+    alteration rollback 1.44.0
+  ```
+
+  Nach einem Rollback startet die neue Version nicht, bis du die Änderungen erneut anwendest. Siehe [Rollback alterations](/logto-oss/using-cli/database-alteration#rollback-alterations) für Details.
+
+- **Stelle das Backup wieder her**, falls du eines erstellt hast. Dies ist die zuverlässigste Option, aber alle nach dem Backup geschriebenen Daten gehen verloren.
+
+## Fehlerbehebung \{#troubleshooting}
+
+### Logto startet nach dem Upgrade nicht \{#logto-does-not-start-after-upgrading}
+
+Wenn die Logs `Undeployed database alterations found` anzeigen, setze die Änderungen wie unter [Upgrade-Schritte](#upgrade-steps) beschrieben um.
+
+Falls du die Änderungen bereits angewendet hast und diesen Fehler trotzdem siehst, wurden sie wahrscheinlich mit einer älteren CLI angewendet, etwa einem global installierten `logto`-Befehl oder einem `npx @logto/cli`, das auf eine ältere Version verweist. In diesem Fall meldet die CLI `Found 0 alteration to deploy`, weil sie die neueren Änderungen nicht kennt. Setze sie erneut mit der CLI der neuen Version um: dem neuen Docker-Image, dem neuen Release-Verzeichnis oder `npx @logto/cli@1.45.0 db alteration deploy 1.45.0`.
+
+### Logto startet nach einem Neustart nicht mehr \{#logto-fails-to-start-after-a-restart}
+
+Wenn du das `latest`-Tag verwendest, kann ein Neustart oder ein neuer Pull des Images Logto aktualisiert haben, ohne die Änderungen anzuwenden. Setze die Änderungen mit dem Image um, das du gerade ausführst, und fixiere dann eine exakte Version, um ungeplante Upgrades zu vermeiden.
+
+### `Error: Missing target version` \{#error-missing-target-version}
+
+Ohne ein interaktives Terminal kann die CLI nicht nachfragen, welche Version angewendet werden soll. Gib die Zielversion explizit an, zum Beispiel `alteration deploy 1.45.0`, oder verwende `alteration deploy latest`, um bis zur neuesten in der CLI enthaltenen Version zu aktualisieren.
+
+### `npm error Missing script: "npm"` \{#npm-error-missing-script-npm}
+
+Du hast `npm run alteration ...` nach dem Image-Namen in `docker run` übergeben. Der Entrypoint des Images ist bereits `npm run`, daher übergib stattdessen `alteration deploy 1.45.0`.
+
+### Eine Änderung schlägt fehl \{#an-alteration-fails}
+
+Jede Änderung läuft in einer Transaktion, sodass eine fehlgeschlagene Änderung keine Teiländerungen hinterlässt. Behebe die Ursache und führe denselben Befehl erneut aus. Bereits angewendete Änderungen werden übersprungen. Häufige Ursachen:
+
+- **Statement timeout.** Änderungen an großen Tabellen können länger dauern als das Standard-Statement-Timeout von 60 Sekunden. Setze `DATABASE_STATEMENT_TIMEOUT` (in Millisekunden) oder auf `DISABLE_TIMEOUT` für den Änderungsbefehl.
+- **Datenbankberechtigungen.** Führe Änderungen als Datenbankbenutzer mit denselben Rechten aus, die du zum Befüllen der Datenbank verwendet hast.
+
+Einige Änderungen enthalten Schritte, die außerhalb einer Transaktion laufen. Wenn die Fehlermeldung besagt, dass nicht-transaktionale Schritte angewendet worden sein könnten, prüfe den Zustand deiner Datenbank, bevor du den Befehl erneut ausführst.
+
+### Eigene Connectoren werden nach dem Upgrade übersprungen \{#custom-connectors-are-skipped-after-upgrading}
+
+Logto prüft, ob jeder Connector die Version von `@logto/connector-kit` unterstützt, die mit Logto gebündelt ist. Falls ein Connector dies nicht tut, überspringt Logto ihn und protokolliert:
+
+```text
+[load-connector] skip <connector-name> due to error: Connector requires @logto/connector-kit to be <range>, but the version here is <version>.
+```
+
+Aktualisiere den Connector, damit er die neue Version von `@logto/connector-kit` unterstützt. Das Setzen von `IGNORE_CONNECTOR_VERSION_CHECK=1` überspringt die Prüfung, wird aber in der Produktion dringend abgeraten.
+
+Dies kann auch bei offiziellen Connectoren in einem [shared connectors folder](/logto-oss/deployment-and-configuration#shared-connectors-folder) passieren: `npm run cli connector add -- --official` lädt die neuesten Connectoren von npm herunter, die eventuell eine neuere Version von Logto benötigen. In diesem Fall aktualisiere Logto oder verwende die offiziellen Connectoren, die im Docker-Image enthalten sind, statt eines gemeinsamen Ordners.
+
+### `npm init @logto` entfernt das neue Verzeichnis \{#npm-init-logto-removes-the-new-directory}
+
+Wenn du `npm init @logto` gegen deine bestehende Datenbank ohne `--skip-seed` ausführst, schlägt das Befüllen fehl, weil die Datenbank bereits existiert, und die CLI entfernt das gerade erstellte Verzeichnis. Deine Datenbank bleibt unverändert. Führe den Befehl erneut mit `--skip-seed` aus.

@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # 部署與設定
 
-在前一篇文章中，我們介紹了[快速開始使用 Logto](/logto-oss/get-started-with-oss)的基本流程。本篇將更深入，聚焦於在生產環境部署 Logto 的最佳實踐與詳細設定步驟。
+在前一篇文章中，我們介紹了[快速開始使用 Logto](/logto-oss/get-started-with-oss)的基礎知識。本篇將更深入，聚焦於生產環境下的最佳實踐與詳細設定步驟。
 
 ## 環境變數 \{#environment-variables}
 
@@ -15,14 +15,14 @@ sidebar_position: 2
 ### 基本必備 \{#essentials}
 
 - `DB_URL` Logto 資料庫的 [Postgres DSN](https://www.postgresql.org/docs/14/libpq-connect.html#id-1.7.3.8.3.6)。
-- `DATABASE_STATEMENT_TIMEOUT`（v1.36.0+）PostgreSQL 的 `statement_timeout`，單位為毫秒。請使用數字字串（如 `5000`），或對 PgBouncer / RDS Proxy 使用 `DISABLE_TIMEOUT`。詳見[設定說明](/concepts/core-service/configuration/)。
+- `DATABASE_STATEMENT_TIMEOUT`（v1.36.0+）PostgreSQL 的 `statement_timeout`，單位為毫秒。請使用數字字串（如 `5000`），或對 PgBouncer/RDS Proxy 使用 `DISABLE_TIMEOUT`。詳見[設定說明](/concepts/core-service/configuration/)。
 - `PORT` Logto 監聽的埠號，預設為 `3001`。
 - `ENDPOINT` 可指定自訂網域的 URL 作為生產環境端點（如 `ENDPOINT=https://logto.domain.com`）。這也會影響 [OIDC 簽發者識別碼 (Issuer Identifier)](https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier) 的值。
 
 **啟用管理主控台 (Admin Console)**
 
 - `ADMIN_PORT` Logto 管理主控台監聽的埠號，預設為 `3002`。
-- `ADMIN_ENDPOINT` 可指定自訂網域的 URL 作為生產環境端點（如 `ADMIN_ENDPOINT=https://admin.domain.com`）。這也會影響管理主控台的 Redirect URI 值。
+- `ADMIN_ENDPOINT` 可指定自訂網域的 URL 作為生產環境端點（如 `ADMIN_ENDPOINT=https://admin.domain.com`）。這也會影響管理主控台的 Redirect URI。
 
 **停用管理主控台 (Admin Console)**
 
@@ -32,17 +32,41 @@ sidebar_position: 2
 
 **啟用 Secret Vault**
 
-- 若要使用 [Secret Vault](/secret-vault)，需將 `SECRET_VAULT_KEK` 設為你的 Key Encryption Key (KEK) 的 base64 編碼字串。這將用於加密 Secret Vault 中的 Data Encryption Keys (DEK)。建議使用 AES-256（32 bytes）。範例：`crypto.randomBytes(32).toString('base64')`。
+- 若要使用 [Secret Vault](/secret-vault)，需將 `SECRET_VAULT_KEK` 設為你的 Key Encryption Key (KEK) 的 base64 編碼字串。這用於加密 Secret Vault 中的 Data Encryption Keys (DEK)。建議使用 AES-256（32 bytes）。範例：`crypto.randomBytes(32).toString('base64')`。
 
-### HTTPS \{#outbound-http-proxy}
+### 對外 HTTP 代理 \{#outbound-http-proxy}
+
+如果你的自架 Logto 實例必須透過 HTTP 代理存取外部服務（如社交連接器 API 或 CAPTCHA 供應商），請啟用環境代理支援並設定標準代理變數。
+
+例如，在 Docker Compose 設定中於 Logto 服務加入下列環境變數：
+
+```yaml
+services:
+  logto:
+    image: ghcr.io/logto-io/logto:latest
+    environment:
+      NODE_USE_ENV_PROXY: '1'
+      HTTP_PROXY: http://proxy.example.com:3128
+      HTTPS_PROXY: http://proxy.example.com:3128
+      NO_PROXY: localhost,127.0.0.1,::1,postgres,.internal.example.com
+```
+
+- `NODE_USE_ENV_PROXY=1` 啟用環境代理支援。Node.js 22 需 22.21.0 版或以上。
+- `HTTP_PROXY` 指定 HTTP 請求的代理。
+- `HTTPS_PROXY` 指定 HTTPS 請求的代理。代理 URL 本身可用 HTTP 或 HTTPS。
+- `NO_PROXY` 以逗號分隔的主機清單，這些主機將直接連線。請加入不需經過代理的內部 HTTP 端點。
+
+請注意，這些代理設定不一定對所有對外請求都生效。
+
+### HTTPS \{#https}
 
 你可以直接用 Node.js 提供 HTTPS 服務，或在 Node.js 前設置 HTTPS 代理 / 負載平衡器。詳見[啟用 HTTPS](/concepts/core-service/configuration/#enabling-https)。
 
-### 反向代理 \{#https}
+### 反向代理 \{#reverse-proxy}
 
-若你想在伺服器上使用反向代理（如 Nginx 或 Apache），需在代理設定中分別對應 3001 與 3002 埠。假設你使用 Nginx，Logto 驗證端點運行於 3001 埠，管理主控台運行於 3002 埠，請在 nginx.conf 中加入以下設定：
+若你想在伺服器上使用反向代理（如 Nginx 或 Apache），需在代理設定中分別對應 3001 與 3002 埠。假設你用 Nginx，Logto 驗證端點運行於 3001 埠，管理主控台運行於 3002 埠，請在 nginx.conf 加入下列設定：
 
-將 `TRUST_PROXY_HEADER=1` 設定給 Logto 以信任轉發標頭。`Host` 與 `X-Forwarded-Host` 都使用 `$http_host`，以保留公開 URL 的非標準埠。
+將 `TRUST_PROXY_HEADER=1` 設定給 Logto 以信任轉發標頭。`Host` 與 `X-Forwarded-Host` 請都用 `$http_host`，以保留公開 URL 的非標準埠。
 
 ```
 server {
@@ -98,11 +122,11 @@ nginx -s reload
 
 一切就緒。打開瀏覽器並造訪 `https://admin.your-domain.com`，你應該能看到 Logto 歡迎頁面。
 
-## 容器化 \{#reverse-proxy}
+## 容器化 \{#containerization}
 
 在生產環境中，你可以用 Docker 將 Logto 容器化。專案根目錄有 Dockerfile。如果你想運行多個 Logto 實例（例如在 Kubernetes 叢集部署 Logto），還需額外步驟。
 
-### 資料庫初始化 \{#containerization}
+### 資料庫初始化 \{#database-setup}
 
 準備一個 Postgres 資料庫給 Logto。強烈建議使用 Logto CLI 初始化資料庫。
 
@@ -114,24 +138,32 @@ npm run cli db seed -- --swe
 
 :::tip 離線或隔離網路安裝
 
-若你的部署環境無法連線到 `api.pwnedpasswords.com`，請在 `logto init` 或 `npm run cli db seed` 時加上 `--disable-admin-pwned-password-check`，避免第一位管理員註冊時卡在 Have I Been Pwned 漏洞檢查。詳見[離線部署初始化](/logto-oss/using-cli#seed-for-air-gapped-or-offline-deployments)。
+若你的部署環境無法連線到 `api.pwnedpasswords.com`，請在 `logto init` 或 `npm run cli db seed` 時加上 `--disable-admin-pwned-password-check`，避免第一位管理員註冊時卡在 Have I Been Pwned 漏洞檢查。詳見[離線部署資料初始化](/logto-oss/using-cli#seed-for-air-gapped-or-offline-deployments)。
 
 :::
 
-### 共用連接器資料夾 \{#database-setup}
+### 共用連接器資料夾 \{#shared-connectors-folder}
 
-預設情況下，Logto 會在 `core` 資料夾根目錄下建立 `connectors` 資料夾。我們建議多個 Logto 實例共用此資料夾，你需要將 `packages/core/connectors` 資料夾掛載到容器，並執行 `npm run cli connector add -- --official` 來部署連接器。
+預設情況下，Logto 會在 `core` 資料夾根目錄建立 `connectors` 資料夾。官方 Docker 映像已內建官方連接器，因此僅用官方連接器時無需共用。
+
+若需使用映像未包含的連接器（如自訂連接器），建議多個 Logto 實例共用此資料夾。將 `packages/core/connectors` 資料夾掛載到容器，並執行 `npm run cli connector add -- --official` 以部署官方連接器，再將自訂連接器加入同一資料夾。掛載 volume 會覆蓋映像內的連接器，因此需重新加入官方連接器，這需要能存取 npm registry。
 
 以下為 Kubernetes 的最小範例 `deployment`：
 
 ```yaml
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: logto
   namespace: default
 spec:
+  selector:
+    matchLabels:
+      app: logto
   template:
+    metadata:
+      labels:
+        app: logto
     spec:
       volumes:
         - name: connectors
@@ -155,21 +187,21 @@ spec:
               mountPath: /etc/logto/packages/core/connectors
 ```
 
-在此範例中，我們建立一個空目錄作為 volume 並掛載到容器。然後在 init container 執行 `npm run cli connector add -- --official` 下載連接器。最後，每個容器都會共用同一個已包含官方連接器的資料夾。
+此範例中，我們建立一個空目錄作為 volume 並掛載到容器。然後在 init container 執行 `npm run cli connector add -- --official` 下載連接器。最後，每個容器都會共用同一個已含官方連接器的資料夾。
 
 :::note
 
-這只是範例 yaml，實際運行 Logto 時需正確設定環境變數。
+這是範例 yaml，實際運行 Logto 時需正確設定環境變數。
 
 :::
 
-在生產環境中，你可以將 "empty dir" volume 換成持久性 volume，並用你自己的方式執行 "init" 任務，你知道你在做什麼！
+生產環境可將 "empty dir" volume 換成持久化 volume，並用你自己的方式執行 "init" 任務，你知道你在做什麼！
 
-### 資料庫變更 \{#shared-connectors-folder}
+### 資料庫變更 (alteration) \{#database-alteration}
 
 與連接器類似，資料庫變更需在單一實例執行。你可以用 job 執行變更腳本。
 
-當以非互動方式執行變更時，必須設置 `CI=true` 環境變數。
+非互動執行時需設 `CI=true` 環境變數。
 
 ```yaml
 apiVersion: batch/v1
@@ -196,4 +228,4 @@ spec:
       restartPolicy: Never
 ```
 
-關於變更指令詳見 [資料庫變更](/logto-oss/using-cli/database-alteration/)。
+關於 alteration 指令詳見 [資料庫變更](/logto-oss/using-cli/database-alteration/)。
