@@ -137,15 +137,28 @@ Present when the change was triggered by a Management API call.
 
 ### Event-specific data payloads \{#event-specific-data-payloads}
 
-Every data-mutation event includes a top-level `data` field carrying the affected entity, or `null` when the change can't be summarized as a single entity (delete and membership events). Some events also include event-specific top-level fields beyond `data`; `Organization.Membership.Updated` is one such case, documented below.
+Every data-mutation event includes a top-level `data` field carrying the affected entity, or `null` when the change can't be summarized as a single entity (delete and membership events). Some events also include event-specific top-level fields beyond `data`; `Organization.Membership.Updated`, `User.Roles.Updated`, and `Organization.UserRoles.Updated` are such cases, documented below.
 
 #### User events \{#user-events}
 
-| Event             | Field | Type         | Optional | Notes                    |
-| ----------------- | ----- | ------------ | -------- | ------------------------ |
-| User.Created      | data  | `UserEntity` |          | The created user entity. |
-| User.Data.Updated | data  | `UserEntity` |          | The updated user entity. |
-| User.Deleted      | data  | `null`       | /        |                          |
+| Event              | Field | Type         | Optional | Notes                                                                                                                 |
+| ------------------ | ----- | ------------ | -------- | --------------------------------------------------------------------------------------------------------------------- |
+| User.Created       | data  | `UserEntity` |          | The created user entity.                                                                                              |
+| User.Data.Updated  | data  | `UserEntity` |          | The updated user entity.                                                                                              |
+| User.Deleted       | data  | `null`       | /        |                                                                                                                       |
+| User.Roles.Updated | data  | `null`       | /        | The change is described by top-level delta arrays. See [User.Roles.Updated payload](#userrolesupdated-payload) below. |
+
+##### User.Roles.Updated payload \{#userrolesupdated-payload}
+
+`User.Roles.Updated` is emitted once per affected user when a request actually changes that user's tenant roles. It carries `data: null` and the following top-level fields:
+
+| Field          | Type       | Optional | Notes                                                                        |
+| -------------- | ---------- | -------- | ---------------------------------------------------------------------------- |
+| userId         | `string`   |          | The user whose roles changed.                                                |
+| addedRoleIds   | `string[]` |          | Role IDs actually added by this request; empty when only roles were removed. |
+| removedRoleIds | `string[]` |          | Role IDs actually removed by this request; empty when only roles were added. |
+
+A request that leaves the role set unchanged emits no event. Changes caused by deleting a role or changing its scopes are reported through `Role.Deleted` and `Role.Scopes.Updated` instead.
 
 #### Role events \{#role-events}
 
@@ -197,12 +210,13 @@ type Organization = {
 };
 ```
 
-| Event                           | Field | Type           | Optional | Notes                                                                                                                                                    |
-| ------------------------------- | ----- | -------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Organization.Created            | data  | `Organization` |          | The created organization entity.                                                                                                                         |
-| Organization.Data.Updated       | data  | `Organization` |          | The updated organization entity.                                                                                                                         |
-| Organization.Deleted            | data  | `null`         | /        |                                                                                                                                                          |
-| Organization.Membership.Updated | data  | `null`         | /        | The change is described by optional top-level delta arrays. See [Organization.Membership.Updated payload](#organizationmembershipupdated-payload) below. |
+| Event                           | Field | Type           | Optional | Notes                                                                                                                                                           |
+| ------------------------------- | ----- | -------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Organization.Created            | data  | `Organization` |          | The created organization entity.                                                                                                                                |
+| Organization.Data.Updated       | data  | `Organization` |          | The updated organization entity.                                                                                                                                |
+| Organization.Deleted            | data  | `null`         | /        |                                                                                                                                                                 |
+| Organization.Membership.Updated | data  | `null`         | /        | The change is described by optional top-level delta arrays. See [Organization.Membership.Updated payload](#organizationmembershipupdated-payload) below.        |
+| Organization.UserRoles.Updated  | data  | `null`         | /        | The change is described by top-level organization role delta arrays. See [Organization.UserRoles.Updated payload](#organizationuserrolesupdated-payload) below. |
 
 ##### Organization.Membership.Updated payload \{#organizationmembershipupdated-payload}
 
@@ -328,6 +342,21 @@ if (
 ```
 
 Seeing an array of exactly 5000 entries should prompt a reconciling `GET /organizations/:id/users` (or `/applications`).
+
+##### Organization.UserRoles.Updated payload \{#organizationuserrolesupdated-payload}
+
+`Organization.UserRoles.Updated` is emitted once per affected user when a request actually changes that user's organization roles. It carries `data: null` and the following top-level fields:
+
+| Field                      | Type       | Optional | Notes                                                                                     |
+| -------------------------- | ---------- | -------- | ----------------------------------------------------------------------------------------- |
+| organizationId             | `string`   |          | The organization in which the user's roles changed.                                       |
+| userId                     | `string`   |          | The user whose organization roles changed.                                                |
+| addedOrganizationRoleIds   | `string[]` |          | Organization role IDs actually added by this request; empty when only roles were removed. |
+| removedOrganizationRoleIds | `string[]` |          | Organization role IDs actually removed by this request; empty when only roles were added. |
+
+A request that leaves the role set unchanged emits no event. This includes a `PUT` that replaces the role set with the existing set, a `POST` that only names roles the user already holds, and a JIT provisioning run that finds every role already assigned. Roles granted when an invitation is accepted and roles assigned by just-in-time provisioning are reported by this event as well.
+
+Changes caused by deleting an organization role, changing its scopes, deleting an organization, or removing the user from the organization are reported through the corresponding definition event (`OrganizationRole.Deleted`, `OrganizationRole.Scopes.Updated`, `Organization.Deleted`, `Organization.Membership.Updated`) and are not fanned out per user.
 
 #### Organization role events \{#organization-role-events}
 
