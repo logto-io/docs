@@ -6,29 +6,53 @@ sidebar_position: 8
 
 # 自動化租戶管理
 
-你可以透過程式化方式管理 Logto Cloud 租戶，包括建立租戶並持續進行設定，無需切換至 Console。
+你可以以程式化方式管理 Logto Cloud 租戶，包括建立租戶並持續進行設定，無需切換到 Console。
 
 當你需要從自己的導入流程、內部平台、AI agent 或整合自動化中佈建租戶時，這會非常有用。
 
 自動化流程如下：
 
 1. 使用 **Logto Cloud Personal Access Token (PAT)** 呼叫 Logto Cloud API。
-2. 以 `POST /api/tenants` 建立租戶。
+2. 透過 `POST /api/tenants` 建立租戶。
 3. 從建立回應中讀取預設機器對機器 (M2M) 應用程式憑證。
-4. 使用預設 M2M 應用程式為新租戶取得 Management API 存取權杖 (Access token)。
+4. 使用預設 M2M 應用程式取得新租戶的 Management API 存取權杖 (Access token)。
 5. 呼叫新租戶的 Management API，持續佈建應用程式、使用者、角色 (Roles)、資源 (Resources)、組織 (Organizations) 及其他設定。
 
-## 開始前的準備 \{#before-you-start}
+## 建立 PAT \{#create-a-pat}
+
+為你的 Logto Cloud 帳號建立個人存取權杖 (PAT)：
+
+1. 在 Logto Cloud Console，點擊右上角頭像並選擇 **個人檔案 (Profile)**。
+2. 開啟 **安全性 (Security)** 頁面。
+3. 在 **Personal access tokens** 區塊，點擊 **Create new token**。
+4. 輸入名稱並選擇最長 365 天的到期日，然後確認。
+
+權杖只會在建立後顯示一次。請複製並妥善保存於安全處（如秘密管理工具）。你將無法再次查看。
+
+建議設為 90 天到期，並在到期前輪替權杖。你可以在同一頁面重新命名或撤銷權杖。
+
+撤銷權杖約在一分鐘內生效。
+
+PAT 可呼叫需要 `create:tenant` 或 `manage:tenant:self` 權限範圍 (Scope) 的 Cloud API 路徑：
+
+- `GET /api/me/regions`：列出帳號可用的區域。
+- `POST /api/tenants`：建立租戶。
+- `GET /api/tenants`：列出你的租戶，`PATCH` 或 `DELETE /api/tenants/{tenantId}`：重新命名或刪除租戶。
+- `POST /api/tenants/{tenantId}/subscription` 及 `/api/tenants/{tenantId}` 下的其他端點：管理租戶方案、發票與電子郵件日誌。
+
+需要 `manage:account:self` 權限範圍的路徑（如帳單、授權、Console SSO）需互動式 Console 工作階段，無法用 PAT 呼叫。
+
+## 開始前準備 \{#before-you-start}
 
 請準備以下變數：
 
-| Variable             | Description                                                         |
-| -------------------- | ------------------------------------------------------------------- |
-| `CLOUD_API_ENDPOINT` | Logto Cloud API 端點。Logto Cloud 請使用 `https://cloud.logto.io`。 |
-| `LOGTO_CLOUD_PAT`    | 你的 Logto Cloud 帳戶 PAT。                                         |
-| `TENANT_NAME`        | 要建立的租戶顯示名稱。                                              |
-| `TENANT_TAG`         | 租戶類型。請使用 `development` 或 `production`。                    |
-| `REGION_NAME`        | 租戶的區域識別碼。                                                  |
+| 變數                 | 說明                                                              |
+| -------------------- | ----------------------------------------------------------------- |
+| `CLOUD_API_ENDPOINT` | Logto Cloud API 端點。Logto Cloud 請用 `https://cloud.logto.io`。 |
+| `LOGTO_CLOUD_PAT`    | 你的 Logto Cloud 帳號 PAT。                                       |
+| `TENANT_NAME`        | 要建立的租戶顯示名稱。                                            |
+| `TENANT_TAG`         | 租戶型態。請用 `development` 或 `production`。                    |
+| `REGION_NAME`        | 租戶所屬區域識別碼。                                              |
 
 將它們設為環境變數：
 
@@ -42,14 +66,14 @@ export REGION_NAME="<region-name>"
 
 ## 取得可用區域 \{#get-available-regions}
 
-在建立租戶前，先查詢你的 Logto Cloud 帳戶可用的區域：
+建立租戶前，先查詢你的 Logto Cloud 帳號可用的區域：
 
 ```bash
 curl "$CLOUD_API_ENDPOINT/api/me/regions" \
   -H "Authorization: Bearer $LOGTO_CLOUD_PAT"
 ```
 
-回應內容包含可用區域。建立租戶時，請將 `name` 欄位作為 `REGION_NAME` 使用。
+回應內容包含可用區域。建立租戶時，請將 `name` 欄位值作為 `REGION_NAME`。
 
 範例回應：
 
@@ -84,7 +108,7 @@ curl "$CLOUD_API_ENDPOINT/api/tenants" \
   }'
 ```
 
-回應內容包含已建立的租戶及預設 M2M 應用程式。該 M2M 應用程式建立於新租戶中，並擁有該租戶的 Management API 存取權。
+回應內容包含新建立的租戶及預設 M2M 應用程式。該 M2M 應用程式建立於新租戶中，並可存取該租戶的 Management API。
 
 範例回應：
 
@@ -112,10 +136,10 @@ export DEFAULT_M2M_APP_SECRET="<response.defaultApplication.secret>"
 ```
 
 :::tip
-以 `tag: "production"` 建立的租戶會以 Free 方案啟動。若要在同一腳本中升級至 Pro 方案，請參閱[訂閱 Pro 方案](/logto-cloud/subscribe-tenant-to-pro)。像本範例中的 development 租戶，無法透過 API 訂閱。
+以 `tag: "production"` 建立的租戶會預設啟用 Free 方案。若要在同一腳本中升級至 Pro 方案，請參考 [訂閱 Pro 方案](/logto-cloud/subscribe-tenant-to-pro)。像本例的開發租戶 (development tenant) 則無法透過 API 訂閱。
 :::
 
-## 為新租戶取得 Management API 存取權杖 (Access token) \{#get-a-management-api-access-token-for-the-new-tenant}
+## 取得新租戶的 Management API 存取權杖 (Access token) \{#get-a-management-api-access-token-for-the-new-tenant}
 
 使用預設 M2M 應用程式憑證，向新租戶請求存取權杖：
 
@@ -174,11 +198,11 @@ curl "$TENANT_ENDPOINT/api/applications" \
   }'
 ```
 
-此時，你的自動化流程可以繼續進行任何 Management API 操作，例如建立使用者、應用程式、API 資源 (API resources)、角色 (Roles)、組織 (Organizations)、連接器 (Connectors) 或登入體驗 (Sign-in experience) 設定等。
+此時，你的自動化流程可繼續進行任何 Management API 操作，例如建立使用者、應用程式、API 資源 (API resources)、角色 (Roles)、組織 (Organizations)、連接器 (Connectors) 或登入體驗 (Sign-in experience) 設定。
 
 ## 完整自動化範例 \{#full-automation-example}
 
-以下 Node.js 範例會建立租戶、用回傳的預設 M2M 憑證換取 Management API 存取權杖，並列出新租戶中的應用程式：
+以下 Node.js 範例會建立租戶、用預設 M2M 憑證換取 Management API 存取權杖，並列出新租戶的應用程式：
 
 ```js
 const cloudApiEndpoint = 'https://cloud.logto.io';
@@ -242,6 +266,6 @@ console.log({ tenantId: tenant.id, applications });
 ## 相關資源 \{#related-resources}
 
 - [訂閱 Pro 方案](/logto-cloud/subscribe-tenant-to-pro)
-- [Personal access token](/user-management/personal-access-token)
-- [與 Management API 互動](/integrate-logto/interact-with-management-api)
+- [個人存取權杖 (Personal access token)](/user-management/personal-access-token)
+- [串接 Management API](/integrate-logto/interact-with-management-api)
 - [機器對機器快速入門](/quick-starts/m2m)
