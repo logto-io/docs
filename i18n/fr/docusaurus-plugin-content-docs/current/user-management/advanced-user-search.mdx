@@ -8,7 +8,7 @@ Utilisez directement Management API pour exploiter des conditions de recherche a
 
 ## Effectuer une requête de recherche \{#perform-a-search-request}
 
-Utilisez [`GET /api/users`](https://openapi.logto.io/operation/operation-getuser) pour rechercher des utilisateurs. Notez qu’il s’agit d’une Management API qui nécessite une authentification comme les autres. Consultez [Interagir avec Management API](/integrate-logto/interact-with-management-api) pour la recette d’intégration.
+Utilisez [`GET /api/users`](https://openapi.logto.io/operation/operation-getuser) pour rechercher des utilisateurs. Notez qu’il s’agit d’une Management API nécessitant une authentification comme les autres. Consultez [Interagir avec Management API](/integrate-logto/interact-with-management-api) pour la recette d’intégration.
 
 ### Exemple \{#sample}
 
@@ -49,7 +49,7 @@ Une requête de recherche se compose des clés de paramètres suivantes :
 - Mode de jointure : `joint` ou `jointMode` (valeur par défaut `'or'`, valeurs possibles `['or', 'and']`)
 - Sensibilité à la casse : `isCaseSensitive` (valeur par défaut `false`)
 
-Cette API dispose de la [pagination](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses).
+Cette API prend en charge la [pagination](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses).
 
 Voyons-les à travers quelques exemples. Tous les paramètres de recherche seront formatés comme un constructeur de `URLSearchParams`.
 
@@ -73,7 +73,7 @@ Si vous souhaitez effectuer une recherche floue sur tous les champs disponibles,
 new URLSearchParams([['search', '%foo%']]);
 ```
 
-Cette recherche itérera sur tous les champs disponibles dans une recherche utilisateur, c’est-à-dire `id`, `primaryEmail`, `primaryPhone`, `username`, `name`.
+Cette recherche parcourra tous les champs disponibles dans une recherche utilisateur, c’est-à-dire `id`, `primaryEmail`, `primaryPhone`, `username`, `name`.
 
 ### Spécifier les champs \{#specify-fields}
 
@@ -159,7 +159,7 @@ new URLSearchParams([
 ]);
 ```
 
-> Note : Le mode similar_to ne fonctionne que dans les recherches sensibles à la casse.
+> Note Le mode similar_to ne fonctionne que pour les recherches sensibles à la casse.
 
 ### Surcharge du mode de correspondance \{#match-mode-override}
 
@@ -169,7 +169,7 @@ Par défaut, tous les mots-clés hériteront du mode de correspondance de la rec
 new URLSearchParams([
   ['search', '^T.?m Scot+$'],
   ['mode', 'posix'],
-  ['search.primaryEmail', 'tom%'], // Mode Posix
+  ['search.primaryEmail', 'tom%'], // Mode posix
   ['joint', 'and'],
 ]);
 ```
@@ -180,16 +180,16 @@ Pour surcharger pour un champ spécifique :
 new URLSearchParams([
   ['search', '^T.?m Scot+$'],
   ['mode', 'posix'],
-  ['search.primaryEmail', 'tom%'], // Mode Like
+  ['search.primaryEmail', 'tom%'], // Mode like
   ['mode.primaryEmail', 'like'],
-  ['search.phone', '0{3,}'], // Mode Posix
+  ['search.phone', '0{3,}'], // Mode posix
   ['joint', 'and'],
 ]);
 ```
 
 ## Recherche par identité externe \{#look-up-by-external-identity}
 
-Pour trouver l’utilisateur lié à une identité sociale ou SSO d’entreprise, passez les trois paramètres de requête suivants ensemble pour une recherche exacte :
+Pour trouver l’utilisateur lié à une identité sociale ou SSO d’entreprise, transmettez les trois paramètres de requête suivants ensemble pour une recherche exacte :
 
 - `identityType` : `social` pour une identité de connecteur social, ou `sso` pour une identité SSO d’entreprise.
 - `identityProvider` : la cible du connecteur pour une identité sociale (par exemple, `dingtalk`), ou l’émetteur pour une identité SSO d’entreprise.
@@ -213,7 +213,7 @@ new URLSearchParams([
 ]);
 ```
 
-Le filtre d’identité est combiné avec les autres filtres de recherche en utilisant une logique AND. Par exemple, pour affiner davantage la recherche d’identité avec un mot-clé :
+Le filtre d’identité est combiné avec d’autres filtres de recherche en logique AND. Par exemple, pour affiner davantage la recherche d’identité avec un mot-clé :
 
 ```javascript
 new URLSearchParams([
@@ -223,3 +223,52 @@ new URLSearchParams([
   ['search', '%foo%'],
 ]);
 ```
+
+## Recherche par données personnalisées \{#look-up-by-custom-data}
+
+Pour trouver des utilisateurs par les valeurs exactes stockées dans leurs [données personnalisées](/user-management/user-data#custom-data), transmettez un ou plusieurs paramètres de requête `customData` à `GET /api/users`. Chaque valeur doit être un objet JSON encodé en URL :
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+`--data-urlencode` encode l’objet JSON pour vous. L’URL de requête équivalente est `GET /api/users?customData=%7B%22qq%22%3A114514%7D`.
+
+:::note
+Les recherches sur les données personnalisées peuvent être plus lentes lorsqu’un tenant possède un grand nombre d’utilisateurs. Combinez `customData` avec un autre filtre sélectif, tel que `search` ou une recherche d’identité, pour affiner la requête.
+:::
+
+Logto compare la valeur avec le champ `custom_data` de l’utilisateur en utilisant la [contient JSONB](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTAINMENT). Seules les clés incluses dans la valeur doivent correspondre ; les autres clés dans les données personnalisées de l’utilisateur sont ignorées.
+
+- Les types sont stricts : le nombre `114514` ne correspond pas à la chaîne `"114514"`.
+- Les chaînes sont sensibles à la casse.
+- `null` ne correspond qu’à un JSON `null` explicite, pas à une clé manquante.
+- Les objets imbriqués sont comparés récursivement.
+- Les tableaux sont comparés par élément, quel que soit l’ordre ou les doublons.
+
+Toutes les clés dans un même objet JSON doivent correspondre (AND). Si vous transmettez `customData` plusieurs fois, un utilisateur correspond si l’un des objets correspond (OR) :
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  --data-urlencode 'customData={"wechat":"logto"}' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+Le filtre sur les données personnalisées est toujours combiné avec les autres filtres en AND, y compris `search`, la recherche d’identité (`identityType`, `identityProvider` et `identityId`), `excludeRoleId` et `excludeOrganizationId`. Par exemple, la requête suivante retourne les utilisateurs dont le `qq` est `114514` et dont le nom d’utilisateur contient `alice` :
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  --data-urlencode 'search.username=%alice%' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+Les paramètres `mode`, `joint` et `isCaseSensitive` n’affectent que les recherches par mots-clés et n’ont aucun effet sur `customData`.
+
+L’API retourne `400 Bad Request` lorsqu’une valeur `customData` n’est pas un objet JSON valide (par exemple, `[]` ou `114514`), est un objet vide `{}`, ou contient un objet ou un tableau vide à n’importe quel niveau (par exemple, `{"profile":{}}` ou `{"tags":[]}`). Les noms de paramètres imbriqués tels que `customData.qq`, `customData[qq]` et `mode.customData` sont également rejetés avec `400`.

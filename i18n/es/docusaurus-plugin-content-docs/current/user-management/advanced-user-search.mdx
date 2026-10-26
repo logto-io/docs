@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Búsqueda avanzada de usuarios
 
-Utiliza directamente la Management API para aprovechar condiciones avanzadas de búsqueda de usuarios.
+Uso directo de Management API para aprovechar condiciones avanzadas de búsqueda de usuarios.
 
 ## Realizar una solicitud de búsqueda \{#perform-a-search-request}
 
@@ -45,17 +45,17 @@ Un array de entidades `User`.
 Una solicitud de búsqueda consta de las siguientes claves de parámetro:
 
 - Palabras clave de búsqueda: `search`, `search.*`
-- Modo de búsqueda para los campos: `mode`, `mode.*` (valor predeterminado `'like'`, disponibles `['exact', 'like', 'similar_to', 'posix']`)
+- Modo de búsqueda para campos: `mode`, `mode.*` (valor predeterminado `'like'`, disponibles `['exact', 'like', 'similar_to', 'posix']`)
 - Modo de unión: `joint` o `jointMode` (valor predeterminado `'or'`, disponibles `['or', 'and']`)
 - Es sensible a mayúsculas y minúsculas: `isCaseSensitive` (valor predeterminado `false`)
 
-Esta API tiene [paginación](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses) habilitada.
+Esta API tiene habilitada la [paginación](/integrate-logto/interact-with-management-api/#managing-paginated-api-responses).
 
-Vamos a repasarlos con algunos ejemplos. Todos los parámetros de búsqueda estarán formateados como un constructor de `URLSearchParams`.
+Vamos a repasarlos con algunos ejemplos. Todos los parámetros de búsqueda se formatearán como un constructor de `URLSearchParams`.
 
 :::warning
 
-El modo de búsqueda se establece en `like` por defecto, que utiliza [coincidencia aproximada de cadenas](https://en.wikipedia.org/wiki/Approximate_string_matching) ("búsqueda difusa").
+El modo de búsqueda está configurado como `like` por defecto, que utiliza [coincidencia aproximada de cadenas](https://es.wikipedia.org/wiki/Matching_de_cadenas_aproximado) ("búsqueda difusa").
 
 :::
 
@@ -94,7 +94,7 @@ new URLSearchParams([
 ]);
 ```
 
-Significa buscar usuarios que tengan `foo` en el nombre **O** cuyo correo electrónico termine con `@gmail.com`.
+Significa buscar usuarios que tengan `foo` en el nombre **O** cuyo correo electrónico termine en `@gmail.com`.
 
 ### Cambiar el modo de unión \{#changing-the-joint-mode}
 
@@ -108,7 +108,7 @@ new URLSearchParams([
 ]);
 ```
 
-Significa buscar usuarios que tengan `foo` en el nombre **Y** cuyo correo electrónico termine con `@gmail.com`.
+Significa buscar usuarios que tengan `foo` en el nombre **Y** cuyo correo electrónico termine en `@gmail.com`.
 
 ### Coincidencia exacta y sensibilidad a mayúsculas y minúsculas \{#exact-match-and-case-sensitivity}
 
@@ -191,7 +191,7 @@ new URLSearchParams([
 
 Para encontrar el usuario vinculado a una identidad social o SSO empresarial, pasa los siguientes tres parámetros de consulta juntos para una búsqueda exacta:
 
-- `identityType`: `social` para una identidad de conector social, o `sso` para una identidad de SSO empresarial.
+- `identityType`: `social` para una identidad de conector social, o `sso` para una identidad SSO empresarial.
 - `identityProvider`: el conector objetivo para una identidad social (por ejemplo, `dingtalk`), o el emisor para una identidad SSO empresarial.
 - `identityId`: el identificador de usuario emitido por el proveedor de identidad externo.
 
@@ -223,3 +223,52 @@ new URLSearchParams([
   ['search', '%foo%'],
 ]);
 ```
+
+## Buscar por datos personalizados \{#look-up-by-custom-data}
+
+Para encontrar usuarios por los valores exactos almacenados en sus [datos personalizados](/user-management/user-data#custom-data), pasa uno o más parámetros de consulta `customData` a `GET /api/users`. Cada valor debe ser un objeto JSON codificado en URL:
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+`--data-urlencode` codifica el objeto JSON por ti. La URL de solicitud equivalente es `GET /api/users?customData=%7B%22qq%22%3A114514%7D`.
+
+:::note
+Las búsquedas por datos personalizados pueden ser más lentas cuando un tenant tiene un gran número de usuarios. Combina `customData` con otro filtro selectivo, como `search` o una búsqueda de identidad, para acotar la consulta.
+:::
+
+Logto compara el valor con el `custom_data` del usuario usando [JSONB containment](https://www.postgresql.org/docs/current/datatype-json.html#JSON-CONTAINMENT). Solo las claves incluidas en el valor deben coincidir; otras claves en los datos personalizados del usuario se ignoran.
+
+- Los tipos son estrictos: el número `114514` no coincide con la cadena `"114514"`.
+- Las cadenas distinguen entre mayúsculas y minúsculas.
+- `null` solo coincide con un JSON `null` explícito, no con una clave ausente.
+- Los objetos anidados se comparan recursivamente.
+- Los arrays se comparan por elemento, sin importar el orden o duplicados.
+
+Todas las claves dentro de un objeto JSON deben coincidir (AND). Si pasas `customData` más de una vez, un usuario coincide cuando cualquiera de los objetos coincide (OR):
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  --data-urlencode 'customData={"wechat":"logto"}' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+El filtro de datos personalizados siempre se combina con otros filtros usando AND, incluyendo `search`, búsqueda de identidad (`identityType`, `identityProvider` y `identityId`), `excludeRoleId` y `excludeOrganizationId`. Por ejemplo, la siguiente solicitud devuelve usuarios cuyo `qq` es `114514` y cuyo nombre de usuario contiene `alice`:
+
+```bash
+curl \
+  --get \
+  --data-urlencode 'customData={"qq":114514}' \
+  --data-urlencode 'search.username=%alice%' \
+  'http://<your-logto-endpoint>/api/users'
+```
+
+Los parámetros `mode`, `joint` y `isCaseSensitive` solo afectan a las búsquedas por palabra clave y no tienen efecto en `customData`.
+
+La API devuelve `400 Bad Request` cuando un valor de `customData` no es un objeto JSON válido (por ejemplo, `[]` o `114514`), es un objeto vacío `{}`, o contiene un objeto o array vacío en cualquier nivel (por ejemplo, `{"profile":{}}` o `{"tags":[]}`). Los nombres de parámetros anidados como `customData.qq`, `customData[qq]` y `mode.customData` también se rechazan con `400`.
