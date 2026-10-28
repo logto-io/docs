@@ -28,7 +28,7 @@ sequenceDiagram
   alt Session satisfies first requested class within max_age
     OP-->>App: Redirect with authorization code (no UI)
   else Step-up required
-    OP->>UX: Route to /step-up with pinned subject
+    OP->>UX: Start step-up with pinned subject
     UX->>UX: Verify only the missing factor
     UX->>OP: Submit achieved acr and amr
     OP-->>App: Redirect with authorization code
@@ -58,7 +58,7 @@ Logto advertises these capabilities in OIDC Discovery (`/.well-known/openid-conf
 }
 ```
 
-In ID tokens, `acr`, `amr`, and `auth_time` are included under the standard `openid` scope whenever present on the session. On user access tokens, Logto copies them from the authorization code, device code, or refresh token into JWT payloads and opaque-token introspection responses. Refresh token rotation preserves the original `acr`, `amr`, and `auth_time`—refreshing a token never advances `auth_time`. Other grant types (such as client credentials and token exchange) and legacy `/interaction` routes do not emit authentication context claims.
+In ID tokens, `acr`, `amr`, and `auth_time` are included under the standard `openid` scope whenever present on the session. On user access tokens, Logto copies them from the authorization code, device code, or refresh token into JWT payloads and opaque-token introspection responses. Refresh token rotation preserves the original `acr`, `amr`, and `auth_time`—refreshing a token never advances `auth_time`. Other grant types (such as client credentials and token exchange) do not emit authentication context claims.
 
 ### Supported ACR values \{#supported-acr-values}
 
@@ -79,7 +79,7 @@ When deriving `urn:logto:acr:mfa`, Logto classifies each Logto-verifiable method
 - **Distinct-factor rule**: `urn:logto:acr:mfa` requires two **different** factors. Two first factors (such as email verification code + password during registration), two `mfa`-role factors (such as TOTP + backup code), or two proofs of the same underlying channel (such as primary email code + MFA email code) count as a single factor or role and achieve `urn:logto:acr:1fa`.
 - **Trusted devices and adaptive MFA**: [trusted-device](/end-user-flows/mfa/trusted-devices) fulfillment and adaptive-MFA skips prove nothing in the current interaction and do not contribute to `acr` (a password sign-in that skips MFA via a trusted device yields `acr="urn:logto:acr:1fa"` and `amr=["pwd"]`).
 
-Registration records authentication context under the same rules because the credentials written while creating the account prove that account. For example, a username and password registration yields `acr="urn:logto:acr:1fa"` and `amr=["pwd"]`; an email verification code registration yields `acr="urn:logto:acr:1fa"` and `amr=["otp"]`; a password registration that binds mandatory TOTP yields `acr="urn:logto:acr:mfa"` and `amr=["pwd", "otp", "mfa"]`.
+Registration records authentication context under the same rules because the credentials written while creating the account prove that account. For example, a username and password registration yields `acr="urn:logto:acr:1fa"` and `amr=["pwd"]`.
 
 ### AMR mapping \{#amr-mapping}
 
@@ -97,13 +97,11 @@ Logto populates `amr` with values from [RFC 8176](https://www.rfc-editor.org/rfc
 | Backup code                                                                      | `otp`                | Yes (`mfa` role)     |
 | WebAuthn MFA or passkey sign-in with user verification (verified or newly bound) | `pop`, `user`, `mfa` | Yes (`both` roles)   |
 | Social sign-in or enterprise SSO                                                 | `fed`                | No                   |
-| Any interaction whose achieved `acr` is `urn:logto:acr:mfa`                      | appends `mfa` at end | —                    |
-
-`amr` contains deduplicated references in first-seen order, with `mfa` always placed last when present.
+| Any interaction whose achieved `acr` is `urn:logto:acr:mfa`                      | appends `mfa`        | —                    |
 
 #### Federated authentication (`fed`) \{#federated-authentication-fed}
 
-RFC 8176 defines no registry value for authentication delegated to an external identity provider. Logto emits `fed`—matching the convention used by Microsoft Entra ID and Okta—to indicate that the user authenticated through an upstream social or enterprise SSO assertion whose method Logto cannot directly verify.
+Logto emits `fed` to indicate that the user authenticated through an upstream social or enterprise SSO assertion whose method Logto cannot directly verify.
 
 - A pure social or enterprise SSO sign-in or registration records `amr=["fed"]` and a fresh `auth_time`, with **no `acr` claim**.
 - `fed` is not a first factor, and repeating the upstream login never raises `acr`. Completing one Logto-verifiable factor after social sign-in (such as TOTP) yields `acr="urn:logto:acr:1fa"` and `amr=["fed", "otp"]`.
@@ -112,15 +110,14 @@ RFC 8176 defines no registry value for authentication delegated to an external i
 
 ### How step-up updates session and token claims \{#how-step-up-updates-session-and-token-claims}
 
-When an authorization request with `acr_values` arrives on an existing OIDC session and requires interaction, Experience enters **step-up mode** (`/step-up`):
+When an authorization request with `acr_values` arrives on an existing OIDC session and requires interaction, Experience enters **step-up mode**:
 
 - **Subject pinning and cumulative ACR**: Logto pins the current session's `sub` (no account switching, identifier input, or registration) and asks only for the missing assurance. Unambiguous session methods carry their pairing role into the step-up:
   - A session authenticated with `pwd` or `sms` already supplies a `1fa` contribution, so stepping up to `urn:logto:acr:mfa` prompts **only** for an enrolled MFA factor (even when `max_age=0` or `prompt=login` forces fresh authentication).
-  - A session whose only `amr` is `otp` is ambiguous across email code, TOTP, and backup code, so stepping up to `urn:logto:acr:mfa` requires proving a fresh first factor before MFA.
   - A social or enterprise SSO session (`amr=["fed"]`) supplies no `1fa` contribution, so reaching `urn:logto:acr:mfa` requires proving (or establishing) a first factor before MFA, or verifying a WebAuthn passkey.
 - **`amr` and `auth_time` reflect only the current interaction**: On a password session, verifying TOTP during step-up produces `acr="urn:logto:acr:mfa"`, `amr=["otp", "mfa"]`, and a new `auth_time`. **Relying parties must read assurance from `acr` and must not look for a first factor in `amr`.**
 - **Session replacement, not merge**: After step-up completes, the session's `acr`, `amr`, and `auth_time` are replaced with the context achieved by the new interaction. For example, password reauthentication for `urn:logto:acr:1fa` sets the session to `acr="urn:logto:acr:1fa"` and `amr=["pwd"]`. Previously issued tokens retain the claims captured when they were minted.
-- **Policy overrides and side-effect isolation**: Requesting `urn:logto:acr:1fa` requires one eligible active verification and does not re-run the tenant's sign-in MFA policy. Requesting `urn:logto:acr:mfa` ignores trusted-device fulfillment, user `skipMfaOnSignIn` preferences, and adaptive-MFA non-trigger results. Pure step-up runs no sign-in side effects (no `PostSignIn` webhooks or actions, `lastSignInAt` updates, identity sync, or JIT provisioning) and logs a dedicated `Interaction.SignIn.StepUp.Submit` audit event.
+- **Policy overrides and side effects**: Requesting `urn:logto:acr:1fa` requires one eligible active verification and does not re-run the tenant's sign-in MFA policy. Requesting `urn:logto:acr:mfa` ignores trusted-device fulfillment, user `skipMfaOnSignIn` preferences, and adaptive-MFA non-trigger results. Pure step-up does not run sign-in side effects such as `PostSignIn` webhooks or actions.
 
 If no authenticated OIDC session exists when `acr_values` is requested, Logto runs the normal sign-in or registration flow and enforces the requested ACR as a completion requirement before issuing the authorization code.
 
@@ -148,7 +145,7 @@ Depending on how your application handles users who cannot satisfy MFA, choose o
 - **Declare ordered fallback in one request**: Request `acr_values="urn:logto:acr:mfa urn:logto:acr:1fa"`. Logto pursues `mfa` whenever reachable and automatically falls back to `1fa` only when `mfa` cannot be reached for that user and tenant. Verify `acr` on the resulting access token to see which level was achieved.
 
 :::note
-Abandoning a step-up screen does not trigger fallback or notify your app—there is no cancellation endpoint, and an abandoned interaction simply expires with the 1-hour interaction TTL or is replaced by the next authorization request. Keep pending action state in your application and clear it if the user navigates back without completing the callback.
+Abandoning a step-up screen does not trigger fallback or notify your app—there is no cancellation endpoint, and an abandoned interaction simply expires or is replaced by the next authorization request. Keep pending action state in your application and clear it if the user navigates back without completing the callback.
 :::
 
 ### Combining `max_age` and `acr_values` \{#combining-max-age-and-acr-values}
@@ -310,8 +307,6 @@ export async function verifySensitiveRequest(
 }
 ```
 
-You may also inspect `payload.amr` (an array of strings) when you have method-specific requirements—for example, checking for `'pop'` and `'user'` to confirm hardware-bound or passkey proof-of-possession. Remember that after a step-up on an existing session, `amr` lists only the methods verified in the step-up interaction itself.
-
 ### Validate opaque access tokens via introspection \{#validate-opaque-access-tokens-via-introspection}
 
 When no API `resource` is requested, Logto issues an [opaque access token](/concepts/opaque-token). Validate it by calling the [RFC 7662](https://www.rfc-editor.org/rfc/rfc7662.html) introspection endpoint (`POST /oidc/token/introspection`) with client authentication; Logto returns `acr`, `amr`, and `auth_time` at the top level of an active response:
@@ -344,13 +339,9 @@ Example introspection response:
 
 Check `active === true` first, then apply the same `acrSatisfies` and `auth_time` checks as above.
 
-:::note
-Structured JWT access tokens cannot be introspected at `/oidc/token/introspection`—passing a JWT returns `400 Bad Request` with `error: "unsupported_token_type"`. Always verify JWT access tokens locally using your tenant's JWKS.
-:::
-
 ### Reserved claims in Custom JWT \{#reserved-claims-in-custom-jwt}
 
-On user access tokens, `acr`, `amr`, and `auth_time` are reserved by Logto. If a [custom access token script](/developers/custom-token-claims/create-script) (`getCustomJwtClaims`) returns any of these three keys, Logto strips them before merging custom claims—both in JWT payloads and in opaque-token introspection—so custom scripts can neither override Logto-derived assurance nor fabricate `acr` on grants that carry none (such as social sign-in or token exchange). Machine-to-machine (`ClientCredentials`) tokens carry no user authentication context and are unaffected.
+On user access tokens, `acr`, `amr`, and `auth_time` are reserved: a [custom access token script](/developers/custom-token-claims/create-script) cannot override them or add them where Logto derives no authentication context.
 
 ## Establishing a first factor and enrolling MFA \{#establishing-a-first-factor-and-enrolling-mfa}
 
@@ -364,12 +355,6 @@ A user prompted for `urn:logto:acr:1fa` or `urn:logto:acr:mfa` may not yet have 
   - Establishing is never offered as an alternative when the user already has an eligible method to verify.
 
 Logto counts a credential or MFA factor established and bound during an interaction the same as one verified in it, so the user completes the step-up immediately without being challenged a second time for the factor they just set up. When a user establishes a new credential or factor during pure step-up, Logto emits the `User.Data.Updated` webhook event. If the tenant enables nothing the user can verify, establish, or enroll (or the user has no linked social/SSO connector to prove the subject), Logto finishes the interaction with `error=unmet_authentication_requirements`.
-
-### Planned tenant-level setting to disable in-flow setup \{#planned-tenant-level-setting-to-disable-in-flow-setup}
-
-OpenID Connect and RFC 9470 define no per-request parameter for "verify existing methods only; do not allow enrolling new ones." Following how enterprise identity providers separate enrollment policy from per-request ACR values, Logto will provide a **tenant-level setting** (enabled by default) that controls whether interactions may establish a first factor or enroll MFA to fulfill `acr_values`. When turned off by an administrator, users who already have eligible methods verify them as usual, while users missing a required factor fail immediately with `unmet_authentication_requirements` so the relying party can route them to its own onboarding or approval flow.
-
-If your application wants to detect today whether a signed-in user already meets an ACR requirement without prompting or offering enrollment, send a silent check with [`prompt=none`](#silent-gap-detection-with-prompt-none).
 
 ## Account API and Account Center \{#account-api-and-account-center}
 
@@ -385,7 +370,7 @@ Sensitive [Account API](/end-user-flows/account-settings/by-account-api) operati
 :::info[Configuring the recent authentication window]
 By default, `maximumAuthenticationAgeInSeconds` is **600 seconds (10 minutes)**. You can configure it per tenant from **1 to 120 minutes (60–7,200 seconds)** in <CloudLink to="/sign-in-experience/account-center">Console > Sign-in & account > Account center</CloudLink> under **Recent authentication**, or via the Management API (`PATCH /api/account-center` with `maximumAuthenticationAgeInSeconds`).
 
-With OIDC authentication context, a user who just signed in or registered with a Logto-verifiable method can perform sensitive Account API operations within this window without a separate verification prompt. Note that `logto-verification-id` records created through the Verification API keep their fixed 10-minute TTL for backward compatibility, and binding a _new_ email, phone, social identity, or MFA factor still requires `newIdentifierVerificationRecordId` (or the factor verification record) in the request body to prove ownership of that new identifier or factor.
+With OIDC authentication context, a user who just signed in or registered with a Logto-verifiable method can perform sensitive Account API operations within this window without a separate verification prompt. Note that `logto-verification-id` records created through the Verification API keep their fixed 10-minute TTL for backward compatibility.
 :::
 
 Account API also preserves the initial-password exception: a user who currently has no password, primary email, or primary phone can set an initial password via `POST /api/my-account/password` without recent identity verification. Setting a password through Account API does not update the OIDC session's `acr` and does not authorize subsequent sensitive operations.
