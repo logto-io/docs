@@ -1,11 +1,11 @@
 ```swift title="ContentView.swift"
-let config = try? LogtoConfig(
+let config = try! LogtoConfig(
   endpoint: "<your-logto-endpoint>",
   appId: "<your-app-id>",
   // highlight-start
-  // scopes: ขอบเขตการอนุญาตที่ต้องการ
+  // ขอบเขต (scopes) ที่ร้องขอ
   scopes: ["shopping:read", "shopping:write", "store:read", "store:write"],
-  // resources: ทรัพยากร API ที่ต้องการเข้าถึง
+  // ทรัพยากร (resources) ที่ร้องขอ
   resources: ["https://shopping.your-app.com/api", "https://store.your-app.com/api"],
   // highlight-end
 )
