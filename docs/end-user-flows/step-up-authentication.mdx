@@ -11,37 +11,37 @@ Step-up authentication lets an application require recent user authentication or
 Logto implements standards-based step-up authentication built on [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [RFC 9470 (OAuth 2.0 Step Up Authentication Challenge Protocol)](https://www.rfc-editor.org/rfc/rfc9470.html), and [RFC 8176 (Authentication Method Reference Values)](https://www.rfc-editor.org/rfc/rfc8176.html):
 
 1. Protected resource servers challenge insufficient tokens with `401 Unauthorized` and an RFC 9470 `WWW-Authenticate` header carrying `acr_values` and `max_age`.
-2. OIDC clients start an Authorization Code Flow with `acr_values` and `max_age`. When an authenticated session already exists, Logto pins the signed-in user and prompts only for the missing verification.
+2. Your application starts an Authorization Code Flow with `acr_values` and `max_age`. When an authenticated session already exists, Logto pins the signed-in user and prompts only for the missing verification.
 3. Logto records the achieved authentication context (`acr`, `amr`, and `auth_time`) on the session and emits it in ID tokens, JWT access tokens, and opaque-token introspection responses.
 
 ```mermaid
 sequenceDiagram
-  participant Client as OIDC client
-  participant RS as Protected resource server
+  participant App as Your application (frontend)
+  participant API as Protected resource server (backend)
   participant OP as Logto OIDC provider
   participant UX as Logto Experience
 
-  Client->>RS: Request sensitive operation with current access token
-  RS-->>Client: 401 Unauthorized + WWW-Authenticate (acr_values, max_age)
-  Client->>OP: GET /oidc/auth (acr_values, max_age, PKCE, state)
+  App->>API: Request sensitive operation with current access token
+  API-->>App: 401 Unauthorized + WWW-Authenticate (acr_values, max_age)
+  App->>OP: GET /oidc/auth (acr_values, max_age, PKCE, state)
   OP->>OP: Evaluate session acr and auth_time
   alt Session satisfies first requested class within max_age
-    OP-->>Client: Redirect with authorization code (no UI)
+    OP-->>App: Redirect with authorization code (no UI)
   else Step-up required
     OP->>UX: Route to /step-up with pinned subject
     UX->>UX: Verify only the missing factor
     UX->>OP: Submit achieved acr and amr
-    OP-->>Client: Redirect with authorization code
+    OP-->>App: Redirect with authorization code
   end
-  Client->>OP: POST /oidc/token (exchange code)
-  OP-->>Client: ID token + access token (acr, amr, auth_time)
-  Client->>RS: Retry sensitive operation with elevated access token
-  RS-->>Client: 200 OK
+  App->>OP: POST /oidc/token (exchange code)
+  OP-->>App: ID token + access token (acr, amr, auth_time)
+  App->>API: Retry sensitive operation with elevated access token
+  API-->>App: 200 OK
 ```
 
 ## Authentication context model \{#authentication-context-model}
 
-Every sign-in, registration, and step-up completed through the Logto Experience records three standard claims on the OIDC session, whether or not the client requested `acr_values`:
+Every sign-in, registration, and step-up completed through the Logto Experience records three standard claims on the OIDC session, whether or not the application requested `acr_values`:
 
 | Claim       | Type       | Description                                                                                 |
 | ----------- | ---------- | ------------------------------------------------------------------------------------------- |
@@ -148,7 +148,7 @@ Depending on how your application handles users who cannot satisfy MFA, choose o
 - **Declare ordered fallback in one request**: Request `acr_values="urn:logto:acr:mfa urn:logto:acr:1fa"`. Logto pursues `mfa` whenever reachable and automatically falls back to `1fa` only when `mfa` cannot be reached for that user and tenant. Verify `acr` on the resulting access token to see which level was achieved.
 
 :::note
-Abandoning a step-up screen does not trigger fallback or notify your app—there is no cancellation endpoint, and an abandoned interaction simply expires with the 1-hour interaction TTL or is replaced by the next authorization request. Keep pending action state in your client and clear it if the user navigates back without completing the callback.
+Abandoning a step-up screen does not trigger fallback or notify your app—there is no cancellation endpoint, and an abandoned interaction simply expires with the 1-hour interaction TTL or is replaced by the next authorization request. Keep pending action state in your application and clear it if the user navigates back without completing the callback.
 :::
 
 ### Combining `max_age` and `acr_values` \{#combining-max-age-and-acr-values}
@@ -221,7 +221,7 @@ Authentication context belongs to the Logto session, not to a single API resourc
 Authorization decisions belong on your backend or protected resource server:
 
 - Always validate the **access token** on the resource server, never the ID token.
-- Browser clients should treat access tokens as opaque. A client may read `acr` and `auth_time` from its ID token to coordinate UI state before sending a request, but must never rely on client-side decoding for security enforcement.
+- Browser applications should treat access tokens as opaque. Your application may read `acr` and `auth_time` from its ID token to coordinate UI state before sending a request, but must never rely on client-side decoding for security enforcement.
 
 ### Return an RFC 9470 challenge \{#return-an-rfc-9470-challenge}
 
@@ -235,7 +235,7 @@ WWW-Authenticate: Bearer error="insufficient_user_authentication",
   max_age="300"
 ```
 
-When your client receives `401` with `error="insufficient_user_authentication"`, parse `acr_values` and `max_age` from `WWW-Authenticate`, persist the user's pending route or intent locally, trigger `signIn()` with those parameters, and retry the API call once with the newly issued access token. Guard against retry loops by not starting a second step-up if the retried request after callback still receives `401`.
+When your application receives `401` with `error="insufficient_user_authentication"`, parse `acr_values` and `max_age` from `WWW-Authenticate`, persist the user's pending route or intent locally, trigger `signIn()` with those parameters, and retry the API call once with the newly issued access token. Guard against retry loops by not starting a second step-up if the retried request after callback still receives `401`.
 
 ### Validate JWT access tokens \{#validate-jwt-access-tokens}
 
@@ -411,13 +411,6 @@ The [prebuilt Account Center UI](/end-user-flows/account-settings/by-account-cen
 
 - It inspects `acr` and `auth_time` on its local ID token to start step-up proactively before sensitive inline actions or multi-step subpages when the sign-in lacks `urn:logto:acr:1fa` or is stale, and also handles RFC 9470 `401` challenges from the Account API as a fallback.
 - After step-up completes, Account Center replaces its token set and resumes the pending action at most once.
-
-## What step-up does not provide \{#what-step-up-does-not-provide}
-
-Step-up authentication proves **who** authenticated, **how** they authenticated (`acr` and `amr`), and **when** (`auth_time`). Keep two boundaries in mind when designing high-risk workflows:
-
-- **No transaction-specific authorization**: `acr_values` and `acr` do not bind a user's authentication to specific transaction parameters (such as approving a wire transfer of `$500` to a specific recipient). Use OAuth 2.0 scopes and API resource indicators (`resource` / `aud`) to scope permissions, and display or confirm transaction details inside your application.
-- **No one-time-use token guarantees**: Access tokens issued after a step-up are standard bearer credentials that remain valid until `exp` and preserve their `acr`, `amr`, and `auth_time` across refresh token rotation (without advancing `auth_time`). Logto tracks no per-token use counter. If an operation must be executed only once per user confirmation, enforce idempotency keys, server-side nonces, or single-use transaction records on your resource server alongside a tight `max_age` window (or `max_age=0`).
 
 ## Related resources \{#related-resources}
 
