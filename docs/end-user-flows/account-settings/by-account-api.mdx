@@ -40,21 +40,21 @@ Navigate to <CloudLink to="/sign-in-experience/account-center">Console > Sign-in
 
 The Account API is off by default, so its access controls are locked. Toggle **Enable Account API** to switch it on.
 
-Once enabled, configure per-field permissions for identifiers, profile data, and third-party token access. Each field supports `Off`, `ReadOnly`, or `Edit`; the default is `Off`.
+Once enabled, configure the **Recent authentication** window (from `1` to `120` minutes; `10` minutes by default) and per-field permissions for identifiers, profile data, and third-party token access. Each field supports `Off`, `ReadOnly`, or `Edit`; the default is `Off`.
 
 1. **Security fields**:
-   - Fields include: primary email, primary phone, social identities, password, and MFA.
-   - Before end users edit these fields, they must verify their identity via password, email, or SMS to obtain a 10-minute verification record ID. See [Get a verification record id](#get-a-verification-record-id).
+   - Fields include: primary email, primary phone, social identities, password, passkeys, MFA, and personal access tokens.
+   - Sensitive operations require recent user authentication from a first-party application—satisfied either by an access token whose `acr` satisfies `urn:logto:acr:1fa` within the configured recent authentication window (via [OIDC step-up authentication](/end-user-flows/step-up-authentication)) or by a 10-minute verification record ID in the `logto-verification-id` header (see [Get a verification record id](#get-a-verification-record-id)).
    - To use WebAuthn passkeys for MFA, add your front-end app domains to **WebAuthn Related Origins** so the account center and sign-in experience can share passkeys. See [Link a new WebAuthn passkey](#link-a-new-webauthn-passkey).
 2. **Profile fields**:
    - Fields include: username, name, avatar, [profile](/user-management/user-data#profile) (other standard profile attributes), and [custom data](/user-management/user-data#custom-data).
-   - End users can edit these without additional verification.
+   - End users can edit these without additional verification, except `username`, which also requires recent identity verification.
 3. **Secret vault**:
    - For OIDC or OAuth social and enterprise connectors, Logto [secret vault](/secret-vault/federated-token-set) securely stores third-party access and refresh tokens after authentication. Apps can then call external APIs, such as syncing Google Calendar events, without prompting users to sign in again. Token retrieval becomes available automatically once the Account API is enabled.
 4. **Session management**:
    - When enabled, users can view and manage their active sessions, including device information and last sign-in time. Users can also revoke sessions to log out from specific devices.
    - This same `Sessions` field permission also controls user authorized apps (grants) APIs (view and revoke grants).
-   - Before end users access session management, they must verify their identity via password, email, or SMS to obtain a 10-minute verification record ID. See [Get a verification record id](#get-a-verification-record-id).
+   - Accessing session and grant management requires the same recent user authentication as security fields (either a fresh `urn:logto:acr:1fa` access token or a `logto-verification-id` header).
 
 ## How to access Account API \{#how-to-access-account-api}
 
@@ -148,7 +148,14 @@ curl -X PATCH https://[tenant-id].logto.app/api/my-account/profile \
 
 ## Manage identifiers and other sensitive information \{#manage-identifiers-and-other-sensitive-information}
 
-For security reasons, the Account API requires an additional layer of authorization for operations that involve identifiers and other sensitive information.
+For security reasons, the Account API requires recent identity verification from a first-party application for operations that involve identifiers and other sensitive settings. You can satisfy this requirement in either of two ways:
+
+1. **[OIDC step-up authentication](/end-user-flows/step-up-authentication#account-api-and-account-center)**: Present an Account API access token whose `acr` satisfies `urn:logto:acr:1fa` and whose `auth_time` is within your tenant's **Recent authentication** window (`600` seconds / `10` minutes by default, configurable from `60` to `7,200` seconds). If the token lacks `urn:logto:acr:1fa` or is older than the window, Account API returns `401 Unauthorized` with both `verification_record.permission_denied` in the JSON body and an RFC 9470 `WWW-Authenticate` header (`error="insufficient_user_authentication"`, `acr_values="urn:logto:acr:1fa"`, `max_age="<window>"`) so your app can start an OIDC step-up and retry without `logto-verification-id`.
+2. **Verification record (`logto-verification-id`)**: Create a 10-minute verification record through the Verification API as shown below and pass it in the `logto-verification-id` header.
+
+:::note
+Even when your access token already satisfies recent `1fa` authentication (so `logto-verification-id` can be omitted), binding a **new** email address, phone number, social identity, or MFA factor still requires `newIdentifierVerificationRecordId` (or the factor verification record) in the request body to prove ownership of that new identifier or factor.
+:::
 
 ### Get a verification record id \{#get-a-verification-record-id}
 
