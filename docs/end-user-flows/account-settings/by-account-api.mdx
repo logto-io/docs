@@ -44,17 +44,17 @@ Once enabled, configure the **Recent authentication** window (from `1` to `120` 
 
 1. **Security fields**:
    - Fields include: primary email, primary phone, social identities, password, passkeys, MFA, and personal access tokens.
-   - Sensitive operations require recent user authentication from a first-party application—satisfied either by an access token whose `acr` satisfies `urn:logto:acr:1fa` within the configured recent authentication window (via [OIDC step-up authentication](/end-user-flows/step-up-authentication)) or by a 10-minute verification record ID in the `logto-verification-id` header (see [Get a verification record id](#get-a-verification-record-id)).
+   - Sensitive operations require recent user authentication from a first-party application—an access token whose `acr` satisfies `urn:logto:acr:1fa` within the configured recent authentication window (see [OIDC step-up authentication](/end-user-flows/step-up-authentication#account-api-and-account-center)).
    - To use WebAuthn passkeys for MFA, add your front-end app domains to **WebAuthn Related Origins** so the account center and sign-in experience can share passkeys. See [Link a new WebAuthn passkey](#link-a-new-webauthn-passkey).
 2. **Profile fields**:
    - Fields include: username, name, avatar, [profile](/user-management/user-data#profile) (other standard profile attributes), and [custom data](/user-management/user-data#custom-data).
-   - End users can edit these without additional verification, except `username`, which also requires recent identity verification.
+   - End users can edit these without additional verification, except `username`, which also requires recent user authentication.
 3. **Secret vault**:
    - For OIDC or OAuth social and enterprise connectors, Logto [secret vault](/secret-vault/federated-token-set) securely stores third-party access and refresh tokens after authentication. Apps can then call external APIs, such as syncing Google Calendar events, without prompting users to sign in again. Token retrieval becomes available automatically once the Account API is enabled.
 4. **Session management**:
    - When enabled, users can view and manage their active sessions, including device information and last sign-in time. Users can also revoke sessions to log out from specific devices.
    - This same `Sessions` field permission also controls user authorized apps (grants) APIs (view and revoke grants).
-   - Accessing session and grant management requires the same recent user authentication as security fields (either a fresh `urn:logto:acr:1fa` access token or a `logto-verification-id` header).
+   - Accessing session and grant management requires the same recent user authentication as security fields.
 
 ## How to access Account API \{#how-to-access-account-api}
 
@@ -148,79 +148,13 @@ curl -X PATCH https://[tenant-id].logto.app/api/my-account/profile \
 
 ## Manage identifiers and other sensitive information \{#manage-identifiers-and-other-sensitive-information}
 
-For security reasons, the Account API requires recent identity verification from a first-party application for operations that involve identifiers and other sensitive settings. You can satisfy this requirement in either of two ways:
+For security reasons, sensitive Account API operations require recent user authentication from a first-party application: the access token must carry `acr` satisfying `urn:logto:acr:1fa` and an `auth_time` within your tenant's **Recent authentication** window (`600` seconds / `10` minutes by default, configurable from `60` to `7,200` seconds).
 
-1. **[OIDC step-up authentication](/end-user-flows/step-up-authentication#account-api-and-account-center)**: Present an Account API access token whose `acr` satisfies `urn:logto:acr:1fa` and whose `auth_time` is within your tenant's **Recent authentication** window (`600` seconds / `10` minutes by default, configurable from `60` to `7,200` seconds). If the token lacks `urn:logto:acr:1fa` or is older than the window, Account API returns `401 Unauthorized` with both `verification_record.permission_denied` in the JSON body and an RFC 9470 `WWW-Authenticate` header (`error="insufficient_user_authentication"`, `acr_values="urn:logto:acr:1fa"`, `max_age="<window>"`) so your app can start an OIDC step-up and retry without `logto-verification-id`.
-2. **Verification record (`logto-verification-id`)**: Create a 10-minute verification record through the Verification API as shown below and pass it in the `logto-verification-id` header.
-
-:::note
-Even when your access token already satisfies recent `1fa` authentication (so `logto-verification-id` can be omitted), binding a **new** email address, phone number, social identity, or MFA factor still requires `newIdentifierVerificationRecordId` (or the factor verification record) in the request body to prove ownership of that new identifier or factor.
-:::
-
-### Get a verification record id \{#get-a-verification-record-id}
-
-First, you need to get a **verification record ID** with a 10-minute expiration (TTL). This can be used to verify the user's identity before updating sensitive information. This means once a user successfully verifies their identity via password, email verification code, or SMS verification code, they have 10 minutes to update their authentication-related data, including identifiers, credentials, social account linking, and MFA.
-
-To get a verification record ID, you can [verify the user's password](#verify-the-users-password) or [send a verification code to the user's email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
-
-#### Verify the user's password \{#verify-the-users-password}
-
-```bash
-curl -X POST https://[tenant-id].logto.app/api/verifications/password \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'content-type: application/json' \
-  --data-raw '{"password":"..."}'
-```
-
-The response body would be like:
-
-```json
-{
-  "verificationRecordId": "...",
-  "expiresAt": "..."
-}
-```
-
-#### Verify by sending a verification code to the user's email or phone \{#verify-by-sending-a-verification-code-to-the-users-email-or-phone}
+When the access token lacks `urn:logto:acr:1fa` or has aged past the window, Account API returns `401 Unauthorized` with an RFC 9470 `WWW-Authenticate` header (`error="insufficient_user_authentication"`, `acr_values="urn:logto:acr:1fa"`, `max_age="<window>"`). Start an [OIDC step-up authentication](/end-user-flows/step-up-authentication#account-api-and-account-center) request with those parameters and retry the call with the newly issued access token.
 
 :::note
-To use this method, you need to [configure the email connector](/connectors/email-connectors/) or [SMS connector](/connectors/sms-connectors/), and make sure the `UserPermissionValidation` template is configured.
+Binding a **new** email address, phone number, social identity, or WebAuthn passkey also requires proving ownership of that new identifier or factor through the Verification API and passing `newIdentifierVerificationRecordId` in the request body, as shown in each section below.
 :::
-
-Take email as an example, request a new verification code and get the verification record ID:
-
-```bash
-curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'content-type: application/json' \
-  --data-raw '{"identifier":{"type":"email","value":"..."}}'
-```
-
-The response body would be like:
-
-```json
-{
-  "verificationRecordId": "...",
-  "expiresAt": "..."
-}
-```
-
-Upon receiving the verification code, you can use it to update the verification status of the verification record.
-
-```bash
-curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/verify \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'content-type: application/json' \
-  --data-raw '{"identifier":{"type":"email","value":"..."},"verificationId":"...","code":"123456"}'
-```
-
-After verifying the code, you can now use the verification record ID to update the user's identifier.
-
-To learn more about verifications, please refer to [Security verification by Account API](/end-user-flows/security-verification).
-
-### Send request with verification record id \{#send-request-with-verification-record-id}
-
-When sending a request to update the user's identifier, you need to include the verification record ID in the request header with the `logto-verification-id` field.
 
 ### Update user's password \{#update-users-password}
 
@@ -229,7 +163,6 @@ To update the user's password, you can use the [`POST /api/my-account/password`]
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/password \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"password":"..."}'
 ```
@@ -266,22 +199,10 @@ curl -X POST https://[tenant-id].logto.app/api/verifications/verification-code/v
 
 After verifying the code, you can now call [`PATCH /api/my-account/primary-email`](https://openapi.logto.io/operation/operation-updateprimaryemail) to update the user's email, set the `verificationId` to the request body as `newIdentifierVerificationRecordId`.
 
-:::info[Two different verification record IDs]
-
-This request requires two separate verification record IDs:
-
-- **`logto-verification-id` (header)**: Proves the user's identity before making sensitive changes. Obtain this by [verifying the user's password](#verify-the-users-password) or [sending a verification code to the user's existing email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
-- **`newIdentifierVerificationRecordId` (body)**: Proves ownership of the new email address. This is the `verificationRecordId` returned from the `POST /api/verifications/verification-code` call above.
-
-:::
-
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/primary-email \
   -H 'authorization: Bearer <access_token>' \
-  # Verifies user identity (from password or existing email/phone verification)
-  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
   -H 'content-type: application/json' \
-  # The "newIdentifierVerificationRecordId" proves ownership of the new email (from the verification code flow above)
   --data-raw '{"email":"...","newIdentifierVerificationRecordId":"<verification_record_id_from_new_email>"}'
 ```
 
@@ -295,8 +216,7 @@ To remove the user's email, you can use the [`DELETE /api/my-account/primary-ema
 
 ```bash
 curl -X DELETE https://[tenant-id].logto.app/api/my-account/primary-email \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>'
+  -H 'authorization: Bearer <access_token>'
 ```
 
 ### Manage phone \{#manage-phone}
@@ -337,22 +257,10 @@ The `connectorData` is the data returned by the social connector after the user 
 
 Finally, you can use the [`POST /api/my-account/identities`](https://openapi.logto.io/operation/operation-adduseridentities) endpoint to link the social connection.
 
-:::info[Two different verification record IDs]
-
-This request requires two separate verification record IDs:
-
-- **`logto-verification-id` (header)**: Proves the user's identity before making sensitive changes. Obtain this by [verifying the user's password](#verify-the-users-password) or [sending a verification code to the user's existing email or phone](#verify-by-sending-a-verification-code-to-the-users-email-or-phone).
-- **`newIdentifierVerificationRecordId` (body)**: Identifies the social identity being linked. This is the `verificationRecordId` returned from the `POST /api/verifications/social` call above.
-
-:::
-
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/identities \
   -H 'authorization: Bearer <access_token>' \
-  # Verifies user identity (from password or existing email/phone verification)
-  -H 'logto-verification-id: <verification_record_id_from_existing_identifier>' \
   -H 'content-type: application/json' \
-  # The "newIdentifierVerificationRecordId" identifies the social connection to link (from the social verification flow above)
   --data-raw '{"newIdentifierVerificationRecordId":"<verification_record_id_from_social>"}'
 ```
 
@@ -362,8 +270,7 @@ To remove a social connection, you can use the [`DELETE /api/my-account/identiti
 
 ```bash
 curl -X DELETE https://[tenant-id].logto.app/api/my-account/identities/[connector_target_id] \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>'
+  -H 'authorization: Bearer <access_token>'
 ```
 
 ### Link a new WebAuthn passkey \{#link-a-new-webauthn-passkey}
@@ -467,12 +374,10 @@ Finally, you can link the passkey to the user's account using the [`POST /api/my
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"type":"WebAuthn","newIdentifierVerificationRecordId":"..."}'
 ```
 
-- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor, you can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
 - `type`: the type of the MFA factor, currently only `WebAuthn` is supported.
 - `newIdentifierVerificationRecordId`: the verification record ID returned by the server in step 1.
 
@@ -510,7 +415,6 @@ Update the passkey name using [`PATCH /api/my-account/mfa-verifications/{verific
 ```bash
 curl -X PATCH https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId}/name \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"name":"..."}'
 ```
@@ -519,8 +423,7 @@ Delete the passkey using [`DELETE /api/my-account/mfa-verifications/{verificatio
 
 ```bash
 curl -X DELETE https://[tenant-id].logto.app/api/my-account/mfa-verifications/{verificationId} \
-  -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>'
+  -H 'authorization: Bearer <access_token>'
 ```
 
 ### Link a new TOTP \{#link-a-new-totp}
@@ -574,12 +477,10 @@ After the user has added the secret to their authenticator app, they need to ver
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"type":"Totp","secret":"..."}'
 ```
 
-- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
 - `type`: must be `Totp`.
 - `secret`: the TOTP secret generated in step 1.
 
@@ -604,12 +505,10 @@ Use the [`POST /api/my-account/mfa-verifications/totp-secret/generate`](https://
 ```bash
 curl -X PUT https://[tenant-id].logto.app/api/my-account/mfa-verifications/totp \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"secret":"...","code":"..."}'
 ```
 
-- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
 - `secret`: the new TOTP secret generated in step 1.
 - `code`: the TOTP code generated from the new secret to confirm the binding.
 
@@ -659,12 +558,10 @@ Use the [`POST /api/my-account/mfa-verifications`](https://openapi.logto.io/oper
 ```bash
 curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"type":"BackupCode","codes":["...","...","..."]}'
 ```
 
-- `verification_record_id`: a valid verification record ID, granted by verifying the user's existing factor. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
 - `type`: must be `BackupCode`.
 - `codes`: the array of backup codes generated in the previous step.
 
@@ -737,12 +634,10 @@ To enable or disable 2-step verification, use the [`PATCH /api/my-account/mfa-se
 ```bash
 curl -X PATCH https://[tenant-id].logto.app/api/my-account/mfa-settings \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json' \
   --data-raw '{"skipMfaOnSignIn":true}'
 ```
 
-- `verification_record_id`: a valid verification record ID. You can refer to the [Get a verification record ID](#get-a-verification-record-id) section for more details.
 - `skipMfaOnSignIn`: set to `true` to disable 2-step verification for the user, or `false` to enable it.
 
 :::note
@@ -765,7 +660,6 @@ To list the user's active sessions, you can use the [`GET /api/my-account/sessio
 ```bash
 curl https://[tenant-id].logto.app/api/my-account/sessions \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json'
 ```
 
@@ -782,7 +676,6 @@ To revoke a specific session, use the [`DELETE /api/my-account/sessions/{session
 ```bash
 curl -X DELETE https://[tenant-id].logto.app/api/my-account/sessions/{sessionId} \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json'
 ```
 
@@ -814,7 +707,6 @@ To list active app grants of the current user, use the [`GET /api/my-account/gra
 ```bash
 curl https://[tenant-id].logto.app/api/my-account/grants \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json'
 ```
 
@@ -827,7 +719,6 @@ Optional query parameter:
 ```bash
 curl "https://[tenant-id].logto.app/api/my-account/grants?appType=thirdParty" \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json'
 ```
 
@@ -838,7 +729,6 @@ To revoke a specific app grant, use the [`DELETE /api/my-account/grants/{grantId
 ```bash
 curl -X DELETE https://[tenant-id].logto.app/api/my-account/grants/{grantId} \
   -H 'authorization: Bearer <access_token>' \
-  -H 'logto-verification-id: <verification_record_id>' \
   -H 'content-type: application/json'
 ```
 
