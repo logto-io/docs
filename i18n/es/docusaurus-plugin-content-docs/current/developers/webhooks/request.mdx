@@ -35,14 +35,23 @@ Cada familia comparte un pequeño conjunto de [campos comunes](#common-fields). 
 
 Presentes en cada entrega, independientemente de la familia:
 
-| Campo     | Tipo     | Opcional | Notas                                                   |
-| --------- | -------- | -------- | ------------------------------------------------------- |
-| hookId    | `string` |          | El identificador de configuración del webhook en Logto. |
-| event     | `string` |          | El evento que disparó esta entrega.                     |
-| createdAt | `string` |          | La hora de creación del payload en formato ISO 8601.    |
-| userAgent | `string` | ✅       | El user-agent de la solicitud que disparó el evento.    |
+| Campo      | Tipo     | Opcional | Notas                                                                                                                                                                                                                                                                            |
+| ---------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hookId     | `string` |          | El identificador de la configuración del webhook en Logto.                                                                                                                                                                                                                       |
+| deliveryId | `string` |          | El identificador de esta entrega, único por webhook y evento y mantenido a través de los [reintentos automáticos](/developers/webhooks/configure-webhooks#monitor-webhook-health-status) de la misma solicitud. Consulta [deduplicación de entregas](#deduplicating-deliveries). |
+| event      | `string` |          | El evento que disparó esta entrega.                                                                                                                                                                                                                                              |
+| createdAt  | `string` |          | La fecha de creación del payload en formato ISO 8601.                                                                                                                                                                                                                            |
+| userAgent  | `string` | ✅       | El user-agent de la solicitud que disparó el evento.                                                                                                                                                                                                                             |
 
 Cada familia también incluye la dirección IP de la solicitud que disparó el evento, bajo el nombre de campo `userIp` para eventos de flujo de usuario y `ip` para eventos de mutación de datos y de excepción. La semántica es idéntica; la diferencia de nombre se mantiene por compatibilidad hacia atrás.
+
+### Deduplicación de entregas \{#deduplicating-deliveries}
+
+Una entrega puede llegar a tu endpoint más de una vez: Logto [reintenta](/developers/webhooks/configure-webhooks#monitor-webhook-health-status) una solicitud cuya respuesta tiene un estado 500 o superior, por lo que una solicitud que tu endpoint procesó pero aún así respondió con un 5xx (por ejemplo, un gateway que devuelve 504 frente a un handler lento) llega de nuevo. Cada intento de la misma entrega lleva el mismo `deliveryId`, mientras que un evento nuevo, o el mismo evento enviado a otro webhook, obtiene uno nuevo. Registra el `deliveryId` de cada payload que hayas procesado y omite un payload cuyo id ya conozcas.
+
+El `deliveryId` es también el id de la entrada en el registro de auditoría que documenta la entrega, por lo que un valor reportado por tu servicio puede abrirse desde las solicitudes recientes del webhook en la Consola o consultarse con `GET /api/logs/:id`.
+
+El [payload de prueba](/developers/webhooks/configure-webhooks#test-webhook) también lleva un `deliveryId`, por lo que el mismo handler puede procesarlo, aunque las solicitudes de prueba no se registran.
 
 ## Payloads de eventos de flujo de usuario \{#user-flow-event-payloads}
 
@@ -53,14 +62,14 @@ Se dispara cuando un usuario completa un flujo de registro, inicio de sesión o 
 | Campo            | Tipo                                         | Opcional | Notas                                                                                                                                                                                           |
 | ---------------- | -------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |          | El tipo de evento de flujo de usuario. Corresponde a `PostSignIn` / `PostRegister` / `PostResetPassword` respectivamente. El nombre del campo mantiene la denominación histórica "interaction". |
-| sessionId        | `string`                                     | ✅       | El ID de sesión (no el ID de interacción) para este evento, si aplica.                                                                                                                          |
+| sessionId        | `string`                                     | ✅       | El ID de la sesión (no el ID de interacción) para este evento, si aplica.                                                                                                                       |
 | userIp           | `string`                                     | ✅       | La dirección IP de la solicitud que disparó el evento.                                                                                                                                          |
 | userId           | `string`                                     | ✅       | El ID de usuario asociado a este evento, si aplica.                                                                                                                                             |
 | user             | `UserEntity`                                 | ✅       | La entidad de usuario asociada a este evento, si aplica.                                                                                                                                        |
 | applicationId    | `string`                                     | ✅       | El ID de la aplicación asociada a este evento, si aplica.                                                                                                                                       |
 | application      | `ApplicationEntity`                          | ✅       | La entidad de la aplicación asociada a este evento, si aplica.                                                                                                                                  |
 
-#### Formatos de entidad \{#user-flow-entity-shapes}
+#### Formatos de entidades \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -119,7 +128,7 @@ Presentes cuando el cambio fue disparado por un flujo orientado al usuario en la
 | Campo            | Tipo                                         | Opcional | Notas                                                                                                                              |
 | ---------------- | -------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅       | El tipo de evento de flujo de usuario que produjo el cambio. El nombre del campo mantiene la denominación histórica "interaction". |
-| sessionId        | `string`                                     | ✅       | El ID de sesión (no el ID de interacción) para este evento, si aplica.                                                             |
+| sessionId        | `string`                                     | ✅       | El ID de la sesión (no el ID de interacción) para este evento, si aplica.                                                          |
 | applicationId    | `string`                                     | ✅       | El ID de la aplicación, si aplica.                                                                                                 |
 | application      | `ApplicationEntity`                          | ✅       | La entidad de la aplicación, si aplica.                                                                                            |
 
@@ -127,17 +136,17 @@ Presentes cuando el cambio fue disparado por un flujo orientado al usuario en la
 
 Presentes cuando el cambio fue disparado por una llamada a la Management API.
 
-| Campo        | Tipo     | Opcional | Notas                                                                                                              |
-| ------------ | -------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
-| path         | `string` | ✅       | La ruta de la llamada API que disparó este webhook.                                                                |
-| method       | `string` | ✅       | El método HTTP de la llamada API.                                                                                  |
-| status       | `number` | ✅       | El código de estado de la respuesta de la llamada API.                                                             |
-| params       | `object` | ✅       | Los parámetros de ruta koa de la llamada API.                                                                      |
-| matchedRoute | `string` | ✅       | La ruta coincidente de koa. Logto usa este campo para coincidir con los filtros de eventos de webhook habilitados. |
+| Campo        | Tipo     | Opcional | Notas                                                                                                      |
+| ------------ | -------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅       | La ruta de la llamada API que disparó este webhook.                                                        |
+| method       | `string` | ✅       | El método HTTP de la llamada API.                                                                          |
+| status       | `number` | ✅       | El código de estado de la respuesta de la llamada API.                                                     |
+| params       | `object` | ✅       | Los parámetros de ruta koa de la llamada API.                                                              |
+| matchedRoute | `string` | ✅       | La ruta coincidente de koa. Logto usa este campo para emparejar filtros de eventos de webhook habilitados. |
 
 ### Payloads de datos específicos del evento \{#event-specific-data-payloads}
 
-Cada evento de mutación de datos incluye un campo de nivel superior `data` que contiene la entidad afectada, o `null` cuando el cambio no puede resumirse como una sola entidad (eventos de eliminación y membresía). Algunos eventos también incluyen campos de nivel superior específicos del evento además de `data`; `Organization.Membership.Updated` es uno de estos casos, documentado a continuación.
+Cada evento de mutación de datos incluye un campo de nivel superior `data` que contiene la entidad afectada, o `null` cuando el cambio no puede resumirse como una sola entidad (eventos de eliminación y membresía). Algunos eventos también incluyen campos de nivel superior específicos del evento además de `data`; `Organization.Membership.Updated` es uno de esos casos, documentado a continuación.
 
 #### Eventos de usuario \{#user-events}
 
@@ -216,7 +225,7 @@ Además de los [campos comunes](#common-fields) y los campos de contexto de API 
 | addedApplicationIds   | `string[]` | ✅       | IDs de aplicaciones añadidas. Se omite cuando no se añadieron aplicaciones, o cuando el disparador no afecta la membresía de aplicaciones.         |
 | removedApplicationIds | `string[]` | ✅       | IDs de aplicaciones eliminadas. Se omite cuando no se eliminaron aplicaciones.                                                                     |
 
-Los cuatro arreglos delta son **opcionales y aditivos**: no cambian la forma existente del payload para consumidores que no los esperan, y el campo heredado `data: null` sigue emitiéndose sin cambios.
+Los cuatro arreglos delta son **opcionales y aditivos**: no cambian la estructura existente del payload para consumidores que no los esperan, y el campo heredado `data: null` sigue emitiéndose sin cambios.
 
 ###### Disparadores y qué campos delta pueden emitir \{#membership-triggers}
 
@@ -233,13 +242,13 @@ Los cuatro arreglos delta son **opcionales y aditivos**: no cambian la forma exi
 
 ###### Los deltas vacíos se omiten (ausente ≠ cambio vacío) \{#empty-deltas-are-omitted}
 
-Los arreglos delta vacíos se **omiten completamente** del payload. Por ejemplo, un `PUT /organizations/:id/users` que reemplaza el conjunto de miembros con el mismo conjunto existente no produce ningún cambio real, y el payload se reduce a solo `{ organizationId }` con los cuatro campos delta ausentes. Lo mismo aplica para volver a añadir un miembro existente y para la reaceptación de una invitación por parte de un usuario que ya es miembro.
+Los arreglos delta vacíos se **omiten completamente** del payload. Por ejemplo, un `PUT /organizations/:id/users` que reemplaza el conjunto de miembros con el mismo conjunto existente no produce ningún cambio real, y el payload se reduce a solo `{ organizationId }` con los cuatro campos delta ausentes. Lo mismo aplica para volver a añadir un miembro existente y para la reaceptación de una invitación por un usuario que ya es miembro.
 
-**Los consumidores deben tratar un campo ausente como "sin cambio en ese lado", no como "un cambio vacío".**
+**Los consumidores deben tratar un campo ausente como "sin cambio en ese lado", no como "cambio vacío".**
 
 ###### Límite por arreglo (truncamiento silencioso) \{#membership-delta-cap}
 
-Cada arreglo delta tiene un límite de **5000 entradas**. Cuando una sola llamada a la Management API añade o elimina más de 5000 usuarios (o aplicaciones) en una operación, el arreglo delta correspondiente se trunca silenciosamente a sus primeras 5000 entradas. **No hay ningún marcador en el payload** que indique que se alcanzó el límite.
+Cada arreglo delta está limitado a **5000 entradas**. Cuando una sola llamada a la Management API añade o elimina más de 5000 usuarios (o aplicaciones) en una operación, el arreglo delta correspondiente se trunca silenciosamente a sus primeras 5000 entradas. **No hay ningún marcador en el payload** que indique que se alcanzó el límite.
 
 Si tu aplicación realiza operaciones administrativas masivas que puedan afectar a más de 5000 miembros en una sola llamada, trata un arreglo de exactamente 5000 entradas como una señal para reconciliar la membresía autoritativa mediante la Management API:
 
@@ -250,7 +259,7 @@ Esto sigue el mismo patrón que el evento `push` de GitHub, que limita `commits`
 
 ###### Omitir eventos sin cambios (no-op) \{#skipping-no-op-events}
 
-Para omitir entregas sin cambios (eventos sin campos delta) del lado del consumidor, filtra por la presencia de arreglos delta:
+Para omitir entregas sin cambios (eventos sin campos delta) en el lado del consumidor, filtra por la presencia de arreglos delta:
 
 ```ts
 if (
@@ -259,7 +268,7 @@ if (
   payload.addedApplicationIds?.length ||
   payload.removedApplicationIds?.length
 ) {
-  // cambio real de membresía, manejarlo
+  // cambio real de membresía, procesar
 }
 ```
 
@@ -367,7 +376,7 @@ type OrganizationScope = {
 
 **Eventos:** `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`.
 
-Se dispara en incidentes de seguridad, por ejemplo, una cuenta bloqueada tras intentos fallidos consecutivos de verificación, o concesiones revocadas porque se superó el límite de dispositivos concurrentes autenticados de una aplicación.
+Se dispara en incidentes de seguridad, por ejemplo, una cuenta bloqueada tras intentos fallidos consecutivos de verificación, o concesiones revocadas porque se superó el límite de dispositivos concurrentes de una app.
 
 Cada evento de excepción lleva los [campos comunes](#common-fields) y un campo `ip` (misma estructura que los eventos de mutación de datos). Los campos restantes dependen del evento.
 
@@ -399,24 +408,25 @@ Se origina en un flujo orientado al usuario, por lo que el cuerpo también inclu
 
 ### Grant.LimitExceeded \{#grantlimitexceeded-payload}
 
-Se dispara cuando una autorización exitosa hace que un usuario supere el [límite máximo de dispositivos autenticados concurrentes](/sessions/session-configs#max-concurrent-authenticated-devices-per-app) de una aplicación (`maxAllowedGrants`) y Logto revoca sus concesiones más antiguas para esa aplicación.
+Se dispara cuando una autorización exitosa hace que un usuario supere el [límite máximo de dispositivos autenticados concurrentes](/sessions/session-configs#max-concurrent-authenticated-devices-per-app) de una app (`maxAllowedGrants`) y Logto revoca sus concesiones más antiguas para esa app.
 
 Este evento se emite desde el endpoint de autorización OIDC en lugar de la Experience API, por lo que **no** lleva `interactionEvent` ni `sessionId`. Junto a los campos comunes e `ip`, el cuerpo incluye:
 
 | Campo                         | Tipo                | Opcional | Notas                                                                                                                            |
 | ----------------------------- | ------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | userId                        | `string`            |          | El usuario cuyas concesiones fueron revocadas.                                                                                   |
-| applicationId                 | `string`            |          | La aplicación cuyo límite `maxAllowedGrants` fue superado.                                                                       |
+| applicationId                 | `string`            |          | La aplicación cuyo límite de `maxAllowedGrants` fue superado.                                                                    |
 | application                   | `ApplicationEntity` | ✅       | La entidad de la aplicación. Se omite si la aplicación no puede resolverse en el momento de la entrega.                          |
 | maxAllowedGrants              | `number`            |          | El límite configurado en la aplicación cuando se disparó el evento.                                                              |
 | preRevocationActiveGrantCount | `number`            |          | El número de concesiones activas que el usuario tenía para esta aplicación antes de la revocación, incluyendo la recién emitida. |
-| revokedGrantIds               | `string[]`          |          | Los IDs de las concesiones que realmente fueron revocadas, de la más antigua a la más reciente.                                  |
+| revokedGrantIds               | `string[]`          |          | Los IDs de las concesiones que realmente fueron revocadas, de las más antiguas a las más recientes.                              |
 
 Ejemplo de payload:
 
 ```json
 {
   "hookId": "hook_abc",
+  "deliveryId": "3nfp8xk1q2z7",
   "event": "Grant.LimitExceeded",
   "createdAt": "2024-01-01T00:00:00.000Z",
   "ip": "192.168.0.1",
@@ -426,8 +436,8 @@ Ejemplo de payload:
   "application": {
     "id": "app_xyz",
     "type": "SPA",
-    "name": "My app",
-    "description": "My app description"
+    "name": "Mi app",
+    "description": "Descripción de mi app"
   },
   "maxAllowedGrants": 2,
   "preRevocationActiveGrantCount": 3,
@@ -437,7 +447,7 @@ Ejemplo de payload:
 
 Notas de entrega:
 
-- Los registros de concesiones revocadas se destruyen como parte de la revocación, por lo que los IDs en `revokedGrantIds` ya no se resuelven a través de los endpoints de listado de concesiones ni en la Consola — estos solo devuelven concesiones **activas**. Trata el payload como el registro y persiste los IDs en tu lado si los necesitas más adelante.
-- El evento solo se dispara cuando al menos una concesión fue **realmente revocada**. Una autorización que permanece dentro del límite no produce evento.
+- Los registros de concesiones revocadas se destruyen como parte de la revocación, por lo que los IDs en `revokedGrantIds` ya no se resuelven a través de los endpoints de listado de concesiones ni en la Consola — esos solo devuelven concesiones **activas**. Trata el payload como el registro, y persiste los IDs en tu lado si los necesitas más adelante.
+- El evento solo se dispara cuando al menos una concesión fue **realmente revocada**. Una autorización que se mantiene dentro del límite no produce evento.
 - Se dispara en cada autorización que excede el límite, por lo que un usuario que inicia sesión repetidamente desde más dispositivos de los permitidos produce un evento por cada expulsión.
-- El despacho es fire-and-forget: un endpoint lento o fallido nunca bloquea ni falla la autorización del usuario. Las entregas fallidas se registran en los logs de auditoría como cualquier otro webhook.
+- El despacho es "fire-and-forget": un endpoint lento o fallido nunca bloquea ni falla la autorización del usuario. Las entregas fallidas se registran en los logs de auditoría como cualquier otro webhook.

@@ -7,7 +7,7 @@ sidebar_position: 4
 
 # Requête Webhooks
 
-Lorsqu'un événement webhook est déclenché, Logto envoie une requête `POST` à chaque point de terminaison abonné à cet événement. Le catalogue complet des événements se trouve dans [Événements Webhooks](/developers/webhooks/webhooks-events) ; cette page documente la **structure de la requête** envoyée par Logto.
+Lorsqu’un événement webhook est déclenché, Logto envoie une requête `POST` à chaque point de terminaison qui y est abonné. Le catalogue complet des événements se trouve dans [Événements Webhooks](/developers/webhooks/webhooks-events) ; cette page documente la **structure de la requête** envoyée par Logto.
 
 ## En-têtes de la requête \{#request-headers}
 
@@ -17,50 +17,59 @@ Lorsqu'un événement webhook est déclenché, Logto envoie une requête `POST` 
 | content-type            | ✅              | `application/json` par défaut.                                                                         |
 | logto-signature-sha-256 |                 | Signature du corps de la requête. Voir [sécuriser vos webhooks](/developers/webhooks/secure-webhooks). |
 
-Les en-têtes personnalisables peuvent être remplacés via la configuration [secure webhook](/developers/webhooks/configure-webhooks/#secure-webhook).
+Les en-têtes personnalisables peuvent être remplacés via la configuration [webhook sécurisé](/developers/webhooks/configure-webhooks/#secure-webhook).
 
 ## Aperçu du corps de la requête \{#request-body-overview}
 
-Le corps est un objet JSON. Sa structure exacte dépend de la famille à laquelle appartient l'événement :
+Le corps est un objet JSON. Sa structure exacte dépend de la famille à laquelle appartient l’événement :
 
 | Famille                 | Événements                                                                                   | Quand il est déclenché                                                                                                       |
 | ----------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **Flux utilisateur**    | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | Un utilisateur termine un flux d'inscription, de connexion ou de réinitialisation de mot de passe géré par l’Experience API. |
+| **Flux utilisateur**    | `PostRegister`, `PostSignIn`, `PostResetPassword`                                            | Un utilisateur termine un flux d’inscription, de connexion ou de réinitialisation de mot de passe géré par l’Experience API. |
 | **Mutation de données** | `User.*`, `Role.*`, `Scope.*`, `Organization.*`, `OrganizationRole.*`, `OrganizationScope.*` | Le modèle de données sous-jacent est modifié par un appel Management API ou un flux utilisateur sur l’Experience API.        |
-| **Exception**           | `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`                           | Un incident de sécurité, par exemple un compte verrouillé après plusieurs tentatives de vérification échouées.               |
+| **Exception**           | `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`                           | Incident de sécurité, par exemple un compte verrouillé après plusieurs tentatives de vérification échouées.                  |
 
-Chaque famille partage un petit ensemble de [champs communs](#common-fields). Chaque famille ajoute ensuite ses propres champs de contexte de requête ainsi qu'une charge utile spécifique à l'événement.
+Chaque famille partage un petit ensemble de [champs communs](#common-fields). Chaque famille ajoute ensuite ses propres champs de contexte de requête ainsi qu’une charge utile spécifique à l’événement.
 
 ### Champs communs \{#common-fields}
 
 Présents dans chaque livraison, quelle que soit la famille :
 
-| Champ     | Type     | Optionnel | Remarques                                                  |
-| --------- | -------- | --------- | ---------------------------------------------------------- |
-| hookId    | `string` |           | L'identifiant de la configuration du webhook dans Logto.   |
-| event     | `string` |           | L'événement qui a déclenché cette livraison.               |
-| createdAt | `string` |           | L'heure de création de la charge utile au format ISO 8601. |
-| userAgent | `string` | ✅        | Le user-agent de la requête déclenchante.                  |
+| Champ      | Type     | Optionnel | Remarques                                                                                                                                                                                                                                                                 |
+| ---------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| hookId     | `string` |           | L’identifiant de la configuration du webhook dans Logto.                                                                                                                                                                                                                  |
+| deliveryId | `string` |           | L’identifiant de cette livraison, unique par webhook et événement et conservé lors des [reprises automatiques](/developers/webhooks/configure-webhooks#monitor-webhook-health-status) de la même requête. Voir [déduplication des livraisons](#deduplicating-deliveries). |
+| event      | `string` |           | L’événement qui a déclenché cette livraison.                                                                                                                                                                                                                              |
+| createdAt  | `string` |           | L’horodatage de création de la charge utile au format ISO 8601.                                                                                                                                                                                                           |
+| userAgent  | `string` | ✅        | Le user-agent de la requête déclenchante.                                                                                                                                                                                                                                 |
 
-Chaque famille inclut également l'adresse IP de la requête déclenchante, sous le nom de champ `userIp` pour les événements de flux utilisateur et `ip` pour les événements de mutation de données et d'exception. La sémantique est identique ; la différence de nom historique est conservée pour la compatibilité ascendante.
+Chaque famille inclut également l’adresse IP de la requête déclenchante, sous le nom de champ `userIp` pour les événements de flux utilisateur et `ip` pour les événements de mutation de données et d’exception. La sémantique est identique ; la différence de nom est conservée pour la compatibilité ascendante.
+
+### Déduplication des livraisons \{#deduplicating-deliveries}
+
+Une livraison peut atteindre votre point de terminaison plusieurs fois : Logto [réessaie](/developers/webhooks/configure-webhooks#monitor-webhook-health-status) une requête dont le statut de réponse est 500 ou plus, donc une requête que votre point de terminaison a traitée mais à laquelle il a tout de même répondu par un 5xx (par exemple, une passerelle retournant 504 devant un gestionnaire lent) arrive à nouveau. Chaque tentative de la même livraison porte le même `deliveryId`, tandis qu’un nouvel événement, ou le même événement envoyé à un autre webhook, en reçoit un nouveau. Enregistrez le `deliveryId` de chaque charge utile que vous avez traitée et ignorez une charge utile dont l’id est déjà connu.
+
+Le `deliveryId` est également l’id de l’entrée du journal d’audit qui enregistre la livraison, donc une valeur signalée par votre service peut être ouverte depuis les requêtes récentes du webhook dans la Console ou récupérée avec `GET /api/logs/:id`.
+
+La [charge utile de test](/developers/webhooks/configure-webhooks#test-webhook) porte aussi un `deliveryId`, donc le même gestionnaire peut la traiter, bien que les requêtes de test ne soient pas journalisées.
 
 ## Charges utiles des événements de flux utilisateur \{#user-flow-event-payloads}
 
 **Événements :** `PostRegister`, `PostSignIn`, `PostResetPassword`.
 
-Déclenché lorsqu'un utilisateur termine un flux d'inscription, de connexion ou de réinitialisation de mot de passe géré par l’Experience API. En plus des [champs communs](#common-fields), le corps contient :
+Déclenchés lorsqu’un utilisateur termine un flux d’inscription, de connexion ou de réinitialisation de mot de passe géré par l’Experience API. En plus des [champs communs](#common-fields), le corps contient :
 
-| Champ            | Type                                         | Optionnel | Remarques                                                                                                                                                                                    |
-| ---------------- | -------------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |           | Le type d'événement du flux utilisateur. Correspond à `PostSignIn` / `PostRegister` / `PostResetPassword` respectivement. Le nom du champ conserve la terminologie historique "interaction". |
-| sessionId        | `string`                                     | ✅        | L’ID de session (et non l’ID d’interaction) pour cet événement, si applicable.                                                                                                               |
-| userIp           | `string`                                     | ✅        | L'adresse IP de la requête déclenchante.                                                                                                                                                     |
-| userId           | `string`                                     | ✅        | L’ID utilisateur associé à cet événement, si applicable.                                                                                                                                     |
-| user             | `UserEntity`                                 | ✅        | L'entité utilisateur associée à cet événement, si applicable.                                                                                                                                |
-| applicationId    | `string`                                     | ✅        | L’ID de l’application associée à cet événement, si applicable.                                                                                                                               |
-| application      | `ApplicationEntity`                          | ✅        | L'entité application associée à cet événement, si applicable.                                                                                                                                |
+| Champ            | Type                                         | Optionnel | Remarques                                                                                                                                                                      |
+| ---------------- | -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` |           | Le type d’événement de flux utilisateur. Correspond à `PostSignIn` / `PostRegister` / `PostResetPassword` respectivement. Le nom du champ conserve l’historique "interaction". |
+| sessionId        | `string`                                     | ✅        | L’ID de session (et non l’ID d’interaction) pour cet événement, si applicable.                                                                                                 |
+| userIp           | `string`                                     | ✅        | L’adresse IP de la requête déclenchante.                                                                                                                                       |
+| userId           | `string`                                     | ✅        | L’ID utilisateur associé à cet événement, si applicable.                                                                                                                       |
+| user             | `UserEntity`                                 | ✅        | L’entité utilisateur associée à cet événement, si applicable.                                                                                                                  |
+| applicationId    | `string`                                     | ✅        | L’ID de l’application associée à cet événement, si applicable.                                                                                                                 |
+| application      | `ApplicationEntity`                          | ✅        | L’entité application associée à cet événement, si applicable.                                                                                                                  |
 
-#### Structures des entités \{#user-flow-entity-shapes}
+#### Structures d’entités \{#user-flow-entity-shapes}
 
 ```tsx
 type UserEntity = {
@@ -106,45 +115,45 @@ Voir [Utilisateurs](/user-management/user-data) et [Applications](/integrate-log
 Le corps contient toujours :
 
 - Les [champs communs](#common-fields).
-- Un champ `ip`, l'adresse IP de la requête déclenchante (optionnel, présent si connu).
-- Un **contexte API** décrivant comment la modification a été déclenchée. Le contexte est l'une des deux variantes selon la source du déclencheur :
-  - [Champs de contexte Experience API](#experience-api-context-fields), lorsque la modification provient d'un flux utilisateur.
-  - [Champs de contexte Management API](#management-api-context-fields), lorsque la modification provient d'un appel direct Management API.
-- Une **charge utile spécifique à l'événement** : l'entité affectée dans `data` et (pour certains événements) des champs supplémentaires au niveau supérieur. Voir [charges utiles spécifiques à l'événement](#event-specific-data-payloads).
+- Un champ `ip`, l’adresse IP de la requête déclenchante (optionnel, présent si connu).
+- Un **contexte API** décrivant comment la modification a été déclenchée. Le contexte est l’une des deux variantes selon la source du déclencheur :
+  - [Contexte Experience API](#experience-api-context-fields), lorsque la modification provient d’un flux utilisateur.
+  - [Contexte Management API](#management-api-context-fields), lorsque la modification provient d’un appel direct Management API.
+- Une **charge utile spécifique à l’événement** : l’entité concernée dans `data` et (pour certains événements) des champs supplémentaires au niveau supérieur. Voir [charges utiles spécifiques à l’événement](#event-specific-data-payloads).
 
 ### Champs de contexte Experience API \{#experience-api-context-fields}
 
-Présents lorsque la modification a été déclenchée par un flux utilisateur sur l’Experience API, par exemple `User.Created` lors de l'inscription ou `User.Data.Updated` lors de la mise à jour du profil.
+Présents lorsque la modification a été déclenchée par un flux utilisateur sur l’Experience API, par exemple `User.Created` lors de l’inscription ou `User.Data.Updated` lors de la mise à jour du profil.
 
-| Champ            | Type                                         | Optionnel | Remarques                                                                                                                                 |
-| ---------------- | -------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅        | Le type d'événement du flux utilisateur ayant produit la modification. Le nom du champ conserve la terminologie historique "interaction". |
-| sessionId        | `string`                                     | ✅        | L’ID de session (et non l’ID d’interaction) pour cet événement, si applicable.                                                            |
-| applicationId    | `string`                                     | ✅        | L’ID de l’application, si applicable.                                                                                                     |
-| application      | `ApplicationEntity`                          | ✅        | L'entité application, si applicable.                                                                                                      |
+| Champ            | Type                                         | Optionnel | Remarques                                                                                                                   |
+| ---------------- | -------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------- |
+| interactionEvent | `'SignIn' \| 'Register' \| 'ForgotPassword'` | ✅        | Le type d’événement de flux utilisateur ayant produit la modification. Le nom du champ conserve l’historique "interaction". |
+| sessionId        | `string`                                     | ✅        | L’ID de session (et non l’ID d’interaction) pour cet événement, si applicable.                                              |
+| applicationId    | `string`                                     | ✅        | L’ID de l’application, si applicable.                                                                                       |
+| application      | `ApplicationEntity`                          | ✅        | L’entité application, si applicable.                                                                                        |
 
 ### Champs de contexte Management API \{#management-api-context-fields}
 
 Présents lorsque la modification a été déclenchée par un appel Management API.
 
-| Champ        | Type     | Optionnel | Remarques                                                                                        |
-| ------------ | -------- | --------- | ------------------------------------------------------------------------------------------------ |
-| path         | `string` | ✅        | Le chemin de l'appel API ayant déclenché ce webhook.                                             |
-| method       | `string` | ✅        | La méthode HTTP de l'appel API.                                                                  |
-| status       | `number` | ✅        | Le code de statut de la réponse de l'appel API.                                                  |
-| params       | `object` | ✅        | Les paramètres de chemin koa de l'appel API.                                                     |
-| matchedRoute | `string` | ✅        | La route koa correspondante. Logto utilise ce champ pour filtrer les événements webhook activés. |
+| Champ        | Type     | Optionnel | Remarques                                                                                                             |
+| ------------ | -------- | --------- | --------------------------------------------------------------------------------------------------------------------- |
+| path         | `string` | ✅        | Le chemin de l’appel API ayant déclenché ce webhook.                                                                  |
+| method       | `string` | ✅        | La méthode HTTP de l’appel API.                                                                                       |
+| status       | `number` | ✅        | Le code de statut de la réponse de l’appel API.                                                                       |
+| params       | `object` | ✅        | Les paramètres de chemin koa de l’appel API.                                                                          |
+| matchedRoute | `string` | ✅        | La route koa correspondante. Logto utilise ce champ pour faire correspondre les filtres d’événements webhook activés. |
 
-### Charges utiles spécifiques à l'événement \{#event-specific-data-payloads}
+### Charges utiles spécifiques à l’événement \{#event-specific-data-payloads}
 
-Chaque événement de mutation de données inclut un champ de niveau supérieur `data` contenant l'entité affectée, ou `null` lorsque la modification ne peut pas être résumée par une seule entité (événements de suppression et d'appartenance). Certains événements incluent également des champs spécifiques à l'événement au niveau supérieur ; `Organization.Membership.Updated` en est un exemple, documenté ci-dessous.
+Chaque événement de mutation de données inclut un champ `data` au niveau supérieur contenant l’entité concernée, ou `null` lorsque la modification ne peut pas être résumée par une seule entité (événements de suppression et d’appartenance). Certains événements incluent également des champs supplémentaires au niveau supérieur ; `Organization.Membership.Updated` en est un exemple, documenté ci-dessous.
 
 #### Événements utilisateur \{#user-events}
 
 | Événement         | Champ | Type         | Optionnel | Remarques                         |
 | ----------------- | ----- | ------------ | --------- | --------------------------------- |
-| User.Created      | data  | `UserEntity` |           | L'entité utilisateur créée.       |
-| User.Data.Updated | data  | `UserEntity` |           | L'entité utilisateur mise à jour. |
+| User.Created      | data  | `UserEntity` |           | L’entité utilisateur créée.       |
+| User.Data.Updated | data  | `UserEntity` |           | L’entité utilisateur mise à jour. |
 | User.Deleted      | data  | `null`       | /         |                                   |
 
 #### Événements rôle \{#role-events}
@@ -171,8 +180,8 @@ type Scope = {
 
 | Événement           | Champ  | Type      | Optionnel | Remarques                                                                                                                                                              |
 | ------------------- | ------ | --------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Role.Created        | data   | `Role`    |           | L'entité rôle créée.                                                                                                                                                   |
-| Role.Data.Updated   | data   | `Role`    |           | L'entité rôle mise à jour.                                                                                                                                             |
+| Role.Created        | data   | `Role`    |           | L’entité rôle créée.                                                                                                                                                   |
+| Role.Data.Updated   | data   | `Role`    |           | L’entité rôle mise à jour.                                                                                                                                             |
 | Role.Deleted        | data   | `null`    | /         |                                                                                                                                                                        |
 | Role.Scopes.Updated | data   | `Scope[]` |           | Les portées mises à jour attribuées au rôle.                                                                                                                           |
 | Role.Scopes.Updated | roleId | `string`  | ✅        | L’ID du rôle auquel les portées sont attribuées. (Disponible uniquement si l’événement a été déclenché lors de la création d’un rôle avec des portées pré-attribuées.) |
@@ -181,8 +190,8 @@ type Scope = {
 
 | Événement          | Champ | Type    | Optionnel | Remarques                    |
 | ------------------ | ----- | ------- | --------- | ---------------------------- |
-| Scope.Created      | data  | `Scope` |           | L'entité portée créée.       |
-| Scope.Data.Updated | data  | `Scope` |           | L'entité portée mise à jour. |
+| Scope.Created      | data  | `Scope` |           | L’entité portée créée.       |
+| Scope.Data.Updated | data  | `Scope` |           | L’entité portée mise à jour. |
 | Scope.Deleted      | data  | `null`  | /         |                              |
 
 #### Événements organisation \{#organization-events}
@@ -199,8 +208,8 @@ type Organization = {
 
 | Événement                       | Champ | Type           | Optionnel | Remarques                                                                                                                                                                             |
 | ------------------------------- | ----- | -------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Organization.Created            | data  | `Organization` |           | L'entité organisation créée.                                                                                                                                                          |
-| Organization.Data.Updated       | data  | `Organization` |           | L'entité organisation mise à jour.                                                                                                                                                    |
+| Organization.Created            | data  | `Organization` |           | L’entité organisation créée.                                                                                                                                                          |
+| Organization.Data.Updated       | data  | `Organization` |           | L’entité organisation mise à jour.                                                                                                                                                    |
 | Organization.Deleted            | data  | `null`         | /         |                                                                                                                                                                                       |
 | Organization.Membership.Updated | data  | `null`         | /         | La modification est décrite par des tableaux delta optionnels au niveau supérieur. Voir [payload Organization.Membership.Updated](#organizationmembershipupdated-payload) ci-dessous. |
 
@@ -208,15 +217,15 @@ type Organization = {
 
 En plus des [champs communs](#common-fields) et des champs de contexte API applicables à la source du déclencheur ([contexte Management API](#management-api-context-fields) pour les routes Management API, [contexte Experience API](#experience-api-context-fields) pour l’approvisionnement just-in-time), l’événement `Organization.Membership.Updated` contient un `organizationId` ainsi que des tableaux delta optionnels au niveau supérieur de la charge utile (à côté de `event`, `createdAt`, etc., **pas** dans `data`, qui est toujours `null` pour cet événement).
 
-| Champ                 | Type       | Optionnel | Remarques                                                                                                                                                                   |
-| --------------------- | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| organizationId        | `string`   |           | L'organisation dont l'appartenance a changé.                                                                                                                                |
-| addedUserIds          | `string[]` | ✅        | Les IDs utilisateurs nouvellement ajoutés par ce déclencheur. Omissible si aucun utilisateur n'a été ajouté, ou si le déclencheur n'affecte pas l'appartenance utilisateur. |
-| removedUserIds        | `string[]` | ✅        | Les IDs utilisateurs supprimés par ce déclencheur. Omissible si aucun utilisateur n'a été supprimé.                                                                         |
-| addedApplicationIds   | `string[]` | ✅        | Les IDs applications nouvellement ajoutées. Omissible si aucune application n'a été ajoutée, ou si le déclencheur n'affecte pas l'appartenance application.                 |
-| removedApplicationIds | `string[]` | ✅        | Les IDs applications supprimées. Omissible si aucune application n'a été supprimée.                                                                                         |
+| Champ                 | Type       | Optionnel | Remarques                                                                                                                                                                  |
+| --------------------- | ---------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| organizationId        | `string`   |           | L’organisation dont l’appartenance a changé.                                                                                                                               |
+| addedUserIds          | `string[]` | ✅        | IDs des utilisateurs nouvellement ajoutés par ce déclencheur. Omissible si aucun utilisateur n’a été ajouté ou si le déclencheur n’affecte pas l’appartenance utilisateur. |
+| removedUserIds        | `string[]` | ✅        | IDs des utilisateurs supprimés par ce déclencheur. Omissible si aucun utilisateur n’a été supprimé.                                                                        |
+| addedApplicationIds   | `string[]` | ✅        | IDs des applications nouvellement ajoutées. Omissible si aucune application n’a été ajoutée ou si le déclencheur n’affecte pas l’appartenance application.                 |
+| removedApplicationIds | `string[]` | ✅        | IDs des applications supprimées. Omissible si aucune application n’a été supprimée.                                                                                        |
 
-Les quatre tableaux delta sont **optionnels et additifs** : ils ne modifient pas la structure existante de la charge utile pour les consommateurs qui ne les attendent pas, et le champ hérité `data: null` est toujours émis sans changement.
+Les quatre tableaux delta sont **optionnels et additifs** : ils ne changent pas la structure existante de la charge utile pour les consommateurs qui ne les attendent pas, et le champ hérité `data: null` est toujours émis sans modification.
 
 ###### Déclencheurs et champs delta possibles \{#membership-triggers}
 
@@ -233,20 +242,20 @@ Les quatre tableaux delta sont **optionnels et additifs** : ils ne modifient pas
 
 ###### Les deltas vides sont omis (absent ≠ changement vide) \{#empty-deltas-are-omitted}
 
-Les tableaux delta vides sont **totalement omis** de la charge utile. Par exemple, un `PUT /organizations/:id/users` qui remplace l'ensemble d'appartenance par l'ensemble existant ne produit aucun changement réel, et la charge utile se réduit à `{ organizationId }` avec les quatre champs delta absents. Il en va de même pour la réadmission d'un membre existant et la réacceptation d'une invitation par un utilisateur déjà membre.
+Les tableaux delta vides sont **totalement omis** de la charge utile. Par exemple, un `PUT /organizations/:id/users` qui remplace l’ensemble des membres par l’ensemble existant ne produit aucun changement réel, et la charge utile se réduit à `{ organizationId }` avec les quatre champs delta absents. Il en va de même pour une réadmission d’un membre existant et une réacceptation d’une invitation par un utilisateur déjà membre.
 
 **Les consommateurs doivent traiter un champ manquant comme "aucun changement de ce côté", et non comme "un changement vide".**
 
 ###### Limite par tableau (troncature silencieuse) \{#membership-delta-cap}
 
-Chaque tableau delta est limité à **5000 entrées**. Lorsqu'un seul appel Management API ajoute ou supprime plus de 5000 utilisateurs (ou applications) en une opération, le tableau delta correspondant est silencieusement tronqué à ses 5000 premières entrées. **Il n'y a aucun indicateur dans la charge utile** qu'une limite a été atteinte.
+Chaque tableau delta est limité à **5000 entrées**. Lorsqu’un seul appel Management API ajoute ou supprime plus de 5000 utilisateurs (ou applications) en une opération, le tableau delta correspondant est tronqué silencieusement à ses 5000 premières entrées. **Il n’y a aucun indicateur dans la charge utile** qu’une limite a été atteinte.
 
-Si votre application effectue des opérations administratives de masse susceptibles d'affecter plus de 5000 membres en un seul appel, considérez un tableau de exactement 5000 entrées comme un signal pour réconcilier l'appartenance via la Management API :
+Si votre application effectue des opérations administratives de masse susceptibles d’affecter plus de 5000 membres en un appel, considérez un tableau de exactement 5000 entrées comme un signal pour réconcilier l’appartenance via la Management API :
 
 - `GET /organizations/:id/users` : appartenance utilisateur complète.
 - `GET /organizations/:id/applications` : appartenance application complète.
 
-Cela suit le même modèle que l'événement `push` de GitHub, qui limite `commits` à 20 entrées et oriente les consommateurs vers l’API de comparaison pour la liste complète.
+Cela suit le même modèle que l’événement `push` de GitHub, qui limite `commits` à 20 entrées et oriente les consommateurs vers l’API de comparaison pour la liste complète.
 
 ###### Ignorer les événements sans effet \{#skipping-no-op-events}
 
@@ -259,11 +268,11 @@ if (
   payload.addedApplicationIds?.length ||
   payload.removedApplicationIds?.length
 ) {
-  // changement réel d'appartenance, à traiter
+  // changement d’appartenance réel, à traiter
 }
 ```
 
-`?.length` est falsy pour `undefined` et `[]`, donc le même prédicat est robuste que le champ soit absent ou (dans un futur hypothétique) émis comme un tableau vide.
+`?.length` est falsy pour `undefined` comme pour `[]`, donc le même prédicat est robuste que le champ soit absent ou (dans un futur hypothétique) émis comme tableau vide.
 
 ###### Exemples de charges utiles \{#membership-example-payloads}
 
@@ -277,7 +286,7 @@ if (
 }
 ```
 
-**Remplacer l'ensemble d'appartenance utilisateur (`PUT /organizations/:id/users`) :**
+**Remplacer l’ensemble des membres (`PUT /organizations/:id/users`) :**
 
 ```json
 {
@@ -308,7 +317,7 @@ if (
 }
 ```
 
-**Réadmission d'un membre existant, `PUT` sans effet, ou réacceptation d'une invitation déjà membre (aucun changement réel) :**
+**Réadmission d’un membre existant, `PUT` sans effet, ou réacceptation d’une invitation déjà membre (aucun changement réel) :**
 
 ```json
 {
@@ -327,9 +336,9 @@ if (
 }
 ```
 
-Voir un tableau de exactement 5000 entrées doit inciter à une réconciliation via `GET /organizations/:id/users` (ou `/applications`).
+Voir un tableau de exactement 5000 entrées doit inciter à effectuer un `GET /organizations/:id/users` (ou `/applications`) pour réconcilier.
 
-#### Événements rôle d'organisation \{#organization-role-events}
+#### Événements de rôle d’organisation \{#organization-role-events}
 
 ```tsx
 type OrganizationRole = {
@@ -349,31 +358,31 @@ type OrganizationScope = {
 
 | Événement                       | Champ              | Type               | Optionnel | Remarques                                                                                                                                                              |
 | ------------------------------- | ------------------ | ------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OrganizationRole.Created        | data               | `OrganizationRole` |           | L'entité rôle d'organisation créée.                                                                                                                                    |
-| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |           | L'entité rôle d'organisation mise à jour.                                                                                                                              |
+| OrganizationRole.Created        | data               | `OrganizationRole` |           | L’entité rôle d’organisation créée.                                                                                                                                    |
+| OrganizationRole.Data.Updated   | data               | `OrganizationRole` |           | L’entité rôle d’organisation mise à jour.                                                                                                                              |
 | OrganizationRole.Deleted        | data               | `null`             | /         |                                                                                                                                                                        |
 | OrganizationRole.Scopes.Updated | data               | `null`             | /         |                                                                                                                                                                        |
 | OrganizationRole.Scopes.Updated | organizationRoleId | `string`           | ✅        | L’ID du rôle auquel les portées sont attribuées. (Disponible uniquement si l’événement a été déclenché lors de la création d’un rôle avec des portées pré-attribuées.) |
 
-#### Événements permission (portée) d'organisation \{#organization-permission-events}
+#### Événements permission d’organisation (portée) \{#organization-permission-events}
 
 | Événement                      | Champ | Type                | Optionnel | Remarques                                   |
 | ------------------------------ | ----- | ------------------- | --------- | ------------------------------------------- |
-| OrganizationScope.Created      | data  | `OrganizationScope` |           | L'entité portée d'organisation créée.       |
-| OrganizationScope.Data.Updated | data  | `OrganizationScope` |           | L'entité portée d'organisation mise à jour. |
+| OrganizationScope.Created      | data  | `OrganizationScope` |           | L’entité portée d’organisation créée.       |
+| OrganizationScope.Data.Updated | data  | `OrganizationScope` |           | L’entité portée d’organisation mise à jour. |
 | OrganizationScope.Deleted      | data  | `null`              | /         |                                             |
 
-## Charges utiles des événements d'exception \{#exception-event-payloads}
+## Charges utiles des événements d’exception \{#exception-event-payloads}
 
 **Événements :** `Identifier.Lockout`, `Message.RateLimited`, `Grant.LimitExceeded`.
 
-Déclenché lors d'incidents de sécurité, par exemple un compte verrouillé après plusieurs tentatives de vérification échouées, ou des autorisations révoquées parce que la limite d'appareils connectés simultanément d'une application a été dépassée.
+Déclenchés lors d’incidents de sécurité, par exemple un compte verrouillé après plusieurs tentatives de vérification échouées, ou des autorisations révoquées parce que la limite d’appareils simultanés d’une application a été dépassée.
 
-Chaque événement d'exception contient les [champs communs](#common-fields) et un champ `ip` (même structure que les événements de mutation de données). Les champs restants dépendent de l'événement.
+Chaque événement d’exception contient les [champs communs](#common-fields) et un champ `ip` (même structure que les événements de mutation de données). Les champs restants dépendent de l’événement.
 
 ### Identifier.Lockout \{#identifierlockout-payload}
 
-Provenant d'un flux utilisateur, le corps contient également les [champs de contexte Experience API](#experience-api-context-fields), ainsi que :
+Provenant d’un flux utilisateur, le corps contient également les [champs de contexte Experience API](#experience-api-context-fields), ainsi que :
 
 ```tsx
 enum SignInIdentifier {
@@ -385,31 +394,31 @@ enum SignInIdentifier {
 
 | Champ | Type               | Optionnel | Remarques                                                                             |
 | ----- | ------------------ | --------- | ------------------------------------------------------------------------------------- |
-| type  | `SignInIdentifier` |           | Le type d'identifiant utilisateur, par exemple email, téléphone ou nom d'utilisateur. |
-| value | `string`           |           | La valeur de l'identifiant utilisateur ayant déclenché le verrouillage.               |
+| type  | `SignInIdentifier` |           | Le type d’identifiant utilisateur, par exemple email, téléphone ou nom d’utilisateur. |
+| value | `string`           |           | La valeur de l’identifiant utilisateur ayant déclenché le verrouillage.               |
 
 ### Message.RateLimited \{#messageratelimited-payload}
 
-Provenant d'un flux utilisateur, le corps contient également les [champs de contexte Experience API](#experience-api-context-fields), ainsi que :
+Provenant d’un flux utilisateur, le corps contient également les [champs de contexte Experience API](#experience-api-context-fields), ainsi que :
 
-| Champ     | Type     | Optionnel | Remarques                                                                                                             |
-| --------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------- |
-| action    | `string` |           | L'action limitée en fréquence, par exemple `VerificationCodeSend`.                                                    |
-| recipient | `string` |           | L'adresse e-mail ou le numéro de téléphone ayant atteint la [limite de fréquence d'envoi](/security/send-rate-limit). |
+| Champ     | Type     | Optionnel | Remarques                                                                                                            |
+| --------- | -------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
+| action    | `string` |           | L’action limitée en fréquence, par exemple `VerificationCodeSend`.                                                   |
+| recipient | `string` |           | L’adresse email ou le numéro de téléphone ayant atteint la [limite de fréquence d’envoi](/security/send-rate-limit). |
 
 ### Grant.LimitExceeded \{#grantlimitexceeded-payload}
 
-Déclenché lorsqu'une autorisation réussie fait dépasser à un utilisateur la [limite maximale d'appareils authentifiés simultanément par application](/sessions/session-configs#max-concurrent-authenticated-devices-per-app) (`maxAllowedGrants`) et que Logto révoque ses autorisations les plus anciennes pour cette application.
+Déclenché lorsqu’une autorisation réussie fait dépasser à un utilisateur la [limite maximale d’appareils authentifiés simultanés](/sessions/session-configs#max-concurrent-authenticated-devices-per-app) d’une application (`maxAllowedGrants`) et que Logto révoque ses autorisations les plus anciennes pour cette application.
 
-Cet événement est émis depuis le point de terminaison d'autorisation OIDC plutôt que depuis l’Experience API, il ne contient donc **pas** `interactionEvent` ni `sessionId`. En plus des champs communs et de `ip`, le corps contient :
+Cet événement est émis depuis le point de terminaison d’autorisation OIDC plutôt que depuis l’Experience API, il ne contient donc **pas** `interactionEvent` ni `sessionId`. Outre les champs communs et `ip`, le corps contient :
 
 | Champ                         | Type                | Optionnel | Remarques                                                                                                                                        |
 | ----------------------------- | ------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| userId                        | `string`            |           | L'utilisateur dont les autorisations ont été révoquées.                                                                                          |
-| applicationId                 | `string`            |           | L'application dont la limite `maxAllowedGrants` a été dépassée.                                                                                  |
-| application                   | `ApplicationEntity` | ✅        | L'entité application. Omissible si l'application ne peut pas être résolue au moment de la livraison.                                             |
-| maxAllowedGrants              | `number`            |           | La limite configurée sur l'application lors du déclenchement de l'événement.                                                                     |
-| preRevocationActiveGrantCount | `number`            |           | Le nombre d'autorisations actives détenues par l'utilisateur pour cette application avant la révocation, y compris celle qui vient d'être émise. |
+| userId                        | `string`            |           | L’utilisateur dont les autorisations ont été révoquées.                                                                                          |
+| applicationId                 | `string`            |           | L’application dont la limite `maxAllowedGrants` a été dépassée.                                                                                  |
+| application                   | `ApplicationEntity` | ✅        | L’entité application. Omissible si l’application ne peut pas être résolue au moment de la livraison.                                             |
+| maxAllowedGrants              | `number`            |           | La limite configurée sur l’application lors du déclenchement de l’événement.                                                                     |
+| preRevocationActiveGrantCount | `number`            |           | Le nombre d’autorisations actives détenues par l’utilisateur pour cette application avant la révocation, y compris celle qui vient d’être émise. |
 | revokedGrantIds               | `string[]`          |           | Les IDs des autorisations effectivement révoquées, des plus anciennes aux plus récentes.                                                         |
 
 Exemple de charge utile :
@@ -417,6 +426,7 @@ Exemple de charge utile :
 ```json
 {
   "hookId": "hook_abc",
+  "deliveryId": "3nfp8xk1q2z7",
   "event": "Grant.LimitExceeded",
   "createdAt": "2024-01-01T00:00:00.000Z",
   "ip": "192.168.0.1",
@@ -437,7 +447,7 @@ Exemple de charge utile :
 
 Notes de livraison :
 
-- Les enregistrements d'autorisations révoquées sont détruits lors de la révocation, donc les IDs dans `revokedGrantIds` ne sont plus accessibles via les points de terminaison de liste des autorisations ou la Console — ceux-ci ne retournent que les autorisations **actives**. Considérez la charge utile comme l'enregistrement, et conservez les IDs de votre côté si vous en avez besoin plus tard.
-- L'événement n'est déclenché que lorsqu'au moins une autorisation a été **effectivement révoquée**. Une autorisation qui reste dans la limite ne produit aucun événement.
-- Il est déclenché à chaque autorisation qui dépasse la limite, donc un utilisateur se connectant à plusieurs reprises depuis plus d'appareils que permis produira un événement par éviction.
-- L'envoi est fire-and-forget : un point de terminaison lent ou défaillant ne bloque ni n'échoue jamais l'autorisation de l'utilisateur. Les livraisons échouées sont enregistrées dans les journaux d'audit comme tout autre webhook.
+- Les enregistrements d’autorisations révoquées sont détruits lors de la révocation, donc les IDs dans `revokedGrantIds` ne sont plus accessibles via les points de terminaison de liste des autorisations ou la Console — ceux-ci ne retournent que les autorisations **actives**. Considérez la charge utile comme la trace, et conservez les IDs de votre côté si besoin.
+- L’événement n’est déclenché que lorsqu’au moins une autorisation a été **effectivement révoquée**. Une autorisation qui reste dans la limite ne produit aucun événement.
+- Il est déclenché à chaque autorisation qui dépasse la limite, donc un utilisateur se connectant à plusieurs reprises depuis plus d’appareils que permis produira un événement par éviction.
+- L’envoi est fire-and-forget : un point de terminaison lent ou en échec ne bloque ni n’échoue jamais l’autorisation de l’utilisateur. Les livraisons échouées sont enregistrées dans les journaux d’audit comme tout autre webhook.
