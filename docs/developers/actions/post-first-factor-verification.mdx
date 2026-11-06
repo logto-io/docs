@@ -57,16 +57,38 @@ type PostFirstFactorVerificationEvent = {
 After the legacy system verifies the submitted credentials, return one of these results:
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      rpId?: string;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -82,6 +104,22 @@ For a new user, Logto adds the submitted sign-in identifier when the result does
 When the result is accepted, Logto hashes the submitted password with Argon2i and saves it as the user's local password. The script must not generate or return a password hash.
 
 Return `undefined` when the legacy system rejects the credentials. An empty, malformed, or unsupported result is also treated as invalid credentials.
+
+### Migrate MFA factors \{#migrate-mfa-factors\}
+
+Include `mfaVerifications` to carry over the user's existing MFA factors with the password. Logto adds the factors to the user's existing factors and enables MFA for the account. It also sets the user's `skipMfaOnSignIn` setting to `false`, so the same sign-in is challenged for one of the migrated factors when MFA is required. The factor type must be enabled in the sign-in experience's MFA settings to be challenged.
+
+- **TOTP** — `{ type: 'Totp', secret }`. `secret` must be a valid Base32 TOTP secret. A user can have only one TOTP factor.
+- **Backup codes** — `{ type: 'BackupCode', codes }`. `codes` must contain 10 codes, each 10 characters from `0-9` and `a-f`. Backup codes cannot be the only factor: the user must already have another factor, or receive one in the same result. Migrated codes are stored as unused, so do not migrate a backup code factor that already has used codes; let the user generate a new set after signing in.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, rpId?, transports?, agent?, name? }`. `credentialId` and `publicKey` are unpadded Base64URL strings; `publicKey` is the credential public key. Pass the original `rpId` when the credential was registered for a domain that still matches, such as a custom domain you moved to Logto. Without `rpId`, Logto uses the current hostname.
+
+Conflicting factors fail the sign-in with an error instead of replacing the existing factor. This covers an existing TOTP, a backup code factor that still has unused codes, and a WebAuthn credential that is already registered. The error does not include any credential value.
+
+The factors are written once. After a successful migration, later sign-ins verify the local password and this Action no longer runs for that user.
+
+:::danger
+`mfaVerifications` carries long-lived credentials. Do not log the TOTP secret, backup codes, or WebAuthn credential data, include them in an error, or return them anywhere except `mfaVerifications`.
+:::
 
 ## Migration example \{#migration-example}
 
@@ -130,19 +168,51 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
+If the legacy user has MFA factors, map them into the same result:
+
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+    rpId: passkey.rpId,
+  })),
+];
+```
+
+Add `mfaVerifications: toActionMfaVerifications(legacyUser)` to the returned result. Omit the field when the legacy user has no MFA factors.
+
 The first accepted sign-in works as follows:
 
 1. Local password verification fails, so Logto runs the Action.
 2. The script sends the identifier and password to the legacy system.
 3. The legacy system verifies the credentials and the script returns `createUser` or `updateUser`.
-4. Logto creates or updates the user and stores the submitted password as a new local Argon2i credential.
-5. The user completes MFA if required, and Logto completes the sign-in.
+4. Logto creates or updates the user, stores the submitted password as a new local Argon2i credential, and writes any migrated MFA factors.
+5. The user completes MFA if required, including a migrated factor, and Logto completes the sign-in.
 6. On later sign-ins, the migrated local password succeeds, so this Action is no longer called for that user.
 
 ## Security boundaries \{#security-boundaries}
 
 :::warning
-User and password writes from this Action happen before MFA is complete. If the user abandons or fails MFA, those writes remain.
+User, password, and MFA writes from this Action happen before MFA is complete. If the user abandons or fails MFA, those writes remain.
 
 A user created by this Action also bypasses registration-only guards, including email blocklists, SSO-only domain rules, disabled sign-up mode, and registration mandatory-profile checks. Sentinel protection and MFA still apply.
 :::
@@ -152,7 +222,8 @@ Use these safeguards:
 - Return `passwordVerified: true` only after the legacy system has positively verified the exact submitted password.
 - Keep the legacy endpoint private when possible, require service authentication, use HTTPS, and apply rate limiting.
 - Keep the returned user patch minimal. Do not copy unvalidated identifiers or profile data.
-- Test unknown-user creation, existing-user update, identifier collisions, suspended users, MFA, upstream failures, and concurrent attempts.
+- Treat TOTP secrets, backup codes, and WebAuthn credential data as credentials. Do not log them, place them in `customData`, or include them in errors.
+- Test unknown-user creation, existing-user update, identifier collisions, suspended users, MFA migration and conflicts, upstream failures, and concurrent attempts.
 - Monitor `Action.PostFirstFactorVerification` in [audit logs](/developers/audit-logs/event-types).
 - Keep the Action enabled only for the duration of the migration when practical.
 
