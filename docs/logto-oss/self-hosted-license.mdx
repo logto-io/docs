@@ -64,7 +64,7 @@ A successful request returns `204 No Content`. The request fails with:
 - `400` and `license.expired_key` if the key is past its expiration. Get a fresh key and install it again.
 - `501` if your Logto is running on Logto Cloud.
 
-To check what is installed, send `GET /api/systems/license`. It returns the plan, environment, entitlements, expiration, and refresh status of the license. It never returns the key itself, and returns `404` when no license is installed. See the [Management API reference](https://openapi.logto.io) for the full request and response schema.
+To check what is installed, send `GET /api/systems/license`. It returns the plan, environment, entitlements, expiration, and refresh status of the license, and the [usage](#usage-limits) of your deployment with any limits it exceeds. It never returns the key itself, and returns `404` when no license is installed. See the [Management API reference](https://openapi.logto.io) for the full request and response schema.
 
 ### Multiple instances \{#multiple-instances}
 
@@ -89,8 +89,91 @@ A refresh request contains only:
 - Your license key, which identifies the license by its `licenseId`.
 - A `deploymentId`: a random identifier generated when you first install a license. It is stored in your database, shared by every instance using that database, and never changes, including when you replace the license.
 - The Logto version.
+- The usage counts of your deployment, unless you [turn off usage reporting](#turn-off-usage-reporting).
 
-Logto does not collect user counts, hostnames, domains, or configuration. This data is kept for reference, for example when you renew, and it is not shown or evaluated in the product. The behavior is open source, see [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts).
+The usage counts are totals across all tenants except the admin tenant, which hosts Console itself. Months are UTC calendar months:
+
+| Field                                                              | Description                                                                                           |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `month`                                                            | The current month, as `YYYY-MM`.                                                                      |
+| `mau.lastMonth`, `mau.monthToDate`                                 | [Monthly active users](#how-usage-is-counted) in the last full month and in the current month so far. |
+| `monthlyAccessTokens.lastMonth`, `monthlyAccessTokens.monthToDate` | [Access tokens issued](#how-usage-is-counted) in the last full month and in the current month so far. |
+| `tenants`                                                          | The number of tenants.                                                                                |
+
+Usage counts contain no personal data or records of individual users. Logto does not collect hostnames, domains, configuration, or any other data from your instance. Logto uses this data to keep your license current, to compare your usage with the [usage limits](#usage-limits) of your plan, to count your active production deployments, and to provide support. See section 10.2 of the [Self-hosted Subscription Terms](https://logto.io/terms/self-hosted).
+
+The behavior is open source, see [`LicenseReader.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/LicenseReader.ts) and [`usage.ts`](https://github.com/logto-io/logto/blob/master/packages/core/src/license/usage.ts).
+
+### Turn off usage reporting \{#turn-off-usage-reporting}
+
+Usage reporting is on by default. To turn it off, set this environment variable on **every** Logto instance that shares your database, then restart them:
+
+```bash
+SELF_HOSTED_LICENSE_USAGE_REPORTING_DISABLED=1
+```
+
+Any instance can run the weekly refresh, and the instance that runs it decides whether usage counts are sent. If one instance does not have the variable, your usage can still be reported. There is no setting in Console or the Management API for this. To check the current state, look at `usageReportingEnabled` in the response of `GET /api/systems/license`.
+
+When usage reporting is off:
+
+- The refresh still runs and still sends your license key, `deploymentId`, and Logto version, so your deployment is still counted as a [production deployment](#how-usage-is-counted).
+- Your instance still compares its usage with the limits of your license, and Console still [warns you](#when-a-limit-is-exceeded) when a limit is exceeded.
+- Your obligations under section 4 of the [Self-hosted Subscription Terms](https://logto.io/terms/self-hosted) stay the same.
+
+## Usage limits \{#usage-limits}
+
+Your license key carries the usage limits of your plan. Unlike the features a license unlocks, these limits are never enforced: exceeding one does not block sign-in, turn off features, or stop you from creating anything. Logto shows a warning instead.
+
+The limits depend on which key is installed:
+
+| Metric                 | Production key                                                      | Non-production key |
+| ---------------------- | ------------------------------------------------------------------- | ------------------ |
+| Monthly active users   | 50,000 for Self-hosted Pro. Self-hosted Enterprise: per order form. | Reported only      |
+| Production deployments | 1                                                                   | Not applicable     |
+| Monthly access tokens  | Reported only                                                       | 50,000             |
+| Tenants                | Reported only                                                       | Reported only      |
+
+If your order form states other limits, your keys carry those limits instead. The non-production limit of 50,000 access tokens is the same as the limit for Logto Cloud development tenants, and tells a non-production deployment apart from one that serves production traffic.
+
+### How usage is counted \{#how-usage-is-counted}
+
+Monthly active users and access tokens are counted from your own database, across all tenants except the admin tenant, in UTC calendar months:
+
+- **Monthly active users (MAU)**: the number of unique users that are issued an access token at least once in the month.
+- **Monthly access tokens**: the number of access tokens issued in the month, both for users and for machine-to-machine apps. Exchanging a refresh token for a new access token also counts. See [the connection between token consumption and MAU](/logto-cloud/billing-and-pricing#what-is-the-connection-between-token-consumption-and-mau).
+- **Production deployments**: counted by Logto Cloud. It is the number of deployments with a production key, each identified by its `deploymentId`, that refreshed the license in the last 15 days. Instances that share one database are one deployment. Your instance refreshes weekly, so one missed refresh does not drop a deployment from the count. A deployment you have shut down stops counting 15 days after its last refresh.
+
+A metric exceeds its limit when the larger of its last full month and its current month so far is above the limit. The count of the current month only grows, so a warning can appear before the month ends and is never a false alarm.
+
+Your instance checks monthly active users and access tokens itself, so these warnings work offline and with usage reporting turned off. Only Logto Cloud can count production deployments, so that warning arrives with the next refresh.
+
+### When a limit is exceeded \{#when-a-limit-is-exceeded}
+
+Console shows a banner on every page that names each exceeded metric with its value and limit. You can dismiss the banner, and it comes back after 7 days if the limit is still exceeded.
+
+Nothing is blocked. Under section 4.2 of the [Self-hosted Subscription Terms](https://logto.io/terms/self-hosted), contact Logto and, within 30 days, either upgrade to a Self-hosted Enterprise subscription that covers your usage, or reduce your usage to within the limits. Self-hosted Pro does not offer overage pricing. A non-production deployment that exceeds 50,000 access tokens a month may be treated as serving production traffic (section 3.2).
+
+### Get a usage statement \{#get-a-usage-statement}
+
+Logto may ask you for a statement of your usage, at most once per subscription term (section 4.3 of the [Self-hosted Subscription Terms](https://logto.io/terms/self-hosted)). Your instance can prepare the usage part from its own records. Send `GET /api/systems/license/usage-statement` with an access token for the [Logto Management API](/integrate-logto/interact-with-management-api):
+
+```bash
+curl 'https://your-logto-endpoint/api/systems/license/usage-statement' \
+  -H 'Authorization: Bearer <access_token>'
+```
+
+The response lists the monthly active users and access tokens of each of the last 12 full UTC calendar months, oldest first, across all tenants except the admin tenant. A month without usage counts as zero. This example is shortened to two months:
+
+```json
+{
+  "months": [
+    { "month": "2025-11", "mau": 18234, "monthlyAccessTokens": 412907 },
+    { "month": "2025-12", "mau": 19012, "monthlyAccessTokens": 430118 }
+  ]
+}
+```
+
+The statement is read from your database, so it also works offline and with usage reporting turned off. The request returns `404` when no license is installed. Add the number of deployments your subscription covers, then send the statement to Logto.
 
 ## License expiration \{#license-expiration}
 
