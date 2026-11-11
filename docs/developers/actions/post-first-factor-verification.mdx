@@ -71,7 +71,6 @@ type ActionMfaVerification =
       credentialId: string;
       publicKey: string;
       counter: number;
-      rpId?: string;
       transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
       agent?: string;
       name?: string;
@@ -107,13 +106,21 @@ Return `undefined` when the legacy system rejects the credentials. An empty, mal
 
 ### Migrate MFA factors \{#migrate-mfa-factors\}
 
-Include `mfaVerifications` to carry over the user's existing MFA factors with the password. Logto adds the factors to the user's existing factors and enables MFA for the account. It also sets the user's `skipMfaOnSignIn` setting to `false`, so the same sign-in is challenged for one of the migrated factors when MFA is required. The factor type must be enabled in the sign-in experience's MFA settings to be challenged.
+Include `mfaVerifications` to carry over the user's existing MFA factors with the password. Logto adds the factors to the user's existing factors and enables MFA for the account, so the same sign-in is challenged for one of the migrated factors when MFA is required. The factor type must be enabled in the sign-in experience's MFA settings to be challenged. A `skipMfaOnSignIn` setting that the user or an admin already set on the account is kept.
 
-- **TOTP** — `{ type: 'Totp', secret }`. `secret` must be a valid Base32 TOTP secret. A user can have only one TOTP factor.
-- **Backup codes** — `{ type: 'BackupCode', codes }`. `codes` must contain 10 codes, each 10 characters from `0-9` and `a-f`. Backup codes cannot be the only factor: the user must already have another factor, or receive one in the same result. Migrated codes are stored as unused, so do not migrate a backup code factor that already has used codes; let the user generate a new set after signing in.
-- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, rpId?, transports?, agent?, name? }`. `credentialId` and `publicKey` are unpadded Base64URL strings; `publicKey` is the credential public key. Pass the original `rpId` when the credential was registered for a domain that still matches, such as a custom domain you moved to Logto. Without `rpId`, Logto uses the current hostname.
+- **TOTP** — `{ type: 'Totp', secret }`. `secret` is a Base32 TOTP secret. Logto removes whitespace, converts it to uppercase, and adds Base32 padding before validating it; the result must be 16 to 32 characters long. A user can have only one TOTP factor.
+- **Backup codes** — `{ type: 'BackupCode', codes }`. `codes` must contain 1 to 10 codes, each 10 characters from `0-9` and `a-f`. Migrated codes are stored as unused, so pass only the codes that are still unused in the legacy system. Backup codes cannot be the only factor: the user must already have another factor, or receive one in the same result.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`. `credentialId` and `publicKey` are unpadded Base64URL strings; `publicKey` is the credential public key. Only credentials registered for the domain the user signs in to Logto with can be verified, so do not migrate passkeys registered for a different domain.
 
-Conflicting factors fail the sign-in with an error instead of replacing the existing factor. This covers an existing TOTP, a backup code factor that still has unused codes, and a WebAuthn credential that is already registered. The error does not include any credential value.
+A factor identical to one the user already has is skipped: the same TOTP secret, a WebAuthn credential with the same `credentialId` and `publicKey`, or backup codes that are all already in the user's set, used or not. A previously used code stays used.
+
+A conflicting factor fails the sign-in with an error instead of replacing the existing factor. This covers a different TOTP secret when the user already has TOTP, new backup codes when the user's existing set still has unused codes, and a WebAuthn credential that is already registered to this or another user. When every existing backup code has been used, migrated codes replace the exhausted set. The error does not include any credential value.
+
+If any factor fails validation, the whole result is treated as invalid credentials and nothing is written.
+
+:::note
+A migrated WebAuthn credential can be used for MFA right away, but it cannot be used for passkey sign-in until the user completes MFA with it once. That first MFA verification records the credential's domain, which passkey sign-in needs to find it.
+:::
 
 The factors are written once. After a successful migration, later sign-ins verify the local password and this Action no longer runs for that user.
 
@@ -193,7 +200,6 @@ const toActionMfaVerifications = (legacyUser) => [
     credentialId: passkey.credentialId,
     publicKey: passkey.publicKey,
     counter: passkey.counter,
-    rpId: passkey.rpId,
   })),
 ];
 ```
