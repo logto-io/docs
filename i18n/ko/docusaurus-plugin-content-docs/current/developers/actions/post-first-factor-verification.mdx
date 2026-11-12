@@ -7,20 +7,20 @@ sidebar_position: 3
 
 # 1차 인증 후 검증 (Post first-factor verification)
 
-1차 인증 후 검증 (Post first-factor verification) 액션은 레거시 비밀번호 시스템에서 실시간 사용자 마이그레이션을 지원합니다.
+1차 인증 후 검증 (Post first-factor verification) 액션은 기존 비밀번호 시스템에서 실시간 사용자 마이그레이션을 지원합니다.
 
-이름과 달리, 이 액션은 모든 1차 인증 성공 후에 실행되지 않습니다. 다음 모든 조건이 참일 때만 실행됩니다:
+이름과 달리, 이 액션은 모든 1차 인증 성공 후에 실행되지 않습니다. 다음 모든 조건이 충족될 때만 실행됩니다:
 
-- Experience API 상호작용이 `SignIn`일 때.
+- 경험 (Experience) API 상호작용이 `SignIn`일 때.
 - 사용자가 사용자명, 이메일 주소 또는 전화번호와 비밀번호를 제출했을 때.
 - Logto의 로컬 비밀번호 검증이 실패했을 때.
 - 식별자가 기존 Logto 사용자에 속한다면, 해당 사용자가 정지 상태가 아닐 때.
 
-로컬 비밀번호가 유효하다면, Logto는 액션을 실행하지 않고 계속 진행합니다. 회원가입, 비밀번호 찾기, 비밀번호 없는 로그인, 정지된 사용자 시도는 이 액션을 트리거하지 않습니다.
+로컬 비밀번호가 유효하다면, Logto는 액션을 실행하지 않고 계속 진행합니다. 회원가입, 비밀번호 찾기, 비밀번호 없는 로그인, 정지된 사용자 시도는 트리거되지 않습니다.
 
 ## 이벤트 페이로드 \{#event-payload}
 
-`event`는 다음과 같은 형태를 가집니다:
+`event`의 형태는 다음과 같습니다:
 
 ```ts
 type PostFirstFactorVerificationEvent = {
@@ -49,24 +49,45 @@ type PostFirstFactorVerificationEvent = {
 식별자가 Logto 사용자에 속하지 않으면 `user`는 `null`입니다. 그렇지 않으면 기존 사용자의 수정 가능한 프로필 컨텍스트가 포함됩니다.
 
 :::danger
-`event.password`는 사용자가 제출한 평문 비밀번호입니다. 반드시 신뢰할 수 있는 레거시 인증 (Authentication) 엔드포인트로 HTTPS를 통해서만 전송하세요. 절대 로그로 남기거나, 저장하거나, `customData`에 넣거나, 오류에 포함하거나, 액션에서 반환하지 마세요.
+`event.password`는 사용자가 제출한 평문 비밀번호입니다. 반드시 신뢰할 수 있는 기존 인증 (Authentication) 엔드포인트로 HTTPS를 통해서만 전송하세요. 절대 로그로 남기거나, 저장하거나, `customData`에 넣거나, 오류에 포함하거나, 액션에서 반환하지 마세요.
 :::
 
 ## 결과 \{#result}
 
-레거시 시스템이 제출된 자격 증명을 검증한 후, 다음 결과 중 하나를 반환하세요:
+기존 시스템이 제출된 자격 증명을 검증한 후, 다음 결과 중 하나를 반환하세요:
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -81,11 +102,35 @@ type PostFirstFactorVerificationResult =
 
 결과가 승인되면, Logto는 제출된 비밀번호를 Argon2i로 해싱하여 사용자의 로컬 비밀번호로 저장합니다. 스크립트에서 비밀번호 해시를 생성하거나 반환해서는 안 됩니다.
 
-레거시 시스템이 자격 증명을 거부하면 `undefined`를 반환하세요. 빈 값, 잘못된 형식, 지원되지 않는 결과도 모두 잘못된 자격 증명으로 처리됩니다.
+기존 시스템이 자격 증명을 거부하면 `undefined`를 반환하세요. 빈 값, 잘못된 형식, 지원되지 않는 결과도 잘못된 자격 증명으로 처리됩니다.
+
+### MFA 요소 마이그레이션 \{#migrate-mfa-factors\}
+
+`mfaVerifications`를 포함하여 사용자의 기존 MFA 요소를 비밀번호와 함께 이전할 수 있습니다. Logto는 해당 요소를 사용자의 기존 요소에 추가하고, 계정에 MFA를 활성화합니다. 따라서 MFA가 필요한 경우 동일한 로그인에서 마이그레이션된 요소 중 하나로 도전받게 됩니다. 요소 유형은 로그인 경험의 MFA 설정에서 활성화되어 있어야 도전받을 수 있습니다. 사용자가 이미 계정에 설정한 `skipMfaOnSignIn` 설정은 그대로 유지됩니다.
+
+- **TOTP** — `{ type: 'Totp', secret }`. `secret`은 Base32 TOTP 시크릿입니다. Logto는 공백을 제거하고, 대문자로 변환하며, Base32 패딩을 추가한 후 검증합니다. 결과는 16~32자여야 합니다. 사용자는 TOTP 요소를 하나만 가질 수 있습니다.
+- **백업 코드** — `{ type: 'BackupCode', codes }`. `codes`는 1~10개의 코드여야 하며, 각 코드는 `0-9`와 `a-f`로 구성된 10자입니다. 마이그레이션된 코드는 미사용 상태로 저장되므로, 기존 시스템에서 아직 사용되지 않은 코드만 전달하세요. 백업 코드는 유일한 요소가 될 수 없습니다: 사용자는 이미 다른 요소를 가지고 있거나, 동일한 결과에서 하나를 받아야 합니다.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`. `credentialId`와 `publicKey`는 패딩 없는 Base64URL 문자열입니다. `publicKey`는 자격 증명 공개키입니다. 사용자가 Logto에 로그인하는 도메인에 등록된 자격 증명만 검증할 수 있으므로, 다른 도메인에 등록된 패스키는 마이그레이션하지 마세요.
+
+사용자가 이미 가지고 있는 요소와 동일한 요소는 건너뜁니다: 동일한 TOTP 시크릿, 동일한 `credentialId` 및 `publicKey`를 가진 WebAuthn 자격 증명, 또는 이미 사용자의 세트에 모두 포함된 백업 코드(사용 여부와 관계없이). 이전에 사용된 코드는 계속 사용된 상태로 유지됩니다.
+
+충돌하는 요소는 기존 요소를 대체하지 않고 오류로 인해 로그인을 실패시킵니다. 예를 들어, 사용자가 이미 TOTP를 가지고 있을 때 다른 TOTP 시크릿, 기존 세트에 미사용 코드가 남아 있을 때 새로운 백업 코드, 이미 이 사용자 또는 다른 사용자에게 등록된 WebAuthn 자격 증명 등이 해당됩니다. 기존 백업 코드가 모두 사용된 경우, 마이그레이션된 코드가 소진된 세트를 대체합니다. 오류에는 자격 증명 값이 포함되지 않습니다.
+
+어떤 요소라도 검증에 실패하면 전체 결과가 잘못된 자격 증명으로 처리되며 아무것도 기록되지 않습니다.
+
+:::note
+마이그레이션된 WebAuthn 자격 증명은 즉시 MFA로 사용할 수 있지만, 사용자가 한 번 MFA를 완료하기 전까지는 패스키 로그인에 사용할 수 없습니다. 최초 MFA 검증이 자격 증명의 도메인을 기록하며, 패스키 로그인이 이를 찾는 데 필요합니다.
+:::
+
+요소는 한 번만 기록됩니다. 마이그레이션이 성공하면, 이후 로그인에서는 로컬 비밀번호를 검증하며 이 액션은 해당 사용자에 대해 더 이상 실행되지 않습니다.
+
+:::danger
+`mfaVerifications`는 장기적으로 유효한 자격 증명을 포함합니다. TOTP 시크릿, 백업 코드, WebAuthn 자격 증명 데이터를 로그로 남기거나, 오류에 포함하거나, `mfaVerifications` 외의 곳에 반환하지 마세요.
+:::
 
 ## 마이그레이션 예시 \{#migration-example}
 
-`LEGACY_VERIFY_URL`과 `LEGACY_API_TOKEN`을 액션 환경 변수로 설정한 후, 아래 스크립트를 레거시 API에 맞게 수정하세요:
+`LEGACY_VERIFY_URL`과 `LEGACY_API_TOKEN`을 액션 환경 변수로 설정한 후, 다음 스크립트를 기존 API에 맞게 수정하세요:
 
 ```js
 const runAction = async ({ event, environmentVariables = {} }) => {
@@ -101,13 +146,13 @@ const runAction = async ({ event, environmentVariables = {} }) => {
     }),
   });
 
-  // 인증 거부를 일반적인 잘못된 자격 증명 결과로 처리합니다.
+  // 인증 (Authentication) 거부를 일반적인 잘못된 자격 증명 결과로 처리합니다.
   if (response.status === 401 || response.status === 404) {
     return;
   }
 
   if (!response.ok) {
-    throw new Error(`레거시 인증 (Authentication) 서비스가 ${response.status}를 반환했습니다`);
+    throw new Error(`기존 인증 (Authentication) 서비스가 ${response.status}를 반환했습니다`);
   }
 
   const legacyUser = await response.json();
@@ -130,30 +175,62 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
-최초 승인된 로그인은 다음과 같이 동작합니다:
+기존 사용자가 MFA 요소를 가지고 있다면, 이를 동일한 결과에 매핑하세요:
+
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+반환 결과에 `mfaVerifications: toActionMfaVerifications(legacyUser)`를 추가하세요. 기존 사용자가 MFA 요소가 없다면 해당 필드는 생략하세요.
+
+첫 번째로 승인된 로그인은 다음과 같이 동작합니다:
 
 1. 로컬 비밀번호 검증이 실패하여 Logto가 액션을 실행합니다.
-2. 스크립트가 식별자와 비밀번호를 레거시 시스템에 전송합니다.
-3. 레거시 시스템이 자격 증명을 검증하고, 스크립트가 `createUser` 또는 `updateUser`를 반환합니다.
-4. Logto가 사용자를 생성 또는 업데이트하고, 제출된 비밀번호를 새로운 로컬 Argon2i 자격 증명으로 저장합니다.
-5. 필요하다면 사용자가 MFA를 완료하고, Logto가 로그인을 완료합니다.
+2. 스크립트가 식별자와 비밀번호를 기존 시스템에 전송합니다.
+3. 기존 시스템이 자격 증명을 검증하고, 스크립트가 `createUser` 또는 `updateUser`를 반환합니다.
+4. Logto가 사용자를 생성 또는 업데이트하고, 제출된 비밀번호를 새로운 로컬 Argon2i 자격 증명으로 저장하며, 마이그레이션된 MFA 요소를 기록합니다.
+5. 사용자가 필요하다면 MFA(마이그레이션된 요소 포함)를 완료하고, Logto가 로그인을 완료합니다.
 6. 이후 로그인에서는 마이그레이션된 로컬 비밀번호가 성공하므로, 이 액션은 해당 사용자에 대해 더 이상 호출되지 않습니다.
 
 ## 보안 경계 \{#security-boundaries}
 
 :::warning
-이 액션에서의 사용자 및 비밀번호 쓰기는 MFA가 완료되기 전에 발생합니다. 사용자가 MFA를 포기하거나 실패해도 해당 쓰기는 남아 있습니다.
+이 액션에서의 사용자, 비밀번호, MFA 기록은 MFA가 완료되기 전에 발생합니다. 사용자가 MFA를 포기하거나 실패해도 해당 기록은 남아 있습니다.
 
-이 액션으로 생성된 사용자는 이메일 차단 목록, SSO 전용 도메인 규칙, 비활성화된 회원가입 모드, 회원가입 필수 프로필 검사 등 등록 전용 보호를 우회합니다. Sentinel 보호 및 MFA는 여전히 적용됩니다.
+이 액션으로 생성된 사용자는 이메일 차단 목록, SSO 전용 도메인 규칙, 비활성화된 회원가입 모드, 필수 프로필 등록 검사 등 회원가입 전용 보호를 우회합니다. 센티넬 보호와 MFA는 여전히 적용됩니다.
 :::
 
 다음과 같은 안전장치를 사용하세요:
 
-- 레거시 시스템이 제출된 비밀번호를 정확히 검증한 경우에만 `passwordVerified: true`를 반환하세요.
-- 가능하다면 레거시 엔드포인트를 비공개로 유지하고, 서비스 인증을 요구하며, HTTPS를 사용하고, 속도 제한을 적용하세요.
+- 기존 시스템이 제출된 비밀번호를 정확히 검증한 후에만 `passwordVerified: true`를 반환하세요.
+- 기존 엔드포인트는 가능하면 비공개로 유지하고, 서비스 인증을 요구하며, HTTPS를 사용하고, 속도 제한을 적용하세요.
 - 반환되는 사용자 패치는 최소한으로 유지하세요. 검증되지 않은 식별자나 프로필 데이터를 복사하지 마세요.
-- 미지정 사용자 생성, 기존 사용자 업데이트, 식별자 충돌, 정지된 사용자, MFA, 상위 시스템 오류, 동시 시도를 테스트하세요.
+- TOTP 시크릿, 백업 코드, WebAuthn 자격 증명 데이터를 자격 증명으로 취급하세요. 로그로 남기거나, `customData`에 넣거나, 오류에 포함하지 마세요.
+- 미지정 사용자 생성, 기존 사용자 업데이트, 식별자 충돌, 정지된 사용자, MFA 마이그레이션 및 충돌, 상위 시스템 오류, 동시 시도 등을 테스트하세요.
 - [감사 로그](/developers/audit-logs/event-types)에서 `Action.PostFirstFactorVerification`을 모니터링하세요.
 - 가능하다면 마이그레이션 기간 동안에만 액션을 활성화하세요.
 
-사전에 사용자 데이터와 호환 가능한 비밀번호 해시를 내보낼 수 있다면, [대량 사용자 마이그레이션](/user-management/user-migration)을 고려하세요.
+사용자 데이터와 호환 가능한 비밀번호 해시를 미리 내보낼 수 있다면, [대량 사용자 마이그레이션](/user-management/user-migration)을 고려하세요.

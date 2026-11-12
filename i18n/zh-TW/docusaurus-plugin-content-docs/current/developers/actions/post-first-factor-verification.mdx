@@ -9,9 +9,9 @@ sidebar_position: 3
 
 首次驗證後動作 (Post first-factor verification Action) 支援從舊有密碼系統即時遷移使用者。
 
-儘管名稱如此，此動作並非在每次成功的首次驗證後執行。僅當以下所有條件皆成立時才會執行：
+儘管名稱如此，此動作並非在每次成功的首次驗證後執行，僅在以下所有條件成立時才會執行：
 
-- 使用的是使用體驗 (Experience API) 的 `SignIn` 互動。
+- 使用者體驗 API (Experience API) 互動為 `SignIn`。
 - 使用者提交了使用者名稱、電子郵件地址或電話號碼搭配密碼。
 - Logto 的本地密碼驗證失敗。
 - 若該識別碼屬於現有 Logto 使用者，該使用者未被停用。
@@ -24,7 +24,7 @@ sidebar_position: 3
 
 ```ts
 type PostFirstFactorVerificationEvent = {
-  // 功能更名為 Actions 後，為相容性保留。
+  // 功能更名為 Actions 後，為向下相容而保留。
   key: 'inlineHook.postFirstFactorVerification';
   interactionEvent: 'SignIn';
   verificationType: 'Password';
@@ -46,10 +46,10 @@ type PostFirstFactorVerificationEvent = {
 };
 ```
 
-當識別碼不屬於 Logto 使用者時，`user` 為 `null`。否則，則包含現有使用者可編輯的個人資料內容。
+當識別碼不屬於任何 Logto 使用者時，`user` 為 `null`。否則，則包含現有使用者可編輯的個人資料內容。
 
 :::danger
-`event.password` 為使用者提交的明文密碼。僅能透過 HTTPS 傳送至你信任的舊有驗證端點。切勿記錄、儲存、放入 `customData`、包含於錯誤訊息或從 Action 回傳。
+`event.password` 為使用者提交的明文密碼。僅能透過 HTTPS 傳送至你信任的舊有驗證 (Authentication) 端點。切勿記錄、儲存、放入 `customData`、包含於錯誤訊息或從 Action 返回此密碼。
 :::
 
 ## 結果 \{#result}
@@ -57,16 +57,37 @@ type PostFirstFactorVerificationEvent = {
 舊有系統驗證提交的憑證後，請回傳下列其中一種結果：
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -77,11 +98,35 @@ type PostFirstFactorVerificationResult =
 - `passwordVerified` 必須為字面值 `true`。
 - `user` 僅能包含[支援的使用者 patch 欄位](/developers/actions/configure-and-test-actions#supported-user-patch)。
 
-對於新使用者，若結果未包含，Logto 會自動加入提交的登入識別碼。Action 無法將提交的識別碼更改為其他值。電子郵件比對不區分大小寫，電話號碼會正規化後比對，使用者名稱必須完全相符。
+對於新使用者，若結果未包含提交的登入識別碼，Logto 會自動加入。此動作無法將提交的識別碼更改為其他值。電子郵件比對不區分大小寫，電話號碼會正規化後比對，使用者名稱必須完全相符。
 
-當結果被接受時，Logto 會以 Argon2i 雜湊提交的密碼並儲存為使用者本地密碼。腳本不應產生或回傳密碼雜湊值。
+當結果被接受時，Logto 會以 Argon2i 雜湊提交的密碼並儲存為該使用者的本地密碼。腳本不應產生或回傳密碼雜湊值。
 
-當舊有系統拒絕憑證時，請回傳 `undefined`。空值、格式錯誤或不支援的結果也會被視為無效憑證。
+當舊有系統拒絕憑證時，回傳 `undefined`。空值、格式錯誤或不支援的結果也會被視為無效憑證。
+
+### 遷移 MFA 因子 \{#migrate-mfa-factors\}
+
+若要連同密碼一併遷移使用者現有的 MFA 因子，請加入 `mfaVerifications`。Logto 會將這些因子加入使用者現有因子並啟用 MFA，因此當需要 MFA 時，該次登入會要求其中一個遷移過來的因子。因子類型必須已在登入體驗的 MFA 設定中啟用才會被要求。若使用者或管理員已在帳號上設定 `skipMfaOnSignIn`，該設定會被保留。
+
+- **TOTP** — `{ type: 'Totp', secret }`。`secret` 為 Base32 TOTP 密鑰。Logto 會移除空白、轉為大寫並補齊 Base32 padding 後驗證，結果長度需為 16 至 32 字元。每位使用者僅能有一組 TOTP 因子。
+- **備用代碼 (Backup codes)** — `{ type: 'BackupCode', codes }`。`codes` 必須包含 1 至 10 組，每組為 10 位 `0-9` 與 `a-f` 字元。遷移的代碼會被標記為未使用，僅傳遞尚未在舊系統中使用的代碼。備用代碼不能是唯一因子：使用者必須已有其他因子，或於同一結果中獲得一個。
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`。`credentialId` 與 `publicKey` 為未補齊的 Base64URL 字串；`publicKey` 為憑證公鑰。僅能驗證註冊於使用者登入 Logto 時所用網域的憑證，因此請勿遷移註冊於其他網域的 passkey。
+
+與使用者現有因子完全相同的因子會被略過：如相同的 TOTP 密鑰、相同 `credentialId` 與 `publicKey` 的 WebAuthn 憑證，或所有備用代碼皆已存在於使用者組合中（無論是否已用過）。已用過的代碼會維持為已用狀態。
+
+有衝突的因子會導致登入失敗並出現錯誤，而非取代現有因子。這包括：當使用者已有 TOTP 時提供不同的 TOTP 密鑰、當現有備用代碼組合仍有未用代碼時提供新備用代碼，以及已註冊於此或其他使用者的 WebAuthn 憑證。當所有現有備用代碼皆已用盡時，遷移的代碼會取代已用盡的組合。錯誤訊息不會包含任何憑證值。
+
+若任何因子驗證失敗，整個結果會被視為無效憑證，且不會寫入任何資料。
+
+:::note
+遷移的 WebAuthn 憑證可立即用於 MFA，但在使用者首次以該憑證完成 MFA 前，無法用於 passkey 登入。首次 MFA 驗證會記錄憑證網域，passkey 登入需此資訊才能找到憑證。
+:::
+
+因子僅會寫入一次。成功遷移後，後續登入會驗證本地密碼，此動作將不再對該使用者執行。
+
+:::danger
+`mfaVerifications` 內含長效憑證。切勿記錄 TOTP 密鑰、備用代碼或 WebAuthn 憑證資料，也不要將它們包含於錯誤訊息或除 `mfaVerifications` 外的任何地方。
+:::
 
 ## 遷移範例 \{#migration-example}
 
@@ -101,13 +146,13 @@ const runAction = async ({ event, environmentVariables = {} }) => {
     }),
   });
 
-  // 將驗證失敗視為一般無效憑證結果。
+  // 將驗證 (Authentication) 拒絕視為一般無效憑證結果。
   if (response.status === 401 || response.status === 404) {
     return;
   }
 
   if (!response.ok) {
-    throw new Error(`舊有驗證服務回傳 ${response.status}`);
+    throw new Error(`舊有驗證 (Authentication) 服務回傳 ${response.status}`);
   }
 
   const legacyUser = await response.json();
@@ -130,30 +175,62 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
-首次成功登入的流程如下：
+若舊有使用者有 MFA 因子，請將其映射至相同結果：
 
-1. 本地密碼驗證失敗，因此 Logto 執行此動作。
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+將 `mfaVerifications: toActionMfaVerifications(legacyUser)` 加入回傳結果。若舊有使用者無 MFA 因子則省略此欄位。
+
+首次成功登入流程如下：
+
+1. 本地密碼驗證失敗，Logto 執行此動作。
 2. 腳本將識別碼與密碼傳送至舊有系統。
 3. 舊有系統驗證憑證，腳本回傳 `createUser` 或 `updateUser`。
-4. Logto 建立或更新使用者，並將提交的密碼儲存為新的本地 Argon2i 憑證。
-5. 若需要，使用者完成多重要素驗證 (MFA)，Logto 完成登入。
-6. 之後再次登入時，已遷移的本地密碼驗證通過，因此該使用者不再執行此動作。
+4. Logto 建立或更新使用者，將提交的密碼儲存為新的本地 Argon2i 憑證，並寫入任何遷移的 MFA 因子。
+5. 若需要，使用者完成 MFA（包含遷移的因子），Logto 完成登入。
+6. 後續登入時，已遷移的本地密碼驗證通過，此動作不再對該使用者執行。
 
 ## 安全邊界 \{#security-boundaries}
 
 :::warning
-此動作寫入使用者與密碼時，MFA 尚未完成。若使用者放棄或未通過 MFA，這些寫入仍會保留。
+此動作寫入的使用者、密碼與 MFA 資料會在 MFA 完成前即生效。若使用者放棄或未通過 MFA，這些寫入仍會保留。
 
-此動作建立的使用者也會略過僅限註冊的防護措施，包括電子郵件黑名單、僅限 SSO 網域規則、停用註冊模式與註冊必填欄位檢查。哨兵防護與 MFA 仍然適用。
+此動作建立的使用者也會繞過僅限註冊的防護措施，包括電子郵件黑名單、僅允許 SSO 的網域規則、停用註冊模式及註冊強制填寫個人資料檢查。哨兵保護與 MFA 仍然適用。
 :::
 
 請採取以下防護措施：
 
-- 僅在舊有系統明確驗證提交密碼後，回傳 `passwordVerified: true`。
+- 僅在舊有系統明確驗證提交密碼後回傳 `passwordVerified: true`。
 - 儘可能將舊有端點設為私有，要求服務驗證、使用 HTTPS 並實施速率限制。
 - 回傳的使用者 patch 請保持最小化。勿複製未驗證的識別碼或個人資料。
-- 測試未知使用者建立、現有使用者更新、識別碼衝突、停用使用者、多重要素驗證 (MFA)、上游失敗與並發嘗試。
-- 監控 [稽核日誌](/developers/audit-logs/event-types)中的 `Action.PostFirstFactorVerification`。
+- 將 TOTP 密鑰、備用代碼與 WebAuthn 憑證資料視為憑證。切勿記錄、放入 `customData` 或包含於錯誤訊息。
+- 測試未知使用者建立、現有使用者更新、識別碼衝突、停用使用者、MFA 遷移與衝突、上游失敗及並發嘗試。
+- 監控 [稽核日誌](/developers/audit-logs/event-types) 中的 `Action.PostFirstFactorVerification`。
 - 實際遷移期間才啟用此動作。
 
 若你能事先匯出使用者資料與相容的密碼雜湊，建議改用[批次使用者遷移](/user-management/user-migration)。
