@@ -49,6 +49,56 @@ You can use the Account API to build custom account management interfaces where 
 
 For detailed implementation steps and API endpoints, see [Account settings by Account API](/end-user-flows/account-settings/by-account-api#link-a-new-webauthn-passkey).
 
+## Export passkeys \{#export-passkeys}
+
+You can export the WebAuthn credentials Logto stores for a user with the [Management API](/integrate-logto/interact-with-management-api). Use the export to move passkeys to another system that serves WebAuthn on the same domain, so users can keep signing in with their existing passkeys.
+
+Call [`GET /api/users/{userId}/mfa-verifications`](https://openapi.logto.io/operation/operation-listusermfaverifications) with the `includeWebAuthnCredentials` query parameter set to `true`:
+
+```bash
+curl "https://[tenant-id].logto.app/api/users/{userId}/mfa-verifications?includeWebAuthnCredentials=true" \
+  -H 'authorization: Bearer <management-api-access-token>'
+```
+
+Each WebAuthn entry in the response includes the stored credential:
+
+```json
+[
+  {
+    "id": "wv9m3k2x7p1q",
+    "createdAt": "2026-10-12T08:31:24.000Z",
+    "lastUsedAt": "2026-11-02T06:15:09.000Z",
+    "type": "WebAuthn",
+    "agent": "Mozilla/5.0 (Macintosh) ...",
+    "name": "MacBook",
+    "rpId": "auth.example.com",
+    "credentialId": "Ab3dY0n9Kq2LwX8mR4sT1uV6zE",
+    "publicKey": "pQECAyYgASFYIOrE5x...",
+    "counter": 0,
+    "transports": ["internal", "hybrid"]
+  }
+]
+```
+
+| Field          | Description                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------- |
+| `credentialId` | The WebAuthn credential ID, base64url-encoded.                                                          |
+| `publicKey`    | The credential public key in COSE format, base64url-encoded.                                            |
+| `counter`      | The last signature counter (`signCount`) Logto saw for the credential. Many passkeys always report `0`. |
+| `transports`   | The transports the authenticator reported at registration, such as `internal`, `hybrid`, or `usb`.      |
+| `rpId`         | The relying party ID (domain) the credential was registered for.                                        |
+| `createdAt`    | When the credential was registered.                                                                     |
+| `lastUsedAt`   | When the credential was last used to verify the user.                                                   |
+
+Without `includeWebAuthnCredentials`, the response omits `credentialId`, `publicKey`, `counter`, `transports`, and `rpId`. Other MFA factors are returned unchanged. The parameter also works with read-only Management API access, because a credential ID and public key cannot be used to sign in.
+
+When you import the credentials into another system:
+
+- **Keep the same domain.** A passkey only works on the relying party ID it was registered for. The other system must use the exported `rpId` as its WebAuthn relying party ID, which means serving sign-in on that domain, such as your [custom domain](/logto-cloud/custom-domain).
+- **Handle credentials without `rpId`.** Credentials registered before Logto started recording the relying party ID, and not used since, have no `rpId`. They are bound to the domain that served the sign-in page when they were registered, which may not be your current custom domain.
+- **Map the user handle.** Logto registers the UTF-8 bytes of the Logto user ID as the WebAuthn `userHandle`. For passkey sign-in, the authenticator returns this value, so the other system must map it to the migrated user.
+- **Keep the counter.** Store `counter` as the credential's current signature counter, so the other system can continue to detect cloned authenticators.
+
 ## Passkey setup flows \{#passkey-setup-flows}
 
 The Passkeys specification requires users to actively click the button on the current page to initiate the authentication component. This means that in both the setup and verification flows, users should be redirected to the landing page to initiate WebAuthn.
