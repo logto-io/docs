@@ -11,7 +11,7 @@ L’Action de vérification après le premier facteur prend en charge la migrati
 
 Malgré son nom, cette Action ne s’exécute pas après chaque premier facteur réussi. Elle ne s’exécute que lorsque toutes les conditions suivantes sont réunies :
 
-- L’interaction de l’Experience API est `SignIn`.
+- L’interaction Experience API est `SignIn`.
 - L’utilisateur a soumis un nom d’utilisateur, une adresse e-mail ou un numéro de téléphone avec un mot de passe.
 - La vérification du mot de passe local de Logto a échoué.
 - Si l’identifiant appartient à un utilisateur Logto existant, cet utilisateur n’est pas suspendu.
@@ -24,7 +24,7 @@ L’objet `event` a cette forme :
 
 ```ts
 type PostFirstFactorVerificationEvent = {
-  // Conservé pour la compatibilité ascendante après le renommage de la fonctionnalité en Actions.
+  // Conservé pour la compatibilité après le renommage de la fonctionnalité en Actions.
   key: 'inlineHook.postFirstFactorVerification';
   interactionEvent: 'SignIn';
   verificationType: 'Password';
@@ -46,7 +46,7 @@ type PostFirstFactorVerificationEvent = {
 };
 ```
 
-`user` est `null` lorsque l’identifiant ne correspond à aucun utilisateur Logto. Sinon, il contient le contexte de profil modifiable de l’utilisateur existant.
+`user` vaut `null` lorsque l’identifiant ne correspond à aucun utilisateur Logto. Sinon, il contient le contexte éditable du profil de l’utilisateur existant.
 
 :::danger
 `event.password` est le mot de passe en clair soumis par l’utilisateur. Envoyez-le uniquement à votre point de terminaison d’authentification héritée de confiance via HTTPS. Ne le journalisez jamais, ne le stockez pas, ne le placez pas dans `customData`, ne l’incluez pas dans une erreur, et ne le retournez pas depuis l’Action.
@@ -54,19 +54,40 @@ type PostFirstFactorVerificationEvent = {
 
 ## Résultat \{#result}
 
-Après que le système hérité a vérifié les identifiants soumis, retournez l’un des résultats suivants :
+Après que le système hérité a vérifié les identifiants soumis, retournez l’un de ces résultats :
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -82,6 +103,30 @@ Pour un nouvel utilisateur, Logto ajoute l’identifiant de connexion soumis si 
 Lorsque le résultat est accepté, Logto hache le mot de passe soumis avec Argon2i et l’enregistre comme mot de passe local de l’utilisateur. Le script ne doit pas générer ni retourner de hachage de mot de passe.
 
 Retournez `undefined` lorsque le système hérité rejette les identifiants. Un résultat vide, mal formé ou non pris en charge est également traité comme des identifiants invalides.
+
+### Migrer les facteurs MFA \{#migrate-mfa-factors\}
+
+Incluez `mfaVerifications` pour transférer les facteurs MFA existants de l’utilisateur avec le mot de passe. Logto ajoute les facteurs aux facteurs existants de l’utilisateur et active la MFA pour le compte, de sorte que la même connexion soit soumise à l’un des facteurs migrés lorsque la MFA est requise. Le type de facteur doit être activé dans les paramètres MFA de l’expérience de connexion pour être sollicité. Un paramètre `skipMfaOnSignIn` déjà défini par l’utilisateur ou un administrateur sur le compte est conservé.
+
+- **TOTP** — `{ type: 'Totp', secret }`. `secret` est une clé TOTP en Base32. Logto supprime les espaces, la convertit en majuscules et ajoute le padding Base32 avant de la valider ; le résultat doit faire entre 16 et 32 caractères. Un utilisateur ne peut avoir qu’un seul facteur TOTP.
+- **Codes de secours** — `{ type: 'BackupCode', codes }`. `codes` doit contenir de 1 à 10 codes, chacun de 10 caractères parmi `0-9` et `a-f`. Les codes migrés sont stockés comme non utilisés, donc ne transmettez que les codes encore inutilisés dans le système hérité. Les codes de secours ne peuvent pas être le seul facteur : l’utilisateur doit déjà avoir un autre facteur, ou en recevoir un dans le même résultat.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`. `credentialId` et `publicKey` sont des chaînes Base64URL non paddées ; `publicKey` est la clé publique de l’identifiant. Seuls les identifiants enregistrés pour le domaine sur lequel l’utilisateur se connecte à Logto peuvent être vérifiés, donc ne migrez pas de passkeys enregistrées pour un autre domaine.
+
+Un facteur identique à un déjà présent chez l’utilisateur est ignoré : même secret TOTP, identifiant WebAuthn avec le même `credentialId` et `publicKey`, ou codes de secours déjà tous présents dans l’ensemble de l’utilisateur, utilisés ou non. Un code déjà utilisé reste utilisé.
+
+Un facteur en conflit fait échouer la connexion avec une erreur au lieu de remplacer le facteur existant. Cela concerne un secret TOTP différent alors que l’utilisateur a déjà TOTP, de nouveaux codes de secours alors que l’ensemble existant contient encore des codes inutilisés, et un identifiant WebAuthn déjà enregistré pour cet utilisateur ou un autre. Lorsque tous les codes de secours existants ont été utilisés, les codes migrés remplacent l’ensemble épuisé. L’erreur n’inclut aucune valeur d’identifiant.
+
+Si un facteur échoue à la validation, l’ensemble du résultat est traité comme des identifiants invalides et rien n’est écrit.
+
+:::note
+Un identifiant WebAuthn migré peut être utilisé pour la MFA immédiatement, mais il ne peut pas être utilisé pour la connexion par passkey tant que l’utilisateur n’a pas effectué une MFA avec lui au moins une fois. Cette première vérification MFA enregistre le domaine de l’identifiant, ce dont la connexion par passkey a besoin pour le retrouver.
+:::
+
+Les facteurs sont écrits une seule fois. Après une migration réussie, les connexions ultérieures vérifient le mot de passe local et cette Action ne s’exécute plus pour cet utilisateur.
+
+:::danger
+`mfaVerifications` transporte des identifiants à longue durée de vie. Ne journalisez pas le secret TOTP, les codes de secours ou les données d’identifiant WebAuthn, ne les incluez pas dans une erreur, et ne les retournez nulle part ailleurs que dans `mfaVerifications`.
+:::
 
 ## Exemple de migration \{#migration-example}
 
@@ -130,19 +175,50 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
+Si l’utilisateur hérité possède des facteurs MFA, mappez-les dans le même résultat :
+
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+Ajoutez `mfaVerifications: toActionMfaVerifications(legacyUser)` au résultat retourné. Omettez le champ si l’utilisateur hérité n’a pas de facteurs MFA.
+
 La première connexion acceptée fonctionne comme suit :
 
 1. La vérification du mot de passe local échoue, donc Logto exécute l’Action.
 2. Le script envoie l’identifiant et le mot de passe au système hérité.
 3. Le système hérité vérifie les identifiants et le script retourne `createUser` ou `updateUser`.
-4. Logto crée ou met à jour l’utilisateur et enregistre le mot de passe soumis comme nouveau justificatif Argon2i local.
-5. L’utilisateur effectue la MFA si nécessaire, et Logto termine la connexion.
-6. Lors des connexions ultérieures, le mot de passe local migré fonctionne, donc cette Action n’est plus appelée pour cet utilisateur.
+4. Logto crée ou met à jour l’utilisateur, stocke le mot de passe soumis comme nouvel identifiant Argon2i local, et écrit les facteurs MFA migrés.
+5. L’utilisateur effectue la MFA si nécessaire, y compris avec un facteur migré, et Logto termine la connexion.
+6. Lors des connexions ultérieures, le mot de passe local migré réussit, donc cette Action n’est plus appelée pour cet utilisateur.
 
-## Limites de sécurité \{#security-boundaries}
+## Périmètres de sécurité \{#security-boundaries}
 
 :::warning
-Les écritures utilisateur et mot de passe issues de cette Action ont lieu avant la fin de la MFA. Si l’utilisateur abandonne ou échoue la MFA, ces écritures restent.
+Les écritures utilisateur, mot de passe et MFA issues de cette Action ont lieu avant la fin de la MFA. Si l’utilisateur abandonne ou échoue la MFA, ces écritures restent.
 
 Un utilisateur créé par cette Action contourne également les gardes réservés à l’inscription, y compris les listes de blocage d’e-mails, les règles de domaine SSO uniquement, le mode d’inscription désactivé et les vérifications de profil obligatoires à l’inscription. La protection Sentinel et la MFA s’appliquent toujours.
 :::
@@ -151,9 +227,10 @@ Utilisez ces mesures de sécurité :
 
 - Retournez `passwordVerified: true` uniquement après que le système hérité a vérifié positivement le mot de passe soumis exact.
 - Gardez le point de terminaison hérité privé si possible, exigez une authentification de service, utilisez HTTPS et appliquez une limitation de débit.
-- Gardez la modification utilisateur retournée minimale. Ne copiez pas d’identifiants ou de données de profil non validés.
-- Testez la création d’utilisateur inconnu, la mise à jour d’utilisateur existant, les collisions d’identifiants, les utilisateurs suspendus, la MFA, les échecs en amont et les tentatives concurrentes.
+- Gardez le patch utilisateur retourné minimal. Ne copiez pas d’identifiants ou de données de profil non validés.
+- Considérez les secrets TOTP, les codes de secours et les données d’identifiant WebAuthn comme des identifiants. Ne les journalisez pas, ne les placez pas dans `customData`, et ne les incluez pas dans les erreurs.
+- Testez la création d’utilisateur inconnu, la mise à jour d’utilisateur existant, les collisions d’identifiants, les utilisateurs suspendus, la migration et les conflits MFA, les échecs en amont et les tentatives concurrentes.
 - Surveillez `Action.PostFirstFactorVerification` dans les [journaux d’audit](/developers/audit-logs/event-types).
-- Gardez l’Action activée uniquement pendant la durée de la migration lorsque cela est possible.
+- Laissez l’Action activée uniquement pendant la durée de la migration lorsque cela est possible.
 
-Si vous pouvez exporter les données utilisateur et les hachages de mot de passe compatibles à l’avance, envisagez plutôt la [migration utilisateur en masse](/user-management/user-migration).
+Si vous pouvez exporter les données utilisateur et des hachages de mot de passe compatibles à l’avance, envisagez plutôt la [migration utilisateur en masse](/user-management/user-migration).

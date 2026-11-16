@@ -1,15 +1,15 @@
 ---
 id: post-first-factor-verification
-title: Verificação pós primeiro fator
-sidebar_label: Verificação pós primeiro fator
+title: Verificação pós-primeiro fator (Post first-factor verification)
+sidebar_label: Verificação pós-primeiro fator (Post first-factor verification)
 sidebar_position: 3
 ---
 
-# Verificação pós primeiro fator
+# Verificação pós-primeiro fator (Post first-factor verification)
 
-A Ação de verificação pós primeiro fator oferece suporte à migração de usuários just-in-time de um sistema de senha legado.
+A Ação de verificação pós-primeiro fator oferece suporte à migração de usuários just-in-time de um sistema de senha legado.
 
-Apesar do nome, esta Ação não é executada após todo primeiro fator bem-sucedido. Ela só é executada quando todas as seguintes condições são verdadeiras:
+Apesar do nome, esta Ação não é executada após todo primeiro fator bem-sucedido. Ela só é executada quando todas as condições a seguir são verdadeiras:
 
 - A interação da Experience API é `SignIn`.
 - O usuário enviou um nome de usuário, endereço de e-mail ou número de telefone com uma senha.
@@ -46,10 +46,10 @@ type PostFirstFactorVerificationEvent = {
 };
 ```
 
-`user` é `null` quando o identificador não pertence a um usuário Logto. Caso contrário, contém o contexto editável do perfil do usuário existente.
+`user` é `null` quando o identificador não pertence a um usuário Logto. Caso contrário, contém o contexto de perfil editável do usuário existente.
 
 :::danger
-`event.password` é a senha em texto puro enviada pelo usuário. Envie-a apenas para o seu endpoint de autenticação legado confiável via HTTPS. Nunca registre, armazene, coloque em `customData`, inclua em um erro ou retorne da Ação.
+`event.password` é a senha em texto puro enviada pelo usuário. Envie-a apenas para seu endpoint de autenticação legado confiável via HTTPS. Nunca registre, armazene, coloque em `customData`, inclua em um erro ou retorne da Ação.
 :::
 
 ## Resultado \{#result}
@@ -57,16 +57,37 @@ type PostFirstFactorVerificationEvent = {
 Após o sistema legado verificar as credenciais enviadas, retorne um destes resultados:
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -75,17 +96,41 @@ O resultado deve corresponder ao evento:
 - Quando `event.user` é `null`, retorne `createUser`.
 - Quando `event.user` está presente, retorne `updateUser`.
 - `passwordVerified` deve ser literalmente `true`.
-- `user` pode conter apenas os [campos suportados de patch de usuário](/developers/actions/configure-and-test-actions#supported-user-patch).
+- `user` pode conter apenas os [campos de patch de usuário suportados](/developers/actions/configure-and-test-actions#supported-user-patch).
 
-Para um novo usuário, o Logto adiciona o identificador de login enviado quando o resultado não o inclui. A Ação não pode alterar o identificador enviado para outro valor. A comparação de e-mails é case-insensitive, números de telefone são comparados após normalização e nomes de usuário devem coincidir exatamente.
+Para um novo usuário, o Logto adiciona o identificador de login enviado quando o resultado não o inclui. A Ação não pode alterar o identificador enviado para outro valor. A comparação de e-mail é case-insensitive, números de telefone são comparados após normalização e nomes de usuário devem coincidir exatamente.
 
-Quando o resultado é aceito, o Logto faz o hash da senha enviada com Argon2i e a salva como senha local do usuário. O script não deve gerar ou retornar um hash de senha.
+Quando o resultado é aceito, o Logto faz o hash da senha enviada com Argon2i e a salva como senha local do usuário. O script não deve gerar nem retornar um hash de senha.
 
 Retorne `undefined` quando o sistema legado rejeitar as credenciais. Um resultado vazio, malformado ou não suportado também é tratado como credenciais inválidas.
 
+### Migrar fatores MFA \{#migrate-mfa-factors\}
+
+Inclua `mfaVerifications` para migrar os fatores MFA existentes do usuário junto com a senha. O Logto adiciona os fatores aos fatores existentes do usuário e ativa o MFA para a conta, de modo que o mesmo login seja desafiado por um dos fatores migrados quando o MFA for exigido. O tipo de fator deve estar habilitado nas configurações de MFA da experiência de login para ser desafiado. Uma configuração `skipMfaOnSignIn` que o usuário ou um administrador já definiu na conta é mantida.
+
+- **TOTP** — `{ type: 'Totp', secret }`. `secret` é um segredo TOTP em Base32. O Logto remove espaços em branco, converte para maiúsculas e adiciona padding Base32 antes de validar; o resultado deve ter de 16 a 32 caracteres. Um usuário pode ter apenas um fator TOTP.
+- **Códigos de backup** — `{ type: 'BackupCode', codes }`. `codes` deve conter de 1 a 10 códigos, cada um com 10 caracteres de `0-9` e `a-f`. Códigos migrados são armazenados como não usados, então envie apenas os códigos que ainda não foram usados no sistema legado. Códigos de backup não podem ser o único fator: o usuário já deve ter outro fator ou receber um no mesmo resultado.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`. `credentialId` e `publicKey` são strings Base64URL sem padding; `publicKey` é a chave pública da credencial. Apenas credenciais registradas para o domínio em que o usuário faz login no Logto podem ser verificadas, então não migre passkeys registradas para outro domínio.
+
+Um fator idêntico a um que o usuário já possui é ignorado: o mesmo segredo TOTP, uma credencial WebAuthn com o mesmo `credentialId` e `publicKey`, ou códigos de backup que já estão todos no conjunto do usuário, usados ou não. Um código já usado permanece usado.
+
+Um fator conflitante faz o login falhar com um erro em vez de substituir o fator existente. Isso cobre um segredo TOTP diferente quando o usuário já tem TOTP, novos códigos de backup quando o conjunto existente do usuário ainda tem códigos não usados e uma credencial WebAuthn já registrada para este ou outro usuário. Quando todos os códigos de backup existentes tiverem sido usados, os códigos migrados substituem o conjunto esgotado. O erro não inclui nenhum valor de credencial.
+
+Se algum fator falhar na validação, todo o resultado é tratado como credenciais inválidas e nada é gravado.
+
+:::note
+Uma credencial WebAuthn migrada pode ser usada para MFA imediatamente, mas não pode ser usada para login com passkey até que o usuário complete o MFA com ela uma vez. Essa primeira verificação de MFA registra o domínio da credencial, que o login com passkey precisa para encontrá-la.
+:::
+
+Os fatores são gravados uma vez. Após uma migração bem-sucedida, logins posteriores verificam a senha local e esta Ação não é mais executada para esse usuário.
+
+:::danger
+`mfaVerifications` carrega credenciais de longa duração. Não registre o segredo TOTP, códigos de backup ou dados de credencial WebAuthn, não os inclua em erros nem os retorne em qualquer lugar exceto em `mfaVerifications`.
+:::
+
 ## Exemplo de migração \{#migration-example}
 
-Configure `LEGACY_VERIFY_URL` e `LEGACY_API_TOKEN` como variáveis de ambiente da Ação, depois adapte este script para sua API legada:
+Configure `LEGACY_VERIFY_URL` e `LEGACY_API_TOKEN` como variáveis de ambiente da Ação e adapte este script para sua API legada:
 
 ```js
 const runAction = async ({ event, environmentVariables = {} }) => {
@@ -130,21 +175,52 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
+Se o usuário legado tiver fatores MFA, mapeie-os para o mesmo resultado:
+
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+Adicione `mfaVerifications: toActionMfaVerifications(legacyUser)` ao resultado retornado. Omitir o campo quando o usuário legado não tiver fatores MFA.
+
 O primeiro login aceito funciona da seguinte forma:
 
 1. A verificação de senha local falha, então o Logto executa a Ação.
 2. O script envia o identificador e a senha para o sistema legado.
 3. O sistema legado verifica as credenciais e o script retorna `createUser` ou `updateUser`.
-4. O Logto cria ou atualiza o usuário e armazena a senha enviada como uma nova credencial local Argon2i.
-5. O usuário completa a MFA se necessário, e o Logto conclui o login.
+4. O Logto cria ou atualiza o usuário, armazena a senha enviada como uma nova credencial local Argon2i e grava quaisquer fatores MFA migrados.
+5. O usuário completa o MFA se necessário, incluindo um fator migrado, e o Logto conclui o login.
 6. Em logins posteriores, a senha local migrada é aceita, então esta Ação não é mais chamada para esse usuário.
 
 ## Limites de segurança \{#security-boundaries}
 
 :::warning
-Gravações de usuário e senha desta Ação ocorrem antes da conclusão da MFA. Se o usuário abandonar ou falhar na MFA, essas gravações permanecem.
+Usuário, senha e gravações de MFA desta Ação acontecem antes do MFA ser concluído. Se o usuário abandonar ou falhar no MFA, essas gravações permanecem.
 
-Um usuário criado por esta Ação também ignora proteções exclusivas de registro, incluindo listas de bloqueio de e-mail, regras de domínio apenas SSO, modo de cadastro desativado e verificações obrigatórias de perfil no registro. A proteção Sentinel e a MFA ainda se aplicam.
+Um usuário criado por esta Ação também ignora proteções exclusivas de registro, incluindo listas de bloqueio de e-mail, regras de domínio apenas SSO, modo de cadastro desativado e verificações obrigatórias de perfil de registro. A proteção Sentinel e o MFA ainda se aplicam.
 :::
 
 Use estas salvaguardas:
@@ -152,7 +228,8 @@ Use estas salvaguardas:
 - Retorne `passwordVerified: true` apenas após o sistema legado ter verificado positivamente a senha exata enviada.
 - Mantenha o endpoint legado privado sempre que possível, exija autenticação de serviço, use HTTPS e aplique limitação de taxa.
 - Mantenha o patch de usuário retornado mínimo. Não copie identificadores ou dados de perfil não validados.
-- Teste criação de usuário desconhecido, atualização de usuário existente, colisões de identificador, usuários suspensos, MFA, falhas upstream e tentativas concorrentes.
+- Trate segredos TOTP, códigos de backup e dados de credencial WebAuthn como credenciais. Não os registre, coloque em `customData` ou inclua em erros.
+- Teste criação de usuário desconhecido, atualização de usuário existente, colisões de identificador, usuários suspensos, migração e conflitos de MFA, falhas upstream e tentativas concorrentes.
 - Monitore `Action.PostFirstFactorVerification` nos [logs de auditoria](/developers/audit-logs/event-types).
 - Mantenha a Ação habilitada apenas durante a migração, quando possível.
 

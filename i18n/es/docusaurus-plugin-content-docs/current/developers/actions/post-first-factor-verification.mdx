@@ -13,7 +13,7 @@ A pesar de su nombre, esta Acción no se ejecuta después de cada primer factor 
 
 - La interacción de la Experience API es `SignIn`.
 - El usuario envió un nombre de usuario, dirección de correo electrónico o número de teléfono con una contraseña.
-- La verificación de contraseña local de Logto falló.
+- La verificación de la contraseña local de Logto falló.
 - Si el identificador pertenece a un usuario existente de Logto, ese usuario no está suspendido.
 
 Si la contraseña local es válida, Logto continúa sin ejecutar la Acción. El registro, el olvido de contraseña, el inicio de sesión sin contraseña y los intentos de usuarios suspendidos no la activan.
@@ -24,7 +24,7 @@ El `event` tiene esta estructura:
 
 ```ts
 type PostFirstFactorVerificationEvent = {
-  // Retenido por compatibilidad hacia atrás después de que la función fue renombrada a Actions.
+  // Retenido por compatibilidad después de que la función fue renombrada a Actions.
   key: 'inlineHook.postFirstFactorVerification';
   interactionEvent: 'SignIn';
   verificationType: 'Password';
@@ -57,16 +57,37 @@ type PostFirstFactorVerificationEvent = {
 Después de que el sistema heredado verifique las credenciales enviadas, devuelve uno de estos resultados:
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -74,14 +95,38 @@ El resultado debe coincidir con el evento:
 
 - Cuando `event.user` es `null`, devuelve `createUser`.
 - Cuando `event.user` está presente, devuelve `updateUser`.
-- `passwordVerified` debe ser el valor literal `true`.
+- `passwordVerified` debe ser literalmente `true`.
 - `user` solo puede contener los [campos de parche de usuario compatibles](/developers/actions/configure-and-test-actions#supported-user-patch).
 
-Para un usuario nuevo, Logto agrega el identificador de inicio de sesión enviado cuando el resultado no lo incluye. La Acción no puede cambiar el identificador enviado por otro valor. La comparación de correos electrónicos no distingue mayúsculas de minúsculas, los números de teléfono se comparan después de la normalización y los nombres de usuario deben coincidir exactamente.
+Para un usuario nuevo, Logto añade el identificador de inicio de sesión enviado cuando el resultado no lo incluye. La Acción no puede cambiar el identificador enviado por otro valor. La comparación de correos electrónicos no distingue mayúsculas de minúsculas, los números de teléfono se comparan después de la normalización y los nombres de usuario deben coincidir exactamente.
 
 Cuando el resultado es aceptado, Logto hashea la contraseña enviada con Argon2i y la guarda como la contraseña local del usuario. El script no debe generar ni devolver un hash de contraseña.
 
-Devuelve `undefined` cuando el sistema heredado rechaza las credenciales. Un resultado vacío, mal formado o no compatible también se trata como credenciales inválidas.
+Devuelve `undefined` cuando el sistema heredado rechaza las credenciales. Un resultado vacío, malformado o no compatible también se trata como credenciales no válidas.
+
+### Migrar factores MFA \{#migrate-mfa-factors\}
+
+Incluye `mfaVerifications` para transferir los factores MFA existentes del usuario junto con la contraseña. Logto añade los factores a los factores existentes del usuario y habilita MFA para la cuenta, por lo que el mismo inicio de sesión se desafía con uno de los factores migrados cuando se requiere MFA. El tipo de factor debe estar habilitado en la configuración de MFA de la experiencia de inicio de sesión para ser solicitado. Una configuración `skipMfaOnSignIn` que el usuario o un administrador ya haya establecido en la cuenta se mantiene.
+
+- **TOTP** — `{ type: 'Totp', secret }`. `secret` es un secreto TOTP en Base32. Logto elimina los espacios en blanco, lo convierte a mayúsculas y añade padding Base32 antes de validarlo; el resultado debe tener entre 16 y 32 caracteres. Un usuario solo puede tener un factor TOTP.
+- **Códigos de respaldo** — `{ type: 'BackupCode', codes }`. `codes` debe contener de 1 a 10 códigos, cada uno de 10 caracteres de `0-9` y `a-f`. Los códigos migrados se almacenan como no usados, así que pasa solo los códigos que aún no se han usado en el sistema heredado. Los códigos de respaldo no pueden ser el único factor: el usuario debe tener ya otro factor o recibir uno en el mismo resultado.
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`. `credentialId` y `publicKey` son cadenas Base64URL sin padding; `publicKey` es la clave pública de la credencial. Solo se pueden verificar las credenciales registradas para el dominio con el que el usuario inicia sesión en Logto, así que no migres passkeys registradas para un dominio diferente.
+
+Un factor idéntico a uno que el usuario ya tiene se omite: el mismo secreto TOTP, una credencial WebAuthn con el mismo `credentialId` y `publicKey`, o códigos de respaldo que ya están todos en el conjunto del usuario, usados o no. Un código previamente usado permanece usado.
+
+Un factor en conflicto falla el inicio de sesión con un error en lugar de reemplazar el factor existente. Esto cubre un secreto TOTP diferente cuando el usuario ya tiene TOTP, nuevos códigos de respaldo cuando el conjunto existente del usuario aún tiene códigos no usados y una credencial WebAuthn que ya está registrada para este u otro usuario. Cuando todos los códigos de respaldo existentes han sido usados, los códigos migrados reemplazan el conjunto agotado. El error no incluye ningún valor de credencial.
+
+Si algún factor falla la validación, todo el resultado se trata como credenciales no válidas y no se escribe nada.
+
+:::note
+Una credencial WebAuthn migrada puede usarse para MFA de inmediato, pero no puede usarse para inicio de sesión con passkey hasta que el usuario complete MFA con ella al menos una vez. Esa primera verificación de MFA registra el dominio de la credencial, que el inicio de sesión con passkey necesita para encontrarla.
+:::
+
+Los factores se escriben una sola vez. Después de una migración exitosa, los inicios de sesión posteriores verifican la contraseña local y esta Acción ya no se ejecuta para ese usuario.
+
+:::danger
+`mfaVerifications` transporta credenciales de larga duración. No registres el secreto TOTP, los códigos de respaldo ni los datos de la credencial WebAuthn, no los coloques en `customData` ni los incluyas en errores, ni los devuelvas en ningún lugar excepto en `mfaVerifications`.
+:::
 
 ## Ejemplo de migración \{#migration-example}
 
@@ -101,7 +146,7 @@ const runAction = async ({ event, environmentVariables = {} }) => {
     }),
   });
 
-  // Trata un rechazo de autenticación como un resultado ordinario de credenciales inválidas.
+  // Trata un rechazo de autenticación como un resultado ordinario de credenciales no válidas.
   if (response.status === 401 || response.status === 404) {
     return;
   }
@@ -130,30 +175,62 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
+Si el usuario heredado tiene factores MFA, mapealos en el mismo resultado:
+
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+Añade `mfaVerifications: toActionMfaVerifications(legacyUser)` al resultado devuelto. Omite el campo cuando el usuario heredado no tiene factores MFA.
+
 El primer inicio de sesión aceptado funciona de la siguiente manera:
 
 1. La verificación de la contraseña local falla, por lo que Logto ejecuta la Acción.
 2. El script envía el identificador y la contraseña al sistema heredado.
 3. El sistema heredado verifica las credenciales y el script devuelve `createUser` o `updateUser`.
-4. Logto crea o actualiza el usuario y almacena la contraseña enviada como una nueva credencial local Argon2i.
-5. El usuario completa MFA si es necesario, y Logto completa el inicio de sesión.
+4. Logto crea o actualiza el usuario, almacena la contraseña enviada como una nueva credencial local Argon2i y escribe los factores MFA migrados.
+5. El usuario completa MFA si es necesario, incluyendo un factor migrado, y Logto completa el inicio de sesión.
 6. En inicios de sesión posteriores, la contraseña local migrada tiene éxito, por lo que esta Acción ya no se llama para ese usuario.
 
 ## Límites de seguridad \{#security-boundaries}
 
 :::warning
-Las escrituras de usuario y contraseña de esta Acción ocurren antes de que MFA se complete. Si el usuario abandona o falla MFA, esas escrituras permanecen.
+Las escrituras de usuario, contraseña y MFA desde esta Acción ocurren antes de que MFA se complete. Si el usuario abandona o falla MFA, esas escrituras permanecen.
 
-Un usuario creado por esta Acción también omite los controles solo de registro, incluidos los bloqueos de correo electrónico, reglas de dominio solo SSO, modo de registro deshabilitado y comprobaciones obligatorias de perfil de registro. La protección Sentinel y MFA aún se aplican.
+Un usuario creado por esta Acción también omite protecciones solo de registro, incluyendo listas de bloqueo de correos electrónicos, reglas de dominio solo SSO, modo de registro deshabilitado y comprobaciones obligatorias de perfil de registro. La protección Sentinel y MFA aún se aplican.
 :::
 
 Utiliza estas salvaguardas:
 
-- Devuelve `passwordVerified: true` solo después de que el sistema heredado haya verificado positivamente la contraseña exacta enviada.
+- Devuelve `passwordVerified: true` solo después de que el sistema heredado haya verificado positivamente la contraseña enviada exacta.
 - Mantén el endpoint heredado privado cuando sea posible, requiere autenticación de servicio, usa HTTPS y aplica limitación de tasa.
 - Mantén el parche de usuario devuelto al mínimo. No copies identificadores o datos de perfil no validados.
-- Prueba la creación de usuario desconocido, actualización de usuario existente, colisiones de identificadores, usuarios suspendidos, MFA, fallos ascendentes e intentos concurrentes.
-- Supervisa `Action.PostFirstFactorVerification` en los [registros de auditoría](/developers/audit-logs/event-types).
-- Mantén la Acción habilitada solo durante la migración cuando sea práctico.
+- Trata los secretos TOTP, los códigos de respaldo y los datos de credenciales WebAuthn como credenciales. No los registres, coloques en `customData` ni los incluyas en errores.
+- Prueba la creación de usuario desconocido, actualización de usuario existente, colisiones de identificadores, usuarios suspendidos, migración y conflictos de MFA, fallos ascendentes e intentos concurrentes.
+- Monitorea `Action.PostFirstFactorVerification` en los [registros de auditoría](/developers/audit-logs/event-types).
+- Mantén la Acción habilitada solo durante la migración cuando sea posible.
 
-Si puedes exportar los datos de usuario y los hashes de contraseña compatibles por adelantado, considera la [migración masiva de usuarios](/user-management/user-migration) en su lugar.
+Si puedes exportar los datos de usuario y hashes de contraseñas compatibles por adelantado, considera la [migración masiva de usuarios](/user-management/user-migration) en su lugar.

@@ -1,30 +1,30 @@
 ---
 id: post-first-factor-verification
-title: 首次因子验证后操作 (Post first-factor verification)
-sidebar_label: 首次因子验证后操作 (Post first-factor verification)
+title: 首次因子验证后
+sidebar_label: 首次因子验证后
 sidebar_position: 3
 ---
 
-# 首次因子验证后操作 (Post first-factor verification)
+# 首次因子验证后
 
-首次因子验证后操作 (Post first-factor verification) Action 支持从传统密码系统即时迁移用户。
+首次因子验证后 Action 支持从传统密码系统进行即时用户迁移。
 
-尽管名称如此，该 Action 并不会在每次首次因子验证成功后都运行。它仅在以下所有条件都满足时运行：
+尽管名字如此，该 Action 并不会在每次首次因子验证成功后运行。它仅在以下所有条件都满足时运行：
 
 - Experience API 交互为 `SignIn`。
 - 用户提交了用户名、电子邮件地址或手机号和密码。
 - Logto 的本地密码验证失败。
 - 如果该标识符属于现有 Logto 用户，则该用户未被暂停。
 
-如果本地密码有效，Logto 会继续流程，不会运行该 Action。注册、忘记密码、非密码登录和被暂停用户的尝试不会触发它。
+如果本地密码有效，Logto 会继续流程而不会运行该 Action。注册、忘记密码、非密码登录和被暂停用户的尝试不会触发它。
 
-## 事件负载 (Event payload) \{#event-payload}
+## 事件负载 \{#event-payload}
 
-`event` 结构如下：
+`event` 的结构如下：
 
 ```ts
 type PostFirstFactorVerificationEvent = {
-  // 为了向后兼容，在该功能重命名为 Actions 后保留。
+  // 为了向后兼容，在功能重命名为 Actions 后保留。
   key: 'inlineHook.postFirstFactorVerification';
   interactionEvent: 'SignIn';
   verificationType: 'Password';
@@ -49,24 +49,45 @@ type PostFirstFactorVerificationEvent = {
 当标识符不属于 Logto 用户时，`user` 为 `null`。否则，它包含现有用户可编辑的资料上下文。
 
 :::danger
-`event.password` 是用户提交的明文密码。仅通过 HTTPS 发送到你信任的传统认证 (Authentication) 端点。切勿记录、存储、放入 `customData`、包含在错误信息中或从 Action 返回该密码。
+`event.password` 是用户提交的明文密码。仅通过 HTTPS 发送到你信任的传统认证 (Authentication) 端点。切勿记录、存储、放入 `customData`、包含在错误中或从 Action 返回该密码。
 :::
 
-## 结果 (Result) \{#result}
+## 结果 \{#result}
 
 传统系统验证提交的凭据后，返回以下结果之一：
 
 ```ts
+type ActionMfaVerification =
+  | {
+      type: 'Totp';
+      secret: string;
+    }
+  | {
+      type: 'BackupCode';
+      codes: string[];
+    }
+  | {
+      type: 'WebAuthn';
+      credentialId: string;
+      publicKey: string;
+      counter: number;
+      transports?: ('usb' | 'nfc' | 'ble' | 'internal' | 'cable' | 'hybrid' | 'smart-card')[];
+      agent?: string;
+      name?: string;
+    };
+
 type PostFirstFactorVerificationResult =
   | {
       action: 'createUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     }
   | {
       action: 'updateUser';
       passwordVerified: true;
       user: ActionUserPatch;
+      mfaVerifications?: ActionMfaVerification[];
     };
 ```
 
@@ -77,13 +98,37 @@ type PostFirstFactorVerificationResult =
 - `passwordVerified` 必须为字面值 `true`。
 - `user` 只能包含[支持的用户补丁字段](/developers/actions/configure-and-test-actions#supported-user-patch)。
 
-对于新用户，如果结果中未包含，Logto 会添加提交的登录标识符。Action 不能将提交的标识符更改为其他值。电子邮件比较不区分大小写，手机号在归一化后比较，用户名必须完全匹配。
+对于新用户，如果结果未包含提交的登录标识符，Logto 会自动添加。Action 不能将提交的标识符更改为其他值。电子邮件比较不区分大小写，手机号在归一化后比较，用户名必须完全匹配。
 
-当结果被接受后，Logto 会使用 Argon2i 对提交的密码进行哈希，并将其保存为用户的本地密码。脚本不得生成或返回密码哈希。
+当结果被接受后，Logto 会用 Argon2i 对提交的密码进行哈希，并将其保存为用户的本地密码。脚本不应生成或返回密码哈希。
 
 当传统系统拒绝凭据时，返回 `undefined`。空、格式错误或不支持的结果也会被视为无效凭据。
 
-## 迁移示例 (Migration example) \{#migration-example}
+### 迁移 MFA 因子 \{#migrate-mfa-factors\}
+
+包含 `mfaVerifications` 字段可将用户现有的多因素认证 (MFA) 因子与密码一起迁移。Logto 会将这些因子添加到用户现有因子中，并为账户启用 MFA，因此当需要 MFA 时，同一次登录会被要求验证其中一个迁移的因子。因子类型必须在登录体验的 MFA 设置中启用才会被要求。用户或管理员已在账户上设置的 `skipMfaOnSignIn` 设置会被保留。
+
+- **TOTP** — `{ type: 'Totp', secret }`。`secret` 是 Base32 TOTP 密钥。Logto 会去除空格、转换为大写并添加 Base32 填充后再验证；结果长度必须为 16 到 32 个字符。用户只能有一个 TOTP 因子。
+- **备份码** — `{ type: 'BackupCode', codes }`。`codes` 必须包含 1 到 10 个代码，每个为 10 位 `0-9` 和 `a-f` 字符。迁移的备份码会被存为未使用，因此只传递传统系统中仍未使用的代码。备份码不能是唯一因子：用户必须已有其他因子，或在同一结果中获得一个。
+- **WebAuthn** — `{ type: 'WebAuthn', credentialId, publicKey, counter, transports?, agent?, name? }`。`credentialId` 和 `publicKey` 为未填充的 Base64URL 字符串；`publicKey` 是凭据公钥。只有为用户登录 Logto 的域注册的凭据才能被验证，因此不要迁移为其他域注册的密钥。
+
+与用户已有因子完全相同的因子会被跳过：相同的 TOTP 密钥、`credentialId` 和 `publicKey` 都相同的 WebAuthn 凭据，或所有已在用户集合中的备份码（无论是否已用）。已用过的备份码仍然视为已用。
+
+冲突的因子会导致登录失败并报错，而不是替换现有因子。这包括用户已有 TOTP 时传入不同的 TOTP 密钥、用户现有备份码还有未用时传入新备份码，以及已注册给该用户或其他用户的 WebAuthn 凭据。当所有现有备份码都已用完时，迁移的代码会替换已耗尽的集合。错误不会包含任何凭据值。
+
+如果有任何因子验证失败，整个结果会被视为无效凭据，不会写入任何内容。
+
+:::note
+迁移的 WebAuthn 凭据可以立即用于 MFA，但在用户用它完成一次 MFA 验证前，不能用于密钥登录。首次 MFA 验证会记录凭据的域，密钥登录需要用来查找它。
+:::
+
+因子只会写入一次。迁移成功后，后续登录会验证本地密码，该 Action 不再为该用户运行。
+
+:::danger
+`mfaVerifications` 携带长期凭据。切勿记录 TOTP 密钥、备份码或 WebAuthn 凭据数据，不要将它们包含在错误中，也不要在 `mfaVerifications` 以外的任何地方返回。
+:::
+
+## 迁移示例 \{#migration-example}
 
 将 `LEGACY_VERIFY_URL` 和 `LEGACY_API_TOKEN` 配置为 Action 环境变量，然后将此脚本适配到你的传统 API：
 
@@ -107,7 +152,7 @@ const runAction = async ({ event, environmentVariables = {} }) => {
   }
 
   if (!response.ok) {
-    throw new Error(`传统认证 (Authentication) 服务返回了 ${response.status}`);
+    throw new Error(`传统认证 (Authentication) 服务返回 ${response.status}`);
   }
 
   const legacyUser = await response.json();
@@ -130,30 +175,62 @@ const runAction = async ({ event, environmentVariables = {} }) => {
 };
 ```
 
-首次接受的登录流程如下：
+如果传统用户有 MFA 因子，将它们映射到同一结果中：
 
-1. 本地密码验证失败，因此 Logto 运行该 Action。
+```js
+const toActionMfaVerifications = (legacyUser) => [
+  ...(legacyUser.totpSecret
+    ? [
+        {
+          type: 'Totp',
+          secret: legacyUser.totpSecret,
+        },
+      ]
+    : []),
+  ...(legacyUser.backupCodes?.length
+    ? [
+        {
+          type: 'BackupCode',
+          codes: legacyUser.backupCodes,
+        },
+      ]
+    : []),
+  ...(legacyUser.passkeys ?? []).map((passkey) => ({
+    type: 'WebAuthn',
+    credentialId: passkey.credentialId,
+    publicKey: passkey.publicKey,
+    counter: passkey.counter,
+  })),
+];
+```
+
+在返回结果中添加 `mfaVerifications: toActionMfaVerifications(legacyUser)`。如果传统用户没有 MFA 因子，则省略该字段。
+
+首次被接受的登录流程如下：
+
+1. 本地密码验证失败，Logto 运行该 Action。
 2. 脚本将标识符和密码发送到传统系统。
 3. 传统系统验证凭据，脚本返回 `createUser` 或 `updateUser`。
-4. Logto 创建或更新用户，并将提交的密码作为新的本地 Argon2i 凭据保存。
-5. 用户如需完成 MFA，则完成 MFA，Logto 完成登录。
-6. 后续登录时，迁移后的本地密码验证成功，因此该用户不再调用此 Action。
+4. Logto 创建或更新用户，将提交的密码作为新的本地 Argon2i 凭据保存，并写入任何迁移的 MFA 因子。
+5. 如需 MFA，用户完成 MFA，包括迁移的因子，Logto 完成登录。
+6. 后续登录时，迁移的本地密码验证成功，该 Action 不再为该用户调用。
 
-## 安全边界 (Security boundaries) \{#security-boundaries}
+## 安全边界 \{#security-boundaries}
 
 :::warning
-该 Action 写入用户和密码发生在 MFA 完成之前。如果用户放弃或未通过 MFA，这些写入仍然保留。
+该 Action 写入的用户、密码和 MFA 信息发生在 MFA 完成之前。如果用户放弃或未通过 MFA，这些写入仍然保留。
 
-通过该 Action 创建的用户也会绕过仅限注册的保护措施，包括电子邮件黑名单、仅限 SSO 域规则、禁用注册模式和注册强制资料检查。哨兵保护和 MFA 仍然适用。
+通过该 Action 创建的用户也会绕过仅限注册的保护措施，包括邮箱黑名单、仅限 SSO 域规则、禁用注册模式和注册强制资料检查。哨兵保护和 MFA 仍然适用。
 :::
 
 请采取以下安全措施：
 
-- 仅在传统系统已正向验证完全相同的提交密码后，返回 `passwordVerified: true`。
-- 尽可能保持传统端点私有，要求服务认证 (Authentication)，使用 HTTPS，并应用限流。
-- 返回的用户补丁保持最小。不要复制未经验证的标识符或资料数据。
-- 测试未知用户创建、现有用户更新、标识符冲突、被暂停用户、MFA、上游故障和并发尝试。
-- 在[审计日志](/developers/audit-logs/event-types)中监控 `Action.PostFirstFactorVerification`。
+- 仅在传统系统已明确验证提交的密码后返回 `passwordVerified: true`。
+- 尽可能保持传统端点私有，要求服务认证 (Authentication)，使用 HTTPS，并实施限流。
+- 返回的用户补丁应尽量精简。不要复制未经验证的标识符或资料数据。
+- 将 TOTP 密钥、备份码和 WebAuthn 凭据数据视为凭据。不要记录、放入 `customData` 或包含在错误中。
+- 测试未知用户创建、现有用户更新、标识符冲突、被暂停用户、MFA 迁移与冲突、上游失败和并发尝试。
+- 监控 [审计日志](/developers/audit-logs/event-types)中的 `Action.PostFirstFactorVerification`。
 - 实际迁移期间，尽量只在需要时启用该 Action。
 
 如果你可以提前导出用户数据和兼容的密码哈希，建议考虑[批量用户迁移](/user-management/user-migration)。
