@@ -41,3 +41,4 @@ Currently, we support:
 
 - **Google reCAPTCHA Enterprise**
 - **Cloudflare Turnstile**
+- **[Cap](/security/captcha/cap)**
