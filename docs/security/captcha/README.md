@@ -41,3 +41,4 @@ Currently, we support:
 
 - **Google reCAPTCHA Enterprise**
 - **Cloudflare Turnstile**
+- **[GeeTest](/security/captcha/geetest)**
