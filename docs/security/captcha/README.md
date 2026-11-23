@@ -43,3 +43,4 @@ Currently, we support:
 - **Cloudflare Turnstile**
 - **[GeeTest](/security/captcha/geetest)**
 - **[Friendly Captcha](/security/captcha/friendly-captcha)**
+- **[Cap](/security/captcha/cap)**
