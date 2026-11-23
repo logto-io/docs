@@ -9,7 +9,7 @@ sidebar_label: Cap
 
 ## Prerequisites {#prerequisites}
 
-- A publicly reachable [Cap Standalone](https://capjs.js.org/guide/standalone/) instance over HTTPS, since both the browser sign-in page and Logto need access to it.
+- A publicly reachable [Cap Standalone](https://capjs.js.org/guide/capd/index.html) instance over HTTPS, since both the browser sign-in page and Logto need access to it.
 
 ## Create a site key {#create-a-site-key}
 
