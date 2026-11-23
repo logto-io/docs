@@ -16,27 +16,24 @@ sidebar_label: Friendly Captcha
 1. Log in to the [Friendly Captcha dashboard](https://app.friendlycaptcha.com) and go to **Applications**.
 2. Click **+ New Application** and select **v2**.
 3. If you restrict allowed origins on the application, add your Logto endpoint domain (e.g., `https://[tenant-id].logto.app`).
-4. Ensure the global endpoint (`global.frcapi.com`) is enabled, and copy the **Sitekey** (starts with `FC`).
+4. Keep the global endpoint (`global.frcapi.com`) enabled unless you restrict the sitekey to the [EU endpoint](https://developer.friendlycaptcha.com/docs/v2/guides/eu-endpoint) (`eu.frcapi.com`, available on Advanced and Enterprise plans), and copy the **Sitekey** (starts with `FC`).
 5. Open **API Keys** in the dashboard, create a new **API key**, and copy it.
 
 ## Configure Logto {#configure-logto}
 
-1. Go to **Console > Security > CAPTCHA**, select **Friendly Captcha**, and enter the **Site key** and **API key**.
-2. Alternatively, configure it via the Management API (`PUT /api/captcha-provider`):
+1. Go to **Console > Security > CAPTCHA**, select **Friendly Captcha**, and enter the **Site key** and **API key**. Keep **API endpoint** as **Global**, or choose **EU** if your sitekey is restricted to the EU endpoint.
+2. Alternatively, configure it via the Management API (`PUT /api/captcha-provider`). `apiEndpoint` is optional and accepts `"global"` (default) or `"eu"`:
 
 ```json
 {
   "config": {
     "type": "FriendlyCaptcha",
     "siteKey": "<siteKey>",
-    "secretKey": "<apiKey>"
+    "secretKey": "<apiKey>",
+    "apiEndpoint": "global"
   }
 }
 ```
-
-:::note
-While Friendly Captcha is enabled, Logto's built-in sign-in page automatically allows `https://*.frcapi.com` (`connect-src`), `'wasm-unsafe-eval'` (`script-src`), and `worker-src 'self' blob:` in its Content Security Policy.
-:::
 
 ## Bring your UI {#bring-your-ui}
 
@@ -65,6 +62,8 @@ const element = document.querySelector('#friendly-captcha-container');
 const widget = sdk.createWidget({
   element,
   sitekey: '<siteKey>',
+  // Set to 'eu' if you chose the EU API endpoint in Logto.
+  apiEndpoint: 'global',
 });
 
 const getCaptchaToken = () => {
