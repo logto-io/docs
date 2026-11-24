@@ -23,7 +23,7 @@ Follow these steps to enable MFAs in users' Logto sign-in flow:
       - [Backup codes](/end-user-flows/mfa/backup-codes): This serves as a backup option when users can't verify any of the primary factors mentioned above. Enabling this option reduces friction for users' access successfully.
 3. Choose the **Require MFA** policy from the dropdown. This policy controls when users must complete MFA during sign-in:
    - **Optional MFA** (_Optional MFA: Let users choose to enable MFA for their own account security_): Let users decide whether to enable MFA for their own account security. Users can skip MFA setup during sign-in and set it up later through your self-service account settings page. [Learn more](/end-user-flows/account-settings/) about implementing a user account settings page.
-   - **Adaptive MFA** (_Adaptive MFA: Only ask for MFA when a sign-in seems risky (e.g., new country / long inactivity)_): Apply MFA only when a sign-in appears unusual, so low-risk sign-ins can stay smoother while suspicious sign-ins get extra verification. To make that decision, Logto evaluates high-level contextual signals such as the user's inactivity level, whether the current sign-in context is broadly consistent with recent travel-related sign-in patterns, the state of the network connection, and other session or environmental indicators. This mode depends on your existing MFA setup (at least one MFA factor must be enabled), applies to end-user sign-in flows, and does not rely on device fingerprinting or precise location tracking.
+   - **Adaptive MFA** (_Adaptive MFA: Only ask for MFA when a sign-in seems risky (e.g., new country / long inactivity)_): Apply MFA only when a sign-in appears unusual, so low-risk sign-ins can stay smoother while suspicious sign-ins get extra verification. To make that decision, Logto evaluates built-in contextual risk rules (new country, geo velocity, long inactivity, and untrusted IP signals). This mode depends on your existing MFA setup (at least one MFA factor must be enabled), applies to end-user sign-in flows, and does not rely on device fingerprinting. See [Adaptive MFA](/end-user-flows/mfa/adaptive-mfa) for rule thresholds, edge header prerequisites, and webhook details.
    - **Mandatory MFA** (_Mandatory MFA: Requires all users to complete MFA every time they sign in_): Require all users to complete MFA on every sign-in. Users who have not set up MFA must complete setup before they can continue.
    - When **Optional MFA** is selected, configure the **MFA set-up prompt** policy:
      - **Do not ask users to set up MFA**: Users will not be prompted to set up MFA during sign-in or registration.
@@ -45,7 +45,29 @@ If you need to prompt a user again after they skipped MFA enrollment, reset thei
 
 For products with a multi-tenant architecture that support [Organizations](/organizations), in most cases you don't need to require MFA for all users. Instead, MFA can be enabled on a per-organization basis, allowing you to tailor the requirements based on each client's needs. To get started, refer to [Requiring MFA for organization members](/organizations/organization-management#require-mfa-for-organization-members).
 
-When **Optional MFA** is selected in the **Require MFA** dropdown, Console displays the **MFA setup prompt for users after organization enables MFA** setting. Set it to **Ask users to set up MFA on next sign-in (non-skippable)** so members of any organization that requires MFA are prompted to complete MFA setup at their next sign-in and cannot skip it. (This setting is hidden in Console when **Adaptive MFA** or **Mandatory MFA** is selected.)
+When **Optional MFA** is selected in the **Require MFA** dropdown, Console displays the **MFA setup prompt for users after organization enables MFA** setting. Set it to **Ask users to set up MFA on next sign-in (non-skippable)** so members of any organization that requires MFA are prompted to complete MFA setup at their next sign-in and cannot skip it. (This setting is hidden in Console and not saved when **Adaptive MFA** or **Mandatory MFA** is selected.)
+
+Under **Adaptive MFA**, low-risk sign-ins that trigger no risk rule are not challenged for MFA verification even for users who have per-user **Require MFA setup** enabled or belong to an organization with `isMfaRequired` enabled.
+
+### Suggest adding another MFA factor \{#suggest-adding-another-mfa-factor}
+
+In <CloudLink to="/mfa">Console > Multi-factor authentication</CloudLink>, the **Suggest adding another MFA factor** switch (enabled by default; controlled by `mfa.skipAdditionalBindingSuggestion` in the Sign-in Experience API) prompts a user to add another MFA factor during sign-up or sign-in when:
+
+- The user's only MFA factor is the email address, phone number, or passkey they sign in with, and
+- At least one other MFA factor is enabled for the tenant.
+
+Users can skip this prompt. When a user skips the suggestion, Logto persists `mfa.additionalBindingSuggestionSkipped: true` on the user's `logtoConfig` so the suggestion does not reappear on future sign-ins. You can update or reset this flag via the [Account API](/end-user-flows/account-settings/by-account-api) (`PATCH /api/my-account/logto-configs` with `{ "mfa": { "additionalBindingSuggestionSkipped": false } }`; note that `GET /api/my-account/logto-configs` and `GET /api/users/{userId}/logto-configs` do not return this field).
+
+### Per-user MFA requirement \{#per-user-mfa-requirement}
+
+Administrators can require MFA setup for an individual user regardless of the tenant's **Optional MFA** prompt setting:
+
+- **In Console**: Open <CloudLink to="/users">Console > User management</CloudLink>, select the user, and enable **Require MFA setup** in the **Multi-factor authentication** section.
+- **Via Management API**: Call `PATCH /api/users/{userId}/logto-configs` with `{ "mfa": { "required": true } }` (and read it with `GET /api/users/{userId}/logto-configs`). See [Account settings by Management API](/end-user-flows/account-settings/by-management-api#user-mfa-settings-management).
+
+End users cannot modify `mfa.required` through the Account API (`PATCH /api/my-account/logto-configs`); for self-service clients, it is exposed read-only as `required` on `GET /api/my-account/mfa-settings`.
+
+When per-user `mfa.required` is `true`, the user must set up at least one MFA factor before completing sign-in and cannot skip setup. Under **Optional MFA**, it also requires MFA verification on sign-in even if the user enabled `skipMfaOnSignIn` or set `enabled: false`. Under **Adaptive MFA**, low-risk sign-ins that trigger no risk rule are still not challenged for MFA verification.
 
 ## MFA user flow \{#mfa-user-flow}
 
@@ -81,6 +103,15 @@ If the user signs in with [passkey sign-in](/end-user-flows/sign-up-and-sign-in/
 - When two or more MFA factors are available, the verification page displays a **Try another method to verify** link so the user can open the method selection list and switch to any of their other available factors (including a one-time backup code if enabled).
 
 <img src="/img/assets/verify-mfa.png" alt="MFA verification flow" />
+
+### Sign-in binding rules and exemptions \{#sign-in-binding-rules-and-exemptions}
+
+Keep the following behavior in mind when designing MFA journeys:
+
+- **Backup code re-prompting**: When **Backup codes** are enabled and a user already has another active MFA factor, Logto prompts the user during sign-in to generate and save a new set of backup codes if all previously generated codes have been used or if **Backup codes** were enabled after the user initially enrolled.
+- **Verified factor required to bind during sign-in**: During a `SignIn` interaction where the user already has MFA factors available, binding a new factor (including saving regenerated backup codes or following the "Suggest adding another MFA factor" prompt) requires completing an MFA verification challenge first (or signing in via passkey sign-in or enterprise SSO). Sign-ins that bypass MFA verification—such as a [trusted device](/end-user-flows/mfa/trusted-devices), a low-risk [Adaptive MFA](/end-user-flows/mfa/adaptive-mfa) sign-in that triggered no rule, or user-skipped **Optional MFA** (`skipMfaOnSignIn` / `enabled: false`)—cannot bind new MFA factors during that sign-in flow. Users in those sessions can add factors afterward via Account Center or the [Account API](/end-user-flows/account-settings/by-account-api).
+- **Enterprise SSO exemption**: Signing in or registering through [Enterprise SSO](/end-user-flows/enterprise-sso) skips tenant MFA verification and MFA setup prompts during that interaction (unless MFA is explicitly requested by the client via `acr_values`, such as `urn:logto:acr:mfa`).
+- **Forgot password exemption**: The [Forgot password](/end-user-flows/sign-up-and-sign-in/reset-password) flow skips MFA verification and MFA setup prompts.
 
 ## MFA management \{#mfa-management}
 
