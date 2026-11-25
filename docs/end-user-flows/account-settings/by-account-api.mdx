@@ -10,7 +10,7 @@ sidebar_position: 1
 The Logto Account API is a comprehensive set of APIs that gives end users direct API access without needing to go through the Management API. Here are the highlights:
 
 - Direct access: The Account API empowers end users to directly access and manage their own account profiles without requiring the relay of Management API.
-- User profile and identities management: Users can fully manage their profiles and security settings, including the ability to update identity information like email, phone, and password, as well as manage social connections. MFA and SSO support are coming soon.
+- User profile and identities management: Users can manage their profiles and security settings, including email, phone, password, social connections, and MFA factors, as well as retrieve enterprise SSO federated access tokens from Secret Vault.
 - Global access control: Admins have full, global control over access settings and can customize each field.
 - Seamless authorization: Authorization is easier than ever! Simply use `client.getAccessToken()` to obtain an opaque access token for OP (Logto), and attach it to the Authorization header as `Bearer <access_token>`.
 
@@ -30,7 +30,7 @@ To learn more about the available APIs, please visit [Logto Account API Referenc
 
 :::note
 
-SSO account viewing and account deletion features are currently available through the Logto Management APIs. See [Account settings by Management API](/end-user-flows/account-settings/by-management-api) for implementation details.
+SSO account viewing and account deletion features are currently available through the Logto Management APIs (linking or unlinking enterprise SSO identities is not available in the Account API; only retrieving Secret Vault tokens for linked SSO identities is supported). See [Account settings by Management API](/end-user-flows/account-settings/by-management-api) for implementation details.
 
 :::
 
@@ -280,7 +280,7 @@ Remember to [enable MFA and WebAuthn](/end-user-flows/mfa) first.
 :::
 
 :::note
-To use this method, you need to enable the `mfa` field in the [account center settings](#how-to-enable-account-api).
+WebAuthn passkey write endpoints (`POST /api/my-account/mfa-verifications` with `type: "WebAuthn"`, `PATCH /api/my-account/mfa-verifications/{verificationId}/name`, and `DELETE /api/my-account/mfa-verifications/{verificationId}` for WebAuthn) are controlled by the `passkey` field in [account center settings](#how-to-enable-account-api), falling back to `mfa` when `passkey` is unset. Reading `GET /api/my-account/mfa-verifications` requires `mfa` to be set to `ReadOnly` or `Edit`.
 :::
 
 **Step 1: Add your front-end app origin to the related origins**
@@ -571,7 +571,7 @@ curl -X POST https://[tenant-id].logto.app/api/my-account/mfa-verifications \
 :::note
 
 - A user can only have one set of backup codes at a time. If all codes have been used, the user needs to generate and bind new codes.
-- Backup codes cannot be the only MFA factor. The user must have at least one other MFA factor (such as WebAuthn or TOTP) enabled.
+- Backup codes cannot be the only MFA factor. The user must have an authenticator app (`Totp`) or passkey (`WebAuthn`) factor configured; email or SMS verification codes alone do not satisfy this requirement.
 - Each backup code can only be used once.
 
 :::
@@ -626,9 +626,15 @@ The response body would be like:
 
 ```json
 {
-  "skipMfaOnSignIn": false
+  "skipMfaOnSignIn": false,
+  "enabled": true,
+  "required": false
 }
 ```
+
+- `skipMfaOnSignIn`: whether the user has chosen to skip MFA verification prompts on sign-in.
+- `enabled` (optional): whether MFA verification is enabled for the user (`undefined` for legacy accounts created before this field was introduced, which Logto treats as enabled when usable factors exist).
+- `required` (read-only): whether MFA is required by the tenant policy (including **Mandatory** and **Adaptive MFA** non-skippable policies), a per-user requirement, or an organization, making `skipMfaOnSignIn` and `enabled: false` ineffective.
 
 **Update MFA settings**
 
@@ -641,10 +647,11 @@ curl -X PATCH https://[tenant-id].logto.app/api/my-account/mfa-settings \
   --data-raw '{"skipMfaOnSignIn":true}'
 ```
 
-- `skipMfaOnSignIn`: set to `true` to disable 2-step verification for the user, or `false` to enable it.
+- `skipMfaOnSignIn`: set to `true` to disable 2-step verification prompt on sign-in for the user, or `false` to enable it.
+- `enabled` (optional): set to `true` or `false` to update whether MFA verification is enabled for the user. The response includes the updated `skipMfaOnSignIn`, `enabled`, and read-only `required` fields.
 
 :::note
-This setting only takes effect when the MFA policy is set to **Optional** and MFA is not required for the user or their organizations (via `organizationRequiredMfaPolicy`). If MFA is **Mandatory**, or required for the user or organization, `skipMfaOnSignIn` is ignored and MFA is enforced. Under **Adaptive MFA**, `skipMfaOnSignIn` is also ignored, and MFA verification is prompted only when a risk rule triggers.
+`skipMfaOnSignIn` and `enabled: false` only take effect when the MFA policy is set to **Optional** and MFA is not required for the user or their organizations (via `organizationRequiredMfaPolicy`). If MFA is **Mandatory**, or required for the user or organization, both `skipMfaOnSignIn` and `enabled: false` are ignored and MFA is enforced (`required` is `true`). Under **Adaptive MFA**, `required` is also `true` and both settings are ignored, though MFA verification is prompted only when a risk rule triggers.
 :::
 
 ### Manage user sessions \{#manage-user-sessions}
