@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: 自適應多重要素驗證 (Adaptive MFA)
+---
+
+# 自適應多重要素驗證 (Adaptive MFA)
+
+自適應多重要素驗證 (Adaptive MFA) 會在每次登入流程中評估登入風險，僅在觸發風險規則時才要求使用者進行多重要素驗證 (MFA) 驗證。低風險的登入可無需 MFA 驗證提示即可完成，降低摩擦同時保護高風險登入。
+
+## 自適應多重要素驗證 (Adaptive MFA) 如何運作 \{#how-adaptive-mfa-works}
+
+當你在 <CloudLink to="/mfa">Console > 多重要素驗證 (Multi-factor authentication)</CloudLink> 啟用 **自適應多重要素驗證 (Adaptive MFA)** 時：
+
+- **MFA 設定不可跳過**：啟用自適應 MFA 需至少一種 MFA 因子，且必須選擇兩種不可跳過的 **MFA 設定提示** 政策之一（`註冊時要求使用者設定 MFA（不可跳過）` 或 `註冊後下次登入時要求使用者設定 MFA（不可跳過）`）。尚未設定任何 MFA 因子的使用者，仍必須在註冊或下次登入時完成 MFA 設定。
+- **登入時執行風險規則**：當使用者以可用 MFA 因子登入（`SignIn` 互動）時，Logto 會評估下方說明的內建風險規則。
+- **僅在觸發時執行驗證**：若至少有一條規則被觸發，Logto 會在完成登入前要求 MFA 驗證，並派發 [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) webhook 事件。若無規則觸發，則登入流程無需 MFA 驗證挑戰即可完成。
+
+## 內建風險規則 \{#built-in-risk-rules}
+
+自適應多重要素驗證 (Adaptive MFA) 會在 `SignIn` 互動時評估四條內建風險規則：
+
+| 規則                               | 觸發條件                                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **新國家 (New country)**           | 請求包含 ISO 國家代碼，且使用者過去 **180 天** 內曾以至少一個國家登入，且目前國家不在該紀錄中。    |
+| **地理速度 (Geo velocity)**        | 當前請求與使用者上次登入皆有經緯度座標，且經過時間為正值，計算出的移動速度超過 **900 公里/小時**。 |
+| **長時間未登入 (Long inactivity)** | 使用者曾登入，且距離上次登入已超過 **30 天**。                                                     |
+| **不可信 IP (Untrusted IP)**       | 上游風險訊號回報 bot 分數低於 **30** 或 verified-bot 標記為 `true`。                               |
+
+:::note
+Logto 會在登入與註冊時（若有 location headers）記錄使用者的國家與地理座標，以便後續登入有基準歷史。若使用者尚無先前登入時間戳（`lastSignInAt`，如透過 Management API 建立但尚未登入的使用者）或無先前國家/座標紀錄，則「新國家 (New country)」與「地理速度 (Geo velocity)」不會觸發；完成註冊時若有 location headers 會設置 `lastSignInAt` 並記錄位置歷史。
+:::
+
+## 邊緣標頭前置需求 \{#edge-headers-prerequisite}
+
+**新國家 (New country)**、**地理速度 (Geo velocity)** 與 **不可信 IP (Untrusted IP)** 規則依賴於部署在 Logto 前方的 edge proxy 注入的 HTTP 標頭：
+
+- 預設標頭名稱：`x-logto-cf-country`、`x-logto-cf-city`、`x-logto-cf-latitude`、`x-logto-cf-longitude`、`x-logto-cf-bot-score`、`x-logto-cf-bot-verified`。
+- 若你自架部署時 proxy 或 CDN 使用不同標頭名稱，可透過 `INJECTED_HEADER_MAPPING_JSON` 環境變數自訂標頭對應。
+
+若進入請求未帶有位置與 bot 風險標頭，這三條規則將無法獲得輸入訊號，**僅有長時間未登入 (Long inactivity) 規則**（距上次登入超過 30 天）能觸發自適應 MFA。
+
+## 與其他 MFA 設定的互動 \{#interaction-with-other-mfa-settings}
+
+- **每位使用者與組織需求**：當 Console 選擇 **自適應多重要素驗證 (Adaptive MFA)** 時，「組織啟用 MFA 後要求成員設定 MFA」設定（`organizationRequiredMfaPolicy`）會被隱藏且不儲存。在自適應 MFA 下，低風險登入（未觸發任何風險規則）**不會**要求 MFA 驗證——即使該使用者有 [每位使用者 MFA 設定需求](/end-user-flows/mfa/configure-mfa)（`mfa.required`）或屬於 [要求 MFA 的組織](/organizations/organization-management#require-mfa-for-organization-members)（`isMfaRequired`）。當 `isMfaRequired` 啟用時，組織權杖交換仍會拒絕未設定任何 MFA 因子的成員。
+- **使用者 MFA 選擇退出設定**：自適應 MFA 會忽略 `skipMfaOnSignIn` 與 `enabled: false`（`GET /api/my-account/mfa-settings` 回傳的唯讀 `required` 為 `true`）。只要有風險規則觸發，仍會要求使用者進行驗證。
+- **可信裝置 (Trusted devices)**：當自適應 MFA 風險規則觸發時，有效的 [可信裝置](/end-user-flows/mfa/trusted-devices) 憑證仍可通過 MFA 驗證挑戰。
+- **Passkey 登入**：使用 [passkey 登入](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) 可滿足該次登入的 WebAuthn MFA 要求，無需額外 MFA 提示。
+- **登入時綁定新因子**：由於在登入互動中新增 MFA 因子需先驗證現有因子，未提示 MFA 的低風險自適應 MFA 登入無法在登入時直接綁定新因子。使用者可透過帳號中心或 [Account API](/end-user-flows/account-settings/by-account-api) 新增或管理 MFA 因子。
+
+## Webhook 通知 \{#webhook-notifications}
+
+訂閱 `PostSignInAdaptiveMfaTriggered` webhook 事件，當自適應 MFA 於登入時觸發 MFA 驗證（`requiresMfa: true`）時會通知你的服務，並包含 `triggeredRules` 清單。與僅於登入完成後觸發的 `PostSignIn` 不同，`PostSignInAdaptiveMfaTriggered` 會在每次登入流程中於自適應 MFA 要求驗證時即觸發——即便使用者尚未完成 MFA。詳見 [Webhook 請求](/developers/webhooks/webhooks-request) 以取得 payload 細節。

@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: Adaptive MFA
+---
+
+# Adaptive MFA
+
+Adaptive MFA bewertet das Anmelderisiko bei jedem Anmeldevorgang und fordert den Benutzer nur dann zur MFA-Verifizierung auf, wenn eine Risikoregel ausgelöst wird. Anmeldungen mit geringem Risiko können ohne MFA-Verifizierung abgeschlossen werden, wodurch die Benutzerfreundlichkeit verbessert wird, während Anmeldungen mit hohem Risiko weiterhin geschützt bleiben.
+
+## Wie Adaptive MFA funktioniert \{#how-adaptive-mfa-works}
+
+Wenn **Adaptive MFA** in <CloudLink to="/mfa">Konsole > Multi-Faktor-Authentifizierung</CloudLink> aktiviert ist:
+
+- **MFA-Einrichtung bleibt nicht überspringbar**: Die Aktivierung von Adaptive MFA erfordert mindestens einen MFA-Faktor und eine der beiden nicht überspringbaren **MFA-Einrichtungsaufforderungs**-Richtlinien (`Benutzer während der Registrierung zur MFA-Einrichtung auffordern (nicht überspringbar)` oder `Benutzer bei ihrem nächsten Anmeldeversuch nach der Registrierung zur MFA-Einrichtung auffordern (nicht überspringbar)`). Benutzer, die noch keinen MFA-Faktor konfiguriert haben, müssen MFA weiterhin während der Registrierung oder bei ihrer nächsten Anmeldung einrichten.
+- **Risikoregeln werden bei der Anmeldung ausgeführt**: Wenn sich ein Benutzer anmeldet (`SignIn`-Interaktion) und MFA-Faktoren verfügbar sind, bewertet Logto die unten beschriebenen integrierten Risikoregeln.
+- **Verifizierung erfolgt nur bei Auslösung**: Wenn mindestens eine Regel ausgelöst wird, verlangt Logto eine MFA-Verifizierung, bevor die Anmeldung abgeschlossen wird, und sendet das [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) Webhook-Ereignis. Wenn keine Regel ausgelöst wird, wird die Anmeldung ohne MFA-Verifizierungsaufforderung abgeschlossen.
+
+## Integrierte Risikoregeln \{#built-in-risk-rules}
+
+Adaptive MFA bewertet vier integrierte Risikoregeln bei `SignIn`-Interaktionen:
+
+| Regel                          | Auslösebedingung                                                                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Neues Land**                 | Die Anfrage enthält einen ISO-Ländercode, der Benutzer hat sich zuvor mit mindestens einem aufgezeichneten Land in den letzten **180 Tagen** angemeldet, und das aktuelle Land ist nicht in diesem Verlauf.  |
+| **Geo-Geschwindigkeit**        | Sowohl die aktuelle Anfrage als auch die vorherige Anmeldung des Benutzers enthalten Breiten-/Längengrad, die verstrichene Zeit ist positiv und die berechnete Reisegeschwindigkeit übersteigt **900 km/h**. |
+| **Lange Inaktivität**          | Der Benutzer hat sich zuvor angemeldet und seit der letzten Anmeldung sind mehr als **30 Tage** vergangen.                                                                                                   |
+| **Nicht vertrauenswürdige IP** | Upstream-Risikosignale melden einen Bot-Score unter **30** oder ein verifiziertes Bot-Flag (`true`).                                                                                                         |
+
+:::note
+Logto zeichnet das Land und die geografischen Koordinaten eines Benutzers während der Anmeldung und Registrierung auf, sofern Location-Header vorhanden sind, damit spätere Anmeldungen eine Vergleichsbasis haben. Bevor ein Benutzer einen vorherigen Anmeldezeitstempel (`lastSignInAt`, z. B. Benutzer, die über die Management API erstellt wurden, bevor sie sich anmelden) oder eine vorherige Länder-/Koordinatenhistorie hat, werden `Neues Land` und `Geo-Geschwindigkeit` nicht ausgelöst; das Abschließen der Registrierung setzt `lastSignInAt` und zeichnet die Standorthistorie auf, wenn Location-Header während der Registrierung vorhanden waren.
+:::
+
+## Voraussetzung: Edge-Header \{#edge-headers-prerequisite}
+
+Die Regeln **Neues Land**, **Geo-Geschwindigkeit** und **Nicht vertrauenswürdige IP** basieren auf HTTP-Headern, die von einem Edge-Proxy vor Logto eingefügt werden:
+
+- Standard-Headernamen: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`.
+- In selbst gehosteten Umgebungen: Wenn dein Proxy oder CDN andere Headernamen verwendet, konfiguriere benutzerdefinierte Header-Zuordnungen über die Umgebungsvariable `INJECTED_HEADER_MAPPING_JSON`.
+
+Ohne Standort- und Bot-Risiko-Header in eingehenden Anfragen erhalten diese drei Regeln keine Eingangssignale, und **nur die Regel "Lange Inaktivität"** (mehr als 30 Tage seit der letzten Anmeldung) kann Adaptive MFA auslösen.
+
+## Zusammenspiel mit anderen MFA-Einstellungen \{#interaction-with-other-mfa-settings}
+
+- **Benutzer- und organisationsspezifische Anforderungen**: Wenn **Adaptive MFA** in der Konsole ausgewählt ist, wird die Einstellung **MFA-Einrichtungsaufforderung für Benutzer, nachdem die Organisation MFA aktiviert hat** (`organizationRequiredMfaPolicy`) ausgeblendet und nicht gespeichert. Bei der Anmeldung unter Adaptive MFA werden Anmeldungen mit geringem Risiko, bei denen keine Risikoregel ausgelöst wird, **nicht** zur MFA-Verifizierung aufgefordert – selbst für Benutzer mit [benutzerspezifischer MFA-Einrichtungspflicht](/end-user-flows/mfa/configure-mfa) (`mfa.required`) oder Mitglieder von [Organisationen, die MFA erfordern](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`). Der Organisationstoken-Austausch lehnt jedoch weiterhin Mitglieder ab, die keinen MFA-Faktor konfiguriert haben, wenn `isMfaRequired` aktiviert ist.
+- **Benutzer-MFA-Opt-out-Einstellungen**: Adaptive MFA ignoriert `skipMfaOnSignIn` und `enabled: false` (das schreibgeschützte `required`, das von `GET /api/my-account/mfa-settings` zurückgegeben wird, ist `true`). Benutzer werden weiterhin immer dann aufgefordert, wenn eine Risikoregel ausgelöst wird.
+- **Vertrauenswürdige Geräte**: Ein gültiges [vertrauenswürdiges Gerät](/end-user-flows/mfa/trusted-devices) kann die MFA-Verifizierungsaufforderung erfüllen, wenn eine Adaptive MFA-Risikoregel ausgelöst wird.
+- **Passkey-Anmeldung**: Die Anmeldung mit [Passkey-Anmeldung](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) erfüllt die WebAuthn-MFA-Anforderung für diese Anmeldung ohne zusätzliche MFA-Aufforderung.
+- **Neue Faktoren während der Anmeldung binden**: Da das Hinzufügen eines neuen MFA-Faktors während einer Anmeldeinteraktion zunächst die Verifizierung eines bestehenden Faktors erfordert, können bei Adaptive MFA-Anmeldungen mit geringem Risiko, die keine MFA-Aufforderung anzeigen, keine zusätzlichen Faktoren während der Anmeldung gebunden werden. Benutzer können MFA-Faktoren über das Account Center oder die [Account API](/end-user-flows/account-settings/by-account-api) hinzufügen oder verwalten.
+
+## Webhook-Benachrichtigungen \{#webhook-notifications}
+
+Das Abonnieren des `PostSignInAdaptiveMfaTriggered` Webhook-Ereignisses benachrichtigt deinen Dienst immer dann, wenn Adaptive MFA eine MFA-Aufforderung für eine Anmeldung auslöst (`requiresMfa: true`), einschließlich der Liste der `triggeredRules`. Im Gegensatz zu `PostSignIn`, das nur nach Abschluss der Anmeldung ausgelöst wird, wird `PostSignInAdaptiveMfaTriggered` einmal pro Anmeldevorgang zu dem Zeitpunkt ausgelöst, an dem Adaptive MFA eine Verifizierung verlangt – selbst bevor der Benutzer die MFA abschließt. Siehe [Webhook-Anfrage](/developers/webhooks/webhooks-request) für Details zur Nutzlast.
