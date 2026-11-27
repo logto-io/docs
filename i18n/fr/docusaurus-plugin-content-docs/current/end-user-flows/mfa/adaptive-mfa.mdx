@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: MFA adaptative
+---
+
+# MFA adaptative
+
+La MFA adaptative évalue le risque à chaque flux de connexion et ne demande une vérification MFA à l'utilisateur que lorsqu'une règle de risque est déclenchée. Les connexions à faible risque peuvent s'effectuer sans invite de vérification MFA, réduisant ainsi les frictions tout en protégeant les connexions à haut risque.
+
+## Fonctionnement de la MFA adaptative \{#how-adaptive-mfa-works}
+
+Lorsque la **MFA adaptative** est activée dans <CloudLink to="/mfa">Console > Authentification multi-facteurs (MFA)</CloudLink> :
+
+- **La configuration MFA reste non contournable** : Activer la MFA adaptative nécessite au moins un facteur MFA et l'une des deux politiques d'**invite de configuration MFA non contournable** (`Demander aux utilisateurs de configurer la MFA lors de l'inscription (non contournable)` ou `Demander aux utilisateurs de configurer la MFA lors de leur prochaine tentative de connexion après l'inscription (non contournable)`). Les utilisateurs qui n'ont pas encore configuré de facteur MFA doivent toujours configurer la MFA lors de l'inscription ou à leur prochaine connexion.
+- **Les règles de risque s'exécutent à la connexion** : Lorsqu'un utilisateur se connecte (interaction `SignIn`) avec des facteurs MFA disponibles, Logto évalue les règles de risque intégrées décrites ci-dessous.
+- **La vérification ne s'exécute que lorsqu'elle est déclenchée** : Si au moins une règle est déclenchée, Logto exige une vérification MFA avant de finaliser la connexion et déclenche l'événement webhook [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events). Si aucune règle n'est déclenchée, la connexion s'effectue sans défi de vérification MFA.
+
+## Règles de risque intégrées \{#built-in-risk-rules}
+
+La MFA adaptative évalue quatre règles de risque intégrées lors des interactions `SignIn` :
+
+| Règle                     | Condition de déclenchement                                                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Nouveau pays**          | La requête inclut un code pays ISO, l'utilisateur s'est déjà connecté avec au moins un pays enregistré au cours des **180 derniers jours**, et le pays actuel n'est pas dans cet historique.           |
+| **Vélocité géographique** | La requête actuelle et la précédente connexion de l'utilisateur possèdent des coordonnées latitude/longitude, le temps écoulé est positif, et la vitesse de déplacement calculée dépasse **900 km/h**. |
+| **Longue inactivité**     | L'utilisateur s'est déjà connecté et plus de **30 jours** se sont écoulés depuis sa dernière connexion.                                                                                                |
+| **IP non fiable**         | Les signaux de risque amont rapportent un score bot inférieur à **30** ou un indicateur de bot vérifié (`true`).                                                                                       |
+
+:::note
+Logto enregistre le pays et les coordonnées géographiques d'un utilisateur lors de la connexion et de l'inscription lorsque les en-têtes de localisation sont présents, afin que les connexions ultérieures disposent d'un historique de référence. Avant qu'un utilisateur ait un horodatage de connexion préalable (`lastSignInAt`, comme les utilisateurs créés via l’API de gestion avant leur première connexion) ou un historique de pays/coordonnées, les règles `Nouveau pays` et `Vélocité géographique` ne se déclenchent pas ; finaliser l'inscription définit `lastSignInAt` et enregistre l'historique de localisation si les en-têtes étaient présents lors de l'inscription.
+:::
+
+## Prérequis des en-têtes edge \{#edge-headers-prerequisite}
+
+Les règles **Nouveau pays**, **Vélocité géographique** et **IP non fiable** reposent sur des en-têtes HTTP injectés par un proxy edge devant Logto :
+
+- Noms d'en-têtes par défaut : `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`.
+- En déploiement auto-hébergé, si votre proxy ou CDN utilise d'autres noms d'en-têtes, configurez des mappages personnalisés via la variable d'environnement `INJECTED_HEADER_MAPPING_JSON`.
+
+Sans en-têtes de localisation et de risque bot sur les requêtes entrantes, ces trois règles ne reçoivent aucun signal d'entrée, et **seule la règle Longue inactivité** (plus de 30 jours depuis la dernière connexion) peut déclencher la MFA adaptative.
+
+## Interaction avec les autres paramètres MFA \{#interaction-with-other-mfa-settings}
+
+- **Exigences par utilisateur et organisation** : Lorsque la **MFA adaptative** est sélectionnée dans la Console, le paramètre **Invite de configuration MFA pour les utilisateurs après activation de la MFA par l'organisation** (`organizationRequiredMfaPolicy`) est masqué et non enregistré. Lors de la connexion sous MFA adaptative, les connexions à faible risque qui ne déclenchent aucune règle de risque **ne** sont **pas** soumises à une vérification MFA — même pour les utilisateurs avec [configuration MFA requise par utilisateur](/end-user-flows/mfa/configure-mfa) (`mfa.required`) ou membres d'[organisations qui exigent la MFA](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`). L'échange de jeton d'organisation rejette toujours les membres sans facteur MFA configuré lorsque `isMfaRequired` est activé.
+- **Paramètres d'exclusion MFA utilisateur** : La MFA adaptative ignore `skipMfaOnSignIn` et `enabled: false` (le champ en lecture seule `required` retourné par `GET /api/my-account/mfa-settings` est `true`). Les utilisateurs sont toujours soumis à un défi dès qu'une règle de risque est déclenchée.
+- **Appareils de confiance** : Un [appareil de confiance](/end-user-flows/mfa/trusted-devices) valide peut toujours satisfaire au défi de vérification MFA lorsqu'une règle de risque MFA adaptative est déclenchée.
+- **Connexion par passkey** : Se connecter avec la [connexion par passkey](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) satisfait à l'exigence MFA WebAuthn pour cette connexion sans invite MFA supplémentaire.
+- **Ajout de nouveaux facteurs lors de la connexion** : Comme l'ajout d'un nouveau facteur MFA lors d'une interaction de connexion nécessite de vérifier d'abord un facteur existant, les connexions MFA adaptative à faible risque qui ne déclenchent pas de défi MFA ne peuvent pas lier de nouveaux facteurs en ligne lors de la connexion. Les utilisateurs peuvent ajouter ou gérer des facteurs MFA via le Centre de compte ou l'[Account API](/end-user-flows/account-settings/by-account-api).
+
+## Notifications webhook \{#webhook-notifications}
+
+S'abonner à l'événement webhook `PostSignInAdaptiveMfaTriggered` permet à votre service d'être notifié chaque fois que la MFA adaptative déclenche un défi MFA lors d'une connexion (`requiresMfa: true`), y compris la liste des `triggeredRules`. Contrairement à `PostSignIn`, qui ne se déclenche qu'après la fin de la connexion, `PostSignInAdaptiveMfaTriggered` se déclenche une fois par flux de connexion au moment où la MFA adaptative exige une vérification — même avant que l'utilisateur ait terminé la MFA. Voir [Requête webhook](/developers/webhooks/webhooks-request) pour les détails du payload.

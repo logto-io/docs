@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: MFA adaptativa
+---
+
+# MFA adaptativa
+
+A MFA adaptativa avalia o risco de login em cada fluxo de autenticação e desafia o usuário para verificação MFA somente quando uma regra de risco é acionada. Logins de baixo risco podem ser concluídos sem um prompt de verificação MFA, reduzindo o atrito enquanto mantém logins de alto risco protegidos.
+
+## Como funciona a MFA adaptativa \{#how-adaptive-mfa-works}
+
+Quando a **MFA adaptativa** está ativada em <CloudLink to="/mfa">Console > Autenticação multifatorial</CloudLink>:
+
+- **Configuração de MFA permanece obrigatória**: Ativar a MFA adaptativa exige pelo menos um fator de MFA e uma das duas políticas de **prompt de configuração de MFA não pulável** (`Pedir aos usuários para configurar MFA durante o registro (não pulável)` ou `Pedir aos usuários para configurar MFA na próxima tentativa de login após o registro (não pulável)`). Usuários que ainda não possuem nenhum fator de MFA configurado ainda devem configurar MFA durante o cadastro ou no próximo login.
+- **Regras de risco são executadas no login**: Quando um usuário faz login (interação `SignIn`) com fatores de MFA disponíveis, o Logto avalia as regras de risco internas descritas abaixo.
+- **Verificação ocorre apenas quando acionada**: Se pelo menos uma regra for acionada, o Logto exige verificação MFA antes de concluir o login e dispara o evento webhook [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events). Se nenhuma regra for acionada, o login é concluído sem um desafio de verificação MFA.
+
+## Regras de risco internas \{#built-in-risk-rules}
+
+A MFA adaptativa avalia quatro regras de risco internas em interações `SignIn`:
+
+| Regra                     | Condição de acionamento                                                                                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Novo país**             | A solicitação inclui um código de país ISO, o usuário já fez login antes com pelo menos um país registrado nos últimos **180 dias**, e o país atual não está nesse histórico.                |
+| **Velocidade geográfica** | Tanto a solicitação atual quanto o login anterior do usuário possuem coordenadas de latitude/longitude, o tempo decorrido é positivo e a velocidade de viagem calculada excede **900 km/h**. |
+| **Longa inatividade**     | O usuário já fez login antes e mais de **30 dias** se passaram desde o último login.                                                                                                         |
+| **IP não confiável**      | Sinais de risco a montante relatam uma pontuação de bot abaixo de **30** ou um sinalizador de bot verificado (`true`).                                                                       |
+
+:::note
+O Logto registra o país e as coordenadas geográficas de um usuário durante o login e o registro quando os cabeçalhos de localização estão presentes, para que logins posteriores tenham um histórico de referência. Antes que um usuário tenha um timestamp de login anterior (`lastSignInAt`, como usuários criados via Management API antes do primeiro login) ou histórico prévio de país/coordenada, as regras `Novo país` e `Velocidade geográfica` não são acionadas; concluir o registro define `lastSignInAt` e registra o histórico de localização se os cabeçalhos de localização estavam presentes durante o cadastro.
+:::
+
+## Pré-requisito de cabeçalhos de borda \{#edge-headers-prerequisite}
+
+As regras **Novo país**, **Velocidade geográfica** e **IP não confiável** dependem de cabeçalhos HTTP injetados por um proxy de borda à frente do Logto:
+
+- Nomes de cabeçalhos padrão: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`.
+- Em implantações self-hosted, se seu proxy ou CDN usa nomes de cabeçalhos diferentes, configure mapeamentos personalizados via a variável de ambiente `INJECTED_HEADER_MAPPING_JSON`.
+
+Sem cabeçalhos de localização e risco de bot nas solicitações recebidas, essas três regras não recebem sinais de entrada, e **apenas a regra Longa inatividade** (mais de 30 dias desde o último login) pode acionar a MFA adaptativa.
+
+## Interação com outras configurações de MFA \{#interaction-with-other-mfa-settings}
+
+- **Requisitos por usuário e organização**: Quando a **MFA adaptativa** está selecionada no Console, a configuração **Prompt de configuração de MFA para usuários após a organização ativar MFA** (`organizationRequiredMfaPolicy`) fica oculta e não é salva. Durante o login sob MFA adaptativa, logins de baixo risco que não acionam nenhuma regra de risco **não** são desafiados para verificação MFA — mesmo para usuários com [configuração de MFA obrigatória por usuário](/end-user-flows/mfa/configure-mfa) (`mfa.required`) ou membros de [organizações que exigem MFA](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`). A troca de token de organização ainda rejeita membros que não possuem nenhum fator de MFA configurado quando `isMfaRequired` está ativado.
+- **Configurações de exclusão de MFA do usuário**: A MFA adaptativa ignora `skipMfaOnSignIn` e `enabled: false` (o campo somente leitura `required` retornado por `GET /api/my-account/mfa-settings` é `true`). Os usuários ainda são desafiados sempre que uma regra de risco é acionada.
+- **Dispositivos confiáveis**: Uma credencial de [dispositivo confiável](/end-user-flows/mfa/trusted-devices) válida ainda pode cumprir o desafio de verificação MFA quando uma regra de risco da MFA adaptativa é acionada.
+- **Login com passkey**: Fazer login com [passkey sign-in](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) satisfaz o requisito de MFA WebAuthn para aquele login sem um prompt MFA extra.
+- **Vinculação de novos fatores durante o login**: Como adicionar um novo fator de MFA durante uma interação de login exige verificar primeiro um fator existente, logins de baixo risco pela MFA adaptativa que não solicitam MFA não podem vincular fatores adicionais durante o login. Usuários podem adicionar ou gerenciar fatores de MFA via Account Center ou pela [Account API](/end-user-flows/account-settings/by-account-api).
+
+## Notificações de webhook \{#webhook-notifications}
+
+Assinar o evento webhook `PostSignInAdaptiveMfaTriggered` notifica seu serviço sempre que a MFA adaptativa aciona um desafio MFA para um login (`requiresMfa: true`), incluindo a lista de `triggeredRules`. Diferente de `PostSignIn`, que dispara apenas após o login ser concluído, `PostSignInAdaptiveMfaTriggered` dispara uma vez por fluxo de login no momento em que a MFA adaptativa exige verificação — mesmo antes do usuário finalizar a MFA. Veja [Requisição de Webhook](/developers/webhooks/webhooks-request) para detalhes do payload.

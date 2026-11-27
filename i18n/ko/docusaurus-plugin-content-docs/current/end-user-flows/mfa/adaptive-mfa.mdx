@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: Adaptive MFA
+---
+
+# Adaptive MFA
+
+Adaptive MFA는 각 로그인 흐름에서 로그인 위험을 평가하고, 위험 규칙이 트리거될 때만 사용자에게 MFA(다단계 인증 (MFA)) 검증을 요구합니다. 위험이 낮은 로그인은 MFA 검증 프롬프트 없이 완료되어 사용자의 불편을 줄이면서도, 위험이 높은 로그인을 안전하게 보호할 수 있습니다.
+
+## Adaptive MFA의 작동 방식 \{#how-adaptive-mfa-works}
+
+<CloudLink to="/mfa">콘솔 > 다단계 인증 (MFA)</CloudLink>에서 **Adaptive MFA**를 활성화하면:
+
+- **MFA 설정은 건너뛸 수 없습니다**: Adaptive MFA를 활성화하려면 최소 하나의 MFA 요소와 두 가지 건너뛸 수 없는 **MFA 설정 프롬프트** 정책 중 하나(`가입 시 MFA 설정 요청 (건너뛸 수 없음)` 또는 `가입 후 다음 로그인 시 MFA 설정 요청 (건너뛸 수 없음)`)가 필요합니다. 아직 MFA 요소를 설정하지 않은 사용자는 가입 시 또는 다음 로그인 시 반드시 MFA를 설정해야 합니다.
+- **로그인 시 위험 규칙 실행**: 사용자가 MFA 요소를 보유한 상태로 로그인(`SignIn` 상호작용)하면, Logto는 아래에 설명된 내장 위험 규칙을 평가합니다.
+- **트리거 시에만 검증 실행**: 하나 이상의 규칙이 트리거되면, Logto는 로그인 완료 전에 MFA 검증을 요구하고 [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) 웹훅 이벤트를 전송합니다. 규칙이 트리거되지 않으면, MFA 검증 없이 로그인이 완료됩니다.
+
+## 내장 위험 규칙 \{#built-in-risk-rules}
+
+Adaptive MFA는 `SignIn` 상호작용에서 네 가지 내장 위험 규칙을 평가합니다:
+
+| 규칙                  | 트리거 조건                                                                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **새로운 국가**       | 요청에 ISO 국가 코드가 포함되어 있고, 사용자가 과거 **180일** 이내에 한 번 이상 다른 국가에서 로그인한 이력이 있으며, 현재 국가가 그 이력에 포함되어 있지 않은 경우. |
+| **지리적 이동 속도**  | 현재 요청과 사용자의 이전 로그인 모두 위도/경도 좌표가 있고, 경과 시간이 양수이며, 계산된 이동 속도가 **900 km/h**를 초과하는 경우.                                  |
+| **장기간 비활성**     | 사용자가 이전에 로그인한 적이 있고, 마지막 로그인 이후 **30일** 이상이 경과한 경우.                                                                                  |
+| **신뢰할 수 없는 IP** | 업스트림 위험 신호가 봇 점수 **30** 미만이거나, 봇 검증 플래그(`true`)가 보고된 경우.                                                                                |
+
+:::note
+Logto는 로그인 및 가입 시 위치 헤더가 있을 경우 사용자의 국가 및 지리 좌표를 기록하여 이후 로그인에서 기준 이력을 제공합니다. 사용자가 이전 로그인 타임스탬프(`lastSignInAt`, 예: Management API로 생성된 후 로그인하지 않은 사용자)나 이전 국가/좌표 이력이 없으면, `새로운 국가` 및 `지리적 이동 속도` 규칙은 트리거되지 않습니다. 가입 완료 시 위치 헤더가 있으면 `lastSignInAt`이 설정되고 위치 이력이 기록됩니다.
+:::
+
+## 엣지 헤더 사전 조건 \{#edge-headers-prerequisite}
+
+**새로운 국가**, **지리적 이동 속도**, **신뢰할 수 없는 IP** 규칙은 Logto 앞단의 엣지 프록시가 삽입하는 HTTP 헤더에 의존합니다:
+
+- 기본 헤더 이름: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`
+- 셀프 호스팅 배포에서는 프록시나 CDN이 다른 헤더 이름을 사용할 경우, `INJECTED_HEADER_MAPPING_JSON` 환경 변수로 커스텀 헤더 매핑을 설정하세요.
+
+들어오는 요청에 위치 및 봇 위험 헤더가 없으면, 이 세 가지 규칙은 입력 신호를 받지 못하며 **30일 이상 비활성 규칙**만 Adaptive MFA를 트리거할 수 있습니다.
+
+## 다른 MFA 설정과의 상호작용 \{#interaction-with-other-mfa-settings}
+
+- **사용자별 및 조직별 요구 사항**: 콘솔에서 **Adaptive MFA**를 선택하면, **조직에서 MFA를 활성화한 후 사용자에게 MFA 설정 프롬프트** 설정(`organizationRequiredMfaPolicy`)이 숨겨지고 저장되지 않습니다. Adaptive MFA 하에서 로그인 시, 위험 규칙이 트리거되지 않은 저위험 로그인은 [사용자별 MFA 설정 필수](/end-user-flows/mfa/configure-mfa) (`mfa.required`) 또는 [MFA 필수 조직의 멤버](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`)인 경우에도 MFA 검증을 요구하지 **않습니다**. 단, `isMfaRequired`가 활성화된 경우 MFA 요소가 없는 멤버는 조직 토큰 교환이 거부됩니다.
+- **사용자 MFA 옵트아웃 설정**: Adaptive MFA는 `skipMfaOnSignIn` 및 `enabled: false`를 무시합니다(`GET /api/my-account/mfa-settings`에서 반환되는 읽기 전용 `required`는 `true`). 위험 규칙이 트리거되면 사용자는 항상 도전받습니다.
+- **신뢰된 기기**: [신뢰된 기기](/end-user-flows/mfa/trusted-devices) 자격 증명은 Adaptive MFA 위험 규칙이 트리거될 때 MFA 검증을 통과할 수 있습니다.
+- **패스키 로그인**: [패스키 로그인](/end-user-flows/sign-up-and-sign-in/passkey-sign-in)으로 로그인하면 해당 로그인에 대해 WebAuthn MFA 요구 사항을 별도의 MFA 프롬프트 없이 충족합니다.
+- **로그인 중 새로운 요소 바인딩**: 로그인 상호작용 중 새로운 MFA 요소를 추가하려면 기존 요소 검증이 선행되어야 하므로, MFA 프롬프트가 없는 저위험 Adaptive MFA 로그인에서는 추가 요소를 인라인으로 바인딩할 수 없습니다. 사용자는 계정 센터 또는 [Account API](/end-user-flows/account-settings/by-account-api)를 통해 MFA 요소를 추가/관리할 수 있습니다.
+
+## 웹훅 알림 \{#webhook-notifications}
+
+`PostSignInAdaptiveMfaTriggered` 웹훅 이벤트를 구독하면 Adaptive MFA가 로그인에 대해 MFA 도전을 트리거할 때마다(`requiresMfa: true`), 트리거된 `triggeredRules` 목록과 함께 서비스에 알림이 전송됩니다. `PostSignIn`이 로그인 완료 후에만 발생하는 것과 달리, `PostSignInAdaptiveMfaTriggered`는 Adaptive MFA가 검증을 요구하는 시점(사용자가 MFA를 완료하기 전)에 로그인 흐름마다 한 번씩 발생합니다. 페이로드 세부 정보는 [웹훅 요청](/developers/webhooks/webhooks-request)을 참고하세요.

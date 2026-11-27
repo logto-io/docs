@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: アダプティブ MFA
+---
+
+# アダプティブ MFA
+
+アダプティブ MFA は、各サインインフローでサインインリスクを評価し、リスクルールが発動した場合のみユーザーに多要素認証 (MFA) の検証を要求します。リスクが低いサインインは MFA 検証プロンプトなしで完了できるため、利便性を損なわずに高リスクのサインインを保護できます。
+
+## アダプティブ MFA の仕組み \{#how-adaptive-mfa-works}
+
+**アダプティブ MFA** を <CloudLink to="/mfa">コンソール > 多要素認証 (MFA)</CloudLink> で有効にすると：
+
+- **MFA 設定はスキップ不可のまま**：アダプティブ MFA を有効にするには、少なくとも 1 つの MFA 要素と、2 つのスキップ不可な **MFA 設定プロンプト** ポリシー（`登録時にユーザーに MFA 設定を求める（スキップ不可）` または `登録後の次回サインイン時にユーザーに MFA 設定を求める（スキップ不可）`）のいずれかが必要です。まだ MFA 要素を設定していないユーザーは、サインアップ時または次回サインイン時に必ず MFA を設定する必要があります。
+- **リスクルールがサインイン時に実行される**：ユーザーが MFA 要素を利用可能な状態でサインイン（`SignIn` インタラクション）すると、Logto は下記の組み込みリスクルールを評価します。
+- **検証はトリガー時のみ実行**：少なくとも 1 つのルールが発動した場合、Logto はサインイン完了前に MFA 検証を要求し、[`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) Webhook イベントを発行します。ルールが発動しなければ、MFA 検証プロンプトなしでサインインが完了します。
+
+## 組み込みリスクルール \{#built-in-risk-rules}
+
+アダプティブ MFA は `SignIn` インタラクションで 4 つの組み込みリスクルールを評価します：
+
+| ルール                   | トリガー条件                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **新しい国**             | リクエストに ISO 国コードが含まれ、ユーザーが過去 **180 日間**に 1 つ以上の国でサインインした履歴があり、現在の国がその履歴に含まれていない場合。 |
+| **ジオベロシティ**       | 現在のリクエストと直前のサインインの両方に緯度 / 経度座標があり、経過時間が正で、計算された移動速度が **900 km/h** を超える場合。                 |
+| **長期間の非アクティブ** | ユーザーが過去にサインインしており、前回サインインから **30 日**以上経過している場合。                                                            |
+| **信頼されていない IP**  | アップストリームのリスクシグナルがボットスコア **30** 未満または検証済みボットフラグ（`true`）を報告した場合。                                    |
+
+:::note
+Logto は、サインインや登録時にロケーションヘッダーが存在する場合、ユーザーの国や地理座標を記録します。これにより、後のサインインで基準となる履歴ができます。ユーザーに過去のサインインタイムスタンプ（`lastSignInAt`、たとえば Management API で作成されたがサインインしていないユーザー）や国 / 座標履歴がない場合は、「新しい国」と「ジオベロシティ」は発動しません。登録完了時にロケーションヘッダーがあれば `lastSignInAt` とロケーション履歴が記録されます。
+:::
+
+## エッジヘッダーの前提条件 \{#edge-headers-prerequisite}
+
+**新しい国**、**ジオベロシティ**、**信頼されていない IP** ルールは、Logto の前段にあるエッジプロキシが注入する HTTP ヘッダーに依存します：
+
+- デフォルトのヘッダー名：`x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`
+- セルフホスト環境でプロキシや CDN が異なるヘッダー名を使う場合は、`INJECTED_HEADER_MAPPING_JSON` 環境変数でカスタムマッピングを設定してください。
+
+リクエストにロケーションやボットリスクヘッダーがない場合、これら 3 つのルールは入力シグナルを受け取らず、**長期間の非アクティブ**（前回サインインから 30 日超）のみがアダプティブ MFA を発動できます。
+
+## 他の MFA 設定との連携 \{#interaction-with-other-mfa-settings}
+
+- **ユーザー単位・組織単位の必須設定**：コンソールで **アダプティブ MFA** を選択すると、**組織が MFA を有効化した後のユーザーへの MFA 設定プロンプト** 設定（`organizationRequiredMfaPolicy`）は非表示となり保存されません。アダプティブ MFA 下でのサインイン時、リスクルールが発動しない低リスクサインインでは、[ユーザー単位で MFA 設定必須](/end-user-flows/mfa/configure-mfa)（`mfa.required`）や [MFA 必須の組織メンバー](/organizations/organization-management#require-mfa-for-organization-members)（`isMfaRequired`）であっても MFA 検証は要求されません。`isMfaRequired` 有効時に MFA 要素未設定のメンバーは、組織トークン交換で拒否されます。
+- **ユーザーの MFA オプトアウト設定**：アダプティブ MFA は `skipMfaOnSignIn` や `enabled: false` を無視します（`GET /api/my-account/mfa-settings` で返る読み取り専用の `required` は `true` です）。リスクルールが発動した場合は必ず MFA チャレンジが行われます。
+- **信頼済みデバイス**：有効な [信頼済みデバイス](/end-user-flows/mfa/trusted-devices) 資格情報があれば、アダプティブ MFA リスクルール発動時の MFA チャレンジを満たせます。
+- **パスキーサインイン**：[パスキーサインイン](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) でサインインした場合、そのサインインの WebAuthn MFA 要件を追加プロンプトなしで満たします。
+- **サインイン中の新要素バインド**：サインインインタラクション中に新しい MFA 要素を追加するには既存要素の検証が必要なため、MFA プロンプトが表示されない低リスクのアダプティブ MFA サインインでは、サインイン中に追加要素をインラインでバインドできません。MFA 要素の追加や管理はアカウントセンターまたは [Account API](/end-user-flows/account-settings/by-account-api) から行えます。
+
+## Webhook 通知 \{#webhook-notifications}
+
+`PostSignInAdaptiveMfaTriggered` Webhook イベントを購読すると、アダプティブ MFA がサインイン時に MFA チャレンジを発動した際（`requiresMfa: true`）、`triggeredRules` のリストとともにサービスに通知されます。`PostSignIn` はサインイン完了後のみ発火しますが、`PostSignInAdaptiveMfaTriggered` はアダプティブ MFA が検証を要求した時点（ユーザーが MFA を完了する前）でサインインフローごとに 1 回発火します。ペイロード詳細は [Webhook リクエスト](/developers/webhooks/webhooks-request) を参照してください。

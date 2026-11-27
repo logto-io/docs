@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: 自适应多因素认证 (Adaptive MFA)
+---
+
+# 自适应多因素认证 (Adaptive MFA)
+
+自适应多因素认证 (Adaptive MFA) 会在每次登录流程中评估登录风险，仅在风险规则被触发时才要求用户进行多因素认证 (MFA) 验证。低风险登录无需 MFA 验证提示即可完成，从而减少摩擦，同时保护高风险登录。
+
+## 自适应多因素认证 (Adaptive MFA) 的工作原理 \{#how-adaptive-mfa-works}
+
+当你在 <CloudLink to="/mfa">控制台 > 多因素认证 (MFA)</CloudLink> 启用 **自适应多因素认证 (Adaptive MFA)** 时：
+
+- **MFA 设置不可跳过**：启用自适应多因素认证 (Adaptive MFA) 需要至少一个 MFA 因子，并且需要两种不可跳过的 **MFA 设置提示** 策略之一（`注册时要求用户设置 MFA（不可跳过）` 或 `注册后下次登录时要求用户设置 MFA（不可跳过）`）。尚未配置任何 MFA 因子的用户，仍需在注册或下次登录时设置 MFA。
+- **登录时运行风险规则**：当用户使用可用的 MFA 因子登录（`SignIn` 交互）时，Logto 会评估下述内置风险规则。
+- **仅在触发时进行验证**：如果至少有一条规则被触发，Logto 会在完成登录前要求 MFA 验证，并派发 [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) Webhook 事件。如果没有规则被触发，登录将直接完成，无需 MFA 验证挑战。
+
+## 内置风险规则 \{#built-in-risk-rules}
+
+自适应多因素认证 (Adaptive MFA) 会在 `SignIn` 交互中评估四条内置风险规则：
+
+| 规则             | 触发条件                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- |
+| **新国家**       | 请求包含 ISO 国家代码，且用户在过去 **180 天** 内有过至少一次带有国家记录的登录历史，且当前国家不在历史记录中。 |
+| **地理速度**     | 当前请求和用户上一次登录都包含经纬度坐标，且经过的时间为正数，计算出的旅行速度超过 **900 公里/小时**。          |
+| **长时间未活跃** | 用户曾经登录过，且距离上次登录已超过 **30 天**。                                                                |
+| **不可信 IP**    | 上游风险信号报告 bot 分数低于 **30** 或 verified-bot 标志为 `true`。                                            |
+
+:::note
+Logto 会在登录和注册时记录用户的国家和地理坐标（如果有位置头），以便后续登录有基线历史。在用户有之前的登录时间戳（`lastSignInAt`，如通过 Management API 创建但尚未登录的用户）或之前的国家/坐标历史前，`新国家` 和 `地理速度` 不会被触发；完成注册会设置 `lastSignInAt` 并记录位置信息（如果注册时有位置头）。
+:::
+
+## 边缘头部前置条件 \{#edge-headers-prerequisite}
+
+**新国家**、**地理速度** 和 **不可信 IP** 规则依赖于在 Logto 前端由边缘代理注入的 HTTP 头部：
+
+- 默认头部名称：`x-logto-cf-country`、`x-logto-cf-city`、`x-logto-cf-latitude`、`x-logto-cf-longitude`、`x-logto-cf-bot-score`、`x-logto-cf-bot-verified`。
+- 在自托管部署中，如果你的代理或 CDN 使用不同的头部名称，可以通过 `INJECTED_HEADER_MAPPING_JSON` 环境变量配置自定义头部映射。
+
+如果传入请求没有位置信息和 bot 风险头部，这三条规则将无法获得输入信号，**只有长时间未活跃规则**（距离上次登录超过 30 天）可以触发自适应多因素认证 (Adaptive MFA)。
+
+## 与其他 MFA 设置的交互 \{#interaction-with-other-mfa-settings}
+
+- **按用户和组织要求**：当在控制台选择 **自适应多因素认证 (Adaptive MFA)** 时，**组织启用 MFA 后用户的 MFA 设置提示** 设置（`organizationRequiredMfaPolicy`）会被隐藏且不会保存。在自适应多因素认证 (Adaptive MFA) 下登录时，未触发任何风险规则的低风险登录**不会**要求 MFA 验证——即使对于 [按用户要求 MFA 设置](/end-user-flows/mfa/configure-mfa)（`mfa.required`）或 [要求 MFA 的组织成员](/organizations/organization-management#require-mfa-for-organization-members)（`isMfaRequired`）也是如此。当启用 `isMfaRequired` 时，组织令牌交换仍会拒绝未配置任何 MFA 因子的成员。
+- **用户 MFA 选择退出设置**：自适应多因素认证 (Adaptive MFA) 忽略 `skipMfaOnSignIn` 和 `enabled: false`（`GET /api/my-account/mfa-settings` 返回的只读 `required` 为 `true`）。只要有风险规则被触发，用户仍会被要求验证。
+- **可信设备**：当自适应多因素认证 (Adaptive MFA) 风险规则被触发时，有效的 [可信设备](/end-user-flows/mfa/trusted-devices) 凭证仍可用于完成 MFA 验证挑战。
+- **Passkey 登录**：使用 [passkey 登录](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) 满足该次登录的 WebAuthn MFA 要求，无需额外 MFA 提示。
+- **登录时绑定新因子**：由于在登录交互中添加新 MFA 因子需要先验证已有因子，未提示 MFA 的低风险自适应多因素认证 (Adaptive MFA) 登录无法在登录过程中内联绑定新因子。用户可通过账户中心或 [Account API](/end-user-flows/account-settings/by-account-api) 添加或管理 MFA 因子。
+
+## Webhook 通知 \{#webhook-notifications}
+
+订阅 `PostSignInAdaptiveMfaTriggered` Webhook 事件可在自适应多因素认证 (Adaptive MFA) 为某次登录触发 MFA 挑战（`requiresMfa: true`）时通知你的服务，并包含 `triggeredRules` 列表。与仅在登录完成后触发的 `PostSignIn` 不同，`PostSignInAdaptiveMfaTriggered` 会在每次登录流程中自适应多因素认证 (Adaptive MFA) 要求验证时立即触发——即使用户尚未完成 MFA。有关负载详情，请参见 [Webhook 请求](/developers/webhooks/webhooks-request)。

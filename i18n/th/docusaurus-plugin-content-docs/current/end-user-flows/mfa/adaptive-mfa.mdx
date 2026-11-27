@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: Adaptive MFA
+---
+
+# Adaptive MFA
+
+Adaptive MFA ประเมินความเสี่ยงของการลงชื่อเข้าใช้ในแต่ละขั้นตอน และจะขอให้ผู้ใช้ยืนยันตัวตนหลายปัจจัย (MFA) เฉพาะเมื่อกฎความเสี่ยงถูกกระตุ้นเท่านั้น การลงชื่อเข้าใช้ที่มีความเสี่ยงต่ำสามารถดำเนินการได้โดยไม่ต้องยืนยัน MFA ลดความยุ่งยากขณะยังคงปกป้องการลงชื่อเข้าใช้ที่มีความเสี่ยงสูง
+
+## Adaptive MFA ทำงานอย่างไร \{#how-adaptive-mfa-works}
+
+เมื่อเปิดใช้งาน **Adaptive MFA** ใน <CloudLink to="/mfa">Console > Multi-factor authentication</CloudLink>:
+
+- **การตั้งค่า MFA ไม่สามารถข้ามได้**: การเปิด Adaptive MFA ต้องมีปัจจัย MFA อย่างน้อยหนึ่งรายการ และต้องเลือกนโยบาย **MFA set-up prompt** แบบไม่สามารถข้ามได้อย่างน้อยหนึ่งรายการ (`Ask users to set up MFA during registration (non-skippable)` หรือ `Ask users to set up MFA on their next sign-in attempt after registration (non-skippable)`) ผู้ใช้ที่ยังไม่ได้ตั้งค่า MFA จะต้องตั้งค่า MFA ระหว่างสมัครหรือในการลงชื่อเข้าใช้ครั้งถัดไป
+- **กฎความเสี่ยงทำงานขณะลงชื่อเข้าใช้**: เมื่อผู้ใช้ลงชื่อเข้าใช้ (`SignIn` interaction) และมีปัจจัย MFA พร้อมใช้งาน Logto จะประเมินกฎความเสี่ยงในตัวที่อธิบายไว้ด้านล่าง
+- **การยืนยัน MFA จะเกิดขึ้นเมื่อถูกกระตุ้นเท่านั้น**: หากมีกฎใดถูกกระตุ้น Logto จะขอให้ยืนยัน MFA ก่อนลงชื่อเข้าใช้ให้เสร็จสมบูรณ์ และจะส่ง webhook event [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) หากไม่มีกฎใดถูกกระตุ้น การลงชื่อเข้าใช้จะเสร็จสมบูรณ์โดยไม่ต้องยืนยัน MFA
+
+## กฎความเสี่ยงในตัว \{#built-in-risk-rules}
+
+Adaptive MFA จะประเมินกฎความเสี่ยงในตัว 4 ข้อสำหรับ `SignIn` interactions:
+
+| กฎ                    | เงื่อนไขที่กระตุ้น                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **ประเทศใหม่**        | คำขอมีรหัสประเทศ ISO, ผู้ใช้เคยลงชื่อเข้าใช้มาก่อนและมีประวัติประเทศอย่างน้อยหนึ่งรายการใน **180 วัน** ที่ผ่านมา และประเทศปัจจุบันไม่อยู่ในประวัตินั้น |
+| **Geo velocity**      | ทั้งคำขอปัจจุบันและการลงชื่อเข้าใช้ครั้งก่อนของผู้ใช้มีพิกัดละติจูด/ลองจิจูด, เวลาที่ผ่านไปเป็นบวก, และความเร็วที่คำนวณได้เกิน **900 กม./ชม.**         |
+| **ไม่ได้ใช้งานนาน**   | ผู้ใช้เคยลงชื่อเข้าใช้มาก่อน และผ่านไปมากกว่า **30 วัน** นับจากการลงชื่อเข้าใช้ครั้งล่าสุด                                                             |
+| **IP ไม่น่าเชื่อถือ** | สัญญาณความเสี่ยง upstream รายงาน bot score ต่ำกว่า **30** หรือมีธง verified-bot (`true`)                                                               |
+
+:::note
+Logto จะบันทึกประเทศและพิกัดภูมิศาสตร์ของผู้ใช้ระหว่างการลงชื่อเข้าใช้และการสมัครเมื่อมี location headers เพื่อให้การลงชื่อเข้าใช้ครั้งต่อไปมีประวัติอ้างอิง หากผู้ใช้ยังไม่มี timestamp การลงชื่อเข้าใช้ก่อนหน้า (`lastSignInAt` เช่น ผู้ใช้ที่สร้างผ่าน Management API ก่อนลงชื่อเข้าใช้) หรือยังไม่มีประวัติประเทศ/พิกัด `ประเทศใหม่` และ `Geo velocity` จะไม่ถูกกระตุ้น การสมัครเสร็จสมบูรณ์จะตั้งค่า `lastSignInAt` และบันทึกประวัติตำแหน่งหากมี location headers ระหว่างสมัคร
+:::
+
+## ข้อกำหนดเบื้องต้นสำหรับ edge headers \{#edge-headers-prerequisite}
+
+กฎ **ประเทศใหม่**, **Geo velocity** และ **IP ไม่น่าเชื่อถือ** อาศัย HTTP headers ที่ถูก inject โดย edge proxy ที่อยู่หน้าระบบ Logto:
+
+- ชื่อ header เริ่มต้น: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`
+- สำหรับการติดตั้งแบบ self-hosted หาก proxy หรือ CDN ของคุณใช้ชื่อ header อื่น ให้กำหนด mapping header เองผ่าน environment variable `INJECTED_HEADER_MAPPING_JSON`
+
+หากไม่มี location และ bot-risk headers ในคำขอที่เข้ามา กฎทั้งสามนี้จะไม่ได้รับสัญญาณอินพุต และ **จะมีเพียงกฎไม่ได้ใช้งานนาน** (มากกว่า 30 วันนับจากการลงชื่อเข้าใช้ครั้งล่าสุด) เท่านั้นที่สามารถกระตุ้น Adaptive MFA ได้
+
+## การทำงานร่วมกับการตั้งค่า MFA อื่น \{#interaction-with-other-mfa-settings}
+
+- **ข้อกำหนดต่อผู้ใช้และองค์กร**: เมื่อเลือก **Adaptive MFA** ใน Console การตั้งค่า **MFA setup prompt for users after organization enables MFA** (`organizationRequiredMfaPolicy`) จะถูกซ่อนและไม่ถูกบันทึก ระหว่างการลงชื่อเข้าใช้ภายใต้ Adaptive MFA การลงชื่อเข้าใช้ที่มีความเสี่ยงต่ำซึ่งไม่มีกฎใดถูกกระตุ้น **จะไม่** ถูกขอให้ยืนยัน MFA — แม้แต่ผู้ใช้ที่ [บังคับตั้งค่า MFA รายบุคคล](/end-user-flows/mfa/configure-mfa) (`mfa.required`) หรือสมาชิกของ [องค์กรที่บังคับใช้ MFA](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`) การแลกเปลี่ยนโทเค็นองค์กรยังคงปฏิเสธสมาชิกที่ไม่ได้ตั้งค่า MFA เมื่อเปิดใช้งาน `isMfaRequired`
+- **การตั้งค่าผู้ใช้เลือกไม่ใช้ MFA**: Adaptive MFA จะไม่สนใจ `skipMfaOnSignIn` และ `enabled: false` (ค่า `required` แบบ read-only ที่ส่งกลับโดย `GET /api/my-account/mfa-settings` จะเป็น `true`) ผู้ใช้ยังคงถูกขอ MFA เมื่อมีกฎความเสี่ยงถูกกระตุ้น
+- **อุปกรณ์ที่เชื่อถือได้**: [อุปกรณ์ที่เชื่อถือได้](/end-user-flows/mfa/trusted-devices) ที่ถูกต้องยังสามารถใช้ยืนยัน MFA ได้เมื่อกฎความเสี่ยง Adaptive MFA ถูกกระตุ้น
+- **การลงชื่อเข้าใช้ด้วย passkey**: การลงชื่อเข้าใช้ด้วย [passkey sign-in](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) จะถือว่าตรงตามข้อกำหนด WebAuthn MFA สำหรับการลงชื่อเข้าใช้นั้นโดยไม่ต้องขอ MFA เพิ่มเติม
+- **การผูกปัจจัยใหม่ระหว่างลงชื่อเข้าใช้**: เนื่องจากการเพิ่มปัจจัย MFA ใหม่ระหว่าง interaction ลงชื่อเข้าใช้ต้องยืนยันปัจจัยเดิมก่อน การลงชื่อเข้าใช้ Adaptive MFA ที่มีความเสี่ยงต่ำและไม่ขอ MFA จะไม่สามารถผูกปัจจัยเพิ่มเติมระหว่างลงชื่อเข้าใช้ได้ ผู้ใช้สามารถเพิ่มหรือจัดการปัจจัย MFA ได้ผ่าน Account Center หรือ [Account API](/end-user-flows/account-settings/by-account-api)
+
+## การแจ้งเตือนผ่าน Webhook \{#webhook-notifications}
+
+การสมัครรับ webhook event `PostSignInAdaptiveMfaTriggered` จะช่วยแจ้งบริการของคุณทุกครั้งที่ Adaptive MFA กระตุ้นการขอ MFA สำหรับการลงชื่อเข้าใช้ (`requiresMfa: true`) พร้อมรายชื่อ `triggeredRules` ที่ถูกกระตุ้น แตกต่างจาก `PostSignIn` ซึ่งจะถูกเรียกหลังการลงชื่อเข้าใช้เสร็จสมบูรณ์เท่านั้น `PostSignInAdaptiveMfaTriggered` จะถูกเรียกหนึ่งครั้งต่อ flow การลงชื่อเข้าใช้ ณ จุดที่ Adaptive MFA ต้องการการยืนยัน — แม้ผู้ใช้ยังไม่ยืนยัน MFA ดูรายละเอียด payload ได้ที่ [Webhook request](/developers/webhooks/webhooks-request)

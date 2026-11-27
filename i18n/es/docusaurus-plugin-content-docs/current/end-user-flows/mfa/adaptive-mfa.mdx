@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: MFA adaptativa
+---
+
+# MFA adaptativa
+
+La MFA adaptativa evalúa el riesgo de inicio de sesión en cada flujo de inicio de sesión y desafía al usuario para la verificación MFA solo cuando se activa una regla de riesgo. Los inicios de sesión de bajo riesgo pueden completarse sin un aviso de verificación MFA, reduciendo la fricción mientras se mantienen protegidos los inicios de sesión de alto riesgo.
+
+## Cómo funciona la MFA adaptativa \{#how-adaptive-mfa-works}
+
+Cuando la **MFA adaptativa (Adaptive MFA)** está habilitada en <CloudLink to="/mfa">Consola > Autenticación multifactor</CloudLink>:
+
+- **La configuración de MFA sigue siendo obligatoria**: Habilitar la MFA adaptativa requiere al menos un factor de MFA y una de las dos políticas de **solicitud de configuración de MFA no saltable** (`Pedir a los usuarios que configuren MFA durante el registro (no saltable)` o `Pedir a los usuarios que configuren MFA en su próximo intento de inicio de sesión después del registro (no saltable)`). Los usuarios que aún no tengan ningún factor de MFA configurado deben configurar MFA durante el registro o en su próximo inicio de sesión.
+- **Las reglas de riesgo se ejecutan en el inicio de sesión**: Cuando un usuario inicia sesión (`SignIn` interaction) con factores de MFA disponibles, Logto evalúa las reglas de riesgo integradas que se describen a continuación.
+- **La verificación solo se ejecuta cuando se activa**: Si al menos una regla se activa, Logto requiere la verificación MFA antes de completar el inicio de sesión y envía el evento webhook [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events). Si ninguna regla se activa, el inicio de sesión se completa sin un desafío de verificación MFA.
+
+## Reglas de riesgo integradas \{#built-in-risk-rules}
+
+La MFA adaptativa evalúa cuatro reglas de riesgo integradas en las interacciones `SignIn`:
+
+| Regla                    | Condición de activación                                                                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Nuevo país**           | La solicitud incluye un código de país ISO, el usuario ha iniciado sesión antes con al menos un país registrado en los últimos **180 días**, y el país actual no está en ese historial.                       |
+| **Velocidad geográfica** | Tanto la solicitud actual como el inicio de sesión anterior del usuario tienen coordenadas de latitud/longitud, el tiempo transcurrido es positivo y la velocidad de viaje calculada supera los **900 km/h**. |
+| **Larga inactividad**    | El usuario ha iniciado sesión antes y han pasado más de **30 días** desde su último inicio de sesión.                                                                                                         |
+| **IP no confiable**      | Las señales de riesgo ascendentes informan una puntuación de bot inferior a **30** o una bandera de bot verificado (`true`).                                                                                  |
+
+:::note
+Logto registra el país y las coordenadas geográficas de un usuario durante el inicio de sesión y el registro cuando los encabezados de ubicación están presentes, para que los inicios de sesión posteriores tengan un historial de referencia. Antes de que un usuario tenga una marca de tiempo de inicio de sesión previa (`lastSignInAt`, como los usuarios creados a través de la Management API antes de iniciar sesión) o historial previo de país/coordenadas, `Nuevo país` y `Velocidad geográfica` no se activan; completar el registro establece `lastSignInAt` y registra el historial de ubicación si los encabezados de ubicación estaban presentes durante el registro.
+:::
+
+## Requisito previo de encabezados de edge \{#edge-headers-prerequisite}
+
+Las reglas **Nuevo país**, **Velocidad geográfica** e **IP no confiable** dependen de encabezados HTTP inyectados por un proxy edge delante de Logto:
+
+- Nombres de encabezados predeterminados: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`.
+- En implementaciones autogestionadas, si tu proxy o CDN utiliza nombres de encabezados diferentes, configura los mapeos personalizados de encabezados mediante la variable de entorno `INJECTED_HEADER_MAPPING_JSON`.
+
+Sin encabezados de ubicación y riesgo de bot en las solicitudes entrantes, esas tres reglas no reciben señales de entrada, y **solo la regla de Larga inactividad** (más de 30 días desde el último inicio de sesión) puede activar la MFA adaptativa.
+
+## Interacción con otros ajustes de MFA \{#interaction-with-other-mfa-settings}
+
+- **Requisitos por usuario y organización**: Cuando se selecciona la **MFA adaptativa (Adaptive MFA)** en la Consola, la configuración **Solicitud de configuración de MFA para usuarios después de que la organización habilita MFA** (`organizationRequiredMfaPolicy`) se oculta y no se guarda. Durante el inicio de sesión bajo MFA adaptativa, los inicios de sesión de bajo riesgo que no activan ninguna regla de riesgo **no** son desafiados para la verificación MFA, incluso para usuarios con [configuración de MFA obligatoria por usuario](/end-user-flows/mfa/configure-mfa) (`mfa.required`) o miembros de [organizaciones que requieren MFA](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`). El intercambio de token de organización aún rechaza a los miembros que no tienen ningún factor de MFA configurado cuando `isMfaRequired` está habilitado.
+- **Configuraciones de exclusión de MFA por usuario**: La MFA adaptativa ignora `skipMfaOnSignIn` y `enabled: false` (el campo de solo lectura `required` devuelto por `GET /api/my-account/mfa-settings` es `true`). Los usuarios aún son desafiados siempre que se active una regla de riesgo.
+- **Dispositivos confiables**: Una credencial de [dispositivo confiable](/end-user-flows/mfa/trusted-devices) válida aún puede cumplir con el desafío de verificación MFA cuando se activa una regla de riesgo de MFA adaptativa.
+- **Inicio de sesión con passkey**: Iniciar sesión con [inicio de sesión con passkey](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) satisface el requisito de MFA WebAuthn para ese inicio de sesión sin un aviso MFA adicional.
+- **Vinculación de nuevos factores durante el inicio de sesión**: Debido a que agregar un nuevo factor de MFA durante una interacción de inicio de sesión requiere verificar primero un factor existente, los inicios de sesión de bajo riesgo de MFA adaptativa que no solicitan MFA no pueden vincular factores adicionales en línea durante el inicio de sesión. Los usuarios pueden agregar o gestionar factores de MFA a través del Centro de Cuenta o la [Account API](/end-user-flows/account-settings/by-account-api).
+
+## Notificaciones de webhook \{#webhook-notifications}
+
+Suscribirse al evento webhook `PostSignInAdaptiveMfaTriggered` notifica a tu servicio cada vez que la MFA adaptativa activa un desafío MFA para un inicio de sesión (`requiresMfa: true`), incluyendo la lista de `triggeredRules`. A diferencia de `PostSignIn`, que se dispara solo después de que se completa el inicio de sesión, `PostSignInAdaptiveMfaTriggered` se dispara una vez por flujo de inicio de sesión en el punto en que la MFA adaptativa requiere verificación, incluso antes de que el usuario termine la MFA. Consulta [Solicitud de webhook](/developers/webhooks/webhooks-request) para detalles del payload.
