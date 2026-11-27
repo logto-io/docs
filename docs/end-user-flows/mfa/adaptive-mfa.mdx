@@ -1,0 +1,52 @@
+---
+sidebar_position: 8
+sidebar_label: Adaptive MFA
+---
+
+# Adaptive MFA
+
+Adaptive MFA evaluates sign-in risk on each sign-in flow and challenges the user for MFA verification only when a risk rule triggers. Low-risk sign-ins can complete without an MFA verification prompt, reducing friction while keeping high-risk sign-ins protected.
+
+## How Adaptive MFA works \{#how-adaptive-mfa-works}
+
+When **Adaptive MFA** is enabled in <CloudLink to="/mfa">Console > Multi-factor authentication</CloudLink>:
+
+- **MFA setup stays non-skippable**: Enabling Adaptive MFA requires at least one MFA factor and one of the two non-skippable **MFA set-up prompt** policies (`Ask users to set up MFA during registration (non-skippable)` or `Ask users to set up MFA on their next sign-in attempt after registration (non-skippable)`). Users who do not yet have any MFA factor configured must still set up MFA during sign-up or at their next sign-in.
+- **Risk rules run on sign-in**: When a user signs in (`SignIn` interaction) with MFA factors available, Logto evaluates the built-in risk rules described below.
+- **Verification runs only when triggered**: If at least one rule triggers, Logto requires MFA verification before completing sign-in and dispatches the [`PostSignInAdaptiveMfaTriggered`](/developers/webhooks/webhooks-events#user-interaction-hook-events) webhook event. If no rule triggers, sign-in completes without an MFA verification challenge.
+
+## Built-in risk rules \{#built-in-risk-rules}
+
+Adaptive MFA evaluates four built-in risk rules on `SignIn` interactions:
+
+| Rule                | Trigger condition                                                                                                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **New country**     | The request includes an ISO country code, the user has signed in before with at least one recorded country in the past **180 days**, and the current country is not in that history. |
+| **Geo velocity**    | Both the current request and the user's previous sign-in have latitude/longitude coordinates, elapsed time is positive, and the calculated travel speed exceeds **900 km/h**.        |
+| **Long inactivity** | The user has signed in before and more than **30 days** have elapsed since their last sign-in.                                                                                       |
+| **Untrusted IP**    | Upstream risk signals report a bot score below **30** or a verified-bot flag (`true`).                                                                                               |
+
+:::note
+Logto records a user's country and geographic coordinates during sign-in and registration when location headers are present so later sign-ins have baseline history. Before a user has a prior sign-in timestamp (`lastSignInAt`, such as users created via the Management API before signing in) or prior country/coordinate history, `New country` and `Geo velocity` do not trigger; completing registration sets `lastSignInAt` and records location history if location headers were present during sign-up.
+:::
+
+## Edge headers prerequisite \{#edge-headers-prerequisite}
+
+The **New country**, **Geo velocity**, and **Untrusted IP** rules rely on HTTP headers injected by an edge proxy in front of Logto:
+
+- Default header names: `x-logto-cf-country`, `x-logto-cf-city`, `x-logto-cf-latitude`, `x-logto-cf-longitude`, `x-logto-cf-bot-score`, `x-logto-cf-bot-verified`.
+- In self-hosted deployments, if your proxy or CDN uses different header names, configure custom header mappings via the `INJECTED_HEADER_MAPPING_JSON` environment variable.
+
+Without location and bot-risk headers on incoming requests, those three rules receive no input signals, and **only the Long inactivity rule** (more than 30 days since last sign-in) can trigger Adaptive MFA.
+
+## Interaction with other MFA settings \{#interaction-with-other-mfa-settings}
+
+- **Per-user and organization requirements**: When **Adaptive MFA** is selected in Console, the **MFA setup prompt for users after organization enables MFA** setting (`organizationRequiredMfaPolicy`) is hidden and not saved. During sign-in under Adaptive MFA, low-risk sign-ins that trigger no risk rule are **not** challenged for MFA verification—even for users with [per-user MFA setup required](/end-user-flows/mfa/configure-mfa) (`mfa.required`) or members of [organizations that require MFA](/organizations/organization-management#require-mfa-for-organization-members) (`isMfaRequired`). Organization token exchange still rejects members who have no MFA factor configured when `isMfaRequired` is enabled.
+- **User MFA opt-out settings**: Adaptive MFA ignores `skipMfaOnSignIn` and `enabled: false` (read-only `required` returned by `GET /api/my-account/mfa-settings` is `true`). Users are still challenged whenever a risk rule triggers.
+- **Trusted devices**: A valid [trusted device](/end-user-flows/mfa/trusted-devices) credential can still fulfill the MFA verification challenge when an Adaptive MFA risk rule triggers.
+- **Passkey sign-in**: Signing in with [passkey sign-in](/end-user-flows/sign-up-and-sign-in/passkey-sign-in) satisfies the WebAuthn MFA requirement for that sign-in without an extra MFA prompt.
+- **Binding new factors during sign-in**: Because adding a new MFA factor during a sign-in interaction requires verifying an existing factor first, low-risk Adaptive MFA sign-ins that do not prompt MFA cannot bind additional factors inline during sign-in. Users can add or manage MFA factors via Account Center or the [Account API](/end-user-flows/account-settings/by-account-api).
+
+## Webhook notifications \{#webhook-notifications}
+
+Subscribing to the `PostSignInAdaptiveMfaTriggered` webhook event notifies your service whenever Adaptive MFA triggers an MFA challenge for a sign-in (`requiresMfa: true`), including the list of `triggeredRules`. Unlike `PostSignIn`, which fires only after sign-in completes, `PostSignInAdaptiveMfaTriggered` fires once per sign-in flow at the point Adaptive MFA requires verification—even before the user finishes MFA. See [Webhook request](/developers/webhooks/webhooks-request) for payload details.
